@@ -235,7 +235,7 @@ export default function App() {
         if (barcodeBufferRef.current.length >= 3) {
           const scannedCode = barcodeBufferRef.current.trim();
           setSearchQuery(scannedCode);
-          if (!isNaN(scannedCode) && scannedCode.length === 10) {
+          if (/^[6-9]\d{9}$/.test(scannedCode)) {
             setActiveTab('vip');
           } else {
             setActiveTab('inventory');
@@ -502,13 +502,15 @@ export default function App() {
   const formatCurrency = (amount) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(amount || 0);
 
   const filteredInventory = inventory.filter(item => {
-    const q = searchQuery.toLowerCase();
+    const q = searchQuery.toLowerCase().trim();
+    const cleanQ = q.replace(/^0+/, '');
     return (
       item.ArticleNo?.toLowerCase().includes(q) ||
       item.ItemName?.toLowerCase().includes(q) ||
       item.ProductType?.toLowerCase().includes(q) ||
       item.Color?.toLowerCase().includes(q) ||
-      item.SKU?.toLowerCase().includes(q)
+      item.SKU?.toLowerCase().includes(q) ||
+      (cleanQ.length > 2 && item.SKU?.toLowerCase().includes(cleanQ))
     );
   });
 
@@ -589,7 +591,7 @@ export default function App() {
   const handleGlobalSearch = (e) => {
     if (e.key === 'Enter' && searchQuery.trim() !== '') {
       const query = searchQuery.trim();
-      if (!isNaN(query) && query.length === 10) {
+      if (/^[6-9]\d{9}$/.test(query)) {
         setActiveTab('vip');
       } else {
         setActiveTab('inventory');
