@@ -1286,8 +1286,16 @@ export default function App() {
                         {liveBills.slice(0, 5).map((bill, idx) => (
                           <div key={idx} className="p-4 hover:bg-slate-50 transition-colors flex justify-between items-center cursor-pointer group" onClick={() => setActiveTab('live')}>
                             <div>
-                              <p className="text-sm font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{bill.FirstName || 'Guest'}</p>
+                              <p className="text-sm font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{bill.CustomerName?.trim() || bill.FirstName?.trim() || 'Guest Customer'}</p>
                               <p className="text-xs text-slate-500 mt-0.5">{new Date(bill.BillTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • #{bill.BillNumber}</p>
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded mt-1.5 inline-block ${
+                                bill.PaymentMode === 'Cash' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                                bill.PaymentMode === 'UPI / Online' ? 'bg-purple-50 text-purple-700 border border-purple-200' :
+                                bill.PaymentMode === 'Debit / Credit Card' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                                'bg-amber-50 text-amber-700 border border-amber-200'
+                              }`}>
+                                {bill.PaymentMode || 'Cash'}
+                              </span>
                             </div>
                             <span className="text-sm font-black text-green-600 bg-green-50 px-2.5 py-1 rounded-lg">{formatCurrency(bill.Amount)}</span>
                           </div>
@@ -2266,12 +2274,17 @@ export default function App() {
             {/* 8. LIVE BILLS */}
             {activeTab === 'live' && (
               <div className="p-8">
-                <div className="border-b border-slate-200 pb-5 mb-6 flex items-center">
-                  <Receipt className="w-6 h-6 mr-3 text-slate-700" />
-                  <div>
-                    <h3 className="text-2xl font-bold text-slate-800">Live POS Checkouts</h3>
-                    <p className="text-sm text-slate-500 mt-1">Real-time sync from today's store billing system.</p>
+                <div className="border-b border-slate-200 pb-5 mb-6 flex items-center justify-between">
+                  <div className="flex items-center">
+                    <Receipt className="w-6 h-6 mr-3 text-slate-700" />
+                    <div>
+                      <h3 className="text-2xl font-bold text-slate-800">Live POS Checkouts Feed</h3>
+                      <p className="text-sm text-slate-500 mt-1">Real-time checkout feed showing customer identity, payment modes, and amounts.</p>
+                    </div>
                   </div>
+                  <span className="text-xs font-bold text-slate-500 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
+                    {liveBills.length} Checkouts Today
+                  </span>
                 </div>
                 <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
                   <table className="min-w-full text-left border-collapse">
@@ -2279,8 +2292,9 @@ export default function App() {
                       <tr className="bg-slate-50 border-b border-slate-200">
                         <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Time</th>
                         <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Invoice No.</th>
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Customer Details</th>
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Amount</th>
+                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Customer Name & Contact</th>
+                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Mode of Payment</th>
+                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Invoice Amount</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -2291,15 +2305,28 @@ export default function App() {
                           </td>
                           <td className="px-6 py-4 font-bold text-slate-700">{bill.BillNumber}</td>
                           <td className="px-6 py-4">
-                            <span className="font-bold text-slate-800">{bill.FirstName || 'Guest Customer'}</span>
+                            <span className="font-bold text-slate-800 text-base">{bill.CustomerName?.trim() || bill.FirstName?.trim() || 'Guest Customer'}</span>
                             <br/><span className="text-xs text-slate-400 font-mono mt-0.5 inline-block">{bill.Phone}</span>
+                          </td>
+                          <td className="px-6 py-4 text-center">
+                            <span className={`px-3.5 py-1.5 rounded-xl text-xs font-bold border inline-flex items-center gap-1.5 ${
+                              bill.PaymentMode === 'Cash' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                              bill.PaymentMode === 'UPI / Online' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                              bill.PaymentMode === 'Debit / Credit Card' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                              'bg-amber-50 text-amber-700 border-amber-200'
+                            }`}>
+                              {bill.PaymentMode === 'Cash' ? '💵 Cash' :
+                               bill.PaymentMode === 'UPI / Online' ? '⚡ UPI / Online' :
+                               bill.PaymentMode === 'Debit / Credit Card' ? '💳 Card' :
+                               '🔀 Split (Cash + Digital)'}
+                            </span>
                           </td>
                           <td className="px-6 py-4 text-lg font-black text-green-600 text-right">{formatCurrency(bill.Amount)}</td>
                         </tr>
                       ))}
                       {liveBills.length === 0 && (
                         <tr>
-                          <td colSpan="4" className="px-6 py-16 text-center text-slate-400 font-medium">
+                          <td colSpan="5" className="px-6 py-16 text-center text-slate-400 font-medium">
                             <Receipt className="w-10 h-10 mb-3 text-slate-300 mx-auto" />
                             No invoices processed today.
                           </td>

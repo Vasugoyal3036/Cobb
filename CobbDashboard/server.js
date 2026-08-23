@@ -412,16 +412,48 @@ app.get('/api/sales/live', async (req, res) => {
     try {
         const result = await sql.query(`
             SELECT TOP 50 
-                CM_NO as BillNumber,
-                CUSTOMER_CODE as Phone,
-                CUSTOMER_FNAME as FirstName,
-                NET_AMOUNT as Amount,
-                CONVERT(varchar, CM_TIME, 126) as BillTime
-            FROM VW_CASHMEMO_PRINT_MST 
-            WHERE CAST(CM_TIME AS DATE) = CAST(GETDATE() AS DATE) AND CANCELLED = 0
-            ORDER BY CM_TIME DESC
+                m.CM_NO as BillNumber,
+                m.CUSTOMER_CODE as Phone,
+                ISNULL(m.CUSTOMER_FNAME, '') + ' ' + ISNULL(m.CUSTOMER_LNAME, '') as CustomerName,
+                m.CUSTOMER_FNAME as FirstName,
+                m.NET_AMOUNT as Amount,
+                CONVERT(varchar, m.CM_TIME, 126) as BillTime,
+                ISNULL(m.CASH_AMOUNT, 0) as CashAmount,
+                ISNULL(m.CC_AMOUNT, 0) - ISNULL(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0), 0) as CardAmount,
+                ISNULL(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0), 0) as UpiAmount
+            FROM VW_CASHMEMO_PRINT_MST m
+            LEFT JOIN VW_WL_CASHMEMOLIST w ON m.CM_ID = w.MEMO_ID
+            WHERE CAST(m.CM_TIME AS DATE) = CAST(GETDATE() AS DATE) AND m.CANCELLED = 0
+            ORDER BY m.CM_TIME DESC
         `);
-        res.json(result.recordset);
+        
+        const enriched = result.recordset.map(b => {
+          const cash = b.CashAmount || 0;
+          const card = b.CardAmount > 0 ? b.CardAmount : 0;
+          const upi = b.UpiAmount || 0;
+
+          let paymentMode = 'Cash';
+          if (upi > 0 && cash === 0 && card === 0) {
+            paymentMode = 'UPI / Online';
+          } else if (card > 0 && cash === 0 && upi === 0) {
+            paymentMode = 'Debit / Credit Card';
+          } else if (cash > 0 && (upi > 0 || card > 0)) {
+            paymentMode = 'Split (Cash + Digital)';
+          } else if (cash > 0) {
+            paymentMode = 'Cash';
+          } else if (upi > 0) {
+            paymentMode = 'UPI / Online';
+          } else if (card > 0) {
+            paymentMode = 'Debit / Credit Card';
+          }
+
+          return {
+            ...b,
+            PaymentMode: paymentMode
+          };
+        });
+
+        res.json(enriched);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
