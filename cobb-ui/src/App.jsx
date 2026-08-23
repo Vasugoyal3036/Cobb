@@ -45,7 +45,9 @@ import {
   Grid,
   DollarSign,
   CheckCircle2,
-  Menu
+  Menu,
+  Barcode,
+  Scan
 } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -212,6 +214,49 @@ export default function App() {
     axios.get(`${API_BASE}/api/financials/gst-summary`).then(res => setGstSummary(res.data)).catch(console.error);
     axios.get(`${API_BASE}/api/inventory/size-matrix`).then(res => setSizeMatrix(res.data)).catch(console.error);
     axios.get(`${API_BASE}/api/reconciliation/latest`).then(res => setReconData(res.data)).catch(console.error);
+  }, []);
+
+  // Hardware Barcode Scanner Listener (HID Emulation)
+  const barcodeBufferRef = useRef('');
+  const lastKeyTimeRef = useRef(0);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+      if (activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select') {
+        return;
+      }
+
+      const currentTime = Date.now();
+      const timeDiff = currentTime - lastKeyTimeRef.current;
+      lastKeyTimeRef.current = currentTime;
+
+      if (e.key === 'Enter') {
+        if (barcodeBufferRef.current.length >= 3) {
+          const scannedCode = barcodeBufferRef.current.trim();
+          setSearchQuery(scannedCode);
+          if (!isNaN(scannedCode) && scannedCode.length === 10) {
+            setActiveTab('vip');
+          } else {
+            setActiveTab('inventory');
+          }
+          
+          setToasts(prev => [
+            ...prev, 
+            { id: Date.now(), title: 'BARCODE SCANNED 📷', message: `Scanned Tag: ${scannedCode}` }
+          ]);
+        }
+        barcodeBufferRef.current = '';
+      } else if (e.key.length === 1) {
+        if (timeDiff > 100) {
+          barcodeBufferRef.current = '';
+        }
+        barcodeBufferRef.current += e.key;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   useEffect(() => {
@@ -543,11 +588,16 @@ export default function App() {
 
   const handleGlobalSearch = (e) => {
     if (e.key === 'Enter' && searchQuery.trim() !== '') {
-      if (!isNaN(searchQuery) && searchQuery.length === 10) {
+      const query = searchQuery.trim();
+      if (!isNaN(query) && query.length === 10) {
         setActiveTab('vip');
       } else {
         setActiveTab('inventory');
       }
+      setToasts(prev => [
+        ...prev, 
+        { id: Date.now(), title: 'STOCK SCAN / SEARCH 📷', message: `Filtering inventory for: ${query}` }
+      ]);
     }
   };
 
@@ -902,12 +952,16 @@ export default function App() {
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
               <input 
                 type="text" 
-                placeholder="Search Article, Phone, or Name" 
+                placeholder="Scan Tag or Search Article / Phone..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={handleGlobalSearch}
-                className="w-full pl-9 pr-4 py-2 bg-slate-100 border-none rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all shadow-inner"
+                className="w-full pl-9 pr-28 py-2 bg-slate-100 border-none rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all shadow-inner"
               />
+              <div className="absolute right-2 top-1.5 hidden sm:flex items-center gap-1 bg-white px-2 py-0.5 rounded-lg border border-slate-200 shadow-xs pointer-events-none">
+                <Barcode className="w-3.5 h-3.5 text-blue-600" />
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Scanner Ready</span>
+              </div>
             </div>
           </div>
           
