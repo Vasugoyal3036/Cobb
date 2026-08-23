@@ -74,7 +74,9 @@ export default function App() {
   const [deadStock, setDeadStock] = useState([]);
   const [hourlySales, setHourlySales] = useState([]);
   const [monthlyProducts, setMonthlyProducts] = useState([]);
-  const [gstSummary, setGstSummary] = useState({ today: { TaxCollected: 0, TaxableSales: 0, GrossSales: 0 }, monthly: { TaxCollected: 0, TaxableSales: 0, GrossSales: 0 } });
+  const [gstSummary, setGstSummary] = useState({ today: { TaxCollected: 0, TaxableSales: 0, GrossSales: 0 }, monthly: { TaxCollected: 0, TaxableSales: 0, GrossSales: 0 }, history: [] });
+  const [gstRateSlab, setGstRateSlab] = useState(5);
+  const [gstCopied, setGstCopied] = useState(false);
   const [sizeMatrix, setSizeMatrix] = useState([]);
   const [reconData, setReconData] = useState(null);
   const [countedCashInput, setCountedCashInput] = useState('');
@@ -1420,75 +1422,168 @@ export default function App() {
             )}
 
             {/* 2. GST & TAX SUMMARY */}
-            {activeTab === 'gst' && (
-              <div className="p-8">
-                <div className="border-b border-slate-200 pb-5 mb-8 flex justify-between items-center">
-                  <div>
-                    <h3 className="text-2xl font-bold text-slate-800 flex items-center">
-                      <FileText className="w-6 h-6 mr-3 text-emerald-600" /> GST & Tax Financial Summary
-                    </h3>
-                    <p className="text-sm text-slate-500 mt-2">Live tax calculations, taxable sales, and gross revenue split.</p>
-                  </div>
-                </div>
+            {activeTab === 'gst' && (() => {
+              const rate = gstRateSlab / 100;
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Today's GST Tax Collected</p>
-                    <h4 className="text-3xl font-black text-emerald-600 mt-2">{formatCurrency(gstSummary.today.TaxCollected)}</h4>
-                    <p className="text-xs text-slate-400 mt-2">Net Taxable Sales: <span className="font-bold text-slate-700">{formatCurrency(gstSummary.today.TaxableSales)}</span></p>
-                  </div>
+              const computeGst = (grossRevenue, existingTax) => {
+                if (existingTax > 0) {
+                  const taxable = grossRevenue - existingTax;
+                  return { taxable, tax: existingTax, cgst: existingTax / 2, sgst: existingTax / 2 };
+                }
+                const taxable = grossRevenue / (1 + rate);
+                const tax = grossRevenue - taxable;
+                return { taxable, tax, cgst: tax / 2, sgst: tax / 2 };
+              };
 
-                  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Monthly GST Tax Collected</p>
-                    <h4 className="text-3xl font-black text-blue-600 mt-2">{formatCurrency(gstSummary.monthly.TaxCollected)}</h4>
-                    <p className="text-xs text-slate-400 mt-2">Net Taxable Sales: <span className="font-bold text-slate-700">{formatCurrency(gstSummary.monthly.TaxableSales)}</span></p>
-                  </div>
+              const todayComp = computeGst(gstSummary.today.GrossSales || 0, gstSummary.today.TaxCollected || 0);
+              const monthlyComp = computeGst(gstSummary.monthly.GrossSales || 0, gstSummary.monthly.TaxCollected || 0);
 
-                  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Estimated CGST / SGST Split (Today)</p>
-                    <div className="flex gap-4 mt-3">
-                      <div>
-                        <p className="text-[10px] uppercase font-bold text-slate-400">CGST (Half)</p>
-                        <p className="text-xl font-bold text-slate-800">{formatCurrency(gstSummary.today.TaxCollected / 2)}</p>
+              const exportGstr1Text = () => {
+                const lines = [
+                  `🧾 *COBB PUNDRI - GSTR-1 MONTHLY TAX SUMMARY*`,
+                  `📅 *Month:* ${new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}`,
+                  `-----------------------------------`,
+                  `💰 *Gross Sales (Inc. GST):* ${formatCurrency(gstSummary.monthly.GrossSales)}`,
+                  `💵 *Taxable Base Sales:* ${formatCurrency(monthlyComp.taxable)}`,
+                  `⚡ *GST Tax Slab:* ${gstRateSlab}%`,
+                  `🏛️ *CGST (${(gstRateSlab / 2)}%):* ${formatCurrency(monthlyComp.cgst)}`,
+                  `🏛️ *SGST (${(gstRateSlab / 2)}%):* ${formatCurrency(monthlyComp.sgst)}`,
+                  `🧾 *Total GST Liability:* ${formatCurrency(monthlyComp.tax)}`,
+                  `-----------------------------------`,
+                  `Generated for CA / Accounting Return Filing.`
+                ].join('\n');
+                return lines;
+              };
+
+              return (
+                <div className="p-4 sm:p-6 lg:p-8">
+                  {/* Header */}
+                  <div className="border-b border-slate-200 pb-5 mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                      <h3 className="text-2xl font-bold text-slate-800 flex items-center">
+                        <FileText className="w-6 h-6 mr-3 text-emerald-600" /> GST & Tax Financial Compliance Suite
+                      </h3>
+                      <p className="text-sm text-slate-500 mt-1">Live GSTR-1 return filing data, taxable base revenue, CGST/SGST split, and tax slab configuration.</p>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      {/* GST Slab Selector */}
+                      <div className="bg-white p-1 rounded-xl border border-slate-200 shadow-sm flex items-center gap-1">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase px-2">GST Slab:</span>
+                        <button 
+                          onClick={() => setGstRateSlab(5)}
+                          className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${gstRateSlab === 5 ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
+                        >
+                          5% (Standard Retail)
+                        </button>
+                        <button 
+                          onClick={() => setGstRateSlab(12)}
+                          className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${gstRateSlab === 12 ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
+                        >
+                          12% (Suits/Outerwear)
+                        </button>
                       </div>
-                      <div className="border-r border-slate-200"></div>
+
+                      {/* Export for CA Button */}
+                      <button 
+                        onClick={() => {
+                          navigator.clipboard.writeText(exportGstr1Text());
+                          setGstCopied(true);
+                          setTimeout(() => setGstCopied(false), 2000);
+                        }}
+                        className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                      >
+                        {gstCopied ? '✅ Copied GSTR-1!' : '📋 Copy CA Report'}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Summary Metric Cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Today's GST Liability ({gstRateSlab}%)</p>
+                      <h4 className="text-3xl font-black text-emerald-600 mt-2">{formatCurrency(todayComp.tax)}</h4>
+                      <p className="text-xs text-slate-500 mt-1">Taxable Sales: <span className="font-bold text-slate-800">{formatCurrency(todayComp.taxable)}</span></p>
+                    </div>
+
+                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Current Month GST ({gstRateSlab}%)</p>
+                      <h4 className="text-3xl font-black text-blue-600 mt-2">{formatCurrency(monthlyComp.tax)}</h4>
+                      <p className="text-xs text-slate-500 mt-1">Taxable Base: <span className="font-bold text-slate-800">{formatCurrency(monthlyComp.taxable)}</span></p>
+                    </div>
+
+                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">🏛️ Today CGST ({(gstRateSlab / 2)}%)</p>
+                      <h4 className="text-2xl font-black text-slate-800 mt-2">{formatCurrency(todayComp.cgst)}</h4>
+                      <p className="text-xs text-slate-400 mt-1">Central Government Share</p>
+                    </div>
+
+                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">🏛️ Today SGST ({(gstRateSlab / 2)}%)</p>
+                      <h4 className="text-2xl font-black text-slate-800 mt-2">{formatCurrency(todayComp.sgst)}</h4>
+                      <p className="text-xs text-slate-400 mt-1">Haryana State Share</p>
+                    </div>
+                  </div>
+
+                  {/* Monthly GSTR-1 Return Filing History Table */}
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-6">
+                    <div className="flex justify-between items-center mb-4">
                       <div>
-                        <p className="text-[10px] uppercase font-bold text-slate-400">SGST (Half)</p>
-                        <p className="text-xl font-bold text-slate-800">{formatCurrency(gstSummary.today.TaxCollected / 2)}</p>
+                        <h4 className="font-bold text-slate-800 text-lg">Monthly GSTR-1 Tax Return History</h4>
+                        <p className="text-xs text-slate-500 mt-0.5">Audited monthly tax breakdowns for CA return submission (Slab: {gstRateSlab}% GST).</p>
                       </div>
+                      <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
+                        {gstSummary.history.length} Months Tracked
+                      </span>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-sm border-collapse">
+                        <thead>
+                          <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase text-[11px]">
+                            <th className="pb-3 pr-4">Month / Period</th>
+                            <th className="pb-3 px-3 text-right">Invoices</th>
+                            <th className="pb-3 px-3 text-right">Units Sold</th>
+                            <th className="pb-3 px-3 text-right">Gross Sales (Inc. Tax)</th>
+                            <th className="pb-3 px-3 text-right">Taxable Base Amount</th>
+                            <th className="pb-3 px-3 text-right">CGST ({(gstRateSlab / 2)}%)</th>
+                            <th className="pb-3 px-3 text-right">SGST ({(gstRateSlab / 2)}%)</th>
+                            <th className="pb-3 pl-4 text-right">Total GST Payable</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 font-medium">
+                          {gstSummary.history.map((row, idx) => {
+                            const gross = row.GrossSales || 0;
+                            const comp = computeGst(gross, row.TaxCollected || 0);
+
+                            return (
+                              <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                                <td className="py-4 pr-4 font-bold text-slate-800 flex items-center gap-2">
+                                  <Calendar className="w-4 h-4 text-blue-600" />
+                                  <span>{row.MonthStr}</span>
+                                </td>
+                                <td className="py-4 px-3 text-right text-slate-600 text-xs font-semibold">{row.TotalInvoices} Bills</td>
+                                <td className="py-4 px-3 text-right text-slate-600 text-xs font-semibold">{row.TotalUnits} Units</td>
+                                <td className="py-4 px-3 text-right font-black text-slate-900">{formatCurrency(gross)}</td>
+                                <td className="py-4 px-3 text-right text-slate-600 font-mono text-xs">{formatCurrency(comp.taxable)}</td>
+                                <td className="py-4 px-3 text-right text-slate-600 font-mono text-xs">{formatCurrency(comp.cgst)}</td>
+                                <td className="py-4 px-3 text-right text-slate-600 font-mono text-xs">{formatCurrency(comp.sgst)}</td>
+                                <td className="py-4 pl-4 text-right font-black text-emerald-600 text-base">{formatCurrency(comp.tax)}</td>
+                              </tr>
+                            );
+                          })}
+                          {gstSummary.history.length === 0 && (
+                            <tr>
+                              <td colSpan="8" className="text-center py-12 text-slate-400">Loading GST return history...</td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 </div>
-
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-6">
-                  <h4 className="font-bold text-slate-800 text-lg mb-4">Taxable Revenue Breakdown</h4>
-                  <table className="w-full text-left text-sm">
-                    <thead>
-                      <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase text-xs">
-                        <th className="pb-3">Period</th>
-                        <th className="pb-3 text-right">Gross Sales</th>
-                        <th className="pb-3 text-right">Taxable Amount</th>
-                        <th className="pb-3 text-right">Total GST Collected</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 font-medium">
-                      <tr>
-                        <td className="py-4 font-bold text-slate-800">Today</td>
-                        <td className="py-4 text-right">{formatCurrency(gstSummary.today.GrossSales)}</td>
-                        <td className="py-4 text-right text-slate-600">{formatCurrency(gstSummary.today.TaxableSales)}</td>
-                        <td className="py-4 text-right text-emerald-600 font-bold">{formatCurrency(gstSummary.today.TaxCollected)}</td>
-                      </tr>
-                      <tr>
-                        <td className="py-4 font-bold text-slate-800">Current Month</td>
-                        <td className="py-4 text-right">{formatCurrency(gstSummary.monthly.GrossSales)}</td>
-                        <td className="py-4 text-right text-slate-600">{formatCurrency(gstSummary.monthly.TaxableSales)}</td>
-                        <td className="py-4 text-right text-blue-600 font-bold">{formatCurrency(gstSummary.monthly.TaxCollected)}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* SIZE MATRIX HEATMAP */}
             {activeTab === 'sizematrix' && (() => {

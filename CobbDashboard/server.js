@@ -602,6 +602,7 @@ app.get('/api/financials/gst-summary', async (req, res) => {
     try {
         const todayGst = await sql.query(`
             SELECT 
+                COUNT(CM_ID) as BillCount,
                 ISNULL(SUM(TOTAL_TAX), 0) as TaxCollected,
                 ISNULL(SUM(NET_AMOUNT - TOTAL_TAX), 0) as TaxableSales,
                 ISNULL(SUM(NET_AMOUNT), 0) as GrossSales
@@ -611,6 +612,7 @@ app.get('/api/financials/gst-summary', async (req, res) => {
 
         const monthlyGst = await sql.query(`
             SELECT 
+                COUNT(CM_ID) as BillCount,
                 ISNULL(SUM(TOTAL_TAX), 0) as TaxCollected,
                 ISNULL(SUM(NET_AMOUNT - TOTAL_TAX), 0) as TaxableSales,
                 ISNULL(SUM(NET_AMOUNT), 0) as GrossSales
@@ -618,9 +620,24 @@ app.get('/api/financials/gst-summary', async (req, res) => {
             WHERE CM_TIME IS NOT NULL AND CANCELLED = 0 AND FORMAT(CM_TIME, 'yyyy-MM') = FORMAT(GETDATE(), 'yyyy-MM')
         `);
 
+        const historyGst = await sql.query(`
+            SELECT TOP 12
+                FORMAT(CM_TIME, 'yyyy-MM') as MonthStr,
+                COUNT(CM_ID) as TotalInvoices,
+                ISNULL(SUM(TOTAL_QTY), 0) as TotalUnits,
+                ISNULL(SUM(NET_AMOUNT), 0) as GrossSales,
+                ISNULL(SUM(NET_AMOUNT - TOTAL_TAX), 0) as TaxableSales,
+                ISNULL(SUM(TOTAL_TAX), 0) as TaxCollected
+            FROM VW_CASHMEMO_PRINT_MST
+            WHERE CANCELLED = 0 AND CM_TIME IS NOT NULL
+            GROUP BY FORMAT(CM_TIME, 'yyyy-MM')
+            ORDER BY MonthStr DESC
+        `);
+
         res.json({
-            today: todayGst.recordset[0] || { TaxCollected: 0, TaxableSales: 0, GrossSales: 0 },
-            monthly: monthlyGst.recordset[0] || { TaxCollected: 0, TaxableSales: 0, GrossSales: 0 }
+            today: todayGst.recordset[0] || { BillCount: 0, TaxCollected: 0, TaxableSales: 0, GrossSales: 0 },
+            monthly: monthlyGst.recordset[0] || { BillCount: 0, TaxCollected: 0, TaxableSales: 0, GrossSales: 0 },
+            history: historyGst.recordset || []
         });
     } catch (err) {
         res.status(500).json({ error: err.message });
