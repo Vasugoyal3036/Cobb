@@ -84,6 +84,7 @@ export default function App() {
   const [eodSummaryText, setEodSummaryText] = useState('');
   const [eodCopied, setEodCopied] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [matrixCategoryFilter, setMatrixCategoryFilter] = useState('ALL');
   
   const [isListenerRunning, setIsListenerRunning] = useState(false);
   const [listenerLogs, setListenerLogs] = useState([]);
@@ -1490,57 +1491,162 @@ export default function App() {
             )}
 
             {/* SIZE MATRIX HEATMAP */}
-            {activeTab === 'sizematrix' && (
-              <div className="p-8">
-                <div className="border-b border-slate-200 pb-5 mb-8">
-                  <h3 className="text-2xl font-bold text-slate-800 flex items-center">
-                    <Grid className="w-6 h-6 mr-3 text-blue-600" /> Size-Wise Inventory & Sales Matrix
-                  </h3>
-                  <p className="text-sm text-slate-500 mt-2">Heatmap distribution of units sold by size across major product categories (Last 60 days).</p>
-                </div>
+            {activeTab === 'sizematrix' && (() => {
+              const categoriesList = ['ALL', ...Array.from(new Set(sizeMatrix.map(r => r.Category)))];
+              
+              const filteredMatrix = sizeMatrix.filter(row => {
+                const matchesCat = matrixCategoryFilter === 'ALL' || row.Category === matrixCategoryFilter;
+                const matchesSearch = searchQuery === '' || 
+                  row.ArticleName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  row.Size?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                  row.Category?.toLowerCase().includes(searchQuery.toLowerCase());
+                return matchesCat && matchesSearch;
+              });
 
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 overflow-x-auto">
-                  <table className="w-full text-left text-sm border-collapse">
-                    <thead>
-                      <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase text-xs">
-                        <th className="p-3">Category</th>
-                        <th className="p-3">Size</th>
-                        <th className="p-3 text-right">Units Sold</th>
-                        <th className="p-3 text-center">Demand Heatmap</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {sizeMatrix.map((row, idx) => {
-                        const units = row.UnitsSold || 0;
-                        let heatBg = "bg-slate-100 text-slate-600";
-                        if (units >= 20) heatBg = "bg-emerald-500 text-white font-bold";
-                        else if (units >= 10) heatBg = "bg-emerald-100 text-emerald-800 font-bold";
-                        else if (units >= 5) heatBg = "bg-amber-100 text-amber-800 font-bold";
-                        else if (units > 0) heatBg = "bg-blue-50 text-blue-700";
+              const totalMatrixUnits = filteredMatrix.reduce((sum, r) => sum + (r.UnitsSold || 0), 0);
+              const totalMatrixRevenue = filteredMatrix.reduce((sum, r) => sum + (r.TotalRevenue || 0), 0);
+              const topSellerItem = filteredMatrix.length > 0 ? [...filteredMatrix].sort((a, b) => (b.UnitsSold || 0) - (a.UnitsSold || 0))[0] : null;
+              const topRevenueItem = filteredMatrix.length > 0 ? [...filteredMatrix].sort((a, b) => (b.TotalRevenue || 0) - (a.TotalRevenue || 0))[0] : null;
 
-                        return (
-                          <tr key={idx} className="hover:bg-slate-50">
-                            <td className="p-3 font-bold text-slate-800">{row.Category}</td>
-                            <td className="p-3 font-semibold text-slate-600"><span className="bg-slate-100 px-2 py-1 rounded border border-slate-200 text-xs font-mono">{row.Size}</span></td>
-                            <td className="p-3 text-right font-black text-slate-800">{units}</td>
-                            <td className="p-3 text-center">
-                              <span className={`px-3 py-1 rounded-full text-xs inline-block ${heatBg}`}>
-                                {units >= 20 ? '🔥 Ultra High' : units >= 10 ? '📈 High' : units >= 5 ? '⚡ Moderate' : 'Normal'}
-                              </span>
-                            </td>
+              return (
+                <div className="p-4 sm:p-6 lg:p-8">
+                  {/* Header */}
+                  <div className="border-b border-slate-200 pb-5 mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                      <h3 className="text-2xl font-bold text-slate-800 flex items-center">
+                        <Grid className="w-6 h-6 mr-3 text-blue-600" /> Size-Wise Inventory & Sales Matrix Heatmap
+                      </h3>
+                      <p className="text-sm text-slate-500 mt-1">Deep analysis of size demand, revenue contribution, and article velocity (Last 90 Days).</p>
+                    </div>
+                  </div>
+
+                  {/* Summary Metric Cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">🔥 Bestselling Article & Size</p>
+                      {topSellerItem ? (
+                        <div className="mt-2">
+                          <h4 className="font-black text-slate-800 text-base leading-tight truncate">{topSellerItem.ArticleName}</h4>
+                          <div className="flex items-center gap-2 mt-1.5">
+                            <span className="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded text-xs">Size: {topSellerItem.Size}</span>
+                            <span className="font-extrabold text-emerald-600 text-xs">{topSellerItem.UnitsSold} Units Sold</span>
+                          </div>
+                        </div>
+                      ) : <p className="text-xs text-slate-400 mt-2">Loading...</p>}
+                    </div>
+
+                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">💰 Top Revenue Article & Size</p>
+                      {topRevenueItem ? (
+                        <div className="mt-2">
+                          <h4 className="font-black text-slate-800 text-base leading-tight truncate">{topRevenueItem.ArticleName}</h4>
+                          <div className="flex items-center gap-2 mt-1.5">
+                            <span className="bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded text-xs">Size: {topRevenueItem.Size}</span>
+                            <span className="font-black text-blue-600 text-xs">{formatCurrency(topRevenueItem.TotalRevenue)}</span>
+                          </div>
+                        </div>
+                      ) : <p className="text-xs text-slate-400 mt-2">Loading...</p>}
+                    </div>
+
+                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">📦 Total Matrix Units Sold</p>
+                      <h4 className="text-2xl font-black text-slate-800 mt-2">{totalMatrixUnits.toLocaleString('en-IN')} <span className="text-xs text-slate-400 font-semibold">Units</span></h4>
+                      <p className="text-[11px] text-slate-400 mt-1">Tracked across {filteredMatrix.length} size variants</p>
+                    </div>
+
+                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">💳 Total Matrix Revenue</p>
+                      <h4 className="text-2xl font-black text-green-600 mt-2">{formatCurrency(totalMatrixRevenue)}</h4>
+                      <p className="text-[11px] text-slate-400 mt-1">Average: {totalMatrixUnits > 0 ? formatCurrency(totalMatrixRevenue / totalMatrixUnits) : '₹0'} / unit</p>
+                    </div>
+                  </div>
+
+                  {/* Category Filter Pills */}
+                  <div className="flex items-center gap-2 overflow-x-auto pb-3 mb-6 custom-scrollbar">
+                    <span className="text-xs font-bold text-slate-400 uppercase mr-1 shrink-0">Section Filter:</span>
+                    {categoriesList.map((cat, idx) => (
+                      <button 
+                        key={idx}
+                        onClick={() => setMatrixCategoryFilter(cat)}
+                        className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${matrixCategoryFilter === cat ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'}`}
+                      >
+                        {cat === 'ALL' ? 'All Sections' : cat}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Detailed Matrix Table */}
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-6">
+                    <div className="flex justify-between items-center mb-4">
+                      <h4 className="font-bold text-slate-800 text-lg">Detailed Size Demand & Velocity Matrix</h4>
+                      <span className="text-xs font-semibold text-slate-400">Showing {filteredMatrix.length} rows</span>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-sm border-collapse">
+                        <thead>
+                          <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase text-[11px]">
+                            <th className="pb-3 pr-4">Article Name</th>
+                            <th className="pb-3 px-3">Section</th>
+                            <th className="pb-3 px-3">Tag Size</th>
+                            <th className="pb-3 px-3 text-right">Units Sold</th>
+                            <th className="pb-3 px-3 text-right">Invoices</th>
+                            <th className="pb-3 px-3 text-right">Total Revenue</th>
+                            <th className="pb-3 px-3 text-right">Avg Unit Price</th>
+                            <th className="pb-3 pl-4 text-center">Demand Heatmap Tier</th>
                           </tr>
-                        );
-                      })}
-                      {sizeMatrix.length === 0 && (
-                        <tr>
-                          <td colSpan="4" className="text-center py-8 text-slate-400">Loading size matrix data...</td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                          {filteredMatrix.map((row, idx) => {
+                            const units = row.UnitsSold || 0;
+                            const revenue = row.TotalRevenue || 0;
+                            const avgPrice = units > 0 ? (revenue / units) : 0;
+
+                            let heatBg = "bg-slate-100 text-slate-600 border-slate-200";
+                            let heatLabel = "Normal";
+                            if (units >= 50 || revenue >= 40000) {
+                              heatBg = "bg-emerald-500 text-white font-bold shadow-sm";
+                              heatLabel = "🔥 Ultra High Velocity";
+                            } else if (units >= 20 || revenue >= 20000) {
+                              heatBg = "bg-emerald-100 text-emerald-800 font-bold border-emerald-200";
+                              heatLabel = "📈 High Velocity";
+                            } else if (units >= 10 || revenue >= 10000) {
+                              heatBg = "bg-amber-100 text-amber-800 font-bold border-amber-200";
+                              heatLabel = "⚡ Moderate Demand";
+                            } else if (units > 0) {
+                              heatBg = "bg-blue-50 text-blue-700 border-blue-100";
+                              heatLabel = "🔹 Steady";
+                            }
+
+                            return (
+                              <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
+                                <td className="py-3.5 pr-4 font-bold text-slate-800">{row.ArticleName}</td>
+                                <td className="py-3.5 px-3 font-semibold text-slate-500 text-xs"><span className="bg-slate-100 px-2 py-0.5 rounded text-[11px]">{row.Category}</span></td>
+                                <td className="py-3.5 px-3 font-mono font-bold text-slate-700 text-xs"><span className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-lg border border-blue-100">{row.Size}</span></td>
+                                <td className="py-3.5 px-3 text-right font-black text-slate-900 text-base">{units}</td>
+                                <td className="py-3.5 px-3 text-right text-slate-500 text-xs font-semibold">{row.Invoices || 0} Bills</td>
+                                <td className="py-3.5 px-3 text-right font-black text-green-600">{formatCurrency(revenue)}</td>
+                                <td className="py-3.5 px-3 text-right text-slate-600 text-xs font-mono">{formatCurrency(avgPrice)}</td>
+                                <td className="py-3.5 pl-4 text-center">
+                                  <span className={`px-3 py-1 rounded-full text-xs border inline-block ${heatBg}`}>
+                                    {heatLabel}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                          {filteredMatrix.length === 0 && (
+                            <tr>
+                              <td colSpan="8" className="text-center py-12 text-slate-400">No size matrix records match the selected filter.</td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
 
             {/* 3. VISUAL CHARTS & HOURLY RUSH */}
             {activeTab === 'analytics' && (

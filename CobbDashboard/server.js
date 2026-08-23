@@ -631,16 +631,20 @@ app.get('/api/financials/gst-summary', async (req, res) => {
 app.get('/api/inventory/size-matrix', async (req, res) => {
     try {
         const result = await sql.query(`
-            SELECT TOP 200
+            SELECT TOP 300
                 ISNULL(d.SECTION_NAME, 'Apparel') as Category,
+                ISNULL(d.ARTICLE_NAME, 'General Article') as ArticleName,
                 ISNULL(s.para2_name, 'Standard') as Size,
-                SUM(d.QUANTITY) as UnitsSold
+                SUM(d.QUANTITY) as UnitsSold,
+                SUM(d.NET) as TotalRevenue,
+                COUNT(DISTINCT d.CM_ID) as Invoices
             FROM VW_CASHMEMO_PRINT_DET d
             INNER JOIN VW_CASHMEMO_PRINT_MST m ON d.CM_ID = m.CM_ID
             LEFT JOIN SKU_NAMES s ON d.PRODUCT_CODE = s.product_Code
-            WHERE m.CANCELLED = 0 AND m.CM_TIME IS NOT NULL AND DATEDIFF(day, m.CM_TIME, GETDATE()) <= 60
-            GROUP BY d.SECTION_NAME, s.para2_name
-            ORDER BY Category, UnitsSold DESC
+            WHERE m.CANCELLED = 0 AND m.CM_TIME IS NOT NULL AND DATEDIFF(day, m.CM_TIME, GETDATE()) <= 90
+            GROUP BY d.SECTION_NAME, d.ARTICLE_NAME, s.para2_name
+            HAVING SUM(d.QUANTITY) > 0
+            ORDER BY TotalRevenue DESC
         `);
         res.json(result.recordset);
     } catch (err) {
