@@ -1,1 +1,10 @@
 @import "tailwindcss";
+
+@keyframes toastProgress {
+  from { width: 100%; }
+  to { width: 0%; }
+}
+
+.animate-toast-timer {
+  animation: toastProgress linear forwards;
+}

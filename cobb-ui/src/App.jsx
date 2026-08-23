@@ -300,18 +300,23 @@ export default function App() {
             const oldBillNumbers = new Set(oldBills.map(b => b.BillNumber.trim()));
             newBills.forEach(bill => {
               if (!oldBillNumbers.has(bill.BillNumber.trim())) {
-                // Trigger toast!
+                // Trigger enriched toast with progress timer!
                 const toastId = Date.now() + Math.random();
+                const durationMs = 5000;
                 const newToast = {
                   id: toastId,
-                  title: "New POS Checkout",
-                  message: `Bill #${bill.BillNumber.trim()} for ₹${bill.Amount.toLocaleString('en-IN')} by ${bill.FirstName || 'Guest'}`
+                  title: "⚡ Live POS Checkout Alert",
+                  billNumber: bill.BillNumber?.trim(),
+                  customer: bill.CustomerName?.trim() || bill.FirstName?.trim() || 'Guest Customer',
+                  paymentMode: bill.PaymentMode || 'Cash',
+                  amount: bill.Amount || 0,
+                  duration: durationMs
                 };
                 setToasts(prev => [newToast, ...prev].slice(0, 3));
-                // Auto dismiss toast after 6 seconds
+                // Auto dismiss toast after duration
                 setTimeout(() => {
                   setToasts(prev => prev.filter(t => t.id !== toastId));
-                }, 6000);
+                }, durationMs);
               }
             });
           }
@@ -2955,27 +2960,50 @@ export default function App() {
           </div>
         )}
 
-        {/* Floating Toast Notifications Container */}
+        {/* Floating Toast Notifications Container with Timer Progress Bar */}
         <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 pointer-events-none">
           {toasts.map(toast => (
             <div 
               key={toast.id}
-              className="pointer-events-auto bg-slate-900/95 backdrop-blur text-white rounded-2xl shadow-2xl border border-slate-800/80 p-4 min-w-[340px] max-w-sm flex items-start gap-3.5 animate-slide-in relative overflow-hidden"
+              onClick={() => {
+                setActiveTab('live');
+                setToasts(prev => prev.filter(t => t.id !== toast.id));
+              }}
+              className="pointer-events-auto bg-slate-900/95 backdrop-blur text-white rounded-2xl shadow-2xl border border-slate-800/90 p-4 min-w-[340px] max-w-sm flex items-start gap-3.5 animate-slide-in relative overflow-hidden cursor-pointer hover:border-emerald-500/50 transition-all group"
             >
-              <div className="absolute top-0 left-0 bottom-0 w-1 bg-emerald-500"></div>
-              <div className="p-2 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20">
-                <Zap className="w-4 h-4" />
+              <div className="p-2.5 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20 shrink-0">
+                <Zap className="w-5 h-5" />
               </div>
               <div className="flex-1 pr-4">
-                <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">{toast.title || "Alert"}</p>
-                <p className="text-xs font-semibold text-slate-200 mt-1 leading-relaxed">{toast.message}</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest">{toast.title || "POS Alert"}</p>
+                  {toast.billNumber && <span className="text-[10px] font-mono text-slate-400">#{toast.billNumber}</span>}
+                </div>
+                <p className="text-sm font-bold text-white mt-1 leading-snug">{toast.customer || 'Guest Customer'}</p>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <span className="text-xs font-black text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                    {formatCurrency(toast.amount || 0)}
+                  </span>
+                  <span className="text-[10px] font-bold text-slate-300 bg-slate-800 px-2 py-0.5 rounded border border-slate-700">
+                    {toast.paymentMode || 'Cash'}
+                  </span>
+                </div>
               </div>
               <button 
-                onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
-                className="text-slate-500 hover:text-slate-300 transition-colors cursor-pointer absolute top-4 right-4"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setToasts(prev => prev.filter(t => t.id !== toast.id));
+                }}
+                className="text-slate-500 hover:text-slate-200 transition-colors cursor-pointer absolute top-3.5 right-3.5"
               >
                 <X className="w-4 h-4" />
               </button>
+
+              {/* Toast Visual Progress Countdown Bar */}
+              <div 
+                className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-green-400 origin-left animate-toast-timer" 
+                style={{ animationDuration: `${toast.duration || 5000}ms` }} 
+              />
             </div>
           ))}
         </div>
