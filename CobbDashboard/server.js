@@ -480,23 +480,14 @@ app.get('/api/inventory', async (req, res) => {
     }
 });
 
-// Robust Gateway Controllers for Windows
-app.post('/api/gateway/start', (req, res) => {
-    if (gatewayProcess) {
-        return res.json({ status: 'running' });
-    }
-
+// Helper functions for auto-starting background services
+function startGatewayHelper() {
+    if (gatewayProcess) return true;
     const gatewayDir = 'C:\\CobbWhatsAppGateway';
     const targetPath = path.join(gatewayDir, 'server.js');
+    if (!fs.existsSync(targetPath)) return false;
 
-    if (!fs.existsSync(targetPath)) {
-        const errorMsg = `Cannot find server.js at: ${targetPath}`;
-        gatewayLogs.push(`[ERROR ${new Date().toLocaleTimeString()}] ${errorMsg}`);
-        return res.status(404).json({ error: errorMsg });
-    }
-
-    gatewayLogs.push(`[${new Date().toLocaleTimeString()}] Spawning WhatsApp Gateway process...`);
-
+    gatewayLogs.push(`[${new Date().toLocaleTimeString()}] Auto-spawning WhatsApp Gateway process...`);
     gatewayProcess = spawn('node.exe', ['server.js'], {
         cwd: gatewayDir,
         env: process.env,
@@ -522,8 +513,24 @@ app.post('/api/gateway/start', (req, res) => {
         gatewayLogs.push(`[${new Date().toLocaleTimeString()}] Gateway process exited with code ${code}`);
         gatewayProcess = null;
     });
+    return true;
+}
 
-    res.json({ status: 'started' });
+function startAutomationHelper() {
+    if (pythonProcess) return true;
+    const { scriptPath, cwd } = getListenerScriptPath();
+    pythonLogs.push(`[${new Date().toLocaleTimeString()}] Auto-spawning Automation Engine Listener...`);
+    pythonProcess = spawn('python', ['-u', scriptPath], { shell: true, cwd: cwd });
+    pythonProcess.stdout.on('data', (data) => pythonLogs.push(`[${new Date().toLocaleTimeString()}] ${data.toString().trim()}`));
+    pythonProcess.stderr.on('data', (data) => pythonLogs.push(`[ERROR ${new Date().toLocaleTimeString()}] ${data.toString().trim()}`));
+    pythonProcess.on('close', () => pythonProcess = null);
+    return true;
+}
+
+// Robust Gateway Controllers for Windows
+app.post('/api/gateway/start', (req, res) => {
+    const started = startGatewayHelper();
+    res.json({ status: started ? 'started' : 'error' });
 });
 
 app.post('/api/gateway/stop', (req, res) => {
@@ -566,13 +573,8 @@ app.get('/api/gateway/status', async (req, res) => {
 });
 
 app.post('/api/automation/start', (req, res) => {
-    if (pythonProcess) return res.json({ status: 'running' });
-    const { scriptPath, cwd } = getListenerScriptPath();
-    pythonProcess = spawn('python', ['-u', scriptPath], { shell: true, cwd: cwd });
-    pythonProcess.stdout.on('data', (data) => pythonLogs.push(`[${new Date().toLocaleTimeString()}] ${data.toString().trim()}`));
-    pythonProcess.stderr.on('data', (data) => pythonLogs.push(`[ERROR ${new Date().toLocaleTimeString()}] ${data.toString().trim()}`));
-    pythonProcess.on('close', () => pythonProcess = null);
-    res.json({ status: 'started' });
+    const started = startAutomationHelper();
+    res.json({ status: started ? 'started' : 'error' });
 });
 
 app.post('/api/automation/stop', (req, res) => {
@@ -909,4 +911,9 @@ app.get('/api/reports/eod-summary', async (req, res) => {
 });
 
 const PORT = 5000;
-app.listen(PORT, () => console.log(`CRM Backend running on http://localhost:${PORT}`));
+app.listen(PORT, () => {
+    console.log(`CRM Backend running on http://localhost:${PORT}`);
+    console.log("Auto-starting Automation Engine and WhatsApp Gateway...");
+    startAutomationHelper();
+    startGatewayHelper();
+});

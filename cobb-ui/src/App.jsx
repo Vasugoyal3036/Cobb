@@ -343,6 +343,25 @@ export default function App() {
         .catch(console.error);
     };
 
+    // Auto-start Automation Engine & WhatsApp Gateway if stopped
+    const autoStartServicesOnLoad = async () => {
+      try {
+        const autoRes = await axios.get(`${API_BASE}/api/automation/status`);
+        if (!autoRes.data.isRunning) {
+          console.log("Auto-starting Automation Listener Engine on frontend mount...");
+          await axios.post(`${API_BASE}/api/automation/start`);
+        }
+        const gwRes = await axios.get(`${API_BASE}/api/gateway/status`);
+        if (!gwRes.data.isRunning) {
+          console.log("Auto-starting WhatsApp Gateway on frontend mount...");
+          await axios.post(`${API_BASE}/api/gateway/start`);
+        }
+      } catch (err) {
+        console.error("Auto-start services error:", err);
+      }
+    };
+
+    autoStartServicesOnLoad();
     fetchAutomationStatus();
     const interval = setInterval(fetchAutomationStatus, 3000);
     return () => clearInterval(interval);
