@@ -481,15 +481,34 @@ app.get('/api/inventory', async (req, res) => {
 });
 
 // Helper functions for auto-starting background services
-function startGatewayHelper() {
+async function startGatewayHelper() {
+    try {
+        const ping = await fetch('http://localhost:3000/status');
+        if (ping.ok) return true;
+    } catch (e) {}
+
     if (gatewayProcess) return true;
     const gatewayDir = 'C:\\CobbWhatsAppGateway';
     const targetPath = path.join(gatewayDir, 'server.js');
     if (!fs.existsSync(targetPath)) return false;
 
+    // Clean up stale lock files from crashes
+    try {
+        const lockDir = path.join(gatewayDir, '.wwebjs_auth', 'session-cobb-pos-session');
+        if (fs.existsSync(lockDir)) {
+            const files = fs.readdirSync(lockDir);
+            files.forEach(f => {
+                if (f.includes('Singleton') || f === 'DevToolsActivePort') {
+                    try { fs.unlinkSync(path.join(lockDir, f)); } catch (e) {}
+                }
+            });
+        }
+    } catch (e) {}
+
     gatewayLogs.push(`[${new Date().toLocaleTimeString()}] Auto-spawning WhatsApp Gateway process...`);
-    gatewayProcess = spawn('node.exe', ['server.js'], {
+    gatewayProcess = spawn('node', ['server.js'], {
         cwd: gatewayDir,
+        shell: true,
         env: process.env,
         stdio: ['pipe', 'pipe', 'pipe']
     });
@@ -528,8 +547,8 @@ function startAutomationHelper() {
 }
 
 // Robust Gateway Controllers for Windows
-app.post('/api/gateway/start', (req, res) => {
-    const started = startGatewayHelper();
+app.post('/api/gateway/start', async (req, res) => {
+    const started = await startGatewayHelper();
     res.json({ status: started ? 'started' : 'error' });
 });
 
@@ -550,22 +569,22 @@ app.post('/api/gateway/stop', (req, res) => {
 app.get('/api/gateway/status', async (req, res) => {
     let qrCodeUrl = null;
     let isReady = false;
+    let isRunning = !!gatewayProcess;
 
-    if (gatewayProcess) {
-        try {
-            const response = await fetch('http://localhost:3000/status');
-            if (response.ok) {
-                const data = await response.json();
-                qrCodeUrl = data.qrCodeUrl;
-                isReady = data.isReady;
-            }
-        } catch (e) {
-            // Gateway initializing
+    try {
+        const response = await fetch('http://localhost:3000/status');
+        if (response.ok) {
+            const data = await response.json();
+            qrCodeUrl = data.qrCodeUrl;
+            isReady = data.isReady;
+            isRunning = true;
         }
+    } catch (e) {
+        // Gateway initializing
     }
 
     res.json({
-        isRunning: !!gatewayProcess,
+        isRunning: isRunning,
         isReady: isReady,
         qrCodeUrl: qrCodeUrl,
         logs: gatewayLogs
