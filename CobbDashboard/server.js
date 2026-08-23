@@ -595,5 +595,124 @@ app.post('/api/automation/send-test', async (req, res) => {
     }
 });
 
+// --- NEW FEATURES API ENDPOINTS ---
+
+// 1. GST & Tax Summary Endpoint
+app.get('/api/financials/gst-summary', async (req, res) => {
+    try {
+        const todayGst = await sql.query(`
+            SELECT 
+                ISNULL(SUM(TOTAL_TAX), 0) as TaxCollected,
+                ISNULL(SUM(NET_AMOUNT - TOTAL_TAX), 0) as TaxableSales,
+                ISNULL(SUM(NET_AMOUNT), 0) as GrossSales
+            FROM VW_CASHMEMO_PRINT_MST
+            WHERE CAST(CM_TIME AS DATE) = CAST(GETDATE() AS DATE) AND CANCELLED = 0
+        `);
+
+        const monthlyGst = await sql.query(`
+            SELECT 
+                ISNULL(SUM(TOTAL_TAX), 0) as TaxCollected,
+                ISNULL(SUM(NET_AMOUNT - TOTAL_TAX), 0) as TaxableSales,
+                ISNULL(SUM(NET_AMOUNT), 0) as GrossSales
+            FROM VW_CASHMEMO_PRINT_MST
+            WHERE CM_TIME IS NOT NULL AND CANCELLED = 0 AND FORMAT(CM_TIME, 'yyyy-MM') = FORMAT(GETDATE(), 'yyyy-MM')
+        `);
+
+        res.json({
+            today: todayGst.recordset[0] || { TaxCollected: 0, TaxableSales: 0, GrossSales: 0 },
+            monthly: monthlyGst.recordset[0] || { TaxCollected: 0, TaxableSales: 0, GrossSales: 0 }
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 2. Size Matrix & Inventory Heatmap Endpoint
+app.get('/api/inventory/size-matrix', async (req, res) => {
+    try {
+        const result = await sql.query(`
+            SELECT TOP 200
+                ISNULL(d.SECTION_NAME, 'Apparel') as Category,
+                ISNULL(s.para2_name, 'Standard') as Size,
+                SUM(d.QUANTITY) as UnitsSold
+            FROM VW_CASHMEMO_PRINT_DET d
+            INNER JOIN VW_CASHMEMO_PRINT_MST m ON d.CM_ID = m.CM_ID
+            LEFT JOIN SKU_NAMES s ON d.PRODUCT_CODE = s.product_Code
+            WHERE m.CANCELLED = 0 AND m.CM_TIME IS NOT NULL AND DATEDIFF(day, m.CM_TIME, GETDATE()) <= 60
+            GROUP BY d.SECTION_NAME, s.para2_name
+            ORDER BY Category, UnitsSold DESC
+        `);
+        res.json(result.recordset);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 3. EOD Cash Reconciliation Endpoints
+const RECON_FILE = path.join(__dirname, 'reconciliations.json');
+
+app.get('/api/reconciliation/latest', (req, res) => {
+    try {
+        if (fs.existsSync(RECON_FILE)) {
+            const data = JSON.parse(fs.readFileSync(RECON_FILE, 'utf8'));
+            return res.json(data[data.length - 1] || null);
+        }
+        res.json(null);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/reconciliation/save', (req, res) => {
+    try {
+        const { systemCash, countedCash, variance, notes, managerName } = req.body;
+        let records = [];
+        if (fs.existsSync(RECON_FILE)) {
+            records = JSON.parse(fs.readFileSync(RECON_FILE, 'utf8'));
+        }
+        const newRecord = {
+            id: Date.now(),
+            date: new Date().toISOString(),
+            systemCash,
+            countedCash,
+            variance,
+            notes,
+            managerName: managerName || 'Manager'
+        };
+        records.push(newRecord);
+        fs.writeFileSync(RECON_FILE, JSON.stringify(records, null, 2));
+        res.json({ success: true, record: newRecord });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 4. Daily EOD Closing Summary Text for Owner
+app.get('/api/reports/eod-summary', async (req, res) => {
+    try {
+        const overview = await sql.query(`
+            SELECT 
+                ISNULL(SUM(m.NET_AMOUNT), 0) as TotalSales, 
+                COUNT(m.CM_ID) as BillCount,
+                ISNULL(SUM(m.CASH_AMOUNT), 0) as CashAmount,
+                ISNULL(SUM(m.CC_AMOUNT), 0) - ISNULL(SUM(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0)), 0) as CardAmount,
+                ISNULL(SUM(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0)), 0) as UPIAmount,
+                ISNULL(SUM(m.TOTAL_TAX), 0) as TotalTax
+            FROM VW_CASHMEMO_PRINT_MST m
+            LEFT JOIN VW_WL_CASHMEMOLIST w ON m.CM_ID = w.MEMO_ID
+            WHERE CAST(m.CM_TIME AS DATE) = CAST(GETDATE() AS DATE) AND m.CANCELLED = 0
+        `);
+
+        const data = overview.recordset[0] || {};
+        const todayStr = new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
+
+        const summaryText = `📊 *COBB PUNDRI - DAILY EOD CLOSING REPORT*\n📅 *Date:* ${todayStr}\n-----------------------------------\n💰 *Total Revenue:* ₹${(data.TotalSales || 0).toLocaleString('en-IN')}\n📄 *Total Invoices:* ${data.BillCount || 0}\n\n💳 *Payment Split:*\n  💵 Cash: ₹${(data.CashAmount || 0).toLocaleString('en-IN')}\n  💳 Card: ₹${(data.CardAmount || 0).toLocaleString('en-IN')}\n  📱 UPI:  ₹${(data.UPIAmount || 0).toLocaleString('en-IN')}\n\n🧾 *GST Tax Collected:* ₹${(data.TotalTax || 0).toLocaleString('en-IN')}\n-----------------------------------\nGenerated automatically by Cobb Store Intelligence System.`;
+
+        res.json({ text: summaryText, data });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 const PORT = 5000;
 app.listen(PORT, () => console.log(`CRM Backend running on http://localhost:${PORT}`));

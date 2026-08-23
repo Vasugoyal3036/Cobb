@@ -39,7 +39,12 @@ import {
   Sun,
   Moon,
   Shirt,
-  Scissors
+  Scissors,
+  Calculator,
+  FileText,
+  Grid,
+  DollarSign,
+  CheckCircle2
 } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -66,6 +71,15 @@ export default function App() {
   const [deadStock, setDeadStock] = useState([]);
   const [hourlySales, setHourlySales] = useState([]);
   const [monthlyProducts, setMonthlyProducts] = useState([]);
+  const [gstSummary, setGstSummary] = useState({ today: { TaxCollected: 0, TaxableSales: 0, GrossSales: 0 }, monthly: { TaxCollected: 0, TaxableSales: 0, GrossSales: 0 } });
+  const [sizeMatrix, setSizeMatrix] = useState([]);
+  const [reconData, setReconData] = useState(null);
+  const [countedCashInput, setCountedCashInput] = useState('');
+  const [reconNotes, setReconNotes] = useState('');
+  const [showReconModal, setShowReconModal] = useState(false);
+  const [showEodModal, setShowEodModal] = useState(false);
+  const [eodSummaryText, setEodSummaryText] = useState('');
+  const [eodCopied, setEodCopied] = useState(false);
   
   const [isListenerRunning, setIsListenerRunning] = useState(false);
   const [listenerLogs, setListenerLogs] = useState([]);
@@ -193,6 +207,9 @@ export default function App() {
     axios.get(`${API_BASE}/api/inventory/dead-stock`).then(res => setDeadStock(res.data)).catch(console.error);
     axios.get(`${API_BASE}/api/analytics/hourly`).then(res => setHourlySales(res.data)).catch(console.error);
     axios.get(`${API_BASE}/api/analytics/monthly-products`).then(res => setMonthlyProducts(res.data)).catch(console.error);
+    axios.get(`${API_BASE}/api/financials/gst-summary`).then(res => setGstSummary(res.data)).catch(console.error);
+    axios.get(`${API_BASE}/api/inventory/size-matrix`).then(res => setSizeMatrix(res.data)).catch(console.error);
+    axios.get(`${API_BASE}/api/reconciliation/latest`).then(res => setReconData(res.data)).catch(console.error);
   }, []);
 
   useEffect(() => {
@@ -377,6 +394,38 @@ export default function App() {
     }
   };
 
+  const handleSaveReconciliation = async () => {
+    const counted = parseFloat(countedCashInput) || 0;
+    const system = overviewStats.today.CashAmount || 0;
+    const variance = counted - system;
+    
+    try {
+      const res = await axios.post(`${API_BASE}/api/reconciliation/save`, {
+        systemCash: system,
+        countedCash: counted,
+        variance,
+        notes: reconNotes,
+        managerName: 'Store Manager'
+      });
+      setReconData(res.data.record);
+      setShowReconModal(false);
+      setCountedCashInput('');
+      setReconNotes('');
+    } catch (err) {
+      alert(`Failed to save reconciliation: ${err.message}`);
+    }
+  };
+
+  const handleGenerateEodReport = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/api/reports/eod-summary`);
+      setEodSummaryText(res.data.text);
+      setShowEodModal(true);
+    } catch (err) {
+      alert(`Failed to generate report: ${err.message}`);
+    }
+  };
+
   const handleMasterRestock = () => {
     const lowStockItems = inventory.filter(i => i.CurrentStock <= 3);
     if (lowStockItems.length === 0) {
@@ -435,12 +484,14 @@ export default function App() {
   const navigationItems = [
     { category: "Overview", items: [
       { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { id: "gst", label: "GST & Tax Summary", icon: FileText, colorClass: "text-emerald-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-emerald-500/15 text-emerald-400 font-bold border-l-2 border-emerald-500" },
       { id: "analytics", label: "Visual Rush Chart", icon: Clock },
       { id: "monthly", label: "Monthly Products", icon: Calendar },
     ]},
     { category: "Operations", items: [
       { id: "live", label: "Live Checkouts", icon: Receipt },
       { id: "inventory", label: "Live Inventory", icon: Package },
+      { id: "sizematrix", label: "Size Matrix Heatmap", icon: Grid, colorClass: "text-blue-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-blue-500/15 text-blue-400 font-bold border-l-2 border-blue-500" },
       { id: "deadstock", label: "Dead Stock", icon: Archive },
       { id: "trending", label: "Trending Catalog", icon: Star, colorClass: "text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-400 font-bold border-l-2 border-amber-500" },
     ]},
@@ -834,6 +885,26 @@ export default function App() {
             />
           </div>
           <div className="flex items-center space-x-3">
+             {/* EOD Cash Reconciliation Button */}
+             <button 
+               onClick={() => setShowReconModal(true)}
+               className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs transition-all shadow-sm cursor-pointer flex items-center gap-1.5"
+               title="EOD Cash Register Reconciliation"
+             >
+               <Calculator className="w-3.5 h-3.5" />
+               <span>EOD Cash</span>
+             </button>
+
+             {/* EOD WhatsApp Report Button */}
+             <button 
+               onClick={handleGenerateEodReport}
+               className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs transition-all shadow-sm cursor-pointer flex items-center gap-1.5"
+               title="Generate Daily EOD Report for Owner"
+             >
+               <Send className="w-3.5 h-3.5" />
+               <span>EOD Report</span>
+             </button>
+
              {/* Dark Mode Toggle Button */}
              <button 
                onClick={() => setDarkMode(!darkMode)}
@@ -1264,7 +1335,131 @@ export default function App() {
               </div>
             )}
 
-            {/* 2. VISUAL CHARTS & HOURLY RUSH */}
+            {/* 2. GST & TAX SUMMARY */}
+            {activeTab === 'gst' && (
+              <div className="p-8">
+                <div className="border-b border-slate-200 pb-5 mb-8 flex justify-between items-center">
+                  <div>
+                    <h3 className="text-2xl font-bold text-slate-800 flex items-center">
+                      <FileText className="w-6 h-6 mr-3 text-emerald-600" /> GST & Tax Financial Summary
+                    </h3>
+                    <p className="text-sm text-slate-500 mt-2">Live tax calculations, taxable sales, and gross revenue split.</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Today's GST Tax Collected</p>
+                    <h4 className="text-3xl font-black text-emerald-600 mt-2">{formatCurrency(gstSummary.today.TaxCollected)}</h4>
+                    <p className="text-xs text-slate-400 mt-2">Net Taxable Sales: <span className="font-bold text-slate-700">{formatCurrency(gstSummary.today.TaxableSales)}</span></p>
+                  </div>
+
+                  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Monthly GST Tax Collected</p>
+                    <h4 className="text-3xl font-black text-blue-600 mt-2">{formatCurrency(gstSummary.monthly.TaxCollected)}</h4>
+                    <p className="text-xs text-slate-400 mt-2">Net Taxable Sales: <span className="font-bold text-slate-700">{formatCurrency(gstSummary.monthly.TaxableSales)}</span></p>
+                  </div>
+
+                  <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Estimated CGST / SGST Split (Today)</p>
+                    <div className="flex gap-4 mt-3">
+                      <div>
+                        <p className="text-[10px] uppercase font-bold text-slate-400">CGST (Half)</p>
+                        <p className="text-xl font-bold text-slate-800">{formatCurrency(gstSummary.today.TaxCollected / 2)}</p>
+                      </div>
+                      <div className="border-r border-slate-200"></div>
+                      <div>
+                        <p className="text-[10px] uppercase font-bold text-slate-400">SGST (Half)</p>
+                        <p className="text-xl font-bold text-slate-800">{formatCurrency(gstSummary.today.TaxCollected / 2)}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-6">
+                  <h4 className="font-bold text-slate-800 text-lg mb-4">Taxable Revenue Breakdown</h4>
+                  <table className="w-full text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase text-xs">
+                        <th className="pb-3">Period</th>
+                        <th className="pb-3 text-right">Gross Sales</th>
+                        <th className="pb-3 text-right">Taxable Amount</th>
+                        <th className="pb-3 text-right">Total GST Collected</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium">
+                      <tr>
+                        <td className="py-4 font-bold text-slate-800">Today</td>
+                        <td className="py-4 text-right">{formatCurrency(gstSummary.today.GrossSales)}</td>
+                        <td className="py-4 text-right text-slate-600">{formatCurrency(gstSummary.today.TaxableSales)}</td>
+                        <td className="py-4 text-right text-emerald-600 font-bold">{formatCurrency(gstSummary.today.TaxCollected)}</td>
+                      </tr>
+                      <tr>
+                        <td className="py-4 font-bold text-slate-800">Current Month</td>
+                        <td className="py-4 text-right">{formatCurrency(gstSummary.monthly.GrossSales)}</td>
+                        <td className="py-4 text-right text-slate-600">{formatCurrency(gstSummary.monthly.TaxableSales)}</td>
+                        <td className="py-4 text-right text-blue-600 font-bold">{formatCurrency(gstSummary.monthly.TaxCollected)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* SIZE MATRIX HEATMAP */}
+            {activeTab === 'sizematrix' && (
+              <div className="p-8">
+                <div className="border-b border-slate-200 pb-5 mb-8">
+                  <h3 className="text-2xl font-bold text-slate-800 flex items-center">
+                    <Grid className="w-6 h-6 mr-3 text-blue-600" /> Size-Wise Inventory & Sales Matrix
+                  </h3>
+                  <p className="text-sm text-slate-500 mt-2">Heatmap distribution of units sold by size across major product categories (Last 60 days).</p>
+                </div>
+
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 overflow-x-auto">
+                  <table className="w-full text-left text-sm border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase text-xs">
+                        <th className="p-3">Category</th>
+                        <th className="p-3">Size</th>
+                        <th className="p-3 text-right">Units Sold</th>
+                        <th className="p-3 text-center">Demand Heatmap</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {sizeMatrix.map((row, idx) => {
+                        const units = row.UnitsSold || 0;
+                        let heatBg = "bg-slate-100 text-slate-600";
+                        if (units >= 20) heatBg = "bg-emerald-500 text-white font-bold";
+                        else if (units >= 10) heatBg = "bg-emerald-100 text-emerald-800 font-bold";
+                        else if (units >= 5) heatBg = "bg-amber-100 text-amber-800 font-bold";
+                        else if (units > 0) heatBg = "bg-blue-50 text-blue-700";
+
+                        return (
+                          <tr key={idx} className="hover:bg-slate-50">
+                            <td className="p-3 font-bold text-slate-800">{row.Category}</td>
+                            <td className="p-3 font-semibold text-slate-600"><span className="bg-slate-100 px-2 py-1 rounded border border-slate-200 text-xs font-mono">{row.Size}</span></td>
+                            <td className="p-3 text-right font-black text-slate-800">{units}</td>
+                            <td className="p-3 text-center">
+                              <span className={`px-3 py-1 rounded-full text-xs inline-block ${heatBg}`}>
+                                {units >= 20 ? '🔥 Ultra High' : units >= 10 ? '📈 High' : units >= 5 ? '⚡ Moderate' : 'Normal'}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {sizeMatrix.length === 0 && (
+                        <tr>
+                          <td colSpan="4" className="text-center py-8 text-slate-400">Loading size matrix data...</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* 3. VISUAL CHARTS & HOURLY RUSH */}
             {activeTab === 'analytics' && (
               <div className="p-8">
                 <div className="border-b border-slate-200 pb-5 mb-8">
@@ -2041,6 +2236,131 @@ export default function App() {
                       ))}
                     </div>
                   )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* EOD CASH RECONCILIATION MODAL */}
+        {showReconModal && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-3xl max-w-lg w-full p-8 shadow-2xl border border-slate-200">
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                    <Calculator className="w-5 h-5 text-emerald-600" /> EOD Cash Register Reconciliation
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1">Verify physical drawer cash against system log.</p>
+                </div>
+                <button onClick={() => setShowReconModal(false)} className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                  <p className="text-xs font-bold text-slate-400 uppercase">System Recorded Cash</p>
+                  <p className="text-2xl font-black text-slate-800 mt-1">{formatCurrency(overviewStats.today.CashAmount || 0)}</p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Physical Cash Counted in Drawer (₹)</label>
+                  <input 
+                    type="number"
+                    value={countedCashInput}
+                    onChange={(e) => setCountedCashInput(e.target.value)}
+                    placeholder="Enter total physical cash counted..."
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-base font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+
+                {countedCashInput && (
+                  <div className={`p-4 rounded-xl border ${parseFloat(countedCashInput) - (overviewStats.today.CashAmount || 0) === 0 ? 'bg-green-50 border-green-200 text-green-800' : 'bg-amber-50 border-amber-200 text-amber-900'}`}>
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-bold uppercase">Cash Discrepancy (Variance)</span>
+                      <span className="text-lg font-black">
+                        {formatCurrency(parseFloat(countedCashInput) - (overviewStats.today.CashAmount || 0))}
+                      </span>
+                    </div>
+                    <p className="text-xs mt-1 opacity-80">
+                      {parseFloat(countedCashInput) - (overviewStats.today.CashAmount || 0) === 0 ? '✅ Cash register balances perfectly!' : '⚠️ Discrepancy detected. Add a note below explaining the reason.'}
+                    </p>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Manager Notes / Reason (Optional)</label>
+                  <textarea 
+                    value={reconNotes}
+                    onChange={(e) => setReconNotes(e.target.value)}
+                    placeholder="e.g. Petty cash withdrawn ₹200 for store tea/cleaning..."
+                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 h-20 resize-none"
+                  />
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button 
+                    onClick={() => setShowReconModal(false)}
+                    className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    onClick={handleSaveReconciliation}
+                    disabled={!countedCashInput}
+                    className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 cursor-pointer"
+                  >
+                    <CheckCircle2 className="w-4 h-4" /> Save EOD Closing
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* EOD WHATSAPP REPORT MODAL */}
+        {showEodModal && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-3xl max-w-lg w-full p-8 shadow-2xl border border-slate-200">
+              <div className="flex justify-between items-start mb-6">
+                <div>
+                  <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                    <Send className="w-5 h-5 text-indigo-600" /> Daily EOD Report to Owner
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-1">Formatted WhatsApp summary ready to dispatch.</p>
+                </div>
+                <button onClick={() => setShowEodModal(false)} className="p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 cursor-pointer">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <textarea 
+                  value={eodSummaryText}
+                  onChange={(e) => setEodSummaryText(e.target.value)}
+                  className="w-full h-56 p-4 bg-slate-900 text-slate-100 font-mono text-xs leading-relaxed rounded-2xl border border-slate-800 focus:outline-none resize-none shadow-inner"
+                />
+
+                <div className="flex gap-3">
+                  <button 
+                    onClick={() => {
+                      navigator.clipboard.writeText(eodSummaryText);
+                      setEodCopied(true);
+                      setTimeout(() => setEodCopied(false), 2000);
+                    }}
+                    className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    {eodCopied ? '✅ Copied!' : '📋 Copy Summary'}
+                  </button>
+                  <button 
+                    onClick={() => {
+                      window.open(`https://wa.me/?text=${encodeURIComponent(eodSummaryText)}`, '_blank');
+                    }}
+                    className="flex-1 py-3 bg-green-500 hover:bg-green-600 text-white font-bold rounded-xl text-xs transition-colors flex items-center justify-center gap-2 shadow-lg shadow-green-500/20 cursor-pointer"
+                  >
+                    <MessageSquare className="w-4 h-4" /> Send via WhatsApp
+                  </button>
                 </div>
               </div>
             </div>
