@@ -701,7 +701,148 @@ app.get('/api/inventory/size-matrix', async (req, res) => {
     }
 });
 
-// 3. EOD Cash Reconciliation Endpoints
+// 3. Customer Wardrobe Profiler Endpoint
+app.get('/api/analytics/wardrobe-profiles', async (req, res) => {
+    try {
+        const result = await sql.query(`
+            SELECT TOP 100
+                m.CUSTOMER_CODE as Phone,
+                MAX(ISNULL(m.CUSTOMER_FNAME, '') + ' ' + ISNULL(m.CUSTOMER_LNAME, '')) as CustomerName,
+                SUM(m.NET_AMOUNT) as TotalSpent,
+                COUNT(DISTINCT m.CM_ID) as TotalVisits,
+                CONVERT(varchar, MAX(m.CM_TIME), 126) as LastVisitDate,
+                DATEDIFF(day, MAX(m.CM_TIME), GETDATE()) as DaysInactive,
+                SUM(CASE WHEN d.SECTION_NAME LIKE '%FORMAL%' OR d.ARTICLE_NAME LIKE '%SHIRT%' THEN 1 ELSE 0 END) as FormalItems,
+                SUM(CASE WHEN d.SECTION_NAME LIKE '%JEANS%' OR d.SECTION_NAME LIKE '%SM%' OR d.ARTICLE_NAME LIKE '%T SHIRT%' THEN 1 ELSE 0 END) as CasualItems
+            FROM VW_CASHMEMO_PRINT_MST m
+            LEFT JOIN VW_CASHMEMO_PRINT_DET d ON m.CM_ID = d.CM_ID
+            WHERE m.CANCELLED = 0 AND m.CUSTOMER_CODE IS NOT NULL AND m.CUSTOMER_CODE <> '' AND m.CUSTOMER_CODE <> '2222222222'
+            GROUP BY m.CUSTOMER_CODE
+            HAVING SUM(m.NET_AMOUNT) > 0
+            ORDER BY TotalSpent DESC
+        `);
+
+        const enriched = result.recordset.map(c => {
+          const formal = c.FormalItems || 0;
+          const casual = c.CasualItems || 0;
+          let primaryStyle = formal > casual ? 'Formal Suits & Shirts' : 'Casual Polos & Denims';
+          let persona = 'Standard Shopper';
+          if (c.TotalSpent >= 50000) persona = '💎 High Roller VIP';
+          else if (c.TotalVisits >= 3) persona = '⚡ Frequent Loyal VIP';
+          else if (formal > casual) persona = '💼 Formal Wearer';
+          else persona = '👕 Casual Trendsetter';
+
+          return {
+            ...c,
+            PrimaryStyle: primaryStyle,
+            Persona: persona
+          };
+        });
+
+        res.json(enriched);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 4. Monthly Store Profit & Loss (P&L) Endpoint
+app.get('/api/financials/pnl', async (req, res) => {
+    try {
+        const monthlyRev = await sql.query(`
+            SELECT 
+                ISNULL(SUM(NET_AMOUNT), 0) as GrossSales,
+                ISNULL(SUM(TOTAL_TAX), 0) as TotalTax,
+                COUNT(CM_ID) as TotalBills
+            FROM VW_CASHMEMO_PRINT_MST
+            WHERE CM_TIME IS NOT NULL AND CANCELLED = 0 AND FORMAT(CM_TIME, 'yyyy-MM') = FORMAT(GETDATE(), 'yyyy-MM')
+        `);
+
+        const sales = monthlyRev.recordset[0]?.GrossSales || 0;
+        const tax = monthlyRev.recordset[0]?.TotalTax || 0;
+        const taxable = sales - tax;
+
+        // Franchise Retail P&L Model (Standard Retail Estimates)
+        const cogs = Math.round(taxable * 0.48); // ~48% Wholesale Cost of Goods
+        const rent = 35000;
+        const electricity = 12000;
+        const staffSalaries = 45000;
+        const miscExpenses = 8000;
+        const totalExpenses = rent + electricity + staffSalaries + miscExpenses;
+
+        const netProfit = taxable - cogs - totalExpenses;
+        const profitMarginPct = sales > 0 ? Math.round((netProfit / sales) * 100) : 0;
+
+        res.json({
+            grossSales: sales,
+            taxCollected: tax,
+            taxableRevenue: taxable,
+            costOfGoodsSold: cogs,
+            operatingExpenses: {
+                rent,
+                electricity,
+                staffSalaries,
+                miscExpenses,
+                totalExpenses
+            },
+            netStoreProfit: netProfit,
+            profitMarginPct: profitMarginPct
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 5. Repeat Customer Retention Radar Endpoint
+app.get('/api/analytics/retention-radar', async (req, res) => {
+    try {
+        const summary = await sql.query(`
+            SELECT 
+                COUNT(DISTINCT CustomerPhone) as TotalCustomers,
+                SUM(CASE WHEN VisitCount > 1 THEN 1 ELSE 0 END) as RepeatCustomers,
+                AVG(TotalSpent) as AvgLtv
+            FROM (
+                SELECT 
+                    CUSTOMER_CODE as CustomerPhone,
+                    COUNT(CM_ID) as VisitCount,
+                    SUM(NET_AMOUNT) as TotalSpent
+                FROM VW_CASHMEMO_PRINT_MST
+                WHERE CANCELLED = 0 AND CUSTOMER_CODE IS NOT NULL AND CUSTOMER_CODE <> '' AND CUSTOMER_CODE <> '2222222222'
+                GROUP BY CUSTOMER_CODE
+            ) c
+        `);
+
+        const overdueVips = await sql.query(`
+            SELECT TOP 20
+                CUSTOMER_CODE as Phone,
+                MAX(ISNULL(CUSTOMER_FNAME, '') + ' ' + ISNULL(CUSTOMER_LNAME, '')) as CustomerName,
+                SUM(NET_AMOUNT) as TotalSpent,
+                COUNT(CM_ID) as TotalVisits,
+                CONVERT(varchar, MAX(CM_TIME), 126) as LastVisitDate,
+                DATEDIFF(day, MAX(CM_TIME), GETDATE()) as DaysInactive
+            FROM VW_CASHMEMO_PRINT_MST
+            WHERE CANCELLED = 0 AND CUSTOMER_CODE IS NOT NULL AND CUSTOMER_CODE <> '' AND CUSTOMER_CODE <> '2222222222'
+            GROUP BY CUSTOMER_CODE
+            HAVING DATEDIFF(day, MAX(CM_TIME), GETDATE()) >= 30
+            ORDER BY TotalSpent DESC
+        `);
+
+        const totalCust = summary.recordset[0]?.TotalCustomers || 1;
+        const repeatCust = summary.recordset[0]?.RepeatCustomers || 0;
+        const repeatRatePct = Math.round((repeatCust / totalCust) * 100);
+
+        res.json({
+            totalCustomers: totalCust,
+            repeatCustomers: repeatCust,
+            repeatRatePct: repeatRatePct,
+            avgLtv: summary.recordset[0]?.AvgLtv || 0,
+            overdueVips: overdueVips.recordset || []
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 6. EOD Cash Reconciliation Endpoints
 const RECON_FILE = path.join(__dirname, 'reconciliations.json');
 
 app.get('/api/reconciliation/latest', (req, res) => {

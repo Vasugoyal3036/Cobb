@@ -78,6 +78,9 @@ export default function App() {
   const [gstRateSlab, setGstRateSlab] = useState(5);
   const [gstCopied, setGstCopied] = useState(false);
   const [sizeMatrix, setSizeMatrix] = useState([]);
+  const [wardrobeProfiles, setWardrobeProfiles] = useState([]);
+  const [pnlData, setPnlData] = useState(null);
+  const [retentionData, setRetentionData] = useState(null);
   const [reconData, setReconData] = useState(null);
   const [countedCashInput, setCountedCashInput] = useState('');
   const [reconNotes, setReconNotes] = useState('');
@@ -321,6 +324,18 @@ export default function App() {
       axios.get(`${API_BASE}/api/analytics/hourly`)
         .then(res => setHourlySales(res.data))
         .catch(console.error);
+
+      axios.get(`${API_BASE}/api/analytics/wardrobe-profiles`)
+        .then(res => setWardrobeProfiles(res.data))
+        .catch(console.error);
+
+      axios.get(`${API_BASE}/api/financials/pnl`)
+        .then(res => setPnlData(res.data))
+        .catch(console.error);
+
+      axios.get(`${API_BASE}/api/analytics/retention-radar`)
+        .then(res => setRetentionData(res.data))
+        .catch(console.error);
     };
 
     fetchAutomationStatus();
@@ -534,8 +549,9 @@ export default function App() {
   ];
 
   const navigationItems = [
-    { category: "Overview", items: [
+    { category: "Overview & P&L", items: [
       { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { id: "pnl", label: "Store P&L Statement", icon: DollarSign, colorClass: "text-green-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-green-500/15 text-green-400 font-bold border-l-2 border-green-500" },
       { id: "gst", label: "GST & Tax Summary", icon: FileText, colorClass: "text-emerald-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-emerald-500/15 text-emerald-400 font-bold border-l-2 border-emerald-500" },
       { id: "analytics", label: "Visual Rush Chart", icon: Clock },
       { id: "monthly", label: "Monthly Products", icon: Calendar },
@@ -548,6 +564,8 @@ export default function App() {
       { id: "trending", label: "Trending Catalog", icon: Star, colorClass: "text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-400 font-bold border-l-2 border-amber-500" },
     ]},
     { category: "Marketing & CRM", items: [
+      { id: "wardrobe", label: "Wardrobe Profiler", icon: Shirt, colorClass: "text-purple-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-purple-500/15 text-purple-400 font-bold border-l-2 border-purple-500" },
+      { id: "retention", label: "Retention Radar", icon: Activity, colorClass: "text-rose-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-rose-500/15 text-rose-400 font-bold border-l-2 border-rose-500" },
       { id: "campaigns", label: "AI Campaigns", icon: Megaphone, colorClass: "text-indigo-400 hover:bg-slate-900 hover:text-indigo-300", activeColorClass: "bg-indigo-500/15 text-indigo-400 font-bold border-l-2 border-indigo-500" },
       { id: "vip", label: "VIP Profiles", icon: Users },
       { id: "dormant", label: "Dormant Clients", icon: AlertCircle },
@@ -1426,6 +1444,265 @@ export default function App() {
                   </div>
                 </div>
 
+              </div>
+            )}
+
+            {/* STORE P&L STATEMENT */}
+            {activeTab === 'pnl' && (
+              <div className="p-4 sm:p-6 lg:p-8">
+                <div className="border-b border-slate-200 pb-5 mb-8 flex justify-between items-center">
+                  <div>
+                    <h3 className="text-2xl font-bold text-slate-800 flex items-center">
+                      <DollarSign className="w-6 h-6 mr-3 text-green-600" /> Monthly Store Profit & Loss (P&L) Statement
+                    </h3>
+                    <p className="text-sm text-slate-500 mt-1">Net revenue, COGS wholesale inventory cost, and store operating expenses (Current Month).</p>
+                  </div>
+                </div>
+
+                {pnlData ? (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Gross Monthly Sales (Inc. Tax)</p>
+                        <h4 className="text-3xl font-black text-slate-800 mt-2">{formatCurrency(pnlData.grossSales)}</h4>
+                        <p className="text-xs text-slate-400 mt-1">Taxable: <span className="font-bold text-slate-700">{formatCurrency(pnlData.taxableRevenue)}</span></p>
+                      </div>
+
+                      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Estimated COGS Wholesale Cost (~48%)</p>
+                        <h4 className="text-3xl font-black text-amber-600 mt-2">{formatCurrency(pnlData.costOfGoodsSold)}</h4>
+                        <p className="text-xs text-slate-400 mt-1">Distributor Transfer Cost</p>
+                      </div>
+
+                      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Store Operating Expenses</p>
+                        <h4 className="text-3xl font-black text-rose-600 mt-2">{formatCurrency(pnlData.operatingExpenses.totalExpenses)}</h4>
+                        <p className="text-xs text-slate-400 mt-1">Rent + Staff + Power + Misc</p>
+                      </div>
+
+                      <div className="bg-gradient-to-br from-emerald-600 to-green-700 text-white p-5 rounded-2xl shadow-lg flex flex-col justify-between">
+                        <div>
+                          <p className="text-[10px] font-bold text-emerald-200 uppercase tracking-wider">Est. Net Store Profit</p>
+                          <h4 className="text-3xl font-black text-white mt-1">{formatCurrency(pnlData.netStoreProfit)}</h4>
+                        </div>
+                        <p className="text-xs font-bold text-emerald-100 mt-3">Profit Margin: {pnlData.profitMarginPct}%</p>
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-6">
+                      <h4 className="font-bold text-slate-800 text-lg mb-4">Detailed Financial Statement Breakdown</h4>
+                      <table className="w-full text-left text-sm">
+                        <thead>
+                          <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase text-[11px]">
+                            <th className="pb-3">Line Item Description</th>
+                            <th className="pb-3 text-right">Amount (₹)</th>
+                            <th className="pb-3 text-right">% of Revenue</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 font-medium">
+                          <tr>
+                            <td className="py-3 font-bold text-slate-800">Gross Sales Revenue (Receipts)</td>
+                            <td className="py-3 text-right font-bold text-slate-900">{formatCurrency(pnlData.grossSales)}</td>
+                            <td className="py-3 text-right text-slate-500 font-mono">100%</td>
+                          </tr>
+                          <tr>
+                            <td className="py-3 text-slate-600">Less: GST Tax Collected</td>
+                            <td className="py-3 text-right text-rose-600 font-mono">-{formatCurrency(pnlData.taxCollected)}</td>
+                            <td className="py-3 text-right text-slate-400 font-mono">{pnlData.grossSales > 0 ? (pnlData.taxCollected / pnlData.grossSales * 100).toFixed(1) : 0}%</td>
+                          </tr>
+                          <tr className="bg-slate-50 font-bold">
+                            <td className="py-3 text-slate-800">Net Taxable Revenue</td>
+                            <td className="py-3 text-right text-slate-900">{formatCurrency(pnlData.taxableRevenue)}</td>
+                            <td className="py-3 text-right text-slate-600 font-mono">{pnlData.grossSales > 0 ? (pnlData.taxableRevenue / pnlData.grossSales * 100).toFixed(1) : 0}%</td>
+                          </tr>
+                          <tr>
+                            <td className="py-3 text-slate-600">Less: Cost of Goods Sold (Wholesale Purchase)</td>
+                            <td className="py-3 text-right text-rose-600 font-mono">-{formatCurrency(pnlData.costOfGoodsSold)}</td>
+                            <td className="py-3 text-right text-slate-400 font-mono">48%</td>
+                          </tr>
+                          <tr>
+                            <td className="py-3 text-slate-600">Less: Store Rent (Pundri Main Market)</td>
+                            <td className="py-3 text-right text-slate-600 font-mono">-{formatCurrency(pnlData.operatingExpenses.rent)}</td>
+                            <td className="py-3 text-right text-slate-400 font-mono">-</td>
+                          </tr>
+                          <tr>
+                            <td className="py-3 text-slate-600">Less: Staff Salaries & Payroll</td>
+                            <td className="py-3 text-right text-slate-600 font-mono">-{formatCurrency(pnlData.operatingExpenses.staffSalaries)}</td>
+                            <td className="py-3 text-right text-slate-400 font-mono">-</td>
+                          </tr>
+                          <tr>
+                            <td className="py-3 text-slate-600">Less: Electricity & Air-Conditioning Utilities</td>
+                            <td className="py-3 text-right text-slate-600 font-mono">-{formatCurrency(pnlData.operatingExpenses.electricity)}</td>
+                            <td className="py-3 text-right text-slate-400 font-mono">-</td>
+                          </tr>
+                          <tr>
+                            <td className="py-3 text-slate-600">Less: Miscellaneous Operating & Maintenance</td>
+                            <td className="py-3 text-right text-slate-600 font-mono">-{formatCurrency(pnlData.operatingExpenses.miscExpenses)}</td>
+                            <td className="py-3 text-right text-slate-400 font-mono">-</td>
+                          </tr>
+                          <tr className="bg-emerald-50 text-emerald-900 font-black text-base">
+                            <td className="py-4">Net Monthly Store Operating Profit</td>
+                            <td className="py-4 text-right text-emerald-600">{formatCurrency(pnlData.netStoreProfit)}</td>
+                            <td className="py-4 text-right text-emerald-700 font-mono">{pnlData.profitMarginPct}%</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                ) : <p className="text-slate-400">Loading P&L statement...</p>}
+              </div>
+            )}
+
+            {/* CUSTOMER WARDROBE PROFILER */}
+            {activeTab === 'wardrobe' && (
+              <div className="p-4 sm:p-6 lg:p-8">
+                <div className="border-b border-slate-200 pb-5 mb-8 flex justify-between items-center">
+                  <div>
+                    <h3 className="text-2xl font-bold text-slate-800 flex items-center">
+                      <Shirt className="w-6 h-6 mr-3 text-purple-600" /> Customer Wardrobe Profiler & AI Classification
+                    </h3>
+                    <p className="text-sm text-slate-500 mt-1">Smart customer style preferences based on WizApp purchase history.</p>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <h4 className="font-bold text-slate-800 text-lg">Classified Customer Wardrobes</h4>
+                    <span className="text-xs font-semibold text-slate-400">Showing {wardrobeProfiles.length} Profiles</span>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-sm border-collapse">
+                      <thead>
+                        <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase text-[11px]">
+                          <th className="pb-3 pr-4">Customer Name</th>
+                          <th className="pb-3 px-3">Phone</th>
+                          <th className="pb-3 px-3">AI Persona Tag</th>
+                          <th className="pb-3 px-3">Primary Style Preference</th>
+                          <th className="pb-3 px-3 text-right">Lifetime Value (LTV)</th>
+                          <th className="pb-3 px-3 text-right">Total Visits</th>
+                          <th className="pb-3 pl-4 text-center">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {wardrobeProfiles.map((c, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                            <td className="py-3.5 pr-4 font-bold text-slate-800">{c.CustomerName?.trim() || 'Valued Shopper'}</td>
+                            <td className="py-3.5 px-3 text-xs font-mono text-slate-500">{c.Phone}</td>
+                            <td className="py-3.5 px-3">
+                              <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                                c.Persona.includes('High Roller') ? 'bg-amber-100 text-amber-800 border border-amber-200' :
+                                c.Persona.includes('Formal') ? 'bg-purple-100 text-purple-800 border border-purple-200' :
+                                c.Persona.includes('Casual') ? 'bg-blue-100 text-blue-800 border border-blue-200' :
+                                'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                              }`}>
+                                {c.Persona}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-3 text-xs font-semibold text-slate-600">{c.PrimaryStyle}</td>
+                            <td className="py-3.5 px-3 text-right font-black text-green-600">{formatCurrency(c.TotalSpent)}</td>
+                            <td className="py-3.5 px-3 text-right text-xs font-bold text-slate-700">{c.TotalVisits} Visits</td>
+                            <td className="py-3.5 pl-4 text-center">
+                              <button 
+                                onClick={() => {
+                                  const msg = `Hello ${c.CustomerName?.trim() || 'Sir'}! 👋 We just added new ${c.PrimaryStyle} collections at Cobb Pundri matching your style! Drop by today to explore.`;
+                                  window.open(`https://wa.me/${c.Phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
+                                }}
+                                className="px-3 py-1 bg-green-50 text-green-700 border border-green-200 rounded-lg text-xs font-bold hover:bg-green-600 hover:text-white transition-all cursor-pointer"
+                              >
+                                💬 Recommend Style
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* RETENTION RADAR */}
+            {activeTab === 'retention' && (
+              <div className="p-4 sm:p-6 lg:p-8">
+                <div className="border-b border-slate-200 pb-5 mb-8 flex justify-between items-center">
+                  <div>
+                    <h3 className="text-2xl font-bold text-slate-800 flex items-center">
+                      <Activity className="w-6 h-6 mr-3 text-rose-600" /> Repeat Customer Retention Radar
+                    </h3>
+                    <p className="text-sm text-slate-500 mt-1">Identify repeat buyers and re-engage overdue VIP clients before they churn.</p>
+                  </div>
+                </div>
+
+                {retentionData ? (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Repeat Customer Rate</p>
+                        <h4 className="text-3xl font-black text-rose-600 mt-2">{retentionData.repeatRatePct}%</h4>
+                        <p className="text-xs text-slate-400 mt-1">{retentionData.repeatCustomers} of {retentionData.totalCustomers} Unique Buyers</p>
+                      </div>
+
+                      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Avg Customer Lifetime Value</p>
+                        <h4 className="text-3xl font-black text-slate-800 mt-2">{formatCurrency(retentionData.avgLtv)}</h4>
+                        <p className="text-xs text-slate-400 mt-1">Average spent per customer</p>
+                      </div>
+
+                      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Repeat Buyers</p>
+                        <h4 className="text-3xl font-black text-blue-600 mt-2">{retentionData.repeatCustomers}</h4>
+                        <p className="text-xs text-slate-400 mt-1">Visited 2+ times</p>
+                      </div>
+
+                      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Overdue VIPs (30+ Days)</p>
+                        <h4 className="text-3xl font-black text-amber-600 mt-2">{retentionData.overdueVips.length}</h4>
+                        <p className="text-xs text-slate-400 mt-1">Ready for re-activation</p>
+                      </div>
+                    </div>
+
+                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-6">
+                      <h4 className="font-bold text-slate-800 text-lg mb-4">Overdue VIP Re-engagement Radar</h4>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm border-collapse">
+                          <thead>
+                            <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase text-[11px]">
+                              <th className="pb-3 pr-4">VIP Client Name</th>
+                              <th className="pb-3 px-3">Phone</th>
+                              <th className="pb-3 px-3 text-right">Lifetime Value (LTV)</th>
+                              <th className="pb-3 px-3 text-right">Total Visits</th>
+                              <th className="pb-3 px-3 text-right">Days Inactive</th>
+                              <th className="pb-3 pl-4 text-center">Re-engagement Action</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {retentionData.overdueVips.map((v, idx) => (
+                              <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                                <td className="py-3.5 pr-4 font-bold text-slate-800">{v.CustomerName?.trim() || 'VIP Customer'}</td>
+                                <td className="py-3.5 px-3 text-xs font-mono text-slate-500">{v.Phone}</td>
+                                <td className="py-3.5 px-3 text-right font-black text-green-600">{formatCurrency(v.TotalSpent)}</td>
+                                <td className="py-3.5 px-3 text-right text-xs font-bold text-slate-700">{v.TotalVisits} Visits</td>
+                                <td className="py-3.5 px-3 text-right font-mono font-bold text-amber-600">{v.DaysInactive} Days Ago</td>
+                                <td className="py-3.5 pl-4 text-center">
+                                  <button 
+                                    onClick={() => {
+                                      const msg = `Hello ${v.CustomerName?.trim() || 'Sir'}! 👋 We miss seeing you at Cobb Pundri. Enjoy an exclusive VIP discount on your next visit this week!`;
+                                      window.open(`https://wa.me/${v.Phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
+                                    }}
+                                    className="px-3.5 py-1.5 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 transition-all cursor-pointer"
+                                  >
+                                    💬 Send VIP Offer
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </>
+                ) : <p className="text-slate-400">Loading retention radar...</p>}
               </div>
             )}
 
