@@ -92,8 +92,10 @@ export default function App() {
   const [matrixCategoryFilter, setMatrixCategoryFilter] = useState('ALL');
   
   const [isListenerRunning, setIsListenerRunning] = useState(false);
+  const [isTogglingListener, setIsTogglingListener] = useState(false);
   const [listenerLogs, setListenerLogs] = useState([]);
   const [isGatewayRunning, setIsGatewayRunning] = useState(false);
+  const [isTogglingGateway, setIsTogglingGateway] = useState(false);
   const [isGatewayReady, setIsGatewayReady] = useState(false);
   const [gatewayQr, setGatewayQr] = useState(null);
   const [gatewayLogs, setGatewayLogs] = useState([]);
@@ -393,21 +395,39 @@ export default function App() {
   };
 
   const toggleListener = async () => {
-    const endpoint = isListenerRunning ? 'stop' : 'start';
-    await axios.post(`${API_BASE}/api/automation/${endpoint}`);
-    const res = await axios.get(`${API_BASE}/api/automation/status`);
-    setIsListenerRunning(res.data.isRunning);
-    setListenerLogs(res.data.logs);
+    if (isTogglingListener) return;
+    setIsTogglingListener(true);
+    try {
+      const endpoint = isListenerRunning ? 'stop' : 'start';
+      await axios.post(`${API_BASE}/api/automation/${endpoint}`);
+      const res = await axios.get(`${API_BASE}/api/automation/status`);
+      setIsListenerRunning(res.data.isRunning);
+      setListenerLogs(res.data.logs || []);
+    } catch (err) {
+      console.error("Toggle Listener error:", err);
+      alert(`Listener operation failed: ${err.response?.data?.error || err.message}`);
+    } finally {
+      setIsTogglingListener(false);
+    }
   };
 
   const toggleGateway = async () => {
-    const endpoint = isGatewayRunning ? 'stop' : 'start';
-    await axios.post(`${API_BASE}/api/gateway/${endpoint}`);
-    const res = await axios.get(`${API_BASE}/api/gateway/status`);
-    setIsGatewayRunning(res.data.isRunning);
-    setIsGatewayReady(res.data.isReady);
-    setGatewayQr(res.data.qrCodeUrl);
-    setGatewayLogs(res.data.logs);
+    if (isTogglingGateway) return;
+    setIsTogglingGateway(true);
+    try {
+      const endpoint = isGatewayRunning ? 'stop' : 'start';
+      await axios.post(`${API_BASE}/api/gateway/${endpoint}`);
+      const res = await axios.get(`${API_BASE}/api/gateway/status`);
+      setIsGatewayRunning(res.data.isRunning);
+      setIsGatewayReady(res.data.isReady);
+      setGatewayQr(res.data.qrCodeUrl);
+      setGatewayLogs(res.data.logs || []);
+    } catch (err) {
+      console.error("Toggle Gateway error:", err);
+      alert(`Gateway operation failed: ${err.response?.data?.error || err.message}`);
+    } finally {
+      setIsTogglingGateway(false);
+    }
   };
 
   const openCustomerCard = (customer) => {
@@ -2520,8 +2540,13 @@ export default function App() {
                       <button onClick={() => setActiveConsole('gateway')} className={`text-xs px-3 py-1.5 rounded-lg font-bold cursor-pointer ${activeConsole === 'gateway' ? 'bg-blue-900/50 text-blue-300' : 'text-slate-400 hover:text-white'}`}>
                         Console Logs
                       </button>
-                      <button onClick={toggleGateway} className={`flex items-center px-5 py-2.5 rounded-xl font-bold text-xs shadow-lg transition-all cursor-pointer ${isGatewayRunning ? 'bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/50' : 'bg-green-500 hover:bg-green-400 text-slate-900'}`}>
-                        {isGatewayRunning ? <><Square className="w-3.5 h-3.5 mr-1.5" /> Stop Gateway</> : <><Play className="w-3.5 h-3.5 mr-1.5" /> Start Gateway</>}
+                      <button 
+                        onClick={toggleGateway} 
+                        disabled={isTogglingGateway}
+                        className={`flex items-center px-5 py-2.5 rounded-xl font-bold text-xs shadow-lg transition-all cursor-pointer active:scale-95 disabled:opacity-50 ${isGatewayRunning ? 'bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/50' : 'bg-green-500 hover:bg-green-400 text-slate-900'}`}
+                      >
+                        {isTogglingGateway ? <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : isGatewayRunning ? <Square className="w-3.5 h-3.5 mr-1.5" /> : <Play className="w-3.5 h-3.5 mr-1.5" />}
+                        {isTogglingGateway ? 'Processing...' : isGatewayRunning ? 'Stop Gateway' : 'Start Gateway'}
                       </button>
                     </div>
                   </div>
@@ -2543,8 +2568,13 @@ export default function App() {
                       <button onClick={() => setActiveConsole('listener')} className={`text-xs px-4 py-2 rounded-lg font-bold transition-colors cursor-pointer ${activeConsole === 'listener' ? 'bg-purple-900/50 text-purple-300' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
                         View Console Logs
                       </button>
-                      <button onClick={toggleListener} className={`flex items-center px-6 py-2.5 rounded-xl font-bold text-sm cursor-pointer shadow-lg transition-all ${isListenerRunning ? 'bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/50' : 'bg-green-500 hover:bg-green-400 text-slate-900 shadow-green-500/20'}`}>
-                        {isListenerRunning ? <><Square className="w-4 h-4 mr-2" /> Stop</> : <><Play className="w-4 h-4 mr-2" /> Start Listener</>}
+                      <button 
+                        onClick={toggleListener} 
+                        disabled={isTogglingListener}
+                        className={`flex items-center px-6 py-2.5 rounded-xl font-bold text-sm cursor-pointer active:scale-95 disabled:opacity-50 shadow-lg transition-all ${isListenerRunning ? 'bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/50' : 'bg-green-500 hover:bg-green-400 text-slate-900 shadow-green-500/20'}`}
+                      >
+                        {isTogglingListener ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : isListenerRunning ? <Square className="w-4 h-4 mr-2" /> : <Play className="w-4 h-4 mr-2" />}
+                        {isTogglingListener ? 'Processing...' : isListenerRunning ? 'Stop' : 'Start Listener'}
                       </button>
                     </div>
                   </div>
