@@ -665,6 +665,197 @@ app.post('/api/automation/send-test', async (req, res) => {
     }
 });
 
+// --- BILLED CUSTOMER GROUP & MASS BROADCAST SYSTEM ---
+const GROUP_FILE_PATH = path.join(__dirname, 'billed_customer_group.json');
+
+let activeBroadcast = {
+    isRunning: false,
+    total: 0,
+    sentCount: 0,
+    failedCount: 0,
+    currentIndex: 0,
+    currentContact: '',
+    status: 'idle',
+    logs: []
+};
+let broadcastShouldStop = false;
+
+function loadCustomerGroupFile() {
+    if (fs.existsSync(GROUP_FILE_PATH)) {
+        try {
+            const data = fs.readFileSync(GROUP_FILE_PATH, 'utf8');
+            return JSON.parse(data);
+        } catch (e) {
+            console.error("Error reading billed_customer_group.json:", e);
+        }
+    }
+    return {};
+}
+
+function saveCustomerGroupFile(groupData) {
+    try {
+        fs.writeFileSync(GROUP_FILE_PATH, JSON.stringify(groupData, null, 2), 'utf8');
+    } catch (e) {
+        console.error("Error saving billed_customer_group.json:", e);
+    }
+}
+
+async function syncBilledCustomerGroup() {
+    let group = loadCustomerGroupFile();
+    try {
+        const result = await sql.query(`
+            SELECT 
+                RTRIM(m.CUSTOMER_CODE) as Phone,
+                MAX(m.CUSTOMER_FNAME) as CustomerName,
+                COUNT(m.CM_ID) as TotalBills,
+                SUM(m.NET_AMOUNT) as TotalSpent,
+                MAX(m.CM_TIME) as LastBillTime
+            FROM VW_CASHMEMO_PRINT_MST m
+            WHERE m.CUSTOMER_CODE IS NOT NULL AND LEN(RTRIM(m.CUSTOMER_CODE)) >= 10 AND m.CANCELLED = 0
+            GROUP BY RTRIM(m.CUSTOMER_CODE)
+            ORDER BY MAX(m.CM_TIME) DESC
+        `);
+
+        result.recordset.forEach(row => {
+            const rawPhone = String(row.Phone || '').replace(/[^0-9]/g, '');
+            if (rawPhone.length >= 10) {
+                const formattedPhone = rawPhone.length === 10 ? `91${rawPhone}` : rawPhone;
+                const name = (row.CustomerName || '').trim() || 'Valued Customer';
+                
+                group[formattedPhone] = {
+                    phone: rawPhone,
+                    formattedPhone: formattedPhone,
+                    customerName: name,
+                    totalBills: row.TotalBills || 1,
+                    totalSpent: row.TotalSpent || 0,
+                    lastBilledAt: row.LastBillTime,
+                    addedAt: group[formattedPhone]?.addedAt || new Date().toISOString()
+                };
+            }
+        });
+
+        saveCustomerGroupFile(group);
+    } catch (e) {
+        console.error("Error syncing customer group from MSSQL:", e.message);
+    }
+    return group;
+}
+
+// Billed Customer Group Endpoints
+app.get('/api/broadcast/group', async (req, res) => {
+    let groupMap = await syncBilledCustomerGroup();
+    const groupList = Object.values(groupMap).sort((a, b) => new Date(b.lastBilledAt || 0) - new Date(a.lastBilledAt || 0));
+    res.json({
+        totalCount: groupList.length,
+        contacts: groupList
+    });
+});
+
+app.post('/api/broadcast/sync', async (req, res) => {
+    let groupMap = await syncBilledCustomerGroup();
+    const groupList = Object.values(groupMap);
+    res.json({
+        success: true,
+        message: `Synced ${groupList.length} unique billed customers into local database file.`,
+        totalCount: groupList.length
+    });
+});
+
+app.get('/api/broadcast/status', (req, res) => {
+    res.json(activeBroadcast);
+});
+
+app.post('/api/broadcast/start', async (req, res) => {
+    const { message, delayMs = 1500 } = req.body;
+    if (!message) return res.status(400).json({ error: 'Broadcast message body is required.' });
+    if (activeBroadcast.isRunning) return res.status(400).json({ error: 'A broadcast is already running.' });
+
+    let groupMap = loadCustomerGroupFile();
+    let contacts = Object.values(groupMap);
+    if (contacts.length === 0) {
+        groupMap = await syncBilledCustomerGroup();
+        contacts = Object.values(groupMap);
+    }
+    if (contacts.length === 0) return res.status(400).json({ error: 'No billed customers found in group.' });
+
+    broadcastShouldStop = false;
+    activeBroadcast = {
+        isRunning: true,
+        total: contacts.length,
+        sentCount: 0,
+        failedCount: 0,
+        currentIndex: 0,
+        currentContact: '',
+        status: 'running',
+        logs: [`[${new Date().toLocaleTimeString()}] Started Mass WhatsApp Broadcast to ${contacts.length} billed customers...`]
+    };
+
+    res.json({ success: true, message: `Mass broadcast started to ${contacts.length} customers.` });
+
+    // Background Broadcast Async Execution Loop
+    (async () => {
+        for (let i = 0; i < contacts.length; i++) {
+            if (broadcastShouldStop) {
+                activeBroadcast.status = 'stopped';
+                activeBroadcast.isRunning = false;
+                activeBroadcast.logs.push(`[${new Date().toLocaleTimeString()}] ⏹️ Mass broadcast stopped by user at ${i}/${contacts.length}.`);
+                break;
+            }
+
+            const contact = contacts[i];
+            activeBroadcast.currentIndex = i + 1;
+            activeBroadcast.currentContact = `${contact.customerName} (${contact.phone})`;
+
+            const personalizedMsg = message.replace(/{name}/g, contact.customerName || 'Valued Customer');
+            const targetPhone = contact.formattedPhone;
+
+            try {
+                const response = await fetch('http://localhost:3000/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ number: targetPhone, message: personalizedMsg })
+                });
+                const data = await response.json();
+                if (response.ok) {
+                    activeBroadcast.sentCount++;
+                    const log = `[${new Date().toLocaleTimeString()}] [${i + 1}/${contacts.length}] Sent offer to ${contact.customerName} (${targetPhone})`;
+                    activeBroadcast.logs.push(log);
+                    gatewayLogs.push(log);
+                    pythonLogs.push(log);
+                } else {
+                    activeBroadcast.failedCount++;
+                    const log = `[ERROR ${new Date().toLocaleTimeString()}] [${i + 1}/${contacts.length}] Failed to send to ${contact.customerName} (${targetPhone}): ${data.error}`;
+                    activeBroadcast.logs.push(log);
+                    gatewayLogs.push(log);
+                    pythonLogs.push(log);
+                }
+            } catch (err) {
+                activeBroadcast.failedCount++;
+                const log = `[ERROR ${new Date().toLocaleTimeString()}] [${i + 1}/${contacts.length}] Network error sending to ${contact.customerName} (${targetPhone})`;
+                activeBroadcast.logs.push(log);
+                gatewayLogs.push(log);
+                pythonLogs.push(log);
+            }
+
+            await new Promise(resolve => setTimeout(resolve, delayMs));
+        }
+
+        if (!broadcastShouldStop) {
+            activeBroadcast.isRunning = false;
+            activeBroadcast.status = 'completed';
+            activeBroadcast.logs.push(`[${new Date().toLocaleTimeString()}] 🎉 Mass WhatsApp Broadcast Completed! Total Sent: ${activeBroadcast.sentCount}/${contacts.length}`);
+        }
+    })();
+});
+
+app.post('/api/broadcast/stop', (req, res) => {
+    broadcastShouldStop = true;
+    activeBroadcast.isRunning = false;
+    activeBroadcast.status = 'stopped';
+    activeBroadcast.logs.push(`[${new Date().toLocaleTimeString()}] Broadcast cancellation requested.`);
+    res.json({ success: true, message: 'Broadcast process stopped.' });
+});
+
 // --- NEW FEATURES API ENDPOINTS ---
 
 // 1. GST & Tax Summary Endpoint

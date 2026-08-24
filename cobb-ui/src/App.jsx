@@ -103,6 +103,14 @@ export default function App() {
   const [testMsg, setTestMsg] = useState('');
   const [isSendingTestWa, setIsSendingTestWa] = useState(false);
 
+  const [broadcastGroup, setBroadcastGroup] = useState([]);
+  const [broadcastGroupCount, setBroadcastGroupCount] = useState(0);
+  const [broadcastStatus, setBroadcastStatus] = useState({ isRunning: false, total: 0, sentCount: 0, failedCount: 0, currentIndex: 0, status: 'idle', logs: [] });
+  const [broadcastMsg, setBroadcastMsg] = useState('🎉 *SPECIAL OFFER FROM COBB PUNDRI!* 🎉\n\nHello *{name}*! 👋\n\nEnjoy *BUY 2 GET 1 FREE* on all Suits, Formals, & Denim Collections this week at Cobb Pundri! 🏷️✨\n\n-----------------------------------\n📍 *Store Location:*\nhttps://maps.app.goo.gl/HxgE1M25h32oWY2H9?g_st=ac\n-----------------------------------\n\nShow this WhatsApp message at counter to claim your deal!\n\nWarm Regards,\n*Parbhat Goyal*\nCobb Pundri');
+  const [isStartingBroadcast, setIsStartingBroadcast] = useState(false);
+  const [isSyncingGroup, setIsSyncingGroup] = useState(false);
+  const [groupSearchQuery, setGroupSearchQuery] = useState('');
+
   const [activeTab, setActiveTab] = useState('dashboard');
   const [activeConsole, setActiveConsole] = useState('listener');
   const [searchQuery, setSearchQuery] = useState('');
@@ -225,6 +233,10 @@ export default function App() {
     axios.get(`${API_BASE}/api/financials/gst-summary`).then(res => setGstSummary(res.data)).catch(console.error);
     axios.get(`${API_BASE}/api/inventory/size-matrix`).then(res => setSizeMatrix(res.data)).catch(console.error);
     axios.get(`${API_BASE}/api/reconciliation/latest`).then(res => setReconData(res.data)).catch(console.error);
+    axios.get(`${API_BASE}/api/broadcast/group`).then(res => {
+      setBroadcastGroup(res.data.contacts || []);
+      setBroadcastGroupCount(res.data.totalCount || 0);
+    }).catch(console.error);
   }, []);
 
   // Hardware Barcode Scanner Listener (HID Emulation)
@@ -288,6 +300,11 @@ export default function App() {
           setGatewayQr(res.data.qrCodeUrl);
           setGatewayLogs(res.data.logs);
         })
+        .catch(console.error);
+
+      // 3. Fetch broadcast status
+      axios.get(`${API_BASE}/api/broadcast/status`)
+        .then(res => setBroadcastStatus(res.data))
         .catch(console.error);
 
       // 3. Fetch live transactions & dashboard metrics for real-time dynamic updates
@@ -448,6 +465,65 @@ export default function App() {
     } finally {
       setIsSendingTestWa(false);
     }
+  };
+
+  const handleSyncBroadcastGroup = async () => {
+    setIsSyncingGroup(true);
+    try {
+      const res = await axios.post(`${API_BASE}/api/broadcast/sync`);
+      alert(`✅ ${res.data.message}`);
+      const groupRes = await axios.get(`${API_BASE}/api/broadcast/group`);
+      setBroadcastGroup(groupRes.data.contacts || []);
+      setBroadcastGroupCount(groupRes.data.totalCount || 0);
+    } catch (err) {
+      alert(`Sync failed: ${err.response?.data?.error || err.message}`);
+    } finally {
+      setIsSyncingGroup(false);
+    }
+  };
+
+  const handleStartBroadcast = async () => {
+    if (!broadcastMsg.trim()) return alert("Please enter a broadcast offer message.");
+    if (!isGatewayReady && !isGatewayRunning) {
+      if (!confirm("WhatsApp Gateway seems offline. Proceeding will fail unless Gateway is started. Continue anyway?")) return;
+    }
+    if (!confirm(`🚀 Are you sure you want to send this WhatsApp Offer Broadcast to ALL ${broadcastGroupCount} billed customers in your group?`)) return;
+
+    setIsStartingBroadcast(true);
+    try {
+      const res = await axios.post(`${API_BASE}/api/broadcast/start`, {
+        message: broadcastMsg,
+        delayMs: 1500
+      });
+      alert(`✅ ${res.data.message}`);
+    } catch (err) {
+      alert(`Broadcast failed to start: ${err.response?.data?.error || err.message}`);
+    } finally {
+      setIsStartingBroadcast(false);
+    }
+  };
+
+  const handleStopBroadcast = async () => {
+    try {
+      await axios.post(`${API_BASE}/api/broadcast/stop`);
+      alert("⏹️ Broadcast stop request sent.");
+    } catch (err) {
+      alert(`Failed to stop broadcast: ${err.message}`);
+    }
+  };
+
+  const handleExportGroupCsv = () => {
+    if (broadcastGroup.length === 0) return alert("Group is empty.");
+    let csv = "Phone Number,Customer Name,Total Invoices,Total Spent (INR),Last Billed Date\n";
+    broadcastGroup.forEach(c => {
+      csv += `"${c.phone}","${c.customerName || 'Valued Customer'}","${c.totalBills || 1}","${c.totalSpent || 0}","${c.lastBilledAt || ''}"\n`;
+    });
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `cobb_billed_customer_group_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
   };
 
   const openCustomerCard = (customer) => {
@@ -628,6 +704,7 @@ export default function App() {
       { id: "trending", label: "Trending Catalog", icon: Star, colorClass: "text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-400 font-bold border-l-2 border-amber-500" },
     ]},
     { category: "Marketing & CRM", items: [
+      { id: "broadcast", label: "Mass Offer Broadcast", icon: Send, colorClass: "text-emerald-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-emerald-500/15 text-emerald-400 font-bold border-l-2 border-emerald-500" },
       { id: "wardrobe", label: "Wardrobe Profiler", icon: Shirt, colorClass: "text-purple-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-purple-500/15 text-purple-400 font-bold border-l-2 border-purple-500" },
       { id: "retention", label: "Retention Radar", icon: Activity, colorClass: "text-rose-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-rose-500/15 text-rose-400 font-bold border-l-2 border-rose-500" },
       { id: "campaigns", label: "AI Campaigns", icon: Megaphone, colorClass: "text-indigo-400 hover:bg-slate-900 hover:text-indigo-300", activeColorClass: "bg-indigo-500/15 text-indigo-400 font-bold border-l-2 border-indigo-500" },
@@ -1614,6 +1691,206 @@ export default function App() {
                     </div>
                   </>
                 ) : <p className="text-slate-400">Loading P&L statement...</p>}
+              </div>
+            )}
+
+            {/* MASS OFFER BROADCAST */}
+            {activeTab === 'broadcast' && (
+              <div className="p-4 sm:p-6 lg:p-8 space-y-8">
+                <div className="border-b border-slate-200 pb-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div>
+                    <h3 className="text-2xl font-bold text-slate-800 flex items-center">
+                      <Send className="w-6 h-6 mr-3 text-emerald-600" /> Billed Customer Group & Mass Offer Broadcast
+                    </h3>
+                    <p className="text-sm text-slate-500 mt-1">Send 1-click WhatsApp offer broadcasts to every customer who has ever shopped at Cobb Pundri.</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={handleSyncBroadcastGroup}
+                      disabled={isSyncingGroup}
+                      className="px-4 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-600 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-sm disabled:opacity-50"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${isSyncingGroup ? 'animate-spin' : ''}`} />
+                      <span>{isSyncingGroup ? 'Syncing POS...' : 'Sync Billed Customers'}</span>
+                    </button>
+                    <button 
+                      onClick={handleExportGroupCsv}
+                      className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-sm"
+                    >
+                      <FileText className="w-4 h-4" />
+                      <span>Export CSV</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Metric Summary Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Customers in Group</p>
+                    <h4 className="text-3xl font-black text-emerald-600 mt-2">{broadcastGroupCount} Billed Contacts</h4>
+                    <p className="text-xs text-slate-400 mt-1">Saved in local database group</p>
+                  </div>
+
+                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Broadcast Engine Status</p>
+                    <h4 className={`text-2xl font-black mt-2 ${broadcastStatus.isRunning ? 'text-amber-600 animate-pulse' : 'text-slate-800'}`}>
+                      {broadcastStatus.isRunning ? '● BROADCASTING' : '● READY'}
+                    </h4>
+                    <p className="text-xs text-slate-400 mt-1">{broadcastStatus.isRunning ? `Processing ${broadcastStatus.currentIndex}/${broadcastStatus.total}` : 'Standing by for offer dispatch'}</p>
+                  </div>
+
+                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Messages Dispatched</p>
+                    <h4 className="text-3xl font-black text-blue-600 mt-2">{broadcastStatus.sentCount} / {broadcastStatus.total || broadcastGroupCount}</h4>
+                    <p className="text-xs text-slate-400 mt-1">Delivered via WhatsApp Bridge</p>
+                  </div>
+
+                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Failed / Skipped</p>
+                    <h4 className="text-3xl font-black text-rose-600 mt-2">{broadcastStatus.failedCount}</h4>
+                    <p className="text-xs text-slate-400 mt-1">Invalid or unreachable numbers</p>
+                  </div>
+                </div>
+
+                {/* Offer Broadcast Composer Card */}
+                <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-100 pb-4 gap-3">
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-lg flex items-center">
+                        <Sparkles className="w-5 h-5 mr-2 text-indigo-600" /> Compose Preset Offer Broadcast
+                      </h4>
+                      <p className="text-xs text-slate-500 mt-0.5">Use <code className="bg-slate-100 px-1 py-0.5 rounded text-indigo-600 font-bold">{"{name}"}</code> to personalize customer names automatically.</p>
+                    </div>
+
+                    {/* Quick Preset Buttons */}
+                    <div className="flex flex-wrap gap-2">
+                      <button 
+                        onClick={() => setBroadcastMsg('🎉 *SPECIAL OFFER FROM COBB PUNDRI!* 🎉\n\nHello *{name}*! 👋\n\nEnjoy *BUY 2 GET 1 FREE* on all Suits, Formals, & Denim Collections this week at Cobb Pundri! 🏷️✨\n\n-----------------------------------\n📍 *Store Location:*\nhttps://maps.app.goo.gl/HxgE1M25h32oWY2H9?g_st=ac\n-----------------------------------\n\nShow this WhatsApp message at counter to claim your deal!\n\nWarm Regards,\n*Parbhat Goyal*\nCobb Pundri')}
+                        className="px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white rounded-lg text-xs font-bold transition-all cursor-pointer border border-indigo-100"
+                      >
+                        🏷️ Buy 2 Get 1 Free
+                      </button>
+                      <button 
+                        onClick={() => setBroadcastMsg('👑 *VIP REWARD FROM COBB PUNDRI* 👑\n\nDear *{name}*, 👋\n\nThank you for being one of our top valued customers! Enjoy an *INSTANT ₹500 VIP DISCOUNT* on your next invoice at Cobb Pundri this week. ✨\n\n-----------------------------------\n📍 *Store Location:*\nhttps://maps.app.goo.gl/HxgE1M25h32oWY2H9?g_st=ac\n-----------------------------------\n\nValid on minimum bill value of ₹2,999. Valid till Sunday!\n\nWarm Regards,\n*Parbhat Goyal*\nCobb Pundri')}
+                        className="px-3 py-1.5 bg-amber-50 text-amber-700 hover:bg-amber-600 hover:text-white rounded-lg text-xs font-bold transition-all cursor-pointer border border-amber-100"
+                      >
+                        👑 VIP ₹500 Discount
+                      </button>
+                      <button 
+                        onClick={() => setBroadcastMsg('✨ *NEW FESTIVE COLLECTION ARRIVED!* ✨\n\nHello *{name}*! 👋\n\nFresh stock of Premium Festive Suits, Blazers, & Smart Shirts just arrived at Cobb Pundri! Drop by today for exclusive early-bird fitting. 🛍️\n\n-----------------------------------\n📍 *Store Location:*\nhttps://maps.app.goo.gl/HxgE1M25h32oWY2H9?g_st=ac\n-----------------------------------\n\nWarm Regards,\n*Parbhat Goyal*\nCobb Pundri')}
+                        className="px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white rounded-lg text-xs font-bold transition-all cursor-pointer border border-emerald-100"
+                      >
+                        ✨ New Festival Collection
+                      </button>
+                    </div>
+                  </div>
+
+                  <textarea 
+                    value={broadcastMsg}
+                    onChange={(e) => setBroadcastMsg(e.target.value)}
+                    rows={6}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm font-sans focus:outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all leading-relaxed shadow-inner"
+                    placeholder="Type your offer broadcast text here..."
+                  />
+
+                  {/* Live Progress Bar Container */}
+                  {broadcastStatus.isRunning && (
+                    <div className="bg-slate-900 text-white p-6 rounded-xl border border-slate-800 shadow-xl space-y-4">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="font-bold text-amber-300 flex items-center">
+                          <RefreshCw className="w-4 h-4 mr-2 animate-spin text-amber-400" />
+                          Sending to: {broadcastStatus.currentContact}
+                        </span>
+                        <span className="font-mono font-bold text-emerald-400">
+                          {broadcastStatus.currentIndex} / {broadcastStatus.total} ({((broadcastStatus.currentIndex / broadcastStatus.total) * 100).toFixed(0)}%)
+                        </span>
+                      </div>
+                      <div className="w-full bg-slate-800 h-3 rounded-full overflow-hidden border border-slate-700">
+                        <div 
+                          className="bg-gradient-to-r from-emerald-500 to-blue-500 h-full transition-all duration-300 rounded-full" 
+                          style={{ width: `${(broadcastStatus.currentIndex / Math.max(broadcastStatus.total, 1)) * 100}%` }}
+                        />
+                      </div>
+                      <div className="flex justify-between items-center text-[11px] text-slate-400">
+                        <span>Pacing: 1.5s delay between messages to ensure WhatsApp safety</span>
+                        <button 
+                          onClick={handleStopBroadcast}
+                          className="px-3 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/40 rounded-lg font-bold cursor-pointer transition-colors"
+                        >
+                          ⏹️ Stop Broadcast
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex justify-between items-center pt-2">
+                    <span className="text-xs text-slate-400 font-medium">
+                      Will broadcast to all <span className="font-bold text-slate-700">{broadcastGroupCount}</span> billed customer numbers in group.
+                    </span>
+                    <button 
+                      onClick={handleStartBroadcast}
+                      disabled={isStartingBroadcast || broadcastStatus.isRunning || broadcastGroupCount === 0}
+                      className="px-8 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm transition-all cursor-pointer shadow-lg shadow-emerald-600/30 flex items-center disabled:opacity-50"
+                    >
+                      {isStartingBroadcast ? <RefreshCw className="w-5 h-5 mr-2 animate-spin" /> : <Send className="w-5 h-5 mr-2" />}
+                      {isStartingBroadcast ? 'Launching...' : `🚀 Launch Mass Broadcast (${broadcastGroupCount} Customers)`}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Billed Customer Group Database Table */}
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-6">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-lg">Billed Customer Group Database</h4>
+                      <p className="text-xs text-slate-500 mt-0.5">Complete local roster of all customer contacts synced from POS billing history.</p>
+                    </div>
+                    <div className="relative w-full sm:w-72">
+                      <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+                      <input 
+                        type="text" 
+                        value={groupSearchQuery}
+                        onChange={(e) => setGroupSearchQuery(e.target.value)}
+                        placeholder="Search group by Name or Phone..."
+                        className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:bg-white focus:border-indigo-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto custom-scrollbar">
+                    <table className="w-full text-left text-sm border-collapse">
+                      <thead>
+                        <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase text-[11px]">
+                          <th className="pb-3 pr-4">#</th>
+                          <th className="pb-3 px-3">Customer Name</th>
+                          <th className="pb-3 px-3">Phone Number</th>
+                          <th className="pb-3 px-3 text-right">Invoices</th>
+                          <th className="pb-3 px-3 text-right">Total Lifetime Spent</th>
+                          <th className="pb-3 pl-4 text-right">Last Bill Date</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {broadcastGroup
+                          .filter(c => 
+                            c.customerName?.toLowerCase().includes(groupSearchQuery.toLowerCase()) || 
+                            c.phone?.includes(groupSearchQuery)
+                          )
+                          .map((c, idx) => (
+                            <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                              <td className="py-3 pr-4 text-xs font-mono text-slate-400">{idx + 1}</td>
+                              <td className="py-3 px-3 font-bold text-slate-800">{c.customerName || 'Valued Customer'}</td>
+                              <td className="py-3 px-3 font-mono text-xs text-slate-600">+91 {c.phone}</td>
+                              <td className="py-3 px-3 text-right font-bold text-slate-700 text-xs">{c.totalBills || 1} Bills</td>
+                              <td className="py-3 px-3 text-right font-black text-emerald-600">{formatCurrency(c.totalSpent || 0)}</td>
+                              <td className="py-3 pl-4 text-right text-xs font-mono text-slate-400">
+                                {c.lastBilledAt ? new Date(c.lastBilledAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Recent'}
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             )}
 
