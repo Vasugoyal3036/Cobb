@@ -66,10 +66,13 @@ def send_whatsapp_message(phone_number, customer_name):
         response = requests.post(WHATSAPP_SERVER_URL, json=payload, headers=headers, timeout=15)
         if response.status_code == 200:
             print(f"[{time.strftime('%X')}] [SUCCESS] Sent to {clean_phone} ({customer_name})", flush=True)
+            return True
         else:
             print(f"[{time.strftime('%X')}] [FAILED] Sender responded: {response.text}", flush=True)
+            return False
     except Exception as e:
         print(f"[{time.strftime('%X')}] [ERROR] Connecting to WhatsApp sender (port 3000): {e}", flush=True)
+        return False
 
 def run_listener():
     print(f"[{time.strftime('%X')}] Cobb POS Listener initialized.", flush=True)
@@ -115,18 +118,21 @@ def run_listener():
                 if cm_id_str not in sent_ids:
                     print(f"[{time.strftime('%X')}] [NEW BILL DETECTED] Bill #{bill_no} | Rs.{amount} | Phone: {phone}", flush=True)
                     
+                    success = False
                     if phone and len(str(phone).strip()) >= 10:
-                        send_whatsapp_message(phone, name)
+                        success = send_whatsapp_message(phone, name)
                     else:
                         print(f"[{time.strftime('%X')}] [SKIPPED] No valid phone attached to bill #{bill_no}", flush=True)
+                        success = True # Skip invalid numbers permanently so we don't spam logs
 
-                    # Mark as processed in memory and write to history file
-                    sent_ids.add(cm_id_str)
-                    try:
-                        with open(SENT_BILLS_FILE, 'a') as f:
-                            f.write(cm_id_str + "\n")
-                    except Exception as file_err:
-                        print(f"[{time.strftime('%X')}] [LOG FILE WRITE ERROR] {file_err}", flush=True)
+                    if success:
+                        # Mark as processed in memory and write to history file
+                        sent_ids.add(cm_id_str)
+                        try:
+                            with open(SENT_BILLS_FILE, 'a') as f:
+                                f.write(cm_id_str + "\n")
+                        except Exception as file_err:
+                            print(f"[{time.strftime('%X')}] [LOG FILE WRITE ERROR] {file_err}", flush=True)
 
         except pyodbc.Error as db_err:
             print(f"[{time.strftime('%X')}] [DB ERROR] Reconnecting... ({db_err})", flush=True)
