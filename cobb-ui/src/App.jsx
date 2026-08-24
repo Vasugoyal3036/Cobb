@@ -55,6 +55,8 @@ import {
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
+axios.defaults.headers.common['Bypass-Tunnel-Reminder'] = 'true';
+axios.defaults.headers.common['ngrok-skip-browser-warning'] = '69420';
 export default function App() {
   const [vips, setVips] = useState([]);
   const [dormant, setDormant] = useState([]);
