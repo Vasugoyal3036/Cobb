@@ -856,7 +856,45 @@ app.post('/api/broadcast/stop', (req, res) => {
     res.json({ success: true, message: 'Broadcast process stopped.' });
 });
 
-// --- NEW FEATURES API ENDPOINTS ---
+// Top-Moving Articles Leaderboard & Size Demand Matrix Endpoint
+app.get('/api/analytics/top-movers', async (req, res) => {
+    try {
+        const topArticles = await sql.query(`
+            SELECT TOP 15
+                RTRIM(d.ARTICLE_NO) as ArticleNo,
+                MAX(RTRIM(d.ARTICLE_NAME)) as ArticleName,
+                MAX(RTRIM(d.SECTION_NAME)) as Category,
+                SUM(d.QUANTITY) as TotalUnitsSold,
+                SUM(d.NET) as TotalRevenue,
+                COUNT(DISTINCT d.CM_ID) as TotalBills
+            FROM VW_CASHMEMO_PRINT_DET d
+            INNER JOIN VW_CASHMEMO_PRINT_MST m ON d.CM_ID = m.CM_ID
+            WHERE m.CANCELLED = 0 AND d.ARTICLE_NO IS NOT NULL AND LEN(RTRIM(d.ARTICLE_NO)) > 1
+            GROUP BY RTRIM(d.ARTICLE_NO)
+            ORDER BY SUM(d.QUANTITY) DESC
+        `);
+
+        const sizeDemand = await sql.query(`
+            SELECT TOP 12
+                RTRIM(d.PARA2_NAME) as Size,
+                SUM(d.QUANTITY) as TotalUnitsSold,
+                SUM(d.NET) as TotalRevenue
+            FROM VW_CASHMEMO_PRINT_DET d
+            INNER JOIN VW_CASHMEMO_PRINT_MST m ON d.CM_ID = m.CM_ID
+            WHERE m.CANCELLED = 0 AND d.PARA2_NAME IS NOT NULL AND LEN(RTRIM(d.PARA2_NAME)) > 0 AND d.PARA2_NAME <> 'NA'
+            GROUP BY RTRIM(d.PARA2_NAME)
+            ORDER BY SUM(d.QUANTITY) DESC
+        `);
+
+        res.json({
+            topArticles: topArticles.recordset,
+            sizeDemand: sizeDemand.recordset
+        });
+    } catch (err) {
+        console.error("Top Movers Analytics Error:", err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
 
 // 1. GST & Tax Summary Endpoint
 app.get('/api/financials/gst-summary', async (req, res) => {

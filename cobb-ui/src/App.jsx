@@ -47,7 +47,10 @@ import {
   CheckCircle2,
   Menu,
   Barcode,
-  Scan
+  Scan,
+  Flame,
+  Award,
+  Trophy
 } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -110,6 +113,7 @@ export default function App() {
   const [isStartingBroadcast, setIsStartingBroadcast] = useState(false);
   const [isSyncingGroup, setIsSyncingGroup] = useState(false);
   const [groupSearchQuery, setGroupSearchQuery] = useState('');
+  const [topMoversData, setTopMoversData] = useState({ topArticles: [], sizeDemand: [] });
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [activeConsole, setActiveConsole] = useState('listener');
@@ -233,6 +237,7 @@ export default function App() {
     axios.get(`${API_BASE}/api/financials/gst-summary`).then(res => setGstSummary(res.data)).catch(console.error);
     axios.get(`${API_BASE}/api/inventory/size-matrix`).then(res => setSizeMatrix(res.data)).catch(console.error);
     axios.get(`${API_BASE}/api/reconciliation/latest`).then(res => setReconData(res.data)).catch(console.error);
+    axios.get(`${API_BASE}/api/analytics/top-movers`).then(res => setTopMoversData(res.data)).catch(console.error);
     axios.get(`${API_BASE}/api/broadcast/group`).then(res => {
       setBroadcastGroup(res.data.contacts || []);
       setBroadcastGroupCount(res.data.totalCount || 0);
@@ -708,6 +713,7 @@ export default function App() {
     ]},
     { category: "Operations", items: [
       { id: "live", label: "Live Checkouts", icon: Receipt },
+      { id: "topmovers", label: "Top Movers & Size Demand", icon: Flame, colorClass: "text-rose-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-rose-500/15 text-rose-400 font-bold border-l-2 border-rose-500" },
       { id: "inventory", label: "Live Inventory", icon: Package },
       { id: "sizematrix", label: "Size Matrix Heatmap", icon: Grid, colorClass: "text-blue-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-blue-500/15 text-blue-400 font-bold border-l-2 border-blue-500" },
       { id: "deadstock", label: "Dead Stock", icon: Archive },
@@ -1897,6 +1903,182 @@ export default function App() {
                               </td>
                             </tr>
                           ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TOP MOVERS & SIZE DEMAND MATRIX */}
+            {activeTab === 'topmovers' && (
+              <div className="p-4 sm:p-6 lg:p-8 space-y-8">
+                <div className="border-b border-slate-200 pb-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div>
+                    <h3 className="text-2xl font-bold text-slate-800 flex items-center">
+                      <Flame className="w-6 h-6 mr-3 text-rose-600 animate-pulse" /> Top-Moving Leaderboard & Size Demand Matrix
+                    </h3>
+                    <p className="text-sm text-slate-500 mt-1">Real-time analysis of your highest-selling articles and size demand distribution from POS sales.</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => {
+                        axios.get(`${API_BASE}/api/analytics/top-movers`).then(res => setTopMoversData(res.data)).catch(console.error);
+                      }}
+                      className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-sm"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                      <span>Refresh Analytics</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Top 3 Podium Highlights */}
+                {topMoversData.topArticles && topMoversData.topArticles.length >= 3 && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {/* #1 GOLD PODIUM */}
+                    <div className="bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-white p-6 rounded-2xl border-2 border-amber-400 shadow-md relative overflow-hidden">
+                      <div className="absolute -right-3 -top-3 w-16 h-16 bg-amber-400/20 rounded-full flex items-center justify-center pointer-events-none">
+                        <Trophy className="w-8 h-8 text-amber-500" />
+                      </div>
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="px-2.5 py-1 bg-amber-400 text-amber-950 font-black text-xs rounded-full uppercase tracking-wide">🥇 #1 Bestseller</span>
+                        <span className="text-xs font-bold text-amber-700">{topMoversData.topArticles[0].Category}</span>
+                      </div>
+                      <h4 className="text-2xl font-black text-slate-900">{topMoversData.topArticles[0].ArticleNo}</h4>
+                      <p className="text-xs font-semibold text-slate-600 mt-1">{topMoversData.topArticles[0].ArticleName}</p>
+                      <div className="mt-4 pt-4 border-t border-amber-200/60 flex justify-between items-end">
+                        <div>
+                          <p className="text-[10px] uppercase font-bold text-slate-400">Total Units Sold</p>
+                          <p className="text-2xl font-black text-amber-600">{topMoversData.topArticles[0].TotalUnitsSold} Units</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[10px] uppercase font-bold text-slate-400">Revenue</p>
+                          <p className="text-lg font-black text-emerald-600">{formatCurrency(topMoversData.topArticles[0].TotalRevenue)}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* #2 SILVER PODIUM */}
+                    <div className="bg-gradient-to-br from-slate-200/40 via-slate-100/20 to-white p-6 rounded-2xl border border-slate-300 shadow-sm relative overflow-hidden">
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="px-2.5 py-1 bg-slate-200 text-slate-800 font-black text-xs rounded-full uppercase tracking-wide">🥈 #2 Bestseller</span>
+                        <span className="text-xs font-bold text-slate-500">{topMoversData.topArticles[1].Category}</span>
+                      </div>
+                      <h4 className="text-2xl font-black text-slate-900">{topMoversData.topArticles[1].ArticleNo}</h4>
+                      <p className="text-xs font-semibold text-slate-600 mt-1">{topMoversData.topArticles[1].ArticleName}</p>
+                      <div className="mt-4 pt-4 border-t border-slate-200 flex justify-between items-end">
+                        <div>
+                          <p className="text-[10px] uppercase font-bold text-slate-400">Total Units Sold</p>
+                          <p className="text-2xl font-black text-slate-700">{topMoversData.topArticles[1].TotalUnitsSold} Units</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[10px] uppercase font-bold text-slate-400">Revenue</p>
+                          <p className="text-lg font-black text-emerald-600">{formatCurrency(topMoversData.topArticles[1].TotalRevenue)}</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* #3 BRONZE PODIUM */}
+                    <div className="bg-gradient-to-br from-amber-700/10 via-amber-800/5 to-white p-6 rounded-2xl border border-amber-700/30 shadow-sm relative overflow-hidden">
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="px-2.5 py-1 bg-amber-700/20 text-amber-900 font-black text-xs rounded-full uppercase tracking-wide">🥉 #3 Bestseller</span>
+                        <span className="text-xs font-bold text-amber-800">{topMoversData.topArticles[2].Category}</span>
+                      </div>
+                      <h4 className="text-2xl font-black text-slate-900">{topMoversData.topArticles[2].ArticleNo}</h4>
+                      <p className="text-xs font-semibold text-slate-600 mt-1">{topMoversData.topArticles[2].ArticleName}</p>
+                      <div className="mt-4 pt-4 border-t border-amber-200 flex justify-between items-end">
+                        <div>
+                          <p className="text-[10px] uppercase font-bold text-slate-400">Total Units Sold</p>
+                          <p className="text-2xl font-black text-amber-800">{topMoversData.topArticles[2].TotalUnitsSold} Units</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-[10px] uppercase font-bold text-slate-400">Revenue</p>
+                          <p className="text-lg font-black text-emerald-600">{formatCurrency(topMoversData.topArticles[2].TotalRevenue)}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Size Demand Matrix Distribution Section */}
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+                  <div>
+                    <h4 className="font-bold text-slate-800 text-lg flex items-center">
+                      <Grid className="w-5 h-5 mr-2 text-indigo-600" /> Size Demand Distribution Matrix
+                    </h4>
+                    <p className="text-xs text-slate-500 mt-0.5">Identifies exact customer size preferences to optimize warehouse re-orders without dead inventory.</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {topMoversData.sizeDemand && topMoversData.sizeDemand.map((s, idx) => {
+                      const maxUnits = topMoversData.sizeDemand[0]?.TotalUnitsSold || 1;
+                      const pct = ((s.TotalUnitsSold / maxUnits) * 100).toFixed(0);
+                      return (
+                        <div key={idx} className="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="font-mono font-bold text-sm text-slate-800">{s.Size}</span>
+                            <span className="font-black text-xs text-indigo-600">{s.TotalUnitsSold} Units Sold</span>
+                          </div>
+                          <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
+                            <div className="bg-indigo-600 h-full rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+                          </div>
+                          <div className="flex justify-between text-[10px] text-slate-400">
+                            <span>Revenue: {formatCurrency(s.TotalRevenue)}</span>
+                            <span>{pct}% of Peak Size Volume</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Top 15 Bestselling Articles Table */}
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-6">
+                  <div className="flex justify-between items-center mb-6">
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-lg">Top 15 Bestselling Articles Leaderboard</h4>
+                      <p className="text-xs text-slate-500 mt-0.5">Ranked strictly by historical unit sales volume from POS cash memos.</p>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto custom-scrollbar">
+                    <table className="w-full text-left text-sm border-collapse">
+                      <thead>
+                        <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase text-[11px]">
+                          <th className="pb-3 pr-4">Rank</th>
+                          <th className="pb-3 px-3">Article Code</th>
+                          <th className="pb-3 px-3">Product Name</th>
+                          <th className="pb-3 px-3">Category</th>
+                          <th className="pb-3 px-3 text-right">Units Sold</th>
+                          <th className="pb-3 px-3 text-right">Total Revenue</th>
+                          <th className="pb-3 pl-4 text-right">Warehouse Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {topMoversData.topArticles && topMoversData.topArticles.map((art, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                            <td className="py-3 pr-4 font-mono font-bold text-xs">
+                              {idx === 0 ? '🥇 #1' : idx === 1 ? '🥈 #2' : idx === 2 ? '🥉 #3' : `#${idx + 1}`}
+                            </td>
+                            <td className="py-3 px-3 font-mono font-black text-slate-900 text-xs">{art.ArticleNo}</td>
+                            <td className="py-3 px-3 font-bold text-slate-800">{art.ArticleName}</td>
+                            <td className="py-3 px-3 text-xs text-slate-500">{art.Category}</td>
+                            <td className="py-3 px-3 text-right font-black text-indigo-600">{art.TotalUnitsSold} Units</td>
+                            <td className="py-3 px-3 text-right font-black text-emerald-600">{formatCurrency(art.TotalRevenue)}</td>
+                            <td className="py-3 pl-4 text-right">
+                              <button 
+                                onClick={() => {
+                                  const text = `Hello Warehouse Supplier, please process urgent restock for top-selling article *[${art.ArticleNo}] ${art.ArticleName}* at Cobb Pundri.\n\nHistorical Sales Volume: ${art.TotalUnitsSold} units sold.\n\nRegards,\nParbhat Goyal, Cobb Pundri`;
+                                  window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+                                }}
+                                className="px-3 py-1 bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-700 border border-emerald-200 rounded-lg text-xs font-bold transition-all cursor-pointer"
+                              >
+                                Restock Supplier
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
                   </div>

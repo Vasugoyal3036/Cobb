@@ -2482,5 +2482,14 @@
     "totalSpent": 3780,
     "lastBilledAt": "2026-08-24T15:45:27.587Z",
     "addedAt": "2026-08-24T10:28:24.530Z"
+  },
+  "917015110696": {
+    "phone": "7015110696",
+    "formattedPhone": "917015110696",
+    "customerName": "Raju",
+    "totalBills": 1,
+    "totalSpent": 3609,
+    "lastBilledAt": "2026-08-24T15:59:13.960Z",
+    "addedAt": "2026-08-24T10:29:46.863Z"
   }
 }
