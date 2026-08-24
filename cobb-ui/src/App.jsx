@@ -237,6 +237,16 @@ export default function App() {
       setBroadcastGroup(res.data.contacts || []);
       setBroadcastGroupCount(res.data.totalCount || 0);
     }).catch(console.error);
+
+    // Auto-fetch AI Daily Brief forecast tips from live store data on mount
+    axios.post(`${API_BASE}/api/ai/demand-forecasts`, {})
+      .then(res => {
+        if (res.data.tips && Array.isArray(res.data.tips) && res.data.tips.length > 0) {
+          setForecastTips(res.data.tips);
+          setCurrentTipIndex(0);
+        }
+      })
+      .catch(console.error);
   }, []);
 
   // Hardware Barcode Scanner Listener (HID Emulation)

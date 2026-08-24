@@ -165,7 +165,7 @@ app.post('/api/ai/demand-forecasts', async (req, res) => {
             ? lowStockSample.recordset.map(i => `${i.ArticleNo} (${i.ItemName}, Size: ${i.Size}, ${i.CurrentStock} units)`).join("; ")
             : "All core sizes adequately stocked";
 
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
         
         const prompt = `
         You are an expert menswear retail strategist exclusively for a "Cobb Italy" (Cobb Apparels) franchise store in Haryana.
@@ -216,7 +216,7 @@ app.post('/api/ai/demand-forecasts', async (req, res) => {
 app.post('/api/ai/persona', async (req, res) => {
     const { purchases } = req.body;
     try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
         const prompt = `
         Analyze the following recent clothing purchases from a male customer at a menswear store:
         "${purchases}"
@@ -241,7 +241,7 @@ app.post('/api/ai/persona', async (req, res) => {
 app.post('/api/ai/outfit-matcher', async (req, res) => {
     const { deadStockItem } = req.body;
     try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
         const prompt = `
         You are an expert fashion stylist for Cobb Pundri menswear.
         We have this slow-moving item in our inventory: "${deadStockItem}".
@@ -261,7 +261,7 @@ app.post('/api/ai/outfit-matcher', async (req, res) => {
 app.post('/api/ai/campaign-builder', async (req, res) => {
     const { event, audience } = req.body;
     try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
         const prompt = `
         You are the Marketing Director for Cobb Pundri, a premium menswear franchise in Haryana.
         
@@ -284,7 +284,7 @@ app.post('/api/ai/campaign-builder', async (req, res) => {
 app.post('/api/campaigns/generate', async (req, res) => {
     const { customerName, pastPurchases, type, sizes } = req.body;
     try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
         
         let objective = "";
         if (type === 'cross-sell') {
