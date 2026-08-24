@@ -626,9 +626,21 @@ app.post('/api/whatsapp/send', async (req, res) => {
             body: JSON.stringify({ number: finalPhone, message: message })
         });
         const data = await response.json();
-        if (response.ok) return res.json({ success: true });
+        const timestamp = new Date().toLocaleTimeString();
+        if (response.ok) {
+            const successLog = `[${timestamp}] [SUCCESS] Direct WhatsApp sent to ${finalPhone}`;
+            gatewayLogs.push(successLog);
+            pythonLogs.push(successLog);
+            return res.json({ success: true });
+        }
+        const failLog = `[ERROR ${timestamp}] Failed to send to ${finalPhone}: ${data.error || 'Unknown'}`;
+        gatewayLogs.push(failLog);
+        pythonLogs.push(failLog);
         return res.status(500).json({ error: data.error || 'Failed to send' });
     } catch (err) {
+        const errLog = `[ERROR ${new Date().toLocaleTimeString()}] WhatsApp Gateway offline (port 3000)`;
+        gatewayLogs.push(errLog);
+        pythonLogs.push(errLog);
         return res.status(500).json({ error: 'WhatsApp Gateway offline.' });
     }
 });
