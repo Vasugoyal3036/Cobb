@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const { sql, connectDB } = require('./db');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
-const { spawn } = require('child_process');
+const { spawn, execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 require('dotenv').config();
@@ -10,6 +10,20 @@ require('dotenv').config();
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+process.on('uncaughtException', (err) => {
+    console.error('Unhandled Exception:', err);
+    try {
+        fs.appendFileSync(path.join(__dirname, 'backend_error.log'), `[${new Date().toISOString()}] Unhandled Exception: ${err.stack || err}\n`);
+    } catch (e) {}
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    try {
+        fs.appendFileSync(path.join(__dirname, 'backend_error.log'), `[${new Date().toISOString()}] Unhandled Rejection: ${reason.stack || reason}\n`);
+    } catch (e) {}
+});
 
 connectDB();
 
@@ -116,7 +130,7 @@ app.get('/api/inventory/dead-stock', async (req, res) => {
                   SELECT DISTINCT d.PRODUCT_CODE 
                   FROM VW_CASHMEMO_PRINT_DET d
                   INNER JOIN VW_CASHMEMO_PRINT_MST m ON d.CM_ID = m.CM_ID
-                  WHERE DATEDIFF(day, m.CM_TIME, GETDATE()) <= 60 AND m.CANCELLED = 0
+                  WHERE m.CM_TIME >= DATEADD(day, -60, GETDATE()) AND m.CANCELLED = 0
               )
             ORDER BY p.quantity_in_stock DESC
         `);
@@ -126,9 +140,19 @@ app.get('/api/inventory/dead-stock', async (req, res) => {
     }
 });
 
+let cachedTips = null;
+let cacheTimestamp = 0;
+const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes
+
 app.post('/api/ai/demand-forecasts', async (req, res) => {
+    // Check if the request is auto-fetch on mount or a forced refresh
+    const isForceRefresh = req.body && (req.body.refresh === true || Object.keys(req.body).length > 0);
+    const now = Date.now();
+
+    let deadStockSample = null;
+    let lowStockSample = null;
     try {
-        const deadStockSample = await sql.query(`
+        deadStockSample = await sql.query(`
             SELECT TOP 2
                 s.article_no AS ArticleNo,
                 ISNULL(s.article_name, s.section_name) AS ItemName,
@@ -140,12 +164,12 @@ app.post('/api/ai/demand-forecasts', async (req, res) => {
                   SELECT DISTINCT d.PRODUCT_CODE 
                   FROM VW_CASHMEMO_PRINT_DET d
                   INNER JOIN VW_CASHMEMO_PRINT_MST m ON d.CM_ID = m.CM_ID
-                  WHERE DATEDIFF(day, m.CM_TIME, GETDATE()) <= 60 AND m.CANCELLED = 0
+                  WHERE m.CM_TIME >= DATEADD(day, -60, GETDATE()) AND m.CANCELLED = 0
               )
             ORDER BY p.quantity_in_stock DESC
         `);
 
-        const lowStockSample = await sql.query(`
+        lowStockSample = await sql.query(`
             SELECT TOP 2
                 s.article_no AS ArticleNo,
                 ISNULL(s.article_name, s.section_name) AS ItemName,
@@ -156,16 +180,49 @@ app.post('/api/ai/demand-forecasts', async (req, res) => {
             WHERE p.quantity_in_stock BETWEEN 1 AND 3
             ORDER BY p.quantity_in_stock ASC
         `);
+    } catch (dbErr) {
+        console.error("Database query failed during AI prep:", dbErr);
+    }
 
-        const deadItemsText = deadStockSample.recordset.length > 0 
-            ? deadStockSample.recordset.map(i => `${i.ArticleNo} (${i.ItemName}, ${i.CurrentStock} units left)`).join("; ")
-            : "No stagnant items found";
+    const deadItemsText = (deadStockSample && deadStockSample.recordset.length > 0)
+        ? deadStockSample.recordset.map(i => `${i.ArticleNo} (${i.ItemName}, ${i.CurrentStock} units left)`).join("; ")
+        : "No stagnant items found";
 
-        const lowItemsText = lowStockSample.recordset.length > 0 
-            ? lowStockSample.recordset.map(i => `${i.ArticleNo} (${i.ItemName}, Size: ${i.Size}, ${i.CurrentStock} units)`).join("; ")
-            : "All core sizes adequately stocked";
+    const lowItemsText = (lowStockSample && lowStockSample.recordset.length > 0)
+        ? lowStockSample.recordset.map(i => `${i.ArticleNo} (${i.ItemName}, Size: ${i.Size}, ${i.CurrentStock} units)`).join("; ")
+        : "All core sizes adequately stocked";
 
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    // Setup fallback tips in case Gemini API is blocked/429'd
+    const getFallbackTips = () => [
+        {
+            tag: "Cobb Supplier Order",
+            tip: (lowStockSample && lowStockSample.recordset.length > 0)
+                ? `Restock low item ${lowStockSample.recordset[0].ArticleNo} (${lowStockSample.recordset[0].ItemName}, ${lowStockSample.recordset[0].CurrentStock} left). Request fresh Cobb polo tees.`
+                : "Low stock alert: Restock core size items and order trending Cobb smart-fit shirts from the main warehouse."
+        },
+        {
+            tag: "Dead Stock Pivot",
+            tip: (deadStockSample && deadStockSample.recordset.length > 0)
+                ? `Style stagnant article ${deadStockSample.recordset[0].ArticleNo} by pairing it with trending Cobb Straight-Fit Jeans on the front display.`
+                : "Style slow-moving items by displaying them paired with new season Cobb lightweight jackets."
+        },
+        {
+            tag: "Display Strategy",
+            tip: "Mannequin Alert: Arrange mannequins near the storefront highlighting Cobb Ultra-Fit Trousers and Cargo summer shorts."
+        },
+        {
+            tag: "Cross-Sell Playbook",
+            tip: "Upsell guideline: Direct floor staff to pair Slim-Fit Formal Shirts with Ultra-Fit Trousers for a complete outfit purchase."
+        }
+    ];
+
+    if (!isForceRefresh && cachedTips && (now - cacheTimestamp < CACHE_DURATION)) {
+        console.log('[AI CACHE] Returning cached demand-forecasts tips');
+        return res.json({ tips: cachedTips });
+    }
+
+    try {
+        const model = genAI.getGenerativeModel({ model: 'gemini-3.7-flash' });
         
         const prompt = `
         You are an expert menswear retail strategist exclusively for a "Cobb Italy" (Cobb Apparels) franchise store in Haryana.
@@ -206,17 +263,23 @@ app.post('/api/ai/demand-forecasts', async (req, res) => {
         }
 
         const tips = JSON.parse(rawText);
+        
+        // Cache the tips
+        cachedTips = tips;
+        cacheTimestamp = now;
+
         res.json({ tips });
     } catch (err) {
-        console.error("AI Database Forecast Error:", err);
-        res.status(500).json({ error: err.message });
+        console.warn("AI Database Forecast Error, falling back to local tips:", err.message);
+        const tips = cachedTips || getFallbackTips();
+        res.json({ tips, isFallback: true });
     }
 });
 
 app.post('/api/ai/persona', async (req, res) => {
     const { purchases } = req.body;
     try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-3.7-flash' });
         const prompt = `
         Analyze the following recent clothing purchases from a male customer at a menswear store:
         "${purchases}"
@@ -234,14 +297,28 @@ app.post('/api/ai/persona', async (req, res) => {
         const result = await model.generateContent(prompt);
         res.json({ persona: result.response.text().trim() });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.warn("AI Persona Classify Error, falling back to local classifier:", err.message);
+        const p = (purchases || '').toLowerCase();
+        let fallbackPersona = "Essentials Buyer";
+        if (p.includes('suit') || p.includes('formal') || p.includes('blazer') || p.includes('trouser') || p.includes('shirt')) {
+            fallbackPersona = "Corporate Professional";
+        } else if (p.includes('jean') || p.includes('denim')) {
+            fallbackPersona = "Denim Enthusiast";
+        } else if (p.includes('cargo') || p.includes('tshirt') || p.includes('t-shirt') || p.includes('shorts') || p.includes('lower')) {
+            fallbackPersona = "Weekend Casual";
+        } else if (p.includes('shacket') || p.includes('jacket') || p.includes('oversized') || p.includes('hoodie')) {
+            fallbackPersona = "Trendsetter";
+        } else if (p.includes('kurta') || p.includes('sherwani') || p.includes('traditional') || p.includes('nehru')) {
+            fallbackPersona = "Festive / Traditional";
+        }
+        res.json({ persona: fallbackPersona, isFallback: true });
     }
 });
 
 app.post('/api/ai/outfit-matcher', async (req, res) => {
     const { deadStockItem } = req.body;
     try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-3.7-flash' });
         const prompt = `
         You are an expert fashion stylist for Cobb Pundri menswear.
         We have this slow-moving item in our inventory: "${deadStockItem}".
@@ -254,14 +331,17 @@ app.post('/api/ai/outfit-matcher', async (req, res) => {
         const result = await model.generateContent(prompt);
         res.json({ message: result.response.text() });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.warn("AI Outfit Matcher Error, falling back to local copy:", err.message);
+        const item = deadStockItem || "Cobb Premium Menswear";
+        const fallbackMsg = `Style of the Week: Elevate your casual wardrobe with the ${item}. Pair it conceptually with classic blue jeans, navy chinos, or a clean white tee for an effortless fit. Visit us at Cobb Pundri to try it on! - Parbhat Goyal, Cobb Pundri`;
+        res.json({ message: fallbackMsg, isFallback: true });
     }
 });
 
 app.post('/api/ai/campaign-builder', async (req, res) => {
     const { event, audience } = req.body;
     try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-3.7-flash' });
         const prompt = `
         You are the Marketing Director for Cobb Pundri, a premium menswear franchise in Haryana.
         
@@ -277,14 +357,16 @@ app.post('/api/ai/campaign-builder', async (req, res) => {
         const result = await model.generateContent(prompt);
         res.json({ message: result.response.text() });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.warn("AI Campaign Builder Error, falling back to local copy:", err.message);
+        const fallbackMsg = `Exclusive Store Alert: Join us at Cobb Pundri for our latest ${event || 'New Season Showcase'}. Specially designed for our valued ${audience || 'premium customers'}, check out our latest fits and fresh catalog additions. See you at the store! - Parbhat Goyal, Cobb Pundri`;
+        res.json({ message: fallbackMsg, isFallback: true });
     }
 });
 
 app.post('/api/campaigns/generate', async (req, res) => {
     const { customerName, pastPurchases, type, sizes } = req.body;
     try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-3.7-flash' });
         
         let objective = "";
         if (type === 'cross-sell') {
@@ -313,7 +395,18 @@ app.post('/api/campaigns/generate', async (req, res) => {
         const result = await model.generateContent(prompt);
         res.json({ message: result.response.text() });
     } catch (err) {
-        res.status(500).json({ error: err.message });
+        console.warn("AI Campaign Generator Error, falling back to local copy:", err.message);
+        const name = customerName || "there";
+        let fallbackMsg = `Hi ${name}, as one of our VIP customers, we invite you to explore the latest arrivals at Cobb Pundri. Elevate your wardrobe with the new season fits! - Parbhat Goyal, Cobb Pundri`;
+        
+        if (type === 'cross-sell') {
+            fallbackMsg = `Hi ${name}! We hope you liked your recent purchases at Cobb. Based on your style, we suggest pairing them with our new collection of shirts and jeans. Stop by Cobb Pundri to try the look! - Parbhat Goyal, Cobb Pundri`;
+        } else if (type === 'size-alert') {
+            fallbackMsg = `Hi ${name}! Quick alert: We just received a fresh stock of new season Cobb fits in your sizes (${sizes || 'L/XL/32/34'}). Drop by Cobb Pundri to grab them before they're sold out! - Parbhat Goyal, Cobb Pundri`;
+        } else if (type === 'dormant') {
+            fallbackMsg = `Hi ${name}, we haven't seen you at Cobb Pundri in a while! Our fresh autumn collection is now live. We'd love to help you find your next look - hope to see you soon! - Parbhat Goyal, Cobb Pundri`;
+        }
+        res.json({ message: fallbackMsg, isFallback: true });
     }
 });
 
@@ -542,11 +635,22 @@ async function startGatewayHelper() {
 
 function startAutomationHelper() {
     if (pythonProcess) return true;
+    
+    // Clean up stale python listener processes
+    try {
+        execSync('taskkill /F /IM python.exe /T 2>NUL');
+    } catch (e) {}
+
     const { scriptPath, cwd } = getListenerScriptPath();
     pythonLogs.push(`[${new Date().toLocaleTimeString()}] Auto-spawning Automation Engine Listener...`);
     pythonProcess = spawn('python', ['-u', scriptPath], { shell: true, cwd: cwd });
     pythonProcess.stdout.on('data', (data) => pythonLogs.push(`[${new Date().toLocaleTimeString()}] ${data.toString().trim()}`));
     pythonProcess.stderr.on('data', (data) => pythonLogs.push(`[ERROR ${new Date().toLocaleTimeString()}] ${data.toString().trim()}`));
+    pythonProcess.on('error', (err) => {
+        console.error('Python spawn error:', err);
+        pythonLogs.push(`[ERROR ${new Date().toLocaleTimeString()}] Python process failed to start: ${err.message}`);
+        pythonProcess = null;
+    });
     pythonProcess.on('close', () => pythonProcess = null);
     return true;
 }
@@ -869,7 +973,10 @@ app.get('/api/analytics/top-movers', async (req, res) => {
                 COUNT(DISTINCT d.CM_ID) as TotalBills
             FROM VW_CASHMEMO_PRINT_DET d
             INNER JOIN VW_CASHMEMO_PRINT_MST m ON d.CM_ID = m.CM_ID
-            WHERE m.CANCELLED = 0 AND d.ARTICLE_NO IS NOT NULL AND LEN(RTRIM(d.ARTICLE_NO)) > 1
+            WHERE m.CANCELLED = 0 
+              AND d.ARTICLE_NO IS NOT NULL 
+              AND LEN(RTRIM(d.ARTICLE_NO)) > 1
+              AND m.CM_TIME >= DATEADD(month, -3, GETDATE())
             GROUP BY RTRIM(d.ARTICLE_NO)
             ORDER BY SUM(d.QUANTITY) DESC
         `);
@@ -881,7 +988,11 @@ app.get('/api/analytics/top-movers', async (req, res) => {
                 SUM(d.NET) as TotalRevenue
             FROM VW_CASHMEMO_PRINT_DET d
             INNER JOIN VW_CASHMEMO_PRINT_MST m ON d.CM_ID = m.CM_ID
-            WHERE m.CANCELLED = 0 AND d.PARA2_NAME IS NOT NULL AND LEN(RTRIM(d.PARA2_NAME)) > 0 AND d.PARA2_NAME <> 'NA'
+            WHERE m.CANCELLED = 0 
+              AND d.PARA2_NAME IS NOT NULL 
+              AND LEN(RTRIM(d.PARA2_NAME)) > 0 
+              AND d.PARA2_NAME <> 'NA'
+              AND m.CM_TIME >= DATEADD(month, -3, GETDATE())
             GROUP BY RTRIM(d.PARA2_NAME)
             ORDER BY SUM(d.QUANTITY) DESC
         `);
@@ -957,7 +1068,7 @@ app.get('/api/inventory/size-matrix', async (req, res) => {
             FROM VW_CASHMEMO_PRINT_DET d
             INNER JOIN VW_CASHMEMO_PRINT_MST m ON d.CM_ID = m.CM_ID
             LEFT JOIN SKU_NAMES s ON d.PRODUCT_CODE = s.product_Code
-            WHERE m.CANCELLED = 0 AND m.CM_TIME IS NOT NULL AND DATEDIFF(day, m.CM_TIME, GETDATE()) <= 90
+            WHERE m.CANCELLED = 0 AND m.CM_TIME >= DATEADD(day, -90, GETDATE())
             GROUP BY d.SECTION_NAME, d.ARTICLE_NAME, s.para2_name
             HAVING SUM(d.QUANTITY) > 0
             ORDER BY TotalRevenue DESC

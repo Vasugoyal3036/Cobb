@@ -3,9 +3,17 @@ const sql = require('mssql/msnodesqlv8'); // <-- Using the native Windows driver
 const config = {
     server: 'localhost',
     database: 'RPD_AVATAR01_NEW_ST_POS',
+    requestTimeout: 120000,
+    connectionTimeout: 60000,
+    pool: {
+        max: 10,
+        min: 0,
+        idleTimeoutMillis: 30000
+    },
     options: {
         instanceName: 'SQLEXPRESS',
-        trustedConnection: true // <-- Tells it to use Windows Authentication just like Python
+        trustedConnection: true,
+        requestTimeout: 120000
     }
 };
 

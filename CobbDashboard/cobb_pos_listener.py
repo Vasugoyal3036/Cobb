@@ -3,6 +3,16 @@ import requests
 import pyodbc
 import sys
 import os
+import socket
+
+def get_lock():
+    get_lock._lock_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        get_lock._lock_socket.bind(('127.0.0.1', 47200))
+        return True
+    except socket.error:
+        print("Another instance of the listener is already running.")
+        return False
 
 # Configuration
 LOCATION_LINK = "https://maps.app.goo.gl/HxgE1M25h32oWY2H9?g_st=ac"
@@ -67,6 +77,9 @@ def send_whatsapp_message(phone_number, customer_name):
         if response.status_code == 200:
             print(f"[{time.strftime('%X')}] [SUCCESS] Sent to {clean_phone} ({customer_name})", flush=True)
             return True
+        elif response.status_code == 400 and 'not registered' in response.text.lower():
+            print(f"[{time.strftime('%X')}] [SKIPPED] {clean_phone} is not on WhatsApp. Marking as processed.", flush=True)
+            return True
         else:
             print(f"[{time.strftime('%X')}] [FAILED] Sender responded: {response.text}", flush=True)
             return False
@@ -75,6 +88,8 @@ def send_whatsapp_message(phone_number, customer_name):
         return False
 
 def run_listener():
+    if not get_lock():
+        sys.exit(0)
     print(f"[{time.strftime('%X')}] Cobb POS Listener initialized.", flush=True)
     
     # Load already sent bill IDs from file
@@ -131,6 +146,12 @@ def run_listener():
                         try:
                             with open(SENT_BILLS_FILE, 'a') as f:
                                 f.write(cm_id_str + "\n")
+                            # Add phone to our local database for marketing
+                            if phone and len(str(phone).strip()) >= 10:
+                                clean_phone = ''.join(filter(str.isdigit, str(phone)))
+                                customer_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "customer_numbers.txt")
+                                with open(customer_file, 'a') as cf:
+                                    cf.write(clean_phone + "\n")
                         except Exception as file_err:
                             print(f"[{time.strftime('%X')}] [LOG FILE WRITE ERROR] {file_err}", flush=True)
 
