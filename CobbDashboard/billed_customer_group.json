@@ -129,9 +129,9 @@
     "phone": "2222222222",
     "formattedPhone": "912222222222",
     "customerName": "Parmotion",
-    "totalBills": 6,
-    "totalSpent": 1226,
-    "lastBilledAt": "2026-08-23T10:19:15.487Z",
+    "totalBills": 8,
+    "totalSpent": 1902,
+    "lastBilledAt": "2026-08-26T16:41:53.623Z",
     "addedAt": "2026-08-24T10:13:21.667Z"
   },
   "917986610728": {
@@ -174,9 +174,9 @@
     "phone": "7404939567",
     "formattedPhone": "917404939567",
     "customerName": "Ashish Jangra",
-    "totalBills": 1,
-    "totalSpent": 3750,
-    "lastBilledAt": "2026-08-22T18:40:18.020Z",
+    "totalBills": 2,
+    "totalSpent": 7380,
+    "lastBilledAt": "2026-08-26T18:01:49.330Z",
     "addedAt": "2026-08-24T10:13:21.667Z"
   },
   "918221903266": {
@@ -228,9 +228,9 @@
     "phone": "8950451000",
     "formattedPhone": "918950451000",
     "customerName": "Dilbag",
-    "totalBills": 1,
+    "totalBills": 2,
     "totalSpent": 4260,
-    "lastBilledAt": "2026-08-22T13:00:03.127Z",
+    "lastBilledAt": "2026-08-25T19:04:27.333Z",
     "addedAt": "2026-08-24T10:13:21.667Z"
   },
   "919466422821": {
@@ -453,9 +453,9 @@
     "phone": "9138122820",
     "formattedPhone": "919138122820",
     "customerName": "Akshat",
-    "totalBills": 7,
-    "totalSpent": 19196,
-    "lastBilledAt": "2026-08-20T11:24:20.513Z",
+    "totalBills": 9,
+    "totalSpent": 20513,
+    "lastBilledAt": "2026-08-26T12:33:28.073Z",
     "addedAt": "2026-08-24T10:13:21.667Z"
   },
   "918059678202": {
@@ -544,7 +544,7 @@
     "formattedPhone": "919416822237",
     "customerName": "Jasbir Sarpanch Kyorak",
     "totalBills": 3,
-    "totalSpent": 10171,
+    "totalSpent": 9603,
     "lastBilledAt": "2026-08-19T15:32:18.397Z",
     "addedAt": "2026-08-24T10:13:21.667Z"
   },
@@ -624,9 +624,9 @@
     "phone": "9896545608",
     "formattedPhone": "919896545608",
     "customerName": "Rahul",
-    "totalBills": 1,
-    "totalSpent": 2880,
-    "lastBilledAt": "2026-08-18T20:52:24.843Z",
+    "totalBills": 2,
+    "totalSpent": 2919,
+    "lastBilledAt": "2026-08-27T15:25:04.550Z",
     "addedAt": "2026-08-24T10:13:21.667Z"
   },
   "917404424676": {
@@ -642,9 +642,9 @@
     "phone": "9896246564",
     "formattedPhone": "919896246564",
     "customerName": "Akhil Garg",
-    "totalBills": 1,
-    "totalSpent": 1950,
-    "lastBilledAt": "2026-08-18T19:39:03.803Z",
+    "totalBills": 2,
+    "totalSpent": 2100,
+    "lastBilledAt": "2026-08-25T18:55:34.480Z",
     "addedAt": "2026-08-24T10:13:21.667Z"
   },
   "919034806400": {
@@ -885,18 +885,18 @@
     "phone": "9416152332",
     "formattedPhone": "919416152332",
     "customerName": "Suresh Kumar",
-    "totalBills": 2,
-    "totalSpent": 7830,
-    "lastBilledAt": "2026-08-17T12:19:28.910Z",
+    "totalBills": 4,
+    "totalSpent": 8419,
+    "lastBilledAt": "2026-08-26T12:29:34.053Z",
     "addedAt": "2026-08-24T10:13:21.667Z"
   },
   "919034522000": {
     "phone": "9034522000",
     "formattedPhone": "919034522000",
     "customerName": "Pardeep",
-    "totalBills": 2,
-    "totalSpent": 779,
-    "lastBilledAt": "2026-08-17T12:03:34.677Z",
+    "totalBills": 3,
+    "totalSpent": 1678,
+    "lastBilledAt": "2026-08-25T10:27:51.267Z",
     "addedAt": "2026-08-24T10:13:21.667Z"
   },
   "918572865003": {
@@ -912,9 +912,9 @@
     "phone": "8295270585",
     "formattedPhone": "918295270585",
     "customerName": "Shibu Barsana",
-    "totalBills": 1,
-    "totalSpent": 2490,
-    "lastBilledAt": "2026-08-17T11:29:53.677Z",
+    "totalBills": 2,
+    "totalSpent": 4200,
+    "lastBilledAt": "2026-08-25T13:28:19.673Z",
     "addedAt": "2026-08-24T10:13:21.667Z"
   },
   "918168540904": {
@@ -1110,9 +1110,9 @@
     "phone": "8708612557",
     "formattedPhone": "918708612557",
     "customerName": "Deepak Manchanda",
-    "totalBills": 1,
-    "totalSpent": 2400,
-    "lastBilledAt": "2026-08-15T19:20:33.440Z",
+    "totalBills": 2,
+    "totalSpent": 4860,
+    "lastBilledAt": "2026-08-26T20:32:18.877Z",
     "addedAt": "2026-08-24T10:13:21.667Z"
   },
   "919813347832": {
@@ -1272,9 +1272,9 @@
     "phone": "9050006842",
     "formattedPhone": "919050006842",
     "customerName": "Rahul Gujjar",
-    "totalBills": 2,
-    "totalSpent": 2580,
-    "lastBilledAt": "2026-08-14T18:21:47.567Z",
+    "totalBills": 3,
+    "totalSpent": 3468,
+    "lastBilledAt": "2026-08-26T11:49:09.183Z",
     "addedAt": "2026-08-24T10:13:21.668Z"
   },
   "919541006888": {
@@ -1335,9 +1335,9 @@
     "phone": "7015841330",
     "formattedPhone": "917015841330",
     "customerName": "Akshit Garg",
-    "totalBills": 3,
-    "totalSpent": 5848,
-    "lastBilledAt": "2026-08-13T21:37:50.173Z",
+    "totalBills": 4,
+    "totalSpent": 7643,
+    "lastBilledAt": "2026-08-26T12:50:37.467Z",
     "addedAt": "2026-08-24T10:13:21.668Z"
   },
   "918571083793": {
@@ -1587,9 +1587,9 @@
     "phone": "8929297283",
     "formattedPhone": "918929297283",
     "customerName": "Himanshu Garg",
-    "totalBills": 1,
-    "totalSpent": 5729,
-    "lastBilledAt": "2026-08-11T22:08:12.143Z",
+    "totalBills": 2,
+    "totalSpent": 8489,
+    "lastBilledAt": "2026-08-26T10:57:19.253Z",
     "addedAt": "2026-08-24T10:13:21.668Z"
   },
   "919466342052": {
@@ -1695,9 +1695,9 @@
     "phone": "9896762170",
     "formattedPhone": "919896762170",
     "customerName": "Bunty",
-    "totalBills": 1,
-    "totalSpent": 2610,
-    "lastBilledAt": "2026-08-11T19:55:06.027Z",
+    "totalBills": 2,
+    "totalSpent": 7980,
+    "lastBilledAt": "2026-08-25T20:08:30.993Z",
     "addedAt": "2026-08-24T10:13:21.668Z"
   },
   "917206060744": {
@@ -2478,9 +2478,9 @@
     "phone": "9812403276",
     "formattedPhone": "919812403276",
     "customerName": "Dr Shyam",
-    "totalBills": 1,
-    "totalSpent": 3780,
-    "lastBilledAt": "2026-08-24T15:45:27.587Z",
+    "totalBills": 2,
+    "totalSpent": 3839,
+    "lastBilledAt": "2026-08-25T16:23:49.997Z",
     "addedAt": "2026-08-24T10:28:24.530Z"
   },
   "917015110696": {
@@ -2509,5 +2509,239 @@
     "totalSpent": 2670,
     "lastBilledAt": "2026-08-24T16:57:43.623Z",
     "addedAt": "2026-08-24T11:31:12.100Z"
+  },
+  "919416383581": {
+    "phone": "9416383581",
+    "formattedPhone": "919416383581",
+    "customerName": "Sushil",
+    "totalBills": 1,
+    "totalSpent": 2430,
+    "lastBilledAt": "2026-08-24T18:15:00.643Z",
+    "addedAt": "2026-08-24T12:52:54.872Z"
+  },
+  "918529000203": {
+    "phone": "8529000203",
+    "formattedPhone": "918529000203",
+    "customerName": "Gp",
+    "totalBills": 1,
+    "totalSpent": 2700,
+    "lastBilledAt": "2026-08-24T19:02:52.077Z",
+    "addedAt": "2026-08-24T13:41:11.573Z"
+  },
+  "919416092390": {
+    "phone": "9416092390",
+    "formattedPhone": "919416092390",
+    "customerName": "Sanjeev Kumar",
+    "totalBills": 1,
+    "totalSpent": 11036,
+    "lastBilledAt": "2026-08-24T19:17:24.860Z",
+    "addedAt": "2026-08-24T13:52:34.052Z"
+  },
+  "918683837671": {
+    "phone": "8683837671",
+    "formattedPhone": "918683837671",
+    "customerName": "Shubham",
+    "totalBills": 1,
+    "totalSpent": 3330,
+    "lastBilledAt": "2026-08-25T11:41:18.300Z",
+    "addedAt": "2026-08-25T06:15:39.383Z"
+  },
+  "919896855120": {
+    "phone": "9896855120",
+    "formattedPhone": "919896855120",
+    "customerName": "Jasmer Singh",
+    "totalBills": 2,
+    "totalSpent": 5160,
+    "lastBilledAt": "2026-08-27T15:20:04.913Z",
+    "addedAt": "2026-08-25T07:12:46.907Z"
+  },
+  "917056890513": {
+    "phone": "7056890513",
+    "formattedPhone": "917056890513",
+    "customerName": "Abhishek Kumar",
+    "totalBills": 1,
+    "totalSpent": 5337,
+    "lastBilledAt": "2026-08-25T14:55:39.957Z",
+    "addedAt": "2026-08-25T09:32:43.835Z"
+  },
+  "917206152992": {
+    "phone": "7206152992",
+    "formattedPhone": "917206152992",
+    "customerName": "Satpal Garg",
+    "totalBills": 1,
+    "totalSpent": 2850,
+    "lastBilledAt": "2026-08-25T19:26:34.287Z",
+    "addedAt": "2026-08-25T14:10:58.783Z"
+  },
+  "917082896588": {
+    "phone": "7082896588",
+    "formattedPhone": "917082896588",
+    "customerName": "Sunny",
+    "totalBills": 1,
+    "totalSpent": 3299,
+    "lastBilledAt": "2026-08-25T19:21:11.990Z",
+    "addedAt": "2026-08-25T14:10:58.783Z"
+  },
+  "919466774673": {
+    "phone": "9466774673",
+    "formattedPhone": "919466774673",
+    "customerName": "Manoj",
+    "totalBills": 1,
+    "totalSpent": 1830,
+    "lastBilledAt": "2026-08-25T18:44:55.287Z",
+    "addedAt": "2026-08-25T14:10:58.783Z"
+  },
+  "918059926163": {
+    "phone": "8059926163",
+    "formattedPhone": "918059926163",
+    "customerName": "Manoj Kumar",
+    "totalBills": 1,
+    "totalSpent": 1860,
+    "lastBilledAt": "2026-08-25T18:11:27.063Z",
+    "addedAt": "2026-08-25T14:10:58.783Z"
+  },
+  "919991770525": {
+    "phone": "9991770525",
+    "formattedPhone": "919991770525",
+    "customerName": "Navdeep Singh",
+    "totalBills": 1,
+    "totalSpent": 5370,
+    "lastBilledAt": "2026-08-25T21:12:43.213Z",
+    "addedAt": "2026-08-26T04:22:42.413Z"
+  },
+  "918571905360": {
+    "phone": "8571905360",
+    "formattedPhone": "918571905360",
+    "customerName": "Sunil",
+    "totalBills": 1,
+    "totalSpent": 2700,
+    "lastBilledAt": "2026-08-26T10:51:30.633Z",
+    "addedAt": "2026-08-26T05:55:35.937Z"
+  },
+  "919813437733": {
+    "phone": "9813437733",
+    "formattedPhone": "919813437733",
+    "customerName": "Shispal",
+    "totalBills": 1,
+    "totalSpent": 999,
+    "lastBilledAt": "2026-08-26T11:54:38.517Z",
+    "addedAt": "2026-08-26T06:25:46.089Z"
+  },
+  "919466773282": {
+    "phone": "9466773282",
+    "formattedPhone": "919466773282",
+    "customerName": "Anchal Singh",
+    "totalBills": 2,
+    "totalSpent": 3090,
+    "lastBilledAt": "2026-08-27T10:10:10.070Z",
+    "addedAt": "2026-08-26T06:42:21.040Z"
+  },
+  "919729303200": {
+    "phone": "9729303200",
+    "formattedPhone": "919729303200",
+    "customerName": "Gurmej Singh",
+    "totalBills": 1,
+    "totalSpent": 1998,
+    "lastBilledAt": "2026-08-26T11:56:06.550Z",
+    "addedAt": "2026-08-26T06:42:21.040Z"
+  },
+  "919728277798": {
+    "phone": "9728277798",
+    "formattedPhone": "919728277798",
+    "customerName": "Simren Vest",
+    "totalBills": 1,
+    "totalSpent": 5268,
+    "lastBilledAt": "2026-08-26T13:09:16.683Z",
+    "addedAt": "2026-08-26T07:44:44.851Z"
+  },
+  "917497006030": {
+    "phone": "7497006030",
+    "formattedPhone": "917497006030",
+    "customerName": "Ansh",
+    "totalBills": 1,
+    "totalSpent": 4935,
+    "lastBilledAt": "2026-08-26T14:36:43.000Z",
+    "addedAt": "2026-08-26T09:11:23.744Z"
+  },
+  "919255170849": {
+    "phone": "9255170849",
+    "formattedPhone": "919255170849",
+    "customerName": "Rajesh Ji Dhruv",
+    "totalBills": 3,
+    "totalSpent": 3839,
+    "lastBilledAt": "2026-08-26T19:42:46.617Z",
+    "addedAt": "2026-08-27T04:32:27.007Z"
+  },
+  "919416115007": {
+    "phone": "9416115007",
+    "formattedPhone": "919416115007",
+    "customerName": "Haripal Singh",
+    "totalBills": 1,
+    "totalSpent": 1998,
+    "lastBilledAt": "2026-08-26T19:24:01.573Z",
+    "addedAt": "2026-08-27T04:32:27.007Z"
+  },
+  "919817642109": {
+    "phone": "9817642109",
+    "formattedPhone": "919817642109",
+    "customerName": "Vicky",
+    "totalBills": 1,
+    "totalSpent": 2790,
+    "lastBilledAt": "2026-08-26T17:18:35.733Z",
+    "addedAt": "2026-08-27T04:32:27.007Z"
+  },
+  "919034051203": {
+    "phone": "9034051203",
+    "formattedPhone": "919034051203",
+    "customerName": "Sonu Pundri",
+    "totalBills": 1,
+    "totalSpent": 2010,
+    "lastBilledAt": "2026-08-27T12:34:46.153Z",
+    "addedAt": "2026-08-27T07:06:16.479Z"
+  },
+  "919050070609": {
+    "phone": "9050070609",
+    "formattedPhone": "919050070609",
+    "customerName": "Ravi",
+    "totalBills": 1,
+    "totalSpent": 3420,
+    "lastBilledAt": "2026-08-27T12:36:36.603Z",
+    "addedAt": "2026-08-27T07:09:41.454Z"
+  },
+  "918295595149": {
+    "phone": "8295595149",
+    "formattedPhone": "918295595149",
+    "customerName": "Sikander Singh",
+    "totalBills": 1,
+    "totalSpent": 1099,
+    "lastBilledAt": "2026-08-27T12:56:16.963Z",
+    "addedAt": "2026-08-27T07:49:28.733Z"
+  },
+  "918684823954": {
+    "phone": "8684823954",
+    "formattedPhone": "918684823954",
+    "customerName": "Uday Bhan",
+    "totalBills": 1,
+    "totalSpent": 3000,
+    "lastBilledAt": "2026-08-27T13:54:32.283Z",
+    "addedAt": "2026-08-27T08:56:30.670Z"
+  },
+  "917027371020": {
+    "phone": "7027371020",
+    "formattedPhone": "917027371020",
+    "customerName": "Deepak",
+    "totalBills": 1,
+    "totalSpent": 1770,
+    "lastBilledAt": "2026-08-27T13:48:04.193Z",
+    "addedAt": "2026-08-27T08:56:30.670Z"
+  },
+  "918506950769": {
+    "phone": "8506950769",
+    "formattedPhone": "918506950769",
+    "customerName": "Bittu Nain",
+    "totalBills": 1,
+    "totalSpent": 2429,
+    "lastBilledAt": "2026-08-27T15:05:12.367Z",
+    "addedAt": "2026-08-27T09:43:50.489Z"
   }
 }

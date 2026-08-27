@@ -77,6 +77,29 @@ app.get('/api/sales/overview', async (req, res) => {
     }
 });
 
+app.get('/api/sales/daily-month', async (req, res) => {
+    try {
+        const result = await sql.query(`
+            SELECT 
+                CAST(m.CM_TIME AS DATE) AS SaleDate,
+                ISNULL(SUM(m.NET_AMOUNT), 0) AS TotalSales,
+                ISNULL(SUM(m.CASH_AMOUNT), 0) AS CashAmount,
+                ISNULL(SUM(m.CC_AMOUNT), 0) - ISNULL(SUM(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0)), 0) as CardAmount,
+                ISNULL(SUM(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0)), 0) as UPIAmount
+            FROM VW_CASHMEMO_PRINT_MST m
+            LEFT JOIN VW_WL_CASHMEMOLIST w ON m.CM_ID = w.MEMO_ID
+            WHERE MONTH(m.CM_TIME) = MONTH(GETDATE()) 
+              AND YEAR(m.CM_TIME) = YEAR(GETDATE()) 
+              AND m.CANCELLED = 0
+            GROUP BY CAST(m.CM_TIME AS DATE)
+            ORDER BY SaleDate ASC
+        `);
+        res.json(result.recordset);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.get('/api/analytics/hourly', async (req, res) => {
     try {
         const result = await sql.query(`
@@ -606,7 +629,7 @@ async function startGatewayHelper() {
     gatewayLogs.push(`[${new Date().toLocaleTimeString()}] Auto-spawning WhatsApp Gateway process...`);
     gatewayProcess = spawn('node', ['server.js'], {
         cwd: gatewayDir,
-        shell: true,
+        shell: true, windowsHide: true,
         env: process.env,
         stdio: ['pipe', 'pipe', 'pipe']
     });
@@ -643,7 +666,7 @@ function startAutomationHelper() {
 
     const { scriptPath, cwd } = getListenerScriptPath();
     pythonLogs.push(`[${new Date().toLocaleTimeString()}] Auto-spawning Automation Engine Listener...`);
-    pythonProcess = spawn('python', ['-u', scriptPath], { shell: true, cwd: cwd });
+    pythonProcess = spawn('python', ['-u', scriptPath], { shell: true, windowsHide: true, cwd: cwd });
     pythonProcess.stdout.on('data', (data) => pythonLogs.push(`[${new Date().toLocaleTimeString()}] ${data.toString().trim()}`));
     pythonProcess.stderr.on('data', (data) => pythonLogs.push(`[ERROR ${new Date().toLocaleTimeString()}] ${data.toString().trim()}`));
     pythonProcess.on('error', (err) => {
@@ -664,7 +687,7 @@ app.post('/api/gateway/start', async (req, res) => {
 app.post('/api/gateway/stop', (req, res) => {
     if (gatewayProcess) {
         try {
-            spawn('taskkill', ['/PID', gatewayProcess.pid.toString(), '/F', '/T']);
+            spawn('taskkill', ['/PID', gatewayProcess.pid.toString(), '/F', '/T'], { windowsHide: true });
         } catch (e) {
             gatewayProcess.kill();
         }
