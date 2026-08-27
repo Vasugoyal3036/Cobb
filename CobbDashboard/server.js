@@ -608,10 +608,6 @@ async function startGatewayHelper() {
     const targetPath = path.join(gatewayDir, 'server.js');
     if (!fs.existsSync(targetPath)) return false;
 
-    // Terminate any orphan Chrome processes blocking session directory
-    try {
-        spawn('taskkill', ['/F', '/IM', 'chrome.exe', '/T']);
-    } catch (e) {}
 
     // Clean up stale lock files from crashes
     try {
