@@ -141,6 +141,7 @@ export default function App() {
   // Removed AI state
   const [openProductType, setOpenProductType] = useState(null);
   const [openMonth, setOpenMonth] = useState(null);
+  const [selectedCalendarDay, setSelectedCalendarDay] = useState(null);
 
   const DAILY_TARGET = 50000; 
 
@@ -1272,17 +1273,46 @@ export default function App() {
                         const dayData = dailySales.find(d => d.SaleDate && d.SaleDate.startsWith(dateStr));
                         const hasSales = dayData && dayData.TotalSales > 0;
                         
+                        const dayOfWeek = new Date(new Date().getFullYear(), new Date().getMonth(), day).getDay();
+                        let tooltipPositionClass = "left-1/2 -translate-x-1/2";
+                        let arrowPositionClass = "left-1/2 -translate-x-1/2";
+                        
+                        // Prevent tooltip from overflowing screen edges on mobile
+                        if (dayOfWeek <= 1) {
+                          tooltipPositionClass = "left-0";
+                          arrowPositionClass = "left-3";
+                        } else if (dayOfWeek >= 5) {
+                          tooltipPositionClass = "right-0";
+                          arrowPositionClass = "right-3";
+                        }
+
                         return (
-                          <div key={day} className="relative group flex items-center justify-center h-8">
-                            <div className={`w-7 h-7 flex items-center justify-center rounded-full text-xs font-medium cursor-default transition-colors ${hasSales ? 'bg-blue-100 text-blue-700 hover:bg-blue-600 hover:text-white' : 'text-slate-600 hover:bg-slate-100'}`}>
+                          <div key={day} className="relative flex items-center justify-center h-8">
+                            <div 
+                              onClick={() => {
+                                if (hasSales) {
+                                  setSelectedCalendarDay(selectedCalendarDay === day ? null : day);
+                                }
+                              }}
+                              className={`w-7 h-7 flex items-center justify-center rounded-full text-xs font-medium transition-colors ${hasSales ? 'cursor-pointer' : 'cursor-default'} ${hasSales ? (selectedCalendarDay === day ? 'bg-blue-600 text-white shadow-md' : 'bg-blue-100 text-blue-700 hover:bg-blue-200') : 'text-slate-600 hover:bg-slate-100'}`}
+                            >
                               {day}
                             </div>
                             
-                            {/* Hover Tooltip */}
-                            {hasSales && (
-                              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 bg-slate-800 text-white text-xs rounded-lg p-3 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50 shadow-xl">
-                                <div className="font-bold border-b border-slate-700 pb-1 mb-1.5 text-slate-200">
-                                  {new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                            {/* Click Tooltip */}
+                            {hasSales && selectedCalendarDay === day && (
+                              <div className={`absolute bottom-full mb-2 w-48 bg-slate-800 text-white text-xs rounded-lg p-3 z-[60] shadow-xl animate-in fade-in zoom-in-95 duration-200 ${tooltipPositionClass}`}>
+                                <div className="font-bold border-b border-slate-700 pb-1 mb-1.5 text-slate-200 flex justify-between items-center">
+                                  <span>{new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                                  <button 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedCalendarDay(null);
+                                    }} 
+                                    className="text-slate-400 hover:text-white p-1 -mr-1 rounded"
+                                  >
+                                    ✕
+                                  </button>
                                 </div>
                                 <div className="flex justify-between items-center mb-1">
                                   <span className="text-slate-400">Total:</span>
@@ -1302,7 +1332,7 @@ export default function App() {
                                 </div>
                                 
                                 {/* Triangle arrow for tooltip */}
-                                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+                                <div className={`absolute top-full border-4 border-transparent border-t-slate-800 ${arrowPositionClass}`}></div>
                               </div>
                             )}
                           </div>
