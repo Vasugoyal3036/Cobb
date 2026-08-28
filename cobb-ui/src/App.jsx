@@ -721,16 +721,29 @@ export default function App() {
 
   const handleGlobalSearch = (e) => {
     if (e.key === 'Enter' && searchQuery.trim() !== '') {
-      const query = searchQuery.trim();
-      if (/^[6-9]\d{9}$/.test(query)) {
+      const query = searchQuery.trim().toLowerCase();
+      const isAmount = /^\d+(\.\d{1,2})?$/.test(query);
+      const isPhone = /^[0-9]{10}$/.test(query);
+
+      const matchesCustomer = [...vips, ...dormant].some(c => 
+        `${c.FirstName} ${c.LastName}`.toLowerCase().includes(query) ||
+        c.Phone?.includes(query) ||
+        (isAmount && Math.round(c.TotalSpend) === Math.round(parseFloat(query)))
+      );
+
+      if (isPhone || matchesCustomer) {
         setActiveTab('vip');
+        setToasts(prev => [
+          ...prev,
+          { id: Date.now(), title: 'CUSTOMER SEARCH 🔍', message: `Filtering customers for: ${query}` }
+        ]);
       } else {
         setActiveTab('inventory');
+        setToasts(prev => [
+          ...prev,
+          { id: Date.now(), title: 'STOCK SCAN / SEARCH 🔍', message: `Filtering inventory for: ${query}` }
+        ]);
       }
-      setToasts(prev => [
-        ...prev,
-        { id: Date.now(), title: 'STOCK SCAN / SEARCH 📷', message: `Filtering inventory for: ${query}` }
-      ]);
     }
   };
 
@@ -1085,7 +1098,7 @@ export default function App() {
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
               <input
                 type="text"
-                placeholder="Scan Tag or Search Article / Phone..."
+                placeholder="Search Article / Phone / Name / Amount..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={handleGlobalSearch}
@@ -3265,7 +3278,7 @@ export default function App() {
                     <Search className="w-5 h-5 text-slate-400 absolute left-3 top-2.5" />
                     <input
                       type="text"
-                      placeholder="Search by Name or Phone..."
+                      placeholder="Search by Name, Phone, or Amount..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 shadow-sm transition-colors"
@@ -3330,7 +3343,12 @@ export default function App() {
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {(activeTab === 'vip' ? vips : dormant)
-                        .filter(c => `${c.FirstName} ${c.LastName}`.toLowerCase().includes(searchQuery.toLowerCase()) || c.Phone?.includes(searchQuery))
+                        .filter(c => {
+                          const sq = searchQuery.toLowerCase();
+                          return `${c.FirstName} ${c.LastName}`.toLowerCase().includes(sq) || 
+                                 c.Phone?.includes(sq) || 
+                                 (!isNaN(parseFloat(sq)) && Math.round(c.TotalSpend) === Math.round(parseFloat(sq)));
+                        })
                         .map((customer, idx) => (
                           <tr key={idx} onClick={() => openCustomerCard(customer)} className="hover:bg-blue-50/50 cursor-pointer transition-all group">
                             <td className="px-6 py-4 font-bold text-slate-800 flex items-center whitespace-nowrap">
