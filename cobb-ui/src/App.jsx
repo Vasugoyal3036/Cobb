@@ -162,6 +162,9 @@ export default function App() {
     axios.get(`${API_BASE}/api/analytics/hourly`).then(res => setHourlySales(res.data)).catch(console.error);
     axios.get(`${API_BASE}/api/inventory/dead-stock`).then(res => setDeadStock(res.data)).catch(console.error);
     axios.get(`${API_BASE}/api/reconciliation/latest`).then(res => setReconData(res.data)).catch(console.error);
+    // Fetch customer data on load for global search
+    axios.get(`${API_BASE}/api/customers/vip`).then(res => setVips(res.data)).catch(console.error);
+    axios.get(`${API_BASE}/api/customers/dormant`).then(res => setDormant(res.data)).catch(console.error);
   }, []);
 
   // Lazy load data only when its tab is active
@@ -726,7 +729,7 @@ export default function App() {
       const isPhone = /^[0-9]{10}$/.test(query);
 
       const matchesCustomer = [...vips, ...dormant].some(c => 
-        `${c.FirstName} ${c.LastName}`.toLowerCase().includes(query) ||
+        `${c.FirstName || ''} ${c.LastName || ''}`.toLowerCase().includes(query) ||
         c.Phone?.includes(query) ||
         (isAmount && Math.round(c.LifetimeSpend) === Math.round(parseFloat(query)))
       );
@@ -3345,7 +3348,7 @@ export default function App() {
                       {(activeTab === 'vip' ? vips : dormant)
                         .filter(c => {
                           const sq = searchQuery.toLowerCase();
-                          return `${c.FirstName} ${c.LastName}`.toLowerCase().includes(sq) || 
+                          return `${c.FirstName || ''} ${c.LastName || ''}`.toLowerCase().includes(sq) || 
                                  c.Phone?.includes(sq) || 
                                  (!isNaN(parseFloat(sq)) && Math.round(c.LifetimeSpend) === Math.round(parseFloat(sq)));
                         })
