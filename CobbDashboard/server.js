@@ -1249,14 +1249,13 @@ app.get('/api/financials/pnl', async (req, res) => {
         const miscExpenses = 10000;
         const totalExpenses = 110000; // As requested
 
-        // Target 27% net profit margin on gross sales
-        const netProfit = Math.round(sales * 0.27);
+        // Total gross profit margin is 27% (so COGS is 73% of taxable revenue)
+        const grossProfit = Math.round(taxable * 0.27);
+        const cogs = taxable - grossProfit;
         
-        // Calculate COGS to balance the P&L statement perfectly
-        let cogs = taxable - totalExpenses - netProfit;
-        if (cogs < 0) cogs = Math.round(taxable * 0.48); // Fallback if sales are too low
-
-        const profitMarginPct = 27;
+        // Deduct 110,000 store expense from the gross profit
+        const netProfit = grossProfit - totalExpenses;
+        const profitMarginPct = sales > 0 ? Math.round((netProfit / sales) * 100) : 0;
 
         res.json({
             grossSales: sales,
