@@ -456,7 +456,7 @@ export default function App() {
 
     setIsStartingBroadcast(true);
     try {
-      const payload = { message: broadcastMsg, delayMs: 1500 };
+      const payload = { message: broadcastMsg, delayMs: broadcastMediaPath ? 4500 : 1500 };
       if (broadcastMediaPath) payload.mediaPath = broadcastMediaPath;
       const res = await axios.post(`${API_BASE}/api/broadcast/start`, payload);
       alert(`✅ ${res.data.message}`);
