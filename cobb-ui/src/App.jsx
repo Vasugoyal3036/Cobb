@@ -113,6 +113,7 @@ export default function App() {
   const [isTogglingGateway, setIsTogglingGateway] = useState(false);
   const [isGatewayReady, setIsGatewayReady] = useState(false);
   const [gatewayQr, setGatewayQr] = useState(null);
+  const [broadcastStartIndex, setBroadcastStartIndex] = useState(1);
   const [gatewayLogs, setGatewayLogs] = useState([]);
   const [testPhone, setTestPhone] = useState('');
   const [testMsg, setTestMsg] = useState('');
@@ -456,7 +457,7 @@ export default function App() {
 
     setIsStartingBroadcast(true);
     try {
-      const payload = { message: broadcastMsg, delayMs: broadcastMediaPath ? 4500 : 1500 };
+      const payload = { message: broadcastMsg, delayMs: broadcastMediaPath ? 4500 : 1500, startIndex: Math.max(0, parseInt(broadcastStartIndex, 10) - 1) };
       if (broadcastMediaPath) payload.mediaPath = broadcastMediaPath;
       const res = await axios.post(`${API_BASE}/api/broadcast/start`, payload);
       alert(`✅ ${res.data.message}`);
@@ -1878,8 +1879,18 @@ export default function App() {
                   )}
 
                   <div className="flex justify-between items-center pt-2">
-                    <span className="text-xs text-slate-400 font-medium">
-                      Will broadcast to all <span className="font-bold text-slate-700">{broadcastGroupCount}</span> billed customer numbers in group.
+                    <span className="text-xs text-slate-400 font-medium flex items-center space-x-2">
+                      <span>Will broadcast to all <span className="font-bold text-slate-700">{broadcastGroupCount}</span> billed customer numbers in group.</span>
+                      <span className="text-slate-300">|</span>
+                      <span>Start from #</span>
+                      <input 
+                        type="number" 
+                        min="1"
+                        max={broadcastGroupCount || 1}
+                        value={broadcastStartIndex}
+                        onChange={(e) => setBroadcastStartIndex(e.target.value)}
+                        className="w-16 h-7 text-xs border border-slate-200 rounded px-1 text-center font-bold text-slate-700"
+                      />
                     </span>
                     <button
                       onClick={handleStartBroadcast}

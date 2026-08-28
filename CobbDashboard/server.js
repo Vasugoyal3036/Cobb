@@ -989,7 +989,7 @@ app.post('/api/broadcast/upload', broadcastUpload.single('media'), (req, res) =>
 });
 
 app.post('/api/broadcast/start', async (req, res) => {
-    const { message, delayMs = 1500, mediaPath } = req.body;
+    const { message, delayMs = 1500, mediaPath, startIndex = 0 } = req.body;
     if (!message) return res.status(400).json({ error: 'Broadcast message body is required.' });
     if (activeBroadcast.isRunning) return res.status(400).json({ error: 'A broadcast is already running.' });
 
@@ -1018,7 +1018,7 @@ app.post('/api/broadcast/start', async (req, res) => {
 
     // Background Broadcast Async Execution Loop
     (async () => {
-        for (let i = 0; i < contacts.length; i++) {
+        for (let i = startIndex; i < contacts.length; i++) {
             if (broadcastShouldStop) {
                 activeBroadcast.status = 'stopped';
                 activeBroadcast.isRunning = false;
