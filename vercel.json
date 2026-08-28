@@ -1,5 +1,5 @@
 {
-  "buildCommand": "cd cobb-ui && npm install && npm run build",
+  "buildCommand": "cd cobb-ui && npm install && VITE_API_URL=https://freckles-comfy-proving.ngrok-free.dev npm run build",
   "outputDirectory": "cobb-ui/dist",
   "framework": "vite",
   "rewrites": [
