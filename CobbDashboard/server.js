@@ -661,6 +661,26 @@ async function startGatewayHelper() {
         if (ping.ok) return true;
     } catch (e) { }
 
+    // Terminate any zombie processes holding port 3000
+    try {
+        const stdout = execSync('netstat -ano | findstr :3000').toString();
+        const lines = stdout.split('\n');
+        for (const line of lines) {
+            if (line.includes('LISTENING')) {
+                const parts = line.trim().split(/\s+/);
+                const pid = parts[parts.length - 1];
+                if (pid && pid !== '0') {
+                    try { execSync(`taskkill /F /PID ${pid} /T 2>NUL`); } catch (err) { }
+                }
+            }
+        }
+    } catch (e) { }
+
+    // Terminate any zombie Puppeteer Chromium processes holding session folder locks
+    try {
+        execSync('powershell -Command "Get-Process | Where-Object {$_.Path -like \'*puppeteer*\'} | Stop-Process -Force"');
+    } catch (e) { }
+
     if (gatewayProcess) return true;
     const gatewayDir = 'C:\\CobbWhatsAppGateway';
     const targetPath = path.join(gatewayDir, 'server.js');
