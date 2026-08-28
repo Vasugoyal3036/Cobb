@@ -667,17 +667,24 @@ async function startGatewayHelper() {
     if (!fs.existsSync(targetPath)) return false;
 
 
-    // Clean up stale lock files from crashes
+    // Clean up stale lock files from crashes recursively (e.g. inside Default/)
     try {
         const lockDir = path.join(gatewayDir, '.wwebjs_auth', 'session-cobb-pos-session');
-        if (fs.existsSync(lockDir)) {
-            const files = fs.readdirSync(lockDir);
-            files.forEach(f => {
-                if (f.includes('Singleton') || f === 'DevToolsActivePort') {
-                    try { fs.unlinkSync(path.join(lockDir, f)); } catch (e) { }
+        const cleanLockFiles = (dir) => {
+            if (!fs.existsSync(dir)) return;
+            const entries = fs.readdirSync(dir, { withFileTypes: true });
+            for (const entry of entries) {
+                const fullPath = path.join(dir, entry.name);
+                if (entry.isDirectory()) {
+                    cleanLockFiles(fullPath);
+                } else {
+                    if (entry.name.includes('Singleton') || entry.name === 'DevToolsActivePort' || entry.name === '.parentlock') {
+                        try { fs.unlinkSync(fullPath); } catch (e) { }
+                    }
                 }
-            });
-        }
+            }
+        };
+        cleanLockFiles(lockDir);
     } catch (e) { }
 
     gatewayLogs.push(`[${new Date().toLocaleTimeString()}] Auto-spawning WhatsApp Gateway process...`);
