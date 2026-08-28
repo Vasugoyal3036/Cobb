@@ -1047,14 +1047,14 @@ export default function App() {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-auto relative bg-slate-50 min-w-0">
+      <div className="flex-1 overflow-auto relative bg-slate-50 min-w-0 pb-20 lg:pb-0">
 
         {/* Top Navbar */}
         <div className="bg-white/80 backdrop-blur-md px-4 lg:px-8 py-3.5 border-b border-slate-200 flex flex-col md:flex-row gap-3 justify-between items-stretch md:items-center sticky top-0 z-20">
           <div className="flex items-center gap-3 w-full md:w-full sm:max-w-lg">
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="lg:hidden p-2 bg-slate-100 border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-200 transition-all cursor-pointer shrink-0"
+              className="hidden p-2 bg-slate-100 border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-200 transition-all cursor-pointer shrink-0"
             >
               {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -1083,7 +1083,7 @@ export default function App() {
               title="EOD Cash Register Reconciliation"
             >
               <Calculator className="w-3.5 h-3.5" />
-              <span>EOD Cash</span>
+              <span className="hidden sm:inline">EOD Cash</span>
             </button>
 
             {/* EOD WhatsApp Report Button */}
@@ -1093,7 +1093,7 @@ export default function App() {
               title="Generate Daily EOD Report for Owner"
             >
               <Send className="w-3.5 h-3.5" />
-              <span>EOD Report</span>
+              <span className="hidden sm:inline">EOD Report</span>
             </button>
 
             {/* Dark Mode Toggle Button */}
@@ -2702,7 +2702,7 @@ export default function App() {
                     />
                   </div>
                 </div>
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
                   <table className="min-w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-slate-50 border-b border-slate-200">
@@ -3119,7 +3119,7 @@ export default function App() {
                     {liveBills.length} Checkouts Today
                   </span>
                 </div>
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
                   <table className="min-w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-slate-50 border-b border-slate-200">
@@ -3250,7 +3250,51 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                {activeTab === 'vip' && (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow">
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Bronze Tier</p>
+                        <p className="text-xl font-black text-slate-700">&lt; ₹5K</p>
+                      </div>
+                      <div className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center border border-orange-100">
+                        <span className="text-lg font-bold text-orange-600">{vips.filter(c => c.LifetimeSpend < 5000 && c.TotalBills < 10).length}</span>
+                      </div>
+                    </div>
+                    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow">
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Silver Tier</p>
+                        <p className="text-xl font-black text-slate-700">₹5K - ₹20K</p>
+                      </div>
+                      <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center border border-slate-200">
+                        <span className="text-lg font-bold text-slate-600">{vips.filter(c => c.LifetimeSpend >= 5000 && c.LifetimeSpend < 20000 && c.TotalBills < 10).length}</span>
+                      </div>
+                    </div>
+                    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow">
+                      <div>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Gold Tier</p>
+                        <p className="text-xl font-black text-slate-700">₹20K - ₹50K</p>
+                      </div>
+                      <div className="w-10 h-10 rounded-full bg-yellow-50 flex items-center justify-center border border-yellow-200">
+                        <span className="text-lg font-bold text-yellow-600">{vips.filter(c => c.LifetimeSpend >= 20000 && c.LifetimeSpend < 50000 && c.TotalBills < 10).length}</span>
+                      </div>
+                    </div>
+                    <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between hover:shadow-md transition-shadow relative overflow-hidden">
+                      <div className="absolute -right-2 -top-2 opacity-5">
+                        <Award className="w-16 h-16" />
+                      </div>
+                      <div className="relative z-10">
+                        <p className="text-[10px] font-bold text-blue-500 uppercase tracking-wider mb-1 flex items-center gap-1"><Sparkles className="w-3 h-3"/> Diamond Tier</p>
+                        <p className="text-xl font-black text-blue-700">₹50K+ or 10+ Visits</p>
+                      </div>
+                      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center border border-blue-200 relative z-10">
+                        <span className="text-lg font-black text-blue-700">{vips.filter(c => (c.LifetimeSpend >= 50000) || (c.TotalBills >= 10)).length}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
                   <table className="min-w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-slate-50 border-b border-slate-200">
@@ -3338,7 +3382,7 @@ export default function App() {
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                       {/* Top Returned Categories */}
-                      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-x-auto">
                         <div className="p-4 border-b border-slate-100 bg-slate-50/50">
                           <h4 className="text-sm font-bold text-slate-800 flex items-center">
                             <Tag className="w-4 h-4 mr-2 text-amber-500" /> Top Returned Categories
@@ -3742,6 +3786,35 @@ export default function App() {
               />
             </div>
           ))}
+        </div>
+
+        {/* BOTTOM NAVIGATION BAR (MOBILE ONLY) */}
+        <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex items-center justify-around pb-safe-bottom z-40 shadow-[0_-5px_15px_rgba(0,0,0,0.05)]">
+          <button onClick={() => { setActiveTab('dashboard'); setIsMobileMenuOpen(false); }}
+            className={`flex flex-col items-center justify-center w-full py-2 ${activeTab === 'dashboard' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}>
+            <LayoutDashboard className="w-6 h-6 mb-1" />
+            <span className="text-[9px] font-bold tracking-wider">HOME</span>
+          </button>
+          <button onClick={() => { setActiveTab('live'); setIsMobileMenuOpen(false); }}
+            className={`flex flex-col items-center justify-center w-full py-2 ${activeTab === 'live' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}>
+            <Receipt className="w-6 h-6 mb-1" />
+            <span className="text-[9px] font-bold tracking-wider">LIVE</span>
+          </button>
+          <button onClick={() => { setActiveTab('inventory'); setIsMobileMenuOpen(false); }}
+            className={`flex flex-col items-center justify-center w-full py-2 ${activeTab === 'inventory' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}>
+            <Package className="w-6 h-6 mb-1" />
+            <span className="text-[9px] font-bold tracking-wider">STOCK</span>
+          </button>
+          <button onClick={() => { setActiveTab('returns'); setIsMobileMenuOpen(false); }}
+            className={`flex flex-col items-center justify-center w-full py-2 ${activeTab === 'returns' ? 'text-amber-500' : 'text-slate-400 hover:text-slate-600'}`}>
+            <RotateCcw className="w-6 h-6 mb-1" />
+            <span className="text-[9px] font-bold tracking-wider">RETURN</span>
+          </button>
+          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className={`flex flex-col items-center justify-center w-full py-2 ${isMobileMenuOpen ? 'text-slate-800' : 'text-slate-400 hover:text-slate-600'}`}>
+            {isMobileMenuOpen ? <X className="w-6 h-6 mb-1" /> : <Menu className="w-6 h-6 mb-1" />}
+            <span className="text-[9px] font-bold tracking-wider">MORE</span>
+          </button>
         </div>
 
       </div>

@@ -16,3 +16,6 @@ CobbDashboard/customer_numbers.txt
 CobbDashboard/sent_bills.txt
 find_b*.js
 reconciliations.json
+
+.vercel
+.env*

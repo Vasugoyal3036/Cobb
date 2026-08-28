@@ -678,7 +678,7 @@ async function startGatewayHelper() {
 
     // Terminate any zombie Puppeteer Chromium processes holding session folder locks
     try {
-        execSync('powershell -Command "Get-Process | Where-Object {$_.Path -like \'*puppeteer*\'} | Stop-Process -Force"');
+        execSync('powershell -Command "Get-CimInstance Win32_Process | Where-Object ExecutablePath -match \'puppeteer\' | Invoke-CimMethod -MethodName Terminate"');
     } catch (e) { }
 
     if (gatewayProcess) return true;
@@ -740,9 +740,8 @@ async function startGatewayHelper() {
 function startAutomationHelper() {
     if (pythonProcess) return true;
 
-    // Clean up stale python listener processes
     try {
-        execSync('taskkill /F /IM python.exe /T 2>NUL');
+        execSync('powershell -Command "Get-CimInstance Win32_Process | Where-Object CommandLine -match \'cobb_pos_listener\' | Invoke-CimMethod -MethodName Terminate"');
     } catch (e) { }
 
     const { scriptPath, cwd } = getListenerScriptPath();
