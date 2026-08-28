@@ -728,7 +728,7 @@ export default function App() {
       const matchesCustomer = [...vips, ...dormant].some(c => 
         `${c.FirstName} ${c.LastName}`.toLowerCase().includes(query) ||
         c.Phone?.includes(query) ||
-        (isAmount && Math.round(c.TotalSpend) === Math.round(parseFloat(query)))
+        (isAmount && Math.round(c.LifetimeSpend) === Math.round(parseFloat(query)))
       );
 
       if (isPhone || matchesCustomer) {
@@ -3347,7 +3347,7 @@ export default function App() {
                           const sq = searchQuery.toLowerCase();
                           return `${c.FirstName} ${c.LastName}`.toLowerCase().includes(sq) || 
                                  c.Phone?.includes(sq) || 
-                                 (!isNaN(parseFloat(sq)) && Math.round(c.TotalSpend) === Math.round(parseFloat(sq)));
+                                 (!isNaN(parseFloat(sq)) && Math.round(c.LifetimeSpend) === Math.round(parseFloat(sq)));
                         })
                         .map((customer, idx) => (
                           <tr key={idx} onClick={() => openCustomerCard(customer)} className="hover:bg-blue-50/50 cursor-pointer transition-all group">
