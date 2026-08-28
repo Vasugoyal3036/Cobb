@@ -1,0 +1,11 @@
+{
+  "buildCommand": "cd cobb-ui && npm install && npm run build",
+  "outputDirectory": "cobb-ui/dist",
+  "framework": "vite",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

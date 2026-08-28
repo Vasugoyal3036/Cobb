@@ -15,14 +15,14 @@ process.on('uncaughtException', (err) => {
     console.error('Unhandled Exception:', err);
     try {
         fs.appendFileSync(path.join(__dirname, 'backend_error.log'), `[${new Date().toISOString()}] Unhandled Exception: ${err.stack || err}\n`);
-    } catch (e) {}
+    } catch (e) { }
 });
 
 process.on('unhandledRejection', (reason, promise) => {
     console.error('Unhandled Rejection at:', promise, 'reason:', reason);
     try {
         fs.appendFileSync(path.join(__dirname, 'backend_error.log'), `[${new Date().toISOString()}] Unhandled Rejection: ${reason.stack || reason}\n`);
-    } catch (e) {}
+    } catch (e) { }
 });
 
 connectDB();
@@ -61,16 +61,48 @@ app.get('/api/sales/overview', async (req, res) => {
             LEFT JOIN VW_WL_CASHMEMOLIST w ON m.CM_ID = w.MEMO_ID
             WHERE CAST(m.CM_TIME AS DATE) = CAST(GETDATE() AS DATE) AND m.CANCELLED = 0
         `);
-        
+
         const yesterdayResult = await sql.query(`
             SELECT ISNULL(SUM(NET_AMOUNT), 0) as TotalSales, COUNT(CM_ID) as BillCount 
             FROM VW_CASHMEMO_PRINT_MST 
             WHERE CAST(CM_TIME AS DATE) = CAST(DATEADD(day, -1, GETDATE()) AS DATE) AND CANCELLED = 0
         `);
 
+        // Week-over-Week comparison (Mon-Sun)
+        const thisWeekResult = await sql.query(`
+            SELECT ISNULL(SUM(NET_AMOUNT), 0) as TotalSales, COUNT(CM_ID) as BillCount
+            FROM VW_CASHMEMO_PRINT_MST
+            WHERE CANCELLED = 0 AND CM_TIME >= DATEADD(day, 1 - DATEPART(dw, GETDATE()), CAST(GETDATE() AS DATE))
+        `);
+
+        const lastWeekResult = await sql.query(`
+            SELECT ISNULL(SUM(NET_AMOUNT), 0) as TotalSales, COUNT(CM_ID) as BillCount
+            FROM VW_CASHMEMO_PRINT_MST
+            WHERE CANCELLED = 0
+              AND CM_TIME >= DATEADD(day, 1 - DATEPART(dw, GETDATE()) - 7, CAST(GETDATE() AS DATE))
+              AND CM_TIME < DATEADD(day, 1 - DATEPART(dw, GETDATE()), CAST(GETDATE() AS DATE))
+        `);
+
+        // Month-over-Month comparison
+        const thisMonthResult = await sql.query(`
+            SELECT ISNULL(SUM(NET_AMOUNT), 0) as TotalSales, COUNT(CM_ID) as BillCount
+            FROM VW_CASHMEMO_PRINT_MST
+            WHERE CANCELLED = 0 AND FORMAT(CM_TIME, 'yyyy-MM') = FORMAT(GETDATE(), 'yyyy-MM')
+        `);
+
+        const lastMonthResult = await sql.query(`
+            SELECT ISNULL(SUM(NET_AMOUNT), 0) as TotalSales, COUNT(CM_ID) as BillCount
+            FROM VW_CASHMEMO_PRINT_MST
+            WHERE CANCELLED = 0 AND FORMAT(CM_TIME, 'yyyy-MM') = FORMAT(DATEADD(month, -1, GETDATE()), 'yyyy-MM')
+        `);
+
         res.json({
             today: todayResult.recordset[0] || { TotalSales: 0, BillCount: 0, CashAmount: 0, CardAmount: 0, UPIAmount: 0 },
-            yesterday: yesterdayResult.recordset[0] || { TotalSales: 0, BillCount: 0 }
+            yesterday: yesterdayResult.recordset[0] || { TotalSales: 0, BillCount: 0 },
+            thisWeek: thisWeekResult.recordset[0] || { TotalSales: 0, BillCount: 0 },
+            lastWeek: lastWeekResult.recordset[0] || { TotalSales: 0, BillCount: 0 },
+            thisMonth: thisMonthResult.recordset[0] || { TotalSales: 0, BillCount: 0 },
+            lastMonth: lastMonthResult.recordset[0] || { TotalSales: 0, BillCount: 0 }
         });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -246,7 +278,7 @@ app.post('/api/ai/demand-forecasts', async (req, res) => {
 
     try {
         const model = genAI.getGenerativeModel({ model: 'gemini-3.7-flash' });
-        
+
         const prompt = `
         You are an expert menswear retail strategist exclusively for a "Cobb Italy" (Cobb Apparels) franchise store in Haryana.
         
@@ -275,10 +307,10 @@ app.post('/api/ai/demand-forecasts', async (req, res) => {
         - Each tip must be under 30 words.
         - Output ONLY valid raw JSON. No markdown blocks.
         `;
-        
+
         const result = await model.generateContent(prompt);
         let rawText = result.response.text().trim();
-        
+
         if (rawText.startsWith('```json')) {
             rawText = rawText.replace(/^```json\s*/, '').replace(/\s*```$/, '');
         } else if (rawText.startsWith('```')) {
@@ -286,7 +318,7 @@ app.post('/api/ai/demand-forecasts', async (req, res) => {
         }
 
         const tips = JSON.parse(rawText);
-        
+
         // Cache the tips
         cachedTips = tips;
         cacheTimestamp = now;
@@ -390,7 +422,7 @@ app.post('/api/campaigns/generate', async (req, res) => {
     const { customerName, pastPurchases, type, sizes } = req.body;
     try {
         const model = genAI.getGenerativeModel({ model: 'gemini-3.7-flash' });
-        
+
         let objective = "";
         if (type === 'cross-sell') {
             objective = "Acting as a personal stylist, suggest a matching Cobb Apparels item from our new collection that pairs perfectly with their past purchases.";
@@ -421,7 +453,7 @@ app.post('/api/campaigns/generate', async (req, res) => {
         console.warn("AI Campaign Generator Error, falling back to local copy:", err.message);
         const name = customerName || "there";
         let fallbackMsg = `Hi ${name}, as one of our VIP customers, we invite you to explore the latest arrivals at Cobb Pundri. Elevate your wardrobe with the new season fits! - Parbhat Goyal, Cobb Pundri`;
-        
+
         if (type === 'cross-sell') {
             fallbackMsg = `Hi ${name}! We hope you liked your recent purchases at Cobb. Based on your style, we suggest pairing them with our new collection of shirts and jeans. Stop by Cobb Pundri to try the look! - Parbhat Goyal, Cobb Pundri`;
         } else if (type === 'size-alert') {
@@ -490,7 +522,7 @@ app.post('/api/customers/segment', async (req, res) => {
         } else {
             query = `SELECT DISTINCT TOP 10 CUSTOMER_CODE as Phone, CUSTOMER_FNAME as FirstName FROM VW_CASHMEMO_PRINT_MST WHERE CANCELLED = 0 AND CUSTOMER_CODE IS NOT NULL AND LEN(CUSTOMER_CODE) >= 10`;
         }
-        
+
         const result = await sql.query(query);
         res.json(result.recordset);
     } catch (err) {
@@ -528,6 +560,7 @@ app.get('/api/sales/live', async (req, res) => {
     try {
         const result = await sql.query(`
             SELECT TOP 50 
+                m.CM_ID as BillId,
                 m.CM_NO as BillNumber,
                 m.CUSTOMER_CODE as Phone,
                 ISNULL(m.CUSTOMER_FNAME, '') + ' ' + ISNULL(m.CUSTOMER_LNAME, '') as CustomerName,
@@ -542,34 +575,59 @@ app.get('/api/sales/live', async (req, res) => {
             WHERE CAST(m.CM_TIME AS DATE) = CAST(GETDATE() AS DATE) AND m.CANCELLED = 0
             ORDER BY m.CM_TIME DESC
         `);
-        
+
         const enriched = result.recordset.map(b => {
-          const cash = b.CashAmount || 0;
-          const card = b.CardAmount > 0 ? b.CardAmount : 0;
-          const upi = b.UpiAmount || 0;
+            const cash = b.CashAmount || 0;
+            const card = b.CardAmount > 0 ? b.CardAmount : 0;
+            const upi = b.UpiAmount || 0;
 
-          let paymentMode = 'Cash';
-          if (upi > 0 && cash === 0 && card === 0) {
-            paymentMode = 'UPI / Online';
-          } else if (card > 0 && cash === 0 && upi === 0) {
-            paymentMode = 'Debit / Credit Card';
-          } else if (cash > 0 && (upi > 0 || card > 0)) {
-            paymentMode = 'Split (Cash + Digital)';
-          } else if (cash > 0) {
-            paymentMode = 'Cash';
-          } else if (upi > 0) {
-            paymentMode = 'UPI / Online';
-          } else if (card > 0) {
-            paymentMode = 'Debit / Credit Card';
-          }
+            let paymentMode = 'Cash';
+            if (upi > 0 && cash === 0 && card === 0) {
+                paymentMode = 'UPI / Online';
+            } else if (card > 0 && cash === 0 && upi === 0) {
+                paymentMode = 'Debit / Credit Card';
+            } else if (cash > 0 && (upi > 0 || card > 0)) {
+                paymentMode = 'Split (Cash + Digital)';
+            } else if (cash > 0) {
+                paymentMode = 'Cash';
+            } else if (upi > 0) {
+                paymentMode = 'UPI / Online';
+            } else if (card > 0) {
+                paymentMode = 'Debit / Credit Card';
+            }
 
-          return {
-            ...b,
-            PaymentMode: paymentMode
-          };
+            return {
+                ...b,
+                PaymentMode: paymentMode
+            };
         });
 
         res.json(enriched);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/sales/bill/:id/items', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const request = new sql.Request();
+        request.input('id', sql.VarChar, id);
+        const result = await request.query(`
+            SELECT 
+                d.ARTICLE_NO as ArticleNo,
+                d.ARTICLE_NAME as ArticleName,
+                d.QUANTITY as Quantity,
+                d.NET as NetPrice,
+                ISNULL(s.para1_name, 'Standard') as Color,
+                ISNULL(s.para2_name, 'Standard') as Size,
+                ISNULL(d.SECTION_NAME, 'Apparel') as Category
+            FROM VW_CASHMEMO_PRINT_DET d
+            LEFT JOIN SKU_NAMES s ON d.PRODUCT_CODE = s.product_Code
+            WHERE d.CM_ID = @id
+            ORDER BY d.NET DESC
+        `);
+        res.json(result.recordset);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -601,7 +659,7 @@ async function startGatewayHelper() {
     try {
         const ping = await fetch('http://localhost:3000/status');
         if (ping.ok) return true;
-    } catch (e) {}
+    } catch (e) { }
 
     if (gatewayProcess) return true;
     const gatewayDir = 'C:\\CobbWhatsAppGateway';
@@ -616,11 +674,11 @@ async function startGatewayHelper() {
             const files = fs.readdirSync(lockDir);
             files.forEach(f => {
                 if (f.includes('Singleton') || f === 'DevToolsActivePort') {
-                    try { fs.unlinkSync(path.join(lockDir, f)); } catch (e) {}
+                    try { fs.unlinkSync(path.join(lockDir, f)); } catch (e) { }
                 }
             });
         }
-    } catch (e) {}
+    } catch (e) { }
 
     gatewayLogs.push(`[${new Date().toLocaleTimeString()}] Auto-spawning WhatsApp Gateway process...`);
     gatewayProcess = spawn('node', ['server.js'], {
@@ -654,11 +712,11 @@ async function startGatewayHelper() {
 
 function startAutomationHelper() {
     if (pythonProcess) return true;
-    
+
     // Clean up stale python listener processes
     try {
         execSync('taskkill /F /IM python.exe /T 2>NUL');
-    } catch (e) {}
+    } catch (e) { }
 
     const { scriptPath, cwd } = getListenerScriptPath();
     pythonLogs.push(`[${new Date().toLocaleTimeString()}] Auto-spawning Automation Engine Listener...`);
@@ -738,7 +796,7 @@ app.get('/api/automation/status', (req, res) => res.json({ isRunning: !!pythonPr
 app.post('/api/whatsapp/send', async (req, res) => {
     const { phone, message } = req.body;
     if (!phone || !message) return res.status(400).json({ error: 'Phone and message required.' });
-    
+
     const formattedPhone = String(phone).replace(/[^0-9]/g, '');
     const finalPhone = formattedPhone.length === 10 ? `91${formattedPhone}` : formattedPhone;
 
@@ -773,7 +831,7 @@ app.post('/api/automation/send-test', async (req, res) => {
     if (!phone) return res.status(400).json({ error: 'Phone number is required.' });
     const formattedPhone = String(phone).replace(/[^0-9]/g, '').length === 10 ? `91${String(phone).replace(/[^0-9]/g, '')}` : String(phone).replace(/[^0-9]/g, '');
     const messageText = `Hello *${customerName || 'Test Customer'}*! 👋\n\nThank you for shopping at *Cobb Pundri* today. We hope you loved our latest collection and had a wonderful experience with us! ✨\n\n-----------------------------------\n📍 *Store Location:*\nhttps://maps.app.goo.gl/HxgE1M25h32oWY2H9?g_st=ac\n\n⭐ *Leave us a review:*\nhttps://search.google.com/local/writereview?placeid=ChIJHfCBR58ZDjkRpBbB9EV-Zew\n-----------------------------------\n\nStay connected with our latest drops:\n📸 *Instagram:* https://www.instagram.com/cobbpundri\n👍 *Facebook:* https://www.facebook.com/share/14ra4KrNJa3/\n\nWarm Regards,\n*Parbhat Goyal*\nCobb Pundri`;
-    
+
     try {
         const response = await fetch('http://localhost:3000/send', {
             method: 'POST',
@@ -844,7 +902,7 @@ async function syncBilledCustomerGroup() {
             if (rawPhone.length >= 10) {
                 const formattedPhone = rawPhone.length === 10 ? `91${rawPhone}` : rawPhone;
                 const name = (row.CustomerName || '').trim() || 'Valued Customer';
-                
+
                 group[formattedPhone] = {
                     phone: rawPhone,
                     formattedPhone: formattedPhone,
@@ -1120,20 +1178,20 @@ app.get('/api/analytics/wardrobe-profiles', async (req, res) => {
         `);
 
         const enriched = result.recordset.map(c => {
-          const formal = c.FormalItems || 0;
-          const casual = c.CasualItems || 0;
-          let primaryStyle = formal > casual ? 'Formal Suits & Shirts' : 'Casual Polos & Denims';
-          let persona = 'Standard Shopper';
-          if (c.TotalSpent >= 50000) persona = '💎 High Roller VIP';
-          else if (c.TotalVisits >= 3) persona = '⚡ Frequent Loyal VIP';
-          else if (formal > casual) persona = '💼 Formal Wearer';
-          else persona = '👕 Casual Trendsetter';
+            const formal = c.FormalItems || 0;
+            const casual = c.CasualItems || 0;
+            let primaryStyle = formal > casual ? 'Formal Suits & Shirts' : 'Casual Polos & Denims';
+            let persona = 'Standard Shopper';
+            if (c.TotalSpent >= 50000) persona = '💎 High Roller VIP';
+            else if (c.TotalVisits >= 3) persona = '⚡ Frequent Loyal VIP';
+            else if (formal > casual) persona = '💼 Formal Wearer';
+            else persona = '👕 Casual Trendsetter';
 
-          return {
-            ...c,
-            PrimaryStyle: primaryStyle,
-            Persona: persona
-          };
+            return {
+                ...c,
+                PrimaryStyle: primaryStyle,
+                Persona: persona
+            };
         });
 
         res.json(enriched);
@@ -1273,6 +1331,82 @@ app.post('/api/reconciliation/save', (req, res) => {
         records.push(newRecord);
         fs.writeFileSync(RECON_FILE, JSON.stringify(records, null, 2));
         res.json({ success: true, record: newRecord });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Returns & Exchange Tracker Endpoint
+app.get('/api/sales/returns', async (req, res) => {
+    try {
+        // Today's returns (quantity < 0)
+        const todayReturns = await sql.query(`
+            SELECT 
+                ISNULL(COUNT(DISTINCT d.CM_ID), 0) as ReturnCount,
+                ISNULL(SUM(ABS(d.NET)), 0) as RefundAmount
+            FROM VW_CASHMEMO_PRINT_DET d
+            INNER JOIN VW_CASHMEMO_PRINT_MST m ON d.CM_ID = m.CM_ID
+            WHERE d.QUANTITY < 0 AND CAST(m.CM_TIME AS DATE) = CAST(GETDATE() AS DATE)
+        `);
+
+        // Monthly returns
+        const monthlyReturns = await sql.query(`
+            SELECT 
+                ISNULL(COUNT(DISTINCT d.CM_ID), 0) as ReturnCount,
+                ISNULL(SUM(ABS(d.NET)), 0) as RefundAmount
+            FROM VW_CASHMEMO_PRINT_DET d
+            INNER JOIN VW_CASHMEMO_PRINT_MST m ON d.CM_ID = m.CM_ID
+            WHERE d.QUANTITY < 0 AND FORMAT(m.CM_TIME, 'yyyy-MM') = FORMAT(GETDATE(), 'yyyy-MM')
+        `);
+
+        // Monthly total bills for return rate calculation
+        const monthlyTotal = await sql.query(`
+            SELECT COUNT(CM_ID) as TotalBills
+            FROM VW_CASHMEMO_PRINT_MST
+            WHERE FORMAT(CM_TIME, 'yyyy-MM') = FORMAT(GETDATE(), 'yyyy-MM')
+        `);
+
+        // Recent returned bills with details (items returned)
+        const recentReturns = await sql.query(`
+            SELECT TOP 20
+                m.CM_NO as BillNumber,
+                ABS(d.NET) as RefundAmount,
+                ISNULL(m.CUSTOMER_FNAME, '') + ' ' + ISNULL(m.CUSTOMER_LNAME, '') as CustomerName,
+                m.CUSTOMER_CODE as Phone,
+                CONVERT(varchar, m.CM_TIME, 126) as ReturnDate,
+                ABS(d.QUANTITY) as ItemCount,
+                CONCAT(d.ARTICLE_NO, ' - ', d.ARTICLE_NAME) as ArticleDetails
+            FROM VW_CASHMEMO_PRINT_DET d
+            INNER JOIN VW_CASHMEMO_PRINT_MST m ON d.CM_ID = m.CM_ID
+            WHERE d.QUANTITY < 0
+            ORDER BY m.CM_TIME DESC
+        `);
+
+        // Top returned categories (which product types are returned most)
+        const topReturnedCategories = await sql.query(`
+            SELECT TOP 10
+                ISNULL(d.SECTION_NAME, 'Uncategorized') as Category,
+                COUNT(DISTINCT d.CM_ID) as ReturnBills,
+                SUM(ABS(d.QUANTITY)) as ReturnedUnits,
+                SUM(ABS(d.NET)) as RefundValue
+            FROM VW_CASHMEMO_PRINT_DET d
+            WHERE d.QUANTITY < 0
+            GROUP BY d.SECTION_NAME
+            ORDER BY SUM(ABS(d.QUANTITY)) DESC
+        `);
+
+        const totalBills = monthlyTotal.recordset[0]?.TotalBills || 1;
+        const monthReturnCount = monthlyReturns.recordset[0]?.ReturnCount || 0;
+        const returnRatePct = Math.round((monthReturnCount / totalBills) * 100 * 10) / 10;
+
+        res.json({
+            today: todayReturns.recordset[0] || { ReturnCount: 0, RefundAmount: 0 },
+            monthly: monthlyReturns.recordset[0] || { ReturnCount: 0, RefundAmount: 0 },
+            returnRatePct,
+            totalMonthlyBills: totalBills,
+            recentReturns: recentReturns.recordset || [],
+            topReturnedCategories: topReturnedCategories.recordset || []
+        });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }

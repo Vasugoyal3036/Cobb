@@ -25,9 +25,7 @@ async function startTunnel() {
         fs.writeFileSync(ENV_FILE, `VITE_API_URL=${NGROK_URL}\n`);
         console.log('✅ Config updated.');
         
-        console.log('🚀 Deploying to Vercel (building on cloud)...');
-        execSync(`npx -y vercel --prod -b VITE_API_URL=${NGROK_URL} -e VITE_API_URL=${NGROK_URL} -y`, { cwd: UI_DIR, stdio: 'inherit' });
-        console.log('✅ Deployment successful! Your dashboard is now live.');
+
         
         console.log('Ngrok tunnel is active. Keeping process alive...');
         // Keep the Node process running infinitely

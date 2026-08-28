@@ -1,37 +1,37 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { 
-  Users, 
-  AlertCircle, 
-  MessageSquare, 
-  LayoutDashboard, 
-  Receipt, 
-  TrendingUp, 
-  Package, 
-  Terminal, 
-  Play, 
-  Square, 
-  Radio, 
-  Clock, 
-  Archive, 
-  Send, 
-  ChevronDown, 
-  ChevronUp, 
-  Layers, 
-  Tag, 
-  Calendar, 
-  BarChart3, 
-  Search, 
-  X, 
-  UserCheck, 
-  ShoppingBag, 
-  Sparkles, 
-  Wand2, 
-  TrendingDown, 
-  Activity, 
-  Megaphone, 
-  Target, 
-  Zap, 
+import {
+  Users,
+  AlertCircle,
+  MessageSquare,
+  LayoutDashboard,
+  Receipt,
+  TrendingUp,
+  Package,
+  Terminal,
+  Play,
+  Square,
+  Radio,
+  Clock,
+  Archive,
+  Send,
+  ChevronDown,
+  ChevronUp,
+  Layers,
+  Tag,
+  Calendar,
+  BarChart3,
+  Search,
+  X,
+  UserCheck,
+  ShoppingBag,
+  Sparkles,
+  Wand2,
+  TrendingDown,
+  Activity,
+  Megaphone,
+  Target,
+  Zap,
   RefreshCw,
   ChevronLeft,
   ChevronRight,
@@ -50,7 +50,8 @@ import {
   Scan,
   Flame,
   Award,
-  Trophy
+  Trophy,
+  RotateCcw
 } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -60,18 +61,24 @@ axios.defaults.headers.common['ngrok-skip-browser-warning'] = '69420';
 export default function App() {
   const [vips, setVips] = useState([]);
   const [dormant, setDormant] = useState([]);
-  
+
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
-  
+
   useEffect(() => {
     localStorage.setItem('theme', darkMode ? 'dark' : 'light');
   }, [darkMode]);
-  
-  const [overviewStats, setOverviewStats] = useState({ 
-    today: { TotalSales: 0, BillCount: 0 }, 
-    yesterday: { TotalSales: 0, BillCount: 0 } 
+
+  const [overviewStats, setOverviewStats] = useState({
+    today: { TotalSales: 0, BillCount: 0 },
+    yesterday: { TotalSales: 0, BillCount: 0 },
+    thisWeek: { TotalSales: 0, BillCount: 0 },
+    lastWeek: { TotalSales: 0, BillCount: 0 },
+    thisMonth: { TotalSales: 0, BillCount: 0 },
+    lastMonth: { TotalSales: 0, BillCount: 0 }
   });
-  
+
+  const [returnsData, setReturnsData] = useState(null);
+
   const [liveBills, setLiveBills] = useState([]);
   const [toasts, setToasts] = useState([]);
   const prevLiveBillsRef = useRef([]);
@@ -96,7 +103,7 @@ export default function App() {
   const [eodCopied, setEodCopied] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [matrixCategoryFilter, setMatrixCategoryFilter] = useState('ALL');
-  
+
   const [isListenerRunning, setIsListenerRunning] = useState(false);
   const [isTogglingListener, setIsTogglingListener] = useState(false);
   const [listenerLogs, setListenerLogs] = useState([]);
@@ -142,83 +149,11 @@ export default function App() {
   const [openProductType, setOpenProductType] = useState(null);
   const [openMonth, setOpenMonth] = useState(null);
   const [selectedCalendarDay, setSelectedCalendarDay] = useState(null);
+  const [expandedBillId, setExpandedBillId] = useState(null);
+  const [billItemsCache, setBillItemsCache] = useState({});
+  const [loadingBillItems, setLoadingBillItems] = useState(false);
 
-  const DAILY_TARGET = 50000; 
-
-  const trendingCatalog = [
-    {
-      id: 'T1',
-      name: 'COBB SOLID PEACH SMART-FIT FORMAL SHIRT',
-      group: 'Upperwear',
-      trend: '💼 Corporate Pick',
-      stock: 0,
-      imageUrl: 'https://images.unsplash.com/photo-1598032895397-b9472444bf93?auto=format&fit=crop&q=80&w=400&h=500',
-      pitch: 'Self-design pastels are essential for the ongoing return-to-office wave.'
-    },
-    {
-      id: 'T2',
-      name: 'COBB NAVY BLUE COLOR-BLOCK POLO',
-      group: 'Upperwear',
-      trend: '📈 High Demand',
-      stock: 1,
-      imageUrl: 'https://images.unsplash.com/photo-1586363104862-3a5e222ee260?auto=format&fit=crop&q=80&w=400&h=500',
-      pitch: 'The textured and color-block polo shift trend is accelerating rapidly.'
-    },
-    {
-      id: 'T3',
-      name: 'COBB WHITE SKY CHECKED SMART-FIT SHIRT',
-      group: 'Upperwear',
-      trend: '⭐ Essential',
-      stock: 0,
-      imageUrl: 'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?auto=format&fit=crop&q=80&w=400&h=500',
-      pitch: 'Classic checks are the highest moving item for Friday casual office wear.'
-    },
-    {
-      id: 'T4',
-      name: 'COBB AUTUMN LIGHTWEIGHT SHACKET',
-      group: 'Upperwear',
-      trend: '🍂 Seasonal',
-      stock: 0,
-      imageUrl: 'https://images.unsplash.com/photo-1559551409-dadc959f76b8?auto=format&fit=crop&q=80&w=400&h=500',
-      pitch: 'Lightweight layering is the #1 transition item for the approaching autumn.'
-    },
-    {
-      id: 'T5',
-      name: 'COBB SIX-POCKET OLIVE CARGO LOWER',
-      group: 'Bottomwear',
-      trend: '🔥 #1 All India Trend',
-      stock: 0,
-      imageUrl: 'https://images.unsplash.com/photo-1517438476312-10d79c077509?auto=format&fit=crop&q=80&w=400&h=500',
-      pitch: 'Utility cargos are highly searched right now in earthy tones.'
-    },
-    {
-      id: 'T6',
-      name: 'COBB BOOT-CUT ICE BLUE JEANS',
-      group: 'Bottomwear',
-      trend: '👖 Vintage Revival',
-      stock: 0,
-      imageUrl: 'https://images.unsplash.com/photo-1542272604-787c3835535d?auto=format&fit=crop&q=80&w=400&h=500',
-      pitch: 'Skinny is out. Boot-cut and straight-fit premium denim are taking over.'
-    },
-    {
-      id: 'T7',
-      name: 'COBB ULTRA-FIT KHAKI CHINOS',
-      group: 'Bottomwear',
-      trend: '📈 High Demand',
-      stock: 2,
-      imageUrl: 'https://images.unsplash.com/photo-1473966968600-fa801b1c7c4b?auto=format&fit=crop&q=80&w=400&h=500',
-      pitch: 'Earthy tones like Khaki and Olive are dominating formal-casual wear.'
-    },
-    {
-      id: 'T8',
-      name: 'COBB STRAIGHT-FIT DARK WASH DENIM',
-      group: 'Bottomwear',
-      trend: '⭐ Core Basic',
-      stock: 0,
-      imageUrl: 'https://images.unsplash.com/photo-1604176354204-9268737828e4?auto=format&fit=crop&q=80&w=400&h=500',
-      pitch: 'The absolute core essential for the upcoming festive/winter season.'
-    }
-  ];
+  const DAILY_TARGET = 50000;
 
   useEffect(() => {
     axios.get(`${API_BASE}/api/customers/vip`).then(res => setVips(res.data)).catch(console.error);
@@ -233,12 +168,11 @@ export default function App() {
     axios.get(`${API_BASE}/api/inventory/size-matrix`).then(res => setSizeMatrix(res.data)).catch(console.error);
     axios.get(`${API_BASE}/api/reconciliation/latest`).then(res => setReconData(res.data)).catch(console.error);
     axios.get(`${API_BASE}/api/analytics/top-movers`).then(res => setTopMoversData(res.data)).catch(console.error);
+    axios.get(`${API_BASE}/api/sales/returns`).then(res => setReturnsData(res.data)).catch(console.error);
     axios.get(`${API_BASE}/api/broadcast/group`).then(res => {
       setBroadcastGroup(res.data.contacts || []);
       setBroadcastGroupCount(res.data.totalCount || 0);
     }).catch(console.error);
-
-
   }, []);
 
   // Hardware Barcode Scanner Listener (HID Emulation)
@@ -265,9 +199,9 @@ export default function App() {
           } else {
             setActiveTab('inventory');
           }
-          
+
           setToasts(prev => [
-            ...prev, 
+            ...prev,
             { id: Date.now(), title: 'BARCODE SCANNED 📷', message: `Scanned Tag: ${scannedCode}` }
           ]);
         }
@@ -284,6 +218,25 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  const toggleBillExpansion = async (billId) => {
+    if (expandedBillId === billId) {
+      setExpandedBillId(null);
+      return;
+    }
+    setExpandedBillId(billId);
+    if (!billItemsCache[billId]) {
+      setLoadingBillItems(true);
+      try {
+        const res = await axios.get(`${API_BASE}/api/sales/bill/${billId}/items`);
+        setBillItemsCache(prev => ({ ...prev, [billId]: res.data }));
+      } catch (err) {
+        console.error("Failed to fetch bill items:", err);
+      } finally {
+        setLoadingBillItems(false);
+      }
+    }
+  };
+
   useEffect(() => {
     const fetchAutomationStatus = () => {
       // 1. Fetch backend automation status
@@ -293,6 +246,7 @@ export default function App() {
           setListenerLogs(res.data.logs);
         })
         .catch(console.error);
+
 
       // 2. Fetch WhatsApp gateway status
       axios.get(`${API_BASE}/api/gateway/status`)
@@ -514,17 +468,17 @@ export default function App() {
     setLoadingHistory(true);
     setGeneratedMsg('');
     setCustomerPersona('');
-    
+
     axios.get(`${API_BASE}/api/customers/${customer.Phone}/history`)
       .then(res => {
         setCustomerHistory(res.data);
         if (res.data.length > 0) {
-           setLoadingPersona(true);
-           const recentItems = res.data.slice(0, 5).map(i => i.ArticleName).join(", ");
-           axios.post(`${API_BASE}/api/ai/persona`, { purchases: recentItems })
-             .then(pRes => setCustomerPersona(pRes.data.persona))
-             .catch(console.error)
-             .finally(() => setLoadingPersona(false));
+          setLoadingPersona(true);
+          const recentItems = res.data.slice(0, 5).map(i => i.ArticleName).join(", ");
+          axios.post(`${API_BASE}/api/ai/persona`, { purchases: recentItems })
+            .then(pRes => setCustomerPersona(pRes.data.persona))
+            .catch(console.error)
+            .finally(() => setLoadingPersona(false));
         }
       })
       .catch(console.error)
@@ -586,7 +540,7 @@ export default function App() {
     const counted = parseFloat(countedCashInput) || 0;
     const system = overviewStats.today.CashAmount || 0;
     const variance = counted - system;
-    
+
     try {
       const res = await axios.post(`${API_BASE}/api/reconciliation/save`, {
         systemCash: system,
@@ -672,32 +626,40 @@ export default function App() {
   ];
 
   const navigationItems = [
-    { category: "Overview & P&L", items: [
-      { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { id: "pnl", label: "Store P&L Statement", icon: DollarSign, colorClass: "text-green-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-green-500/15 text-green-400 font-bold border-l-2 border-green-500" },
-      { id: "gst", label: "GST & Tax Summary", icon: FileText, colorClass: "text-emerald-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-emerald-500/15 text-emerald-400 font-bold border-l-2 border-emerald-500" },
-      { id: "analytics", label: "Visual Rush Chart", icon: Clock },
-      { id: "monthly", label: "Monthly Products", icon: Calendar },
-    ]},
-    { category: "Operations", items: [
-      { id: "live", label: "Live Checkouts", icon: Receipt },
-      { id: "topmovers", label: "Top Movers & Size Demand", icon: Flame, colorClass: "text-rose-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-rose-500/15 text-rose-400 font-bold border-l-2 border-rose-500" },
-      { id: "inventory", label: "Live Inventory", icon: Package },
-      { id: "sizematrix", label: "Size Matrix Heatmap", icon: Grid, colorClass: "text-blue-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-blue-500/15 text-blue-400 font-bold border-l-2 border-blue-500" },
-      { id: "deadstock", label: "Dead Stock", icon: Archive },
-      { id: "trending", label: "Trending Catalog", icon: Star, colorClass: "text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-400 font-bold border-l-2 border-amber-500" },
-    ]},
-    { category: "Marketing & CRM", items: [
-      { id: "broadcast", label: "Mass Offer Broadcast", icon: Send, colorClass: "text-emerald-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-emerald-500/15 text-emerald-400 font-bold border-l-2 border-emerald-500" },
-      { id: "wardrobe", label: "Wardrobe Profiler", icon: Shirt, colorClass: "text-purple-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-purple-500/15 text-purple-400 font-bold border-l-2 border-purple-500" },
-      { id: "retention", label: "Retention Radar", icon: Activity, colorClass: "text-rose-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-rose-500/15 text-rose-400 font-bold border-l-2 border-rose-500" },
-      { id: "campaigns", label: "AI Campaigns", icon: Megaphone, colorClass: "text-indigo-400 hover:bg-slate-900 hover:text-indigo-300", activeColorClass: "bg-indigo-500/15 text-indigo-400 font-bold border-l-2 border-indigo-500" },
-      { id: "vip", label: "VIP Profiles", icon: Users },
-      { id: "dormant", label: "Dormant Clients", icon: AlertCircle },
-    ]},
-    { category: "System", items: [
-      { id: "automation", label: "Automation Engine", icon: Terminal },
-    ]}
+    {
+      category: "Overview & P&L", items: [
+        { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+        { id: "pnl", label: "Store P&L Statement", icon: DollarSign, colorClass: "text-green-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-green-500/15 text-green-400 font-bold border-l-2 border-green-500" },
+        { id: "gst", label: "GST & Tax Summary", icon: FileText, colorClass: "text-emerald-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-emerald-500/15 text-emerald-400 font-bold border-l-2 border-emerald-500" },
+        { id: "analytics", label: "Visual Rush Chart", icon: Clock },
+        { id: "monthly", label: "Monthly Products", icon: Calendar },
+      ]
+    },
+    {
+      category: "Operations", items: [
+        { id: "live", label: "Live Checkouts", icon: Receipt },
+        { id: "returns", label: "Returns & Exchanges", icon: RotateCcw, colorClass: "text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-400 font-bold border-l-2 border-amber-500" },
+        { id: "topmovers", label: "Top Movers & Size Demand", icon: Flame, colorClass: "text-rose-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-rose-500/15 text-rose-400 font-bold border-l-2 border-rose-500" },
+        { id: "inventory", label: "Live Inventory", icon: Package },
+        { id: "sizematrix", label: "Size Matrix Heatmap", icon: Grid, colorClass: "text-blue-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-blue-500/15 text-blue-400 font-bold border-l-2 border-blue-500" },
+        { id: "deadstock", label: "Dead Stock", icon: Archive },
+      ]
+    },
+    {
+      category: "Marketing & CRM", items: [
+        { id: "broadcast", label: "Mass Offer Broadcast", icon: Send, colorClass: "text-emerald-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-emerald-500/15 text-emerald-400 font-bold border-l-2 border-emerald-500" },
+        { id: "wardrobe", label: "Wardrobe Profiler", icon: Shirt, colorClass: "text-purple-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-purple-500/15 text-purple-400 font-bold border-l-2 border-purple-500" },
+        { id: "retention", label: "Retention Radar", icon: Activity, colorClass: "text-rose-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-rose-500/15 text-rose-400 font-bold border-l-2 border-rose-500" },
+        { id: "campaigns", label: "AI Campaigns", icon: Megaphone, colorClass: "text-indigo-400 hover:bg-slate-900 hover:text-indigo-300", activeColorClass: "bg-indigo-500/15 text-indigo-400 font-bold border-l-2 border-indigo-500" },
+        { id: "vip", label: "VIP Profiles", icon: Users },
+        { id: "dormant", label: "Dormant Clients", icon: AlertCircle },
+      ]
+    },
+    {
+      category: "System", items: [
+        { id: "automation", label: "Automation Engine", icon: Terminal },
+      ]
+    }
   ];
 
   const classifySubCategory = (articleName = '', productType = '') => {
@@ -743,7 +705,7 @@ export default function App() {
         setActiveTab('inventory');
       }
       setToasts(prev => [
-        ...prev, 
+        ...prev,
         { id: Date.now(), title: 'STOCK SCAN / SEARCH 📷', message: `Filtering inventory for: ${query}` }
       ]);
     }
@@ -753,9 +715,9 @@ export default function App() {
     let textColor = "text-slate-300";
     let badgeColor = "bg-slate-850 text-slate-400 border border-slate-800";
     let badgeText = "INFO";
-    
+
     const text = String(logText);
-    
+
     if (text.includes("[SUCCESS]")) {
       textColor = "text-emerald-300";
       badgeColor = "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
@@ -1027,10 +989,10 @@ export default function App() {
           border-color: #1e293b !important;
         }
       `}</style>
-      
+
       {/* Mobile Drawer Overlay */}
       {isMobileMenuOpen && (
-        <div 
+        <div
           onClick={() => setIsMobileMenuOpen(false)}
           className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-30 lg:hidden"
         />
@@ -1048,14 +1010,14 @@ export default function App() {
             </div>
             <p className="text-slate-500 text-xs font-medium ml-11">Smart CRM System</p>
           </div>
-          <button 
+          <button
             onClick={() => setIsMobileMenuOpen(false)}
             className="lg:hidden text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-900"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
-        
+
         <nav className="flex-1 px-3 space-y-4 mt-6 overflow-y-auto custom-scrollbar">
           {navigationItems.map((cat, catIdx) => (
             <div key={catIdx} className="space-y-1">
@@ -1063,17 +1025,17 @@ export default function App() {
               {cat.items.map((item) => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.id;
-                
+
                 const normalColor = item.colorClass || "text-slate-400 hover:bg-slate-900/60 hover:text-slate-200";
                 const activeColor = item.activeColorClass || "bg-blue-600/15 text-blue-400 font-semibold border-l-2 border-blue-500";
 
                 return (
-                  <button 
+                  <button
                     key={item.id}
-                    onClick={() => { setActiveTab(item.id); setSearchQuery(''); setIsMobileMenuOpen(false); }} 
+                    onClick={() => { setActiveTab(item.id); setSearchQuery(''); setIsMobileMenuOpen(false); }}
                     className={`w-full flex items-center px-4 py-2.5 rounded-lg transition-all duration-200 cursor-pointer relative group text-xs ${isActive ? activeColor : normalColor}`}
                   >
-                    <Icon className={`w-4 h-4 mr-3 transition-colors ${isActive ? "" : "opacity-60 group-hover:opacity-100"}`} /> 
+                    <Icon className={`w-4 h-4 mr-3 transition-colors ${isActive ? "" : "opacity-60 group-hover:opacity-100"}`} />
                     <span>{item.label}</span>
                   </button>
                 );
@@ -1086,11 +1048,11 @@ export default function App() {
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-auto relative bg-slate-50 min-w-0">
-        
+
         {/* Top Navbar */}
         <div className="bg-white/80 backdrop-blur-md px-4 lg:px-8 py-3.5 border-b border-slate-200 flex flex-col md:flex-row gap-3 justify-between items-stretch md:items-center sticky top-0 z-20">
-          <div className="flex items-center gap-3 w-full md:max-w-lg">
-            <button 
+          <div className="flex items-center gap-3 w-full md:w-full sm:max-w-lg">
+            <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="lg:hidden p-2 bg-slate-100 border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-200 transition-all cursor-pointer shrink-0"
             >
@@ -1098,9 +1060,9 @@ export default function App() {
             </button>
             <div className="relative flex-1">
               <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-              <input 
-                type="text" 
-                placeholder="Scan Tag or Search Article / Phone..." 
+              <input
+                type="text"
+                placeholder="Scan Tag or Search Article / Phone..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={handleGlobalSearch}
@@ -1112,59 +1074,59 @@ export default function App() {
               </div>
             </div>
           </div>
-          
+
           <div className="flex items-center justify-between md:justify-end gap-2 overflow-x-auto pb-1 md:pb-0">
-             {/* EOD Cash Reconciliation Button */}
-             <button 
-               onClick={() => setShowReconModal(true)}
-               className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs transition-all shadow-sm cursor-pointer flex items-center gap-1 shrink-0"
-               title="EOD Cash Register Reconciliation"
-             >
-               <Calculator className="w-3.5 h-3.5" />
-               <span>EOD Cash</span>
-             </button>
+            {/* EOD Cash Reconciliation Button */}
+            <button
+              onClick={() => setShowReconModal(true)}
+              className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs transition-all shadow-sm cursor-pointer flex items-center gap-1 shrink-0"
+              title="EOD Cash Register Reconciliation"
+            >
+              <Calculator className="w-3.5 h-3.5" />
+              <span>EOD Cash</span>
+            </button>
 
-             {/* EOD WhatsApp Report Button */}
-             <button 
-               onClick={handleGenerateEodReport}
-               className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs transition-all shadow-sm cursor-pointer flex items-center gap-1 shrink-0"
-               title="Generate Daily EOD Report for Owner"
-             >
-               <Send className="w-3.5 h-3.5" />
-               <span>EOD Report</span>
-             </button>
+            {/* EOD WhatsApp Report Button */}
+            <button
+              onClick={handleGenerateEodReport}
+              className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs transition-all shadow-sm cursor-pointer flex items-center gap-1 shrink-0"
+              title="Generate Daily EOD Report for Owner"
+            >
+              <Send className="w-3.5 h-3.5" />
+              <span>EOD Report</span>
+            </button>
 
-             {/* Dark Mode Toggle Button */}
-             <button 
-               onClick={() => setDarkMode(!darkMode)}
-               className="dark-toggle-btn p-1.5 bg-slate-100 hover:bg-slate-200/80 border border-slate-200 text-slate-650 rounded-xl transition-all shadow-sm cursor-pointer flex items-center justify-center shrink-0"
-               title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
-             >
-               {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
-             </button>
+            {/* Dark Mode Toggle Button */}
+            <button
+              onClick={() => setDarkMode(!darkMode)}
+              className="dark-toggle-btn p-1.5 bg-slate-100 hover:bg-slate-200/80 border border-slate-200 text-slate-650 rounded-xl transition-all shadow-sm cursor-pointer flex items-center justify-center shrink-0"
+              title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            >
+              {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
+            </button>
 
-             {/* Systems status badge */}
-             <div className="status-badge flex items-center space-x-1.5 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200 shadow-sm cursor-help shrink-0" title="Automation Engine Status">
-               <div className="relative flex h-2 w-2">
-                  {(isGatewayRunning && isListenerRunning) && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>}
-                  <span className={`relative inline-flex rounded-full h-2 w-2 ${isGatewayRunning && isListenerRunning ? 'bg-green-500' : 'bg-red-500'}`}></span>
-               </div>
-               <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">
-                 {isGatewayRunning && isListenerRunning ? 'Active' : 'Offline'}
-               </span>
-             </div>
+            {/* Systems status badge */}
+            <div className="status-badge flex items-center space-x-1.5 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200 shadow-sm cursor-help shrink-0" title="Automation Engine Status">
+              <div className="relative flex h-2 w-2">
+                {(isGatewayRunning && isListenerRunning) && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>}
+                <span className={`relative inline-flex rounded-full h-2 w-2 ${isGatewayRunning && isListenerRunning ? 'bg-green-500' : 'bg-red-500'}`}></span>
+              </div>
+              <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">
+                {isGatewayRunning && isListenerRunning ? 'Active' : 'Offline'}
+              </span>
+            </div>
           </div>
         </div>
 
         <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
-          
+
           {/* Dynamic Views */}
           <div>
-            
+
             {/* 1. COMMAND CENTER */}
             {activeTab === 'dashboard' && (
               <div className="space-y-6">
-                
+
                 {/* Header */}
                 <div className="flex justify-between items-end mb-2">
                   <div>
@@ -1175,8 +1137,8 @@ export default function App() {
 
                 {/* Top Row Metrics */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                  
-                  {/* Revenue Card */}
+
+                  {/* Revenue Card with WoW/MoM Trends */}
                   <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
                     <div className="flex justify-between items-start">
                       <div>
@@ -1188,11 +1150,58 @@ export default function App() {
                       </div>
                     </div>
                     <div>
-                      <div className="mt-4 flex items-center text-sm mb-3">
-                        <span className={`font-bold ${overviewStats.today.TotalSales >= overviewStats.yesterday.TotalSales ? 'text-green-600' : 'text-amber-600'}`}>
-                          {overviewStats.yesterday.TotalSales === 0 ? '+100%' : `${(((overviewStats.today.TotalSales - overviewStats.yesterday.TotalSales) / overviewStats.yesterday.TotalSales) * 100).toFixed(1)}%`}
-                        </span>
-                        <span className="text-slate-400 ml-2">vs yesterday</span>
+                      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs mb-3">
+                        {/* vs Yesterday */}
+                        <div className="flex items-center gap-1">
+                          {(() => {
+                            const diff = overviewStats.yesterday.TotalSales > 0
+                              ? (((overviewStats.today.TotalSales - overviewStats.yesterday.TotalSales) / overviewStats.yesterday.TotalSales) * 100).toFixed(1)
+                              : overviewStats.today.TotalSales > 0 ? 100 : 0;
+                            const isUp = diff >= 0;
+                            return (
+                              <>
+                                <span className={`font-black ${isUp ? 'text-green-600' : 'text-rose-500'}`}>
+                                  {isUp ? '↑' : '↓'} {Math.abs(diff)}%
+                                </span>
+                                <span className="text-slate-400">vs yesterday</span>
+                              </>
+                            );
+                          })()}
+                        </div>
+                        {/* vs Last Week */}
+                        <div className="flex items-center gap-1">
+                          {(() => {
+                            const thisW = overviewStats.thisWeek?.TotalSales || 0;
+                            const lastW = overviewStats.lastWeek?.TotalSales || 0;
+                            const diff = lastW > 0 ? (((thisW - lastW) / lastW) * 100).toFixed(1) : (thisW > 0 ? 100 : 0);
+                            const isUp = diff >= 0;
+                            return (
+                              <>
+                                <span className={`font-black ${isUp ? 'text-green-600' : 'text-rose-500'}`}>
+                                  {isUp ? '↑' : '↓'} {Math.abs(diff)}%
+                                </span>
+                                <span className="text-slate-400">WoW</span>
+                              </>
+                            );
+                          })()}
+                        </div>
+                        {/* vs Last Month */}
+                        <div className="flex items-center gap-1">
+                          {(() => {
+                            const thisM = overviewStats.thisMonth?.TotalSales || 0;
+                            const lastM = overviewStats.lastMonth?.TotalSales || 0;
+                            const diff = lastM > 0 ? (((thisM - lastM) / lastM) * 100).toFixed(1) : (thisM > 0 ? 100 : 0);
+                            const isUp = diff >= 0;
+                            return (
+                              <>
+                                <span className={`font-black ${isUp ? 'text-green-600' : 'text-rose-500'}`}>
+                                  {isUp ? '↑' : '↓'} {Math.abs(diff)}%
+                                </span>
+                                <span className="text-slate-400">MoM</span>
+                              </>
+                            );
+                          })()}
+                        </div>
                       </div>
                       <div className="flex flex-wrap gap-2 text-[10px] font-bold tracking-wide uppercase">
                         <span className={`px-2.5 py-1 rounded-md border ${darkMode ? 'bg-emerald-900/30 text-emerald-400 border-emerald-800/50' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
@@ -1230,7 +1239,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Average Order Value */}
+                  {/* Average Order Value + Bill Count Trends */}
                   <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
                     <div className="flex justify-between items-start">
                       <div>
@@ -1241,8 +1250,18 @@ export default function App() {
                         <ShoppingBag className="w-5 h-5 text-purple-600" />
                       </div>
                     </div>
-                    <div className="mt-4 text-sm text-slate-500">
-                      Across <span className="font-bold text-slate-700">{overviewStats.today.BillCount}</span> total invoices today.
+                    <div className="mt-3">
+                      <div className="text-sm text-slate-500 mb-2">
+                        Across <span className="font-bold text-slate-700">{overviewStats.today.BillCount}</span> invoices today.
+                      </div>
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] font-bold">
+                        <span className={`px-2 py-0.5 rounded-md border ${darkMode ? 'bg-slate-800 text-slate-300 border-slate-700' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                          This Week: {overviewStats.thisWeek?.BillCount || 0} bills
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-md border ${darkMode ? 'bg-slate-800 text-slate-300 border-slate-700' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                          This Month: {overviewStats.thisMonth?.BillCount || 0} bills
+                        </span>
+                      </div>
                     </div>
                   </div>
 
@@ -1257,26 +1276,26 @@ export default function App() {
                         <Calendar className="w-4 h-4 text-blue-600" />
                       </div>
                     </div>
-                    
+
                     <div className="grid grid-cols-7 gap-1">
                       {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
                         <div key={day} className="text-[10px] font-bold text-slate-400 text-center py-1">{day}</div>
                       ))}
-                      
+
                       {Array.from({ length: new Date(new Date().getFullYear(), new Date().getMonth(), 1).getDay() }).map((_, i) => (
                         <div key={`empty-${i}`} className="h-8"></div>
                       ))}
-                      
+
                       {Array.from({ length: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate() }).map((_, i) => {
                         const day = i + 1;
                         const dateStr = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                         const dayData = dailySales.find(d => d.SaleDate && d.SaleDate.startsWith(dateStr));
                         const hasSales = dayData && dayData.TotalSales > 0;
-                        
+
                         const dayOfWeek = new Date(new Date().getFullYear(), new Date().getMonth(), day).getDay();
                         let tooltipPositionClass = "left-1/2 -translate-x-1/2";
                         let arrowPositionClass = "left-1/2 -translate-x-1/2";
-                        
+
                         // Prevent tooltip from overflowing screen edges on mobile
                         if (dayOfWeek <= 1) {
                           tooltipPositionClass = "left-0";
@@ -1288,7 +1307,7 @@ export default function App() {
 
                         return (
                           <div key={day} className="relative flex items-center justify-center h-8">
-                            <div 
+                            <div
                               onClick={() => {
                                 if (hasSales) {
                                   setSelectedCalendarDay(selectedCalendarDay === day ? null : day);
@@ -1298,17 +1317,17 @@ export default function App() {
                             >
                               {day}
                             </div>
-                            
+
                             {/* Click Tooltip */}
                             {hasSales && selectedCalendarDay === day && (
                               <div className={`absolute bottom-full mb-2 w-48 bg-slate-800 text-white text-xs rounded-lg p-3 z-[60] shadow-xl animate-in fade-in zoom-in-95 duration-200 ${tooltipPositionClass}`}>
                                 <div className="font-bold border-b border-slate-700 pb-1 mb-1.5 text-slate-200 flex justify-between items-center">
                                   <span>{new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                                  <button 
+                                  <button
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       setSelectedCalendarDay(null);
-                                    }} 
+                                    }}
                                     className="text-slate-400 hover:text-white p-1 -mr-1 rounded"
                                   >
                                     ✕
@@ -1330,7 +1349,7 @@ export default function App() {
                                   <span className="text-slate-400 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-orange-400"></span>Card:</span>
                                   <span>{formatCurrency(dayData.CardAmount || 0)}</span>
                                 </div>
-                                
+
                                 {/* Triangle arrow for tooltip */}
                                 <div className={`absolute top-full border-4 border-transparent border-t-slate-800 ${arrowPositionClass}`}></div>
                               </div>
@@ -1345,17 +1364,17 @@ export default function App() {
 
                 {/* BENTO GRID: Middle Row */}
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  
+
                   {/* Left Column (Spans 2) */}
                   <div className="lg:col-span-2 flex flex-col gap-6">
-                    
+
                     {/* Visual Sales Trend */}
                     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex-1">
                       <div className="flex justify-between items-center mb-6">
-                         <h3 className="font-bold text-slate-800 flex items-center">
-                           <BarChart3 className="w-4 h-4 mr-2 text-blue-500" /> Hourly Footfall Velocity
-                         </h3>
-                         <button onClick={() => setActiveTab('analytics')} className="text-xs font-bold text-blue-600 hover:text-blue-800 cursor-pointer">View Full &rarr;</button>
+                        <h3 className="font-bold text-slate-800 flex items-center">
+                          <BarChart3 className="w-4 h-4 mr-2 text-blue-500" /> Hourly Footfall Velocity
+                        </h3>
+                        <button onClick={() => setActiveTab('analytics')} className="text-xs font-bold text-blue-600 hover:text-blue-800 cursor-pointer">View Full &rarr;</button>
                       </div>
                       <div className="h-40 flex items-end justify-between gap-2">
                         {hourlySales.map((h, i) => {
@@ -1366,8 +1385,8 @@ export default function App() {
                               <div className="absolute -top-10 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] py-1 px-2 rounded shadow-lg whitespace-nowrap z-20 pointer-events-none">
                                 {formatCurrency(h.TotalRevenue)}
                               </div>
-                              <div 
-                                style={{ height: `${heightPercent}%` }} 
+                              <div
+                                style={{ height: `${heightPercent}%` }}
                                 className={`w-full max-w-[36px] rounded-t-md transition-all duration-500 ${isPeak ? 'bg-blue-500' : 'bg-slate-200 group-hover:bg-blue-300'}`}
                               />
                               <span className="text-[10px] text-slate-400 mt-2 font-medium">{h.SaleHour}:00</span>
@@ -1379,7 +1398,7 @@ export default function App() {
                     </div>
 
                     {/* Quick Action Grid */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                       <button onClick={() => setActiveTab('inventory')} className="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center gap-2 group text-center cursor-pointer">
                         <div className="bg-amber-50 p-3 rounded-full text-amber-600 group-hover:scale-110 transition-transform"><Package className="w-5 h-5" /></div>
                         <span className="text-xs font-bold text-slate-700">Auto Restock</span>
@@ -1402,7 +1421,7 @@ export default function App() {
 
                   {/* Right Column - Alerts & Pulse */}
                   <div className="flex flex-col gap-6">
-                    
+
                     {/* Action Required (Alerts) */}
                     <div className="bg-white rounded-2xl border border-red-100 shadow-sm overflow-hidden flex-shrink-0">
                       <div className="bg-red-50/50 border-b border-red-100 p-4 flex items-center justify-between">
@@ -1411,7 +1430,7 @@ export default function App() {
                           <h3 className="text-sm font-bold text-red-900">Action Required</h3>
                         </div>
                         <div className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                           {( (!isGatewayRunning ? 1 : 0) + (!isListenerRunning ? 1 : 0) + (deadStock.length > 0 ? 1 : 0) )} Alerts
+                          {((!isGatewayRunning ? 1 : 0) + (!isListenerRunning ? 1 : 0) + (deadStock.length > 0 ? 1 : 0))} Alerts
                         </div>
                       </div>
                       <div className="divide-y divide-slate-50">
@@ -1455,12 +1474,11 @@ export default function App() {
                             <div>
                               <p className="text-sm font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{bill.CustomerName?.trim() || bill.FirstName?.trim() || 'Guest Customer'}</p>
                               <p className="text-xs text-slate-500 mt-0.5">{new Date(bill.BillTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • #{bill.BillNumber}</p>
-                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded mt-1.5 inline-block ${
-                                bill.PaymentMode === 'Cash' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
-                                bill.PaymentMode === 'UPI / Online' ? 'bg-purple-50 text-purple-700 border border-purple-200' :
-                                bill.PaymentMode === 'Debit / Credit Card' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
-                                'bg-amber-50 text-amber-700 border border-amber-200'
-                              }`}>
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded mt-1.5 inline-block ${bill.PaymentMode === 'Cash' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                                  bill.PaymentMode === 'UPI / Online' ? 'bg-purple-50 text-purple-700 border border-purple-200' :
+                                    bill.PaymentMode === 'Debit / Credit Card' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                                      'bg-amber-50 text-amber-700 border border-amber-200'
+                                }`}>
                                 {bill.PaymentMode || 'Cash'}
                               </span>
                             </div>
@@ -1468,9 +1486,9 @@ export default function App() {
                           </div>
                         ))}
                         {liveBills.length === 0 && (
-                          <div className="p-8 text-center text-sm text-slate-400 flex flex-col items-center justify-center h-full">
-                             <RefreshCw className="w-6 h-6 mb-2 text-slate-300" />
-                             Waiting for POS checkouts...
+                          <div className="p-4 sm:p-6 lg:p-8 text-center text-sm text-slate-400 flex flex-col items-center justify-center h-full">
+                            <RefreshCw className="w-6 h-6 mb-2 text-slate-300" />
+                            Waiting for POS checkouts...
                           </div>
                         )}
                       </div>
@@ -1478,120 +1496,80 @@ export default function App() {
 
                   </div>
                 </div>
-              </div>
-            )}
 
-            {/* TRENDING CATALOG */}
-            {activeTab === 'trending' && (
-              <div className="p-8">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end mb-8 gap-4 border-b border-slate-200 pb-6">
-                  <div>
-                    <h3 className="text-3xl font-black text-slate-800 flex items-center">
-                      <Star className="w-8 h-8 mr-3 text-amber-500" /> Cobb Trend Catalog
-                    </h3>
-                    <p className="text-base text-slate-500 mt-2">High-demand Cobb Apparels items trending nationwide that are critically low in your Pundri store.</p>
-                  </div>
-                  <button 
-                    onClick={() => {
-                      let msg = `Hello Supplier, please dispatch the following All-India Trending items to Cobb Pundri immediately:\n\n`;
-                      trendingCatalog.forEach(i => {
-                         msg += `- ${i.name} (Currently ${i.stock} in stock)\n`;
-                      });
-                      window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
-                    }}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold px-6 py-3 rounded-xl shadow-lg shadow-indigo-600/20 transition-colors flex items-center cursor-pointer"
-                  >
-                    <Send className="w-5 h-5 mr-2" /> Order All to Supplier
-                  </button>
-                </div>
-
-                {/* UPPERWEAR SECTION */}
-                <div className="mb-12">
-                  <h4 className="text-xl font-bold text-slate-800 mb-6 flex items-center">
-                    <span className="bg-blue-100 text-blue-700 p-2 rounded-lg mr-3"><Shirt className="w-5 h-5" /></span>
-                    Upperwear Collection
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {trendingCatalog.filter(item => item.group === 'Upperwear').map((item) => (
-                      <div key={item.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden group hover:shadow-xl transition-all duration-300 flex flex-col">
-                        <div className="h-64 overflow-hidden relative bg-slate-100 flex-shrink-0">
-                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out" />
-                          <div className="absolute top-3 left-3 bg-white/95 backdrop-blur px-2.5 py-1 rounded-md shadow-sm border border-slate-200 flex items-center">
-                             <span className="text-[10px] font-black text-indigo-700 uppercase tracking-widest">{item.trend}</span>
-                          </div>
-                          {item.stock === 0 ? (
-                             <div className="absolute top-3 right-3 bg-red-500 text-white px-2 py-1 rounded-md shadow-md">
-                                <span className="text-[10px] font-black uppercase tracking-widest">Out of Stock</span>
-                             </div>
-                          ) : (
-                             <div className="absolute top-3 right-3 bg-amber-500 text-white px-2 py-1 rounded-md shadow-md">
-                                <span className="text-[10px] font-black uppercase tracking-widest">Low Stock: {item.stock}</span>
-                             </div>
-                          )}
-                        </div>
-                        <div className="p-5 flex-1 flex flex-col justify-between">
-                          <div>
-                            <h4 className="text-sm font-bold text-slate-800 mb-2 leading-tight">{item.name}</h4>
-                            <p className="text-xs text-slate-500 mb-5 leading-relaxed">{item.pitch}</p>
-                          </div>
-                          <button 
-                             onClick={() => {
-                                let msg = `Hello Supplier, please dispatch ${item.name} to Cobb Pundri. We currently have ${item.stock} units and it is highly requested.`;
-                                window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
-                             }}
-                             className="w-full bg-slate-50 hover:bg-indigo-50 text-indigo-600 border border-slate-200 hover:border-indigo-200 font-bold py-2.5 rounded-lg text-xs transition-colors flex items-center justify-center cursor-pointer"
-                          >
-                            <Package className="w-4 h-4 mr-2" /> Request Restock
-                          </button>
-                        </div>
+                {/* Payment Mode Trend Chart */}
+                {dailySales.length > 0 && (
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
+                    <div className="flex justify-between items-center mb-5">
+                      <h3 className="font-bold text-slate-800 flex items-center">
+                        <DollarSign className="w-4 h-4 mr-2 text-emerald-500" /> Payment Mode Breakdown
+                      </h3>
+                      <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-wider">
+                        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-emerald-500"></span> Cash</span>
+                        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-blue-500"></span> Card</span>
+                        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-purple-500"></span> UPI</span>
                       </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* BOTTOMWEAR SECTION */}
-                <div>
-                  <h4 className="text-xl font-bold text-slate-800 mb-6 flex items-center">
-                    <span className="bg-blue-100 text-blue-700 p-2 rounded-lg mr-3"><Scissors className="w-5 h-5" /></span>
-                    Bottomwear Collection
-                  </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                    {trendingCatalog.filter(item => item.group === 'Bottomwear').map((item) => (
-                      <div key={item.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden group hover:shadow-xl transition-all duration-300 flex flex-col">
-                        <div className="h-64 overflow-hidden relative bg-slate-100 flex-shrink-0">
-                          <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out" />
-                          <div className="absolute top-3 left-3 bg-white/95 backdrop-blur px-2.5 py-1 rounded-md shadow-sm border border-slate-200 flex items-center">
-                             <span className="text-[10px] font-black text-indigo-700 uppercase tracking-widest">{item.trend}</span>
+                    </div>
+                    <div className="space-y-2 max-h-[280px] overflow-y-auto custom-scrollbar pr-1">
+                      {dailySales.map((day, idx) => {
+                        const cash = day.CashAmount || 0;
+                        const card = Math.max(day.CardAmount || 0, 0);
+                        const upi = day.UPIAmount || 0;
+                        const total = cash + card + upi;
+                        if (total === 0) return null;
+                        const cashPct = (cash / total) * 100;
+                        const cardPct = (card / total) * 100;
+                        const upiPct = (upi / total) * 100;
+                        const dateLabel = day.SaleDate ? new Date(day.SaleDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : `Day ${idx + 1}`;
+                        return (
+                          <div key={idx} className="flex items-center gap-3 group">
+                            <span className="text-[11px] font-bold text-slate-500 w-14 text-right shrink-0">{dateLabel}</span>
+                            <div className="flex-1 flex h-5 rounded-md overflow-hidden bg-slate-100 relative">
+                              {cashPct > 0 && <div className="bg-emerald-500 h-full transition-all duration-500 relative group/cash" style={{ width: `${cashPct}%` }}>
+                                <div className="absolute inset-0 flex items-center justify-center text-[8px] font-black text-white opacity-0 group-hover:opacity-100 transition-opacity">{cashPct.toFixed(0)}%</div>
+                              </div>}
+                              {cardPct > 0 && <div className="bg-blue-500 h-full transition-all duration-500 relative" style={{ width: `${cardPct}%` }}>
+                                <div className="absolute inset-0 flex items-center justify-center text-[8px] font-black text-white opacity-0 group-hover:opacity-100 transition-opacity">{cardPct.toFixed(0)}%</div>
+                              </div>}
+                              {upiPct > 0 && <div className="bg-purple-500 h-full transition-all duration-500 relative" style={{ width: `${upiPct}%` }}>
+                                <div className="absolute inset-0 flex items-center justify-center text-[8px] font-black text-white opacity-0 group-hover:opacity-100 transition-opacity">{upiPct.toFixed(0)}%</div>
+                              </div>}
+                            </div>
+                            <span className="text-[11px] font-bold text-slate-600 w-20 text-right shrink-0">{formatCurrency(total)}</span>
                           </div>
-                          {item.stock === 0 ? (
-                             <div className="absolute top-3 right-3 bg-red-500 text-white px-2 py-1 rounded-md shadow-md">
-                                <span className="text-[10px] font-black uppercase tracking-widest">Out of Stock</span>
-                             </div>
-                          ) : (
-                             <div className="absolute top-3 right-3 bg-amber-500 text-white px-2 py-1 rounded-md shadow-md">
-                                <span className="text-[10px] font-black uppercase tracking-widest">Low Stock: {item.stock}</span>
-                             </div>
-                          )}
-                        </div>
-                        <div className="p-5 flex-1 flex flex-col justify-between">
-                          <div>
-                            <h4 className="text-sm font-bold text-slate-800 mb-2 leading-tight">{item.name}</h4>
-                            <p className="text-xs text-slate-500 mb-5 leading-relaxed">{item.pitch}</p>
-                          </div>
-                          <button 
-                             onClick={() => {
-                                let msg = `Hello Supplier, please dispatch ${item.name} to Cobb Pundri. We currently have ${item.stock} units and it is highly requested.`;
-                                window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
-                             }}
-                             className="w-full bg-slate-50 hover:bg-indigo-50 text-indigo-600 border border-slate-200 hover:border-indigo-200 font-bold py-2.5 rounded-lg text-xs transition-colors flex items-center justify-center cursor-pointer"
-                          >
-                            <Package className="w-4 h-4 mr-2" /> Request Restock
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                        );
+                      })}
+                    </div>
+                    {/* Monthly Payment Totals Summary */}
+                    <div className="mt-4 pt-4 border-t border-slate-100 grid grid-cols-3 gap-3">
+                      {(() => {
+                        const totalCash = dailySales.reduce((s, d) => s + (d.CashAmount || 0), 0);
+                        const totalCard = dailySales.reduce((s, d) => s + Math.max(d.CardAmount || 0, 0), 0);
+                        const totalUpi = dailySales.reduce((s, d) => s + (d.UPIAmount || 0), 0);
+                        const grandTotal = totalCash + totalCard + totalUpi;
+                        return (
+                          <>
+                            <div className="text-center">
+                              <p className="text-[10px] font-bold text-slate-400 uppercase">Cash</p>
+                              <p className="text-sm font-black text-emerald-600">{formatCurrency(totalCash)}</p>
+                              <p className="text-[10px] text-slate-400">{grandTotal > 0 ? ((totalCash / grandTotal) * 100).toFixed(1) : 0}%</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-[10px] font-bold text-slate-400 uppercase">Card</p>
+                              <p className="text-sm font-black text-blue-600">{formatCurrency(totalCard)}</p>
+                              <p className="text-[10px] text-slate-400">{grandTotal > 0 ? ((totalCard / grandTotal) * 100).toFixed(1) : 0}%</p>
+                            </div>
+                            <div className="text-center">
+                              <p className="text-[10px] font-bold text-slate-400 uppercase">UPI</p>
+                              <p className="text-sm font-black text-purple-600">{formatCurrency(totalUpi)}</p>
+                              <p className="text-[10px] text-slate-400">{grandTotal > 0 ? ((totalUpi / grandTotal) * 100).toFixed(1) : 0}%</p>
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </div>
                   </div>
-                </div>
+                )}
 
               </div>
             )}
@@ -1643,56 +1621,56 @@ export default function App() {
                       <table className="w-full text-left text-sm">
                         <thead>
                           <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase text-[11px]">
-                            <th className="pb-3">Line Item Description</th>
-                            <th className="pb-3 text-right">Amount (₹)</th>
-                            <th className="pb-3 text-right">% of Revenue</th>
+                            <th className="pb-3 whitespace-nowrap">Line Item Description</th>
+                            <th className="pb-3 text-right whitespace-nowrap">Amount (₹)</th>
+                            <th className="pb-3 text-right whitespace-nowrap">% of Revenue</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 font-medium">
                           <tr>
-                            <td className="py-3 font-bold text-slate-800">Gross Sales Revenue (Receipts)</td>
-                            <td className="py-3 text-right font-bold text-slate-900">{formatCurrency(pnlData.grossSales)}</td>
-                            <td className="py-3 text-right text-slate-500 font-mono">100%</td>
+                            <td className="py-3 font-bold text-slate-800 whitespace-nowrap">Gross Sales Revenue (Receipts)</td>
+                            <td className="py-3 text-right font-bold text-slate-900 whitespace-nowrap">{formatCurrency(pnlData.grossSales)}</td>
+                            <td className="py-3 text-right text-slate-500 font-mono whitespace-nowrap">100%</td>
                           </tr>
                           <tr>
-                            <td className="py-3 text-slate-600">Less: GST Tax Collected</td>
-                            <td className="py-3 text-right text-rose-600 font-mono">-{formatCurrency(pnlData.taxCollected)}</td>
-                            <td className="py-3 text-right text-slate-400 font-mono">{pnlData.grossSales > 0 ? (pnlData.taxCollected / pnlData.grossSales * 100).toFixed(1) : 0}%</td>
+                            <td className="py-3 text-slate-600 whitespace-nowrap">Less: GST Tax Collected</td>
+                            <td className="py-3 text-right text-rose-600 font-mono whitespace-nowrap">-{formatCurrency(pnlData.taxCollected)}</td>
+                            <td className="py-3 text-right text-slate-400 font-mono whitespace-nowrap">{pnlData.grossSales > 0 ? (pnlData.taxCollected / pnlData.grossSales * 100).toFixed(1) : 0}%</td>
                           </tr>
                           <tr className="bg-slate-50 font-bold">
-                            <td className="py-3 text-slate-800">Net Taxable Revenue</td>
-                            <td className="py-3 text-right text-slate-900">{formatCurrency(pnlData.taxableRevenue)}</td>
-                            <td className="py-3 text-right text-slate-600 font-mono">{pnlData.grossSales > 0 ? (pnlData.taxableRevenue / pnlData.grossSales * 100).toFixed(1) : 0}%</td>
+                            <td className="py-3 text-slate-800 whitespace-nowrap">Net Taxable Revenue</td>
+                            <td className="py-3 text-right text-slate-900 whitespace-nowrap">{formatCurrency(pnlData.taxableRevenue)}</td>
+                            <td className="py-3 text-right text-slate-600 font-mono whitespace-nowrap">{pnlData.grossSales > 0 ? (pnlData.taxableRevenue / pnlData.grossSales * 100).toFixed(1) : 0}%</td>
                           </tr>
                           <tr>
-                            <td className="py-3 text-slate-600">Less: Cost of Goods Sold (Wholesale Purchase)</td>
-                            <td className="py-3 text-right text-rose-600 font-mono">-{formatCurrency(pnlData.costOfGoodsSold)}</td>
-                            <td className="py-3 text-right text-slate-400 font-mono">48%</td>
+                            <td className="py-3 text-slate-600 whitespace-nowrap">Less: Cost of Goods Sold (Wholesale Purchase)</td>
+                            <td className="py-3 text-right text-rose-600 font-mono whitespace-nowrap">-{formatCurrency(pnlData.costOfGoodsSold)}</td>
+                            <td className="py-3 text-right text-slate-400 font-mono whitespace-nowrap">48%</td>
                           </tr>
                           <tr>
-                            <td className="py-3 text-slate-600">Less: Store Rent (Pundri Main Market)</td>
-                            <td className="py-3 text-right text-slate-600 font-mono">-{formatCurrency(pnlData.operatingExpenses.rent)}</td>
-                            <td className="py-3 text-right text-slate-400 font-mono">-</td>
+                            <td className="py-3 text-slate-600 whitespace-nowrap">Less: Store Rent (Pundri Main Market)</td>
+                            <td className="py-3 text-right text-slate-600 font-mono whitespace-nowrap">-{formatCurrency(pnlData.operatingExpenses.rent)}</td>
+                            <td className="py-3 text-right text-slate-400 font-mono whitespace-nowrap">-</td>
                           </tr>
                           <tr>
-                            <td className="py-3 text-slate-600">Less: Staff Salaries & Payroll</td>
-                            <td className="py-3 text-right text-slate-600 font-mono">-{formatCurrency(pnlData.operatingExpenses.staffSalaries)}</td>
-                            <td className="py-3 text-right text-slate-400 font-mono">-</td>
+                            <td className="py-3 text-slate-600 whitespace-nowrap">Less: Staff Salaries & Payroll</td>
+                            <td className="py-3 text-right text-slate-600 font-mono whitespace-nowrap">-{formatCurrency(pnlData.operatingExpenses.staffSalaries)}</td>
+                            <td className="py-3 text-right text-slate-400 font-mono whitespace-nowrap">-</td>
                           </tr>
                           <tr>
-                            <td className="py-3 text-slate-600">Less: Electricity & Air-Conditioning Utilities</td>
-                            <td className="py-3 text-right text-slate-600 font-mono">-{formatCurrency(pnlData.operatingExpenses.electricity)}</td>
-                            <td className="py-3 text-right text-slate-400 font-mono">-</td>
+                            <td className="py-3 text-slate-600 whitespace-nowrap">Less: Electricity & Air-Conditioning Utilities</td>
+                            <td className="py-3 text-right text-slate-600 font-mono whitespace-nowrap">-{formatCurrency(pnlData.operatingExpenses.electricity)}</td>
+                            <td className="py-3 text-right text-slate-400 font-mono whitespace-nowrap">-</td>
                           </tr>
                           <tr>
-                            <td className="py-3 text-slate-600">Less: Miscellaneous Operating & Maintenance</td>
-                            <td className="py-3 text-right text-slate-600 font-mono">-{formatCurrency(pnlData.operatingExpenses.miscExpenses)}</td>
-                            <td className="py-3 text-right text-slate-400 font-mono">-</td>
+                            <td className="py-3 text-slate-600 whitespace-nowrap">Less: Miscellaneous Operating & Maintenance</td>
+                            <td className="py-3 text-right text-slate-600 font-mono whitespace-nowrap">-{formatCurrency(pnlData.operatingExpenses.miscExpenses)}</td>
+                            <td className="py-3 text-right text-slate-400 font-mono whitespace-nowrap">-</td>
                           </tr>
                           <tr className="bg-emerald-50 text-emerald-900 font-black text-base">
-                            <td className="py-4">Net Monthly Store Operating Profit</td>
-                            <td className="py-4 text-right text-emerald-600">{formatCurrency(pnlData.netStoreProfit)}</td>
-                            <td className="py-4 text-right text-emerald-700 font-mono">{pnlData.profitMarginPct}%</td>
+                            <td className="py-4 whitespace-nowrap">Net Monthly Store Operating Profit</td>
+                            <td className="py-4 text-right text-emerald-600 whitespace-nowrap">{formatCurrency(pnlData.netStoreProfit)}</td>
+                            <td className="py-4 text-right text-emerald-700 font-mono whitespace-nowrap">{pnlData.profitMarginPct}%</td>
                           </tr>
                         </tbody>
                       </table>
@@ -1713,7 +1691,7 @@ export default function App() {
                     <p className="text-sm text-slate-500 mt-1">Send 1-click WhatsApp offer broadcasts to every customer who has ever shopped at Cobb Pundri.</p>
                   </div>
                   <div className="flex gap-2">
-                    <button 
+                    <button
                       onClick={handleSyncBroadcastGroup}
                       disabled={isSyncingGroup}
                       className="px-4 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-600 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-sm disabled:opacity-50"
@@ -1721,7 +1699,7 @@ export default function App() {
                       <RefreshCw className={`w-4 h-4 ${isSyncingGroup ? 'animate-spin' : ''}`} />
                       <span>{isSyncingGroup ? 'Syncing POS...' : 'Sync Billed Customers'}</span>
                     </button>
-                    <button 
+                    <button
                       onClick={handleExportGroupCsv}
                       className="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-sm"
                     >
@@ -1761,7 +1739,7 @@ export default function App() {
                 </div>
 
                 {/* Offer Broadcast Composer Card */}
-                <div className="bg-white p-6 sm:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+                <div className="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-100 pb-4 gap-3">
                     <div>
                       <h4 className="font-bold text-slate-800 text-lg flex items-center">
@@ -1772,19 +1750,19 @@ export default function App() {
 
                     {/* Quick Preset Buttons */}
                     <div className="flex flex-wrap gap-2">
-                      <button 
+                      <button
                         onClick={() => setBroadcastMsg('🎉 *SPECIAL OFFER FROM COBB PUNDRI!* 🎉\n\nHello *{name}*! 👋\n\nEnjoy *BUY 2 GET 1 FREE* on all Suits, Formals, & Denim Collections this week at Cobb Pundri! 🏷️✨\n\n-----------------------------------\n📍 *Store Location:*\nhttps://maps.app.goo.gl/HxgE1M25h32oWY2H9?g_st=ac\n-----------------------------------\n\nShow this WhatsApp message at counter to claim your deal!\n\nWarm Regards,\n*Parbhat Goyal*\nCobb Pundri')}
                         className="px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white rounded-lg text-xs font-bold transition-all cursor-pointer border border-indigo-100"
                       >
                         🏷️ Buy 2 Get 1 Free
                       </button>
-                      <button 
+                      <button
                         onClick={() => setBroadcastMsg('👑 *VIP REWARD FROM COBB PUNDRI* 👑\n\nDear *{name}*, 👋\n\nThank you for being one of our top valued customers! Enjoy an *INSTANT ₹500 VIP DISCOUNT* on your next invoice at Cobb Pundri this week. ✨\n\n-----------------------------------\n📍 *Store Location:*\nhttps://maps.app.goo.gl/HxgE1M25h32oWY2H9?g_st=ac\n-----------------------------------\n\nValid on minimum bill value of ₹2,999. Valid till Sunday!\n\nWarm Regards,\n*Parbhat Goyal*\nCobb Pundri')}
                         className="px-3 py-1.5 bg-amber-50 text-amber-700 hover:bg-amber-600 hover:text-white rounded-lg text-xs font-bold transition-all cursor-pointer border border-amber-100"
                       >
                         👑 VIP ₹500 Discount
                       </button>
-                      <button 
+                      <button
                         onClick={() => setBroadcastMsg('✨ *NEW FESTIVE COLLECTION ARRIVED!* ✨\n\nHello *{name}*! 👋\n\nFresh stock of Premium Festive Suits, Blazers, & Smart Shirts just arrived at Cobb Pundri! Drop by today for exclusive early-bird fitting. 🛍️\n\n-----------------------------------\n📍 *Store Location:*\nhttps://maps.app.goo.gl/HxgE1M25h32oWY2H9?g_st=ac\n-----------------------------------\n\nWarm Regards,\n*Parbhat Goyal*\nCobb Pundri')}
                         className="px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white rounded-lg text-xs font-bold transition-all cursor-pointer border border-emerald-100"
                       >
@@ -1793,7 +1771,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  <textarea 
+                  <textarea
                     value={broadcastMsg}
                     onChange={(e) => setBroadcastMsg(e.target.value)}
                     rows={6}
@@ -1814,14 +1792,14 @@ export default function App() {
                         </span>
                       </div>
                       <div className="w-full bg-slate-800 h-3 rounded-full overflow-hidden border border-slate-700">
-                        <div 
-                          className="bg-gradient-to-r from-emerald-500 to-blue-500 h-full transition-all duration-300 rounded-full" 
+                        <div
+                          className="bg-gradient-to-r from-emerald-500 to-blue-500 h-full transition-all duration-300 rounded-full"
                           style={{ width: `${(broadcastStatus.currentIndex / Math.max(broadcastStatus.total, 1)) * 100}%` }}
                         />
                       </div>
                       <div className="flex justify-between items-center text-[11px] text-slate-400">
                         <span>Pacing: 1.5s delay between messages to ensure WhatsApp safety</span>
-                        <button 
+                        <button
                           onClick={handleStopBroadcast}
                           className="px-3 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/40 rounded-lg font-bold cursor-pointer transition-colors"
                         >
@@ -1835,7 +1813,7 @@ export default function App() {
                     <span className="text-xs text-slate-400 font-medium">
                       Will broadcast to all <span className="font-bold text-slate-700">{broadcastGroupCount}</span> billed customer numbers in group.
                     </span>
-                    <button 
+                    <button
                       onClick={handleStartBroadcast}
                       disabled={isStartingBroadcast || broadcastStatus.isRunning || broadcastGroupCount === 0}
                       className="px-8 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm transition-all cursor-pointer shadow-lg shadow-emerald-600/30 flex items-center disabled:opacity-50"
@@ -1855,8 +1833,8 @@ export default function App() {
                     </div>
                     <div className="relative w-full sm:w-72">
                       <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={groupSearchQuery}
                         onChange={(e) => setGroupSearchQuery(e.target.value)}
                         placeholder="Search group by Name or Phone..."
@@ -1869,28 +1847,28 @@ export default function App() {
                     <table className="w-full text-left text-sm border-collapse">
                       <thead>
                         <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase text-[11px]">
-                          <th className="pb-3 pr-4">#</th>
-                          <th className="pb-3 px-3">Customer Name</th>
-                          <th className="pb-3 px-3">Phone Number</th>
-                          <th className="pb-3 px-3 text-right">Invoices</th>
-                          <th className="pb-3 px-3 text-right">Total Lifetime Spent</th>
-                          <th className="pb-3 pl-4 text-right">Last Bill Date</th>
+                          <th className="pb-3 pr-4 whitespace-nowrap">#</th>
+                          <th className="pb-3 px-3 whitespace-nowrap">Customer Name</th>
+                          <th className="pb-3 px-3 whitespace-nowrap">Phone Number</th>
+                          <th className="pb-3 px-3 text-right whitespace-nowrap">Invoices</th>
+                          <th className="pb-3 px-3 text-right whitespace-nowrap">Total Lifetime Spent</th>
+                          <th className="pb-3 pl-4 text-right whitespace-nowrap">Last Bill Date</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {broadcastGroup
-                          .filter(c => 
-                            c.customerName?.toLowerCase().includes(groupSearchQuery.toLowerCase()) || 
+                          .filter(c =>
+                            c.customerName?.toLowerCase().includes(groupSearchQuery.toLowerCase()) ||
                             c.phone?.includes(groupSearchQuery)
                           )
                           .map((c, idx) => (
                             <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                              <td className="py-3 pr-4 text-xs font-mono text-slate-400">{idx + 1}</td>
-                              <td className="py-3 px-3 font-bold text-slate-800">{c.customerName || 'Valued Customer'}</td>
-                              <td className="py-3 px-3 font-mono text-xs text-slate-600">+91 {c.phone}</td>
-                              <td className="py-3 px-3 text-right font-bold text-slate-700 text-xs">{c.totalBills || 1} Bills</td>
-                              <td className="py-3 px-3 text-right font-black text-emerald-600">{formatCurrency(c.totalSpent || 0)}</td>
-                              <td className="py-3 pl-4 text-right text-xs font-mono text-slate-400">
+                              <td className="py-3 pr-4 text-xs font-mono text-slate-400 whitespace-nowrap">{idx + 1}</td>
+                              <td className="py-3 px-3 font-bold text-slate-800 whitespace-nowrap">{c.customerName || 'Valued Customer'}</td>
+                              <td className="py-3 px-3 font-mono text-xs text-slate-600 whitespace-nowrap">+91 {c.phone}</td>
+                              <td className="py-3 px-3 text-right font-bold text-slate-700 text-xs whitespace-nowrap">{c.totalBills || 1} Bills</td>
+                              <td className="py-3 px-3 text-right font-black text-emerald-600 whitespace-nowrap">{formatCurrency(c.totalSpent || 0)}</td>
+                              <td className="py-3 pl-4 text-right text-xs font-mono text-slate-400 whitespace-nowrap">
                                 {c.lastBilledAt ? new Date(c.lastBilledAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Recent'}
                               </td>
                             </tr>
@@ -1913,7 +1891,7 @@ export default function App() {
                     <p className="text-sm text-slate-500 mt-1">Real-time analysis of your highest-selling articles and size demand distribution from POS sales.</p>
                   </div>
                   <div className="flex gap-2">
-                    <button 
+                    <button
                       onClick={() => {
                         axios.get(`${API_BASE}/api/analytics/top-movers`).then(res => setTopMoversData(res.data)).catch(console.error);
                       }}
@@ -2038,28 +2016,28 @@ export default function App() {
                     <table className="w-full text-left text-sm border-collapse">
                       <thead>
                         <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase text-[11px]">
-                          <th className="pb-3 pr-4">Rank</th>
-                          <th className="pb-3 px-3">Article Code</th>
-                          <th className="pb-3 px-3">Product Name</th>
-                          <th className="pb-3 px-3">Category</th>
-                          <th className="pb-3 px-3 text-right">Units Sold</th>
-                          <th className="pb-3 px-3 text-right">Total Revenue</th>
-                          <th className="pb-3 pl-4 text-right">Warehouse Action</th>
+                          <th className="pb-3 pr-4 whitespace-nowrap">Rank</th>
+                          <th className="pb-3 px-3 whitespace-nowrap">Article Code</th>
+                          <th className="pb-3 px-3 whitespace-nowrap">Product Name</th>
+                          <th className="pb-3 px-3 whitespace-nowrap">Category</th>
+                          <th className="pb-3 px-3 text-right whitespace-nowrap">Units Sold</th>
+                          <th className="pb-3 px-3 text-right whitespace-nowrap">Total Revenue</th>
+                          <th className="pb-3 pl-4 text-right whitespace-nowrap">Warehouse Action</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {topMoversData.topArticles && topMoversData.topArticles.map((art, idx) => (
                           <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                            <td className="py-3 pr-4 font-mono font-bold text-xs">
+                            <td className="py-3 pr-4 font-mono font-bold text-xs whitespace-nowrap">
                               {idx === 0 ? '🥇 #1' : idx === 1 ? '🥈 #2' : idx === 2 ? '🥉 #3' : `#${idx + 1}`}
                             </td>
-                            <td className="py-3 px-3 font-mono font-black text-slate-900 text-xs">{art.ArticleNo}</td>
-                            <td className="py-3 px-3 font-bold text-slate-800">{art.ArticleName}</td>
-                            <td className="py-3 px-3 text-xs text-slate-500">{art.Category}</td>
-                            <td className="py-3 px-3 text-right font-black text-indigo-600">{art.TotalUnitsSold} Units</td>
-                            <td className="py-3 px-3 text-right font-black text-emerald-600">{formatCurrency(art.TotalRevenue)}</td>
-                            <td className="py-3 pl-4 text-right">
-                              <button 
+                            <td className="py-3 px-3 font-mono font-black text-slate-900 text-xs whitespace-nowrap">{art.ArticleNo}</td>
+                            <td className="py-3 px-3 font-bold text-slate-800 whitespace-nowrap">{art.ArticleName}</td>
+                            <td className="py-3 px-3 text-xs text-slate-500 whitespace-nowrap">{art.Category}</td>
+                            <td className="py-3 px-3 text-right font-black text-indigo-600 whitespace-nowrap">{art.TotalUnitsSold} Units</td>
+                            <td className="py-3 px-3 text-right font-black text-emerald-600 whitespace-nowrap">{formatCurrency(art.TotalRevenue)}</td>
+                            <td className="py-3 pl-4 text-right whitespace-nowrap">
+                              <button
                                 onClick={() => {
                                   const text = `Hello Warehouse Supplier, please process urgent restock for top-selling article *[${art.ArticleNo}] ${art.ArticleName}* at Cobb Pundri.\n\nHistorical Sales Volume: ${art.TotalUnitsSold} units sold.\n\nRegards,\nParbhat Goyal, Cobb Pundri`;
                                   window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
@@ -2100,35 +2078,34 @@ export default function App() {
                     <table className="w-full text-left text-sm border-collapse">
                       <thead>
                         <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase text-[11px]">
-                          <th className="pb-3 pr-4">Customer Name</th>
-                          <th className="pb-3 px-3">Phone</th>
-                          <th className="pb-3 px-3">AI Persona Tag</th>
-                          <th className="pb-3 px-3">Primary Style Preference</th>
-                          <th className="pb-3 px-3 text-right">Lifetime Value (LTV)</th>
-                          <th className="pb-3 px-3 text-right">Total Visits</th>
-                          <th className="pb-3 pl-4 text-center">Action</th>
+                          <th className="pb-3 pr-4 whitespace-nowrap">Customer Name</th>
+                          <th className="pb-3 px-3 whitespace-nowrap">Phone</th>
+                          <th className="pb-3 px-3 whitespace-nowrap">AI Persona Tag</th>
+                          <th className="pb-3 px-3 whitespace-nowrap">Primary Style Preference</th>
+                          <th className="pb-3 px-3 text-right whitespace-nowrap">Lifetime Value (LTV)</th>
+                          <th className="pb-3 px-3 text-right whitespace-nowrap">Total Visits</th>
+                          <th className="pb-3 pl-4 text-center whitespace-nowrap">Action</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
                         {wardrobeProfiles.map((c, idx) => (
                           <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                            <td className="py-3.5 pr-4 font-bold text-slate-800">{c.CustomerName?.trim() || 'Valued Shopper'}</td>
-                            <td className="py-3.5 px-3 text-xs font-mono text-slate-500">{c.Phone}</td>
-                            <td className="py-3.5 px-3">
-                              <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-                                c.Persona.includes('High Roller') ? 'bg-amber-100 text-amber-800 border border-amber-200' :
-                                c.Persona.includes('Formal') ? 'bg-purple-100 text-purple-800 border border-purple-200' :
-                                c.Persona.includes('Casual') ? 'bg-blue-100 text-blue-800 border border-blue-200' :
-                                'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                              }`}>
+                            <td className="py-3.5 pr-4 font-bold text-slate-800 whitespace-nowrap">{c.CustomerName?.trim() || 'Valued Shopper'}</td>
+                            <td className="py-3.5 px-3 text-xs font-mono text-slate-500 whitespace-nowrap">{c.Phone}</td>
+                            <td className="py-3.5 px-3 whitespace-nowrap">
+                              <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${c.Persona.includes('High Roller') ? 'bg-amber-100 text-amber-800 border border-amber-200' :
+                                  c.Persona.includes('Formal') ? 'bg-purple-100 text-purple-800 border border-purple-200' :
+                                    c.Persona.includes('Casual') ? 'bg-blue-100 text-blue-800 border border-blue-200' :
+                                      'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                }`}>
                                 {c.Persona}
                               </span>
                             </td>
-                            <td className="py-3.5 px-3 text-xs font-semibold text-slate-600">{c.PrimaryStyle}</td>
-                            <td className="py-3.5 px-3 text-right font-black text-green-600">{formatCurrency(c.TotalSpent)}</td>
-                            <td className="py-3.5 px-3 text-right text-xs font-bold text-slate-700">{c.TotalVisits} Visits</td>
-                            <td className="py-3.5 pl-4 text-center">
-                              <button 
+                            <td className="py-3.5 px-3 text-xs font-semibold text-slate-600 whitespace-nowrap">{c.PrimaryStyle}</td>
+                            <td className="py-3.5 px-3 text-right font-black text-green-600 whitespace-nowrap">{formatCurrency(c.TotalSpent)}</td>
+                            <td className="py-3.5 px-3 text-right text-xs font-bold text-slate-700 whitespace-nowrap">{c.TotalVisits} Visits</td>
+                            <td className="py-3.5 pl-4 text-center whitespace-nowrap">
+                              <button
                                 onClick={() => {
                                   const msg = `Hello ${c.CustomerName?.trim() || 'Sir'}! 👋 We just added new ${c.PrimaryStyle} collections at Cobb Pundri matching your style! Drop by today to explore.`;
                                   window.open(`https://wa.me/${c.Phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
@@ -2193,24 +2170,24 @@ export default function App() {
                         <table className="w-full text-left text-sm border-collapse">
                           <thead>
                             <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase text-[11px]">
-                              <th className="pb-3 pr-4">VIP Client Name</th>
-                              <th className="pb-3 px-3">Phone</th>
-                              <th className="pb-3 px-3 text-right">Lifetime Value (LTV)</th>
-                              <th className="pb-3 px-3 text-right">Total Visits</th>
-                              <th className="pb-3 px-3 text-right">Days Inactive</th>
-                              <th className="pb-3 pl-4 text-center">Re-engagement Action</th>
+                              <th className="pb-3 pr-4 whitespace-nowrap">VIP Client Name</th>
+                              <th className="pb-3 px-3 whitespace-nowrap">Phone</th>
+                              <th className="pb-3 px-3 text-right whitespace-nowrap">Lifetime Value (LTV)</th>
+                              <th className="pb-3 px-3 text-right whitespace-nowrap">Total Visits</th>
+                              <th className="pb-3 px-3 text-right whitespace-nowrap">Days Inactive</th>
+                              <th className="pb-3 pl-4 text-center whitespace-nowrap">Re-engagement Action</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100">
                             {retentionData.overdueVips.map((v, idx) => (
                               <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                                <td className="py-3.5 pr-4 font-bold text-slate-800">{v.CustomerName?.trim() || 'VIP Customer'}</td>
-                                <td className="py-3.5 px-3 text-xs font-mono text-slate-500">{v.Phone}</td>
-                                <td className="py-3.5 px-3 text-right font-black text-green-600">{formatCurrency(v.TotalSpent)}</td>
-                                <td className="py-3.5 px-3 text-right text-xs font-bold text-slate-700">{v.TotalVisits} Visits</td>
-                                <td className="py-3.5 px-3 text-right font-mono font-bold text-amber-600">{v.DaysInactive} Days Ago</td>
-                                <td className="py-3.5 pl-4 text-center">
-                                  <button 
+                                <td className="py-3.5 pr-4 font-bold text-slate-800 whitespace-nowrap">{v.CustomerName?.trim() || 'VIP Customer'}</td>
+                                <td className="py-3.5 px-3 text-xs font-mono text-slate-500 whitespace-nowrap">{v.Phone}</td>
+                                <td className="py-3.5 px-3 text-right font-black text-green-600 whitespace-nowrap">{formatCurrency(v.TotalSpent)}</td>
+                                <td className="py-3.5 px-3 text-right text-xs font-bold text-slate-700 whitespace-nowrap">{v.TotalVisits} Visits</td>
+                                <td className="py-3.5 px-3 text-right font-mono font-bold text-amber-600 whitespace-nowrap">{v.DaysInactive} Days Ago</td>
+                                <td className="py-3.5 pl-4 text-center whitespace-nowrap">
+                                  <button
                                     onClick={() => {
                                       const msg = `Hello ${v.CustomerName?.trim() || 'Sir'}! 👋 We miss seeing you at Cobb Pundri. Enjoy an exclusive VIP discount on your next visit this week!`;
                                       window.open(`https://wa.me/${v.Phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
@@ -2280,13 +2257,13 @@ export default function App() {
                       {/* GST Slab Selector */}
                       <div className="bg-white p-1 rounded-xl border border-slate-200 shadow-sm flex items-center gap-1">
                         <span className="text-[10px] font-bold text-slate-400 uppercase px-2">GST Slab:</span>
-                        <button 
+                        <button
                           onClick={() => setGstRateSlab(5)}
                           className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${gstRateSlab === 5 ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
                         >
                           5% (Standard Retail)
                         </button>
-                        <button 
+                        <button
                           onClick={() => setGstRateSlab(12)}
                           className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${gstRateSlab === 12 ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
                         >
@@ -2295,7 +2272,7 @@ export default function App() {
                       </div>
 
                       {/* Export for CA Button */}
-                      <button 
+                      <button
                         onClick={() => {
                           navigator.clipboard.writeText(exportGstr1Text());
                           setGstCopied(true);
@@ -2351,14 +2328,14 @@ export default function App() {
                       <table className="w-full text-left text-sm border-collapse">
                         <thead>
                           <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase text-[11px]">
-                            <th className="pb-3 pr-4">Month / Period</th>
-                            <th className="pb-3 px-3 text-right">Invoices</th>
-                            <th className="pb-3 px-3 text-right">Units Sold</th>
-                            <th className="pb-3 px-3 text-right">Gross Sales (Inc. Tax)</th>
-                            <th className="pb-3 px-3 text-right">Taxable Base Amount</th>
-                            <th className="pb-3 px-3 text-right">CGST ({(gstRateSlab / 2)}%)</th>
-                            <th className="pb-3 px-3 text-right">SGST ({(gstRateSlab / 2)}%)</th>
-                            <th className="pb-3 pl-4 text-right">Total GST Payable</th>
+                            <th className="pb-3 pr-4 whitespace-nowrap">Month / Period</th>
+                            <th className="pb-3 px-3 text-right whitespace-nowrap">Invoices</th>
+                            <th className="pb-3 px-3 text-right whitespace-nowrap">Units Sold</th>
+                            <th className="pb-3 px-3 text-right whitespace-nowrap">Gross Sales (Inc. Tax)</th>
+                            <th className="pb-3 px-3 text-right whitespace-nowrap">Taxable Base Amount</th>
+                            <th className="pb-3 px-3 text-right whitespace-nowrap">CGST ({(gstRateSlab / 2)}%)</th>
+                            <th className="pb-3 px-3 text-right whitespace-nowrap">SGST ({(gstRateSlab / 2)}%)</th>
+                            <th className="pb-3 pl-4 text-right whitespace-nowrap">Total GST Payable</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 font-medium">
@@ -2368,17 +2345,17 @@ export default function App() {
 
                             return (
                               <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                                <td className="py-4 pr-4 font-bold text-slate-800 flex items-center gap-2">
+                                <td className="py-4 pr-4 font-bold text-slate-800 flex items-center gap-2 whitespace-nowrap">
                                   <Calendar className="w-4 h-4 text-blue-600" />
                                   <span>{row.MonthStr}</span>
                                 </td>
-                                <td className="py-4 px-3 text-right text-slate-600 text-xs font-semibold">{row.TotalInvoices} Bills</td>
-                                <td className="py-4 px-3 text-right text-slate-600 text-xs font-semibold">{row.TotalUnits} Units</td>
-                                <td className="py-4 px-3 text-right font-black text-slate-900">{formatCurrency(gross)}</td>
-                                <td className="py-4 px-3 text-right text-slate-600 font-mono text-xs">{formatCurrency(comp.taxable)}</td>
-                                <td className="py-4 px-3 text-right text-slate-600 font-mono text-xs">{formatCurrency(comp.cgst)}</td>
-                                <td className="py-4 px-3 text-right text-slate-600 font-mono text-xs">{formatCurrency(comp.sgst)}</td>
-                                <td className="py-4 pl-4 text-right font-black text-emerald-600 text-base">{formatCurrency(comp.tax)}</td>
+                                <td className="py-4 px-3 text-right text-slate-600 text-xs font-semibold whitespace-nowrap">{row.TotalInvoices} Bills</td>
+                                <td className="py-4 px-3 text-right text-slate-600 text-xs font-semibold whitespace-nowrap">{row.TotalUnits} Units</td>
+                                <td className="py-4 px-3 text-right font-black text-slate-900 whitespace-nowrap">{formatCurrency(gross)}</td>
+                                <td className="py-4 px-3 text-right text-slate-600 font-mono text-xs whitespace-nowrap">{formatCurrency(comp.taxable)}</td>
+                                <td className="py-4 px-3 text-right text-slate-600 font-mono text-xs whitespace-nowrap">{formatCurrency(comp.cgst)}</td>
+                                <td className="py-4 px-3 text-right text-slate-600 font-mono text-xs whitespace-nowrap">{formatCurrency(comp.sgst)}</td>
+                                <td className="py-4 pl-4 text-right font-black text-emerald-600 text-base whitespace-nowrap">{formatCurrency(comp.tax)}</td>
                               </tr>
                             );
                           })}
@@ -2398,10 +2375,10 @@ export default function App() {
             {/* SIZE MATRIX HEATMAP */}
             {activeTab === 'sizematrix' && (() => {
               const categoriesList = ['ALL', ...Array.from(new Set(sizeMatrix.map(r => r.Category)))];
-              
+
               const filteredMatrix = sizeMatrix.filter(row => {
                 const matchesCat = matrixCategoryFilter === 'ALL' || row.Category === matrixCategoryFilter;
-                const matchesSearch = searchQuery === '' || 
+                const matchesSearch = searchQuery === '' ||
                   row.ArticleName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                   row.Size?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                   row.Category?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -2470,7 +2447,7 @@ export default function App() {
                   <div className="flex items-center gap-2 overflow-x-auto pb-3 mb-6 custom-scrollbar">
                     <span className="text-xs font-bold text-slate-400 uppercase mr-1 shrink-0">Section Filter:</span>
                     {categoriesList.map((cat, idx) => (
-                      <button 
+                      <button
                         key={idx}
                         onClick={() => setMatrixCategoryFilter(cat)}
                         className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${matrixCategoryFilter === cat ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'}`}
@@ -2491,14 +2468,14 @@ export default function App() {
                       <table className="w-full text-left text-sm border-collapse">
                         <thead>
                           <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase text-[11px]">
-                            <th className="pb-3 pr-4">Article Name</th>
-                            <th className="pb-3 px-3">Section</th>
-                            <th className="pb-3 px-3">Tag Size</th>
-                            <th className="pb-3 px-3 text-right">Units Sold</th>
-                            <th className="pb-3 px-3 text-right">Invoices</th>
-                            <th className="pb-3 px-3 text-right">Total Revenue</th>
-                            <th className="pb-3 px-3 text-right">Avg Unit Price</th>
-                            <th className="pb-3 pl-4 text-center">Demand Heatmap Tier</th>
+                            <th className="pb-3 pr-4 whitespace-nowrap">Article Name</th>
+                            <th className="pb-3 px-3 whitespace-nowrap">Section</th>
+                            <th className="pb-3 px-3 whitespace-nowrap">Tag Size</th>
+                            <th className="pb-3 px-3 text-right whitespace-nowrap">Units Sold</th>
+                            <th className="pb-3 px-3 text-right whitespace-nowrap">Invoices</th>
+                            <th className="pb-3 px-3 text-right whitespace-nowrap">Total Revenue</th>
+                            <th className="pb-3 px-3 text-right whitespace-nowrap">Avg Unit Price</th>
+                            <th className="pb-3 pl-4 text-center whitespace-nowrap">Demand Heatmap Tier</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -2525,14 +2502,14 @@ export default function App() {
 
                             return (
                               <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
-                                <td className="py-3.5 pr-4 font-bold text-slate-800">{row.ArticleName}</td>
-                                <td className="py-3.5 px-3 font-semibold text-slate-500 text-xs"><span className="bg-slate-100 px-2 py-0.5 rounded text-[11px]">{row.Category}</span></td>
-                                <td className="py-3.5 px-3 font-mono font-bold text-slate-700 text-xs"><span className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-lg border border-blue-100">{row.Size}</span></td>
-                                <td className="py-3.5 px-3 text-right font-black text-slate-900 text-base">{units}</td>
-                                <td className="py-3.5 px-3 text-right text-slate-500 text-xs font-semibold">{row.Invoices || 0} Bills</td>
-                                <td className="py-3.5 px-3 text-right font-black text-green-600">{formatCurrency(revenue)}</td>
-                                <td className="py-3.5 px-3 text-right text-slate-600 text-xs font-mono">{formatCurrency(avgPrice)}</td>
-                                <td className="py-3.5 pl-4 text-center">
+                                <td className="py-3.5 pr-4 font-bold text-slate-800 whitespace-nowrap">{row.ArticleName}</td>
+                                <td className="py-3.5 px-3 font-semibold text-slate-500 text-xs whitespace-nowrap"><span className="bg-slate-100 px-2 py-0.5 rounded text-[11px]">{row.Category}</span></td>
+                                <td className="py-3.5 px-3 font-mono font-bold text-slate-700 text-xs whitespace-nowrap"><span className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-lg border border-blue-100">{row.Size}</span></td>
+                                <td className="py-3.5 px-3 text-right font-black text-slate-900 text-base whitespace-nowrap">{units}</td>
+                                <td className="py-3.5 px-3 text-right text-slate-500 text-xs font-semibold whitespace-nowrap">{row.Invoices || 0} Bills</td>
+                                <td className="py-3.5 px-3 text-right font-black text-green-600 whitespace-nowrap">{formatCurrency(revenue)}</td>
+                                <td className="py-3.5 px-3 text-right text-slate-600 text-xs font-mono whitespace-nowrap">{formatCurrency(avgPrice)}</td>
+                                <td className="py-3.5 pl-4 text-center whitespace-nowrap">
                                   <span className={`px-3 py-1 rounded-full text-xs border inline-block ${heatBg}`}>
                                     {heatLabel}
                                   </span>
@@ -2555,7 +2532,7 @@ export default function App() {
 
             {/* 3. VISUAL CHARTS & HOURLY RUSH */}
             {activeTab === 'analytics' && (
-              <div className="p-8">
+              <div className="p-4 sm:p-6 lg:p-8">
                 <div className="border-b border-slate-200 pb-5 mb-8">
                   <h3 className="text-2xl font-bold text-slate-800 flex items-center">
                     <BarChart3 className="w-6 h-6 mr-3 text-blue-600" /> Store Rush Visualizer
@@ -2563,7 +2540,7 @@ export default function App() {
                   <p className="text-sm text-slate-500 mt-2">Identify peak store hours to optimize staff allocation and inventory prep.</p>
                 </div>
 
-                <div className="bg-white border border-slate-200 p-8 rounded-2xl shadow-sm mb-8">
+                <div className="bg-white border border-slate-200 p-4 sm:p-6 lg:p-8 rounded-2xl shadow-sm mb-8">
                   <h4 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-8">Hourly Revenue Distribution</h4>
                   <div className="h-64 flex items-end justify-between gap-3 pt-6">
                     {hourlySales.map((h, i) => {
@@ -2575,8 +2552,8 @@ export default function App() {
                           <div className="absolute -top-12 opacity-0 group-hover:opacity-100 transition-all duration-200 bg-slate-900 text-white text-xs font-bold py-1.5 px-3 rounded-lg shadow-xl whitespace-nowrap z-20 pointer-events-none transform translate-y-2 group-hover:translate-y-0">
                             {formatCurrency(h.TotalRevenue)} <span className="font-normal text-slate-400 ml-1">({h.TotalBills} bills)</span>
                           </div>
-                          <div 
-                            style={{ height: `${heightPercent}%` }} 
+                          <div
+                            style={{ height: `${heightPercent}%` }}
                             className={`w-full max-w-[48px] rounded-t-xl transition-all duration-700 ease-out ${isPeak ? 'bg-gradient-to-t from-blue-600 to-blue-400 shadow-lg shadow-blue-500/30' : 'bg-slate-200 hover:bg-blue-300'}`}
                           />
                           <span className="text-xs text-slate-500 mt-3 font-semibold">{h.SaleHour}:00</span>
@@ -2603,7 +2580,7 @@ export default function App() {
 
             {/* 3. MONTHLY PRODUCTS */}
             {activeTab === 'monthly' && (
-              <div className="p-8 bg-slate-50 min-h-screen">
+              <div className="p-4 sm:p-6 lg:p-8 bg-slate-50 min-h-screen">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-200 pb-5 mb-6 gap-4">
                   <div>
                     <h3 className="text-2xl font-bold text-slate-800 flex items-center">
@@ -2627,7 +2604,7 @@ export default function App() {
                   const isMonthOpen = openMonth === month;
                   return (
                     <div key={index} className="border border-slate-200 rounded-2xl overflow-hidden shadow-sm bg-white mb-4">
-                      <button 
+                      <button
                         onClick={() => setOpenMonth(isMonthOpen ? null : month)}
                         className="w-full bg-white hover:bg-slate-50 p-5 flex items-center justify-between transition-colors cursor-pointer border-b border-slate-100"
                       >
@@ -2675,19 +2652,19 @@ export default function App() {
                                   <table className="min-w-full text-left text-sm">
                                     <thead>
                                       <tr className="bg-slate-50/80 border-b border-slate-100">
-                                        <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Article Description</th>
-                                        <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Department</th>
-                                        <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Units</th>
-                                        <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Revenue</th>
+                                        <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Article Description</th>
+                                        <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Department</th>
+                                        <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider text-right whitespace-nowrap">Units</th>
+                                        <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider text-right whitespace-nowrap">Revenue</th>
                                       </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
                                       {items.map((item, idx) => (
                                         <tr key={idx} className="hover:bg-blue-50/30 transition-colors">
-                                          <td className="px-6 py-3.5 font-medium text-slate-800">{item.ArticleName}</td>
-                                          <td className="px-6 py-3.5 text-slate-500 text-xs">{item.ProductType}</td>
-                                          <td className="px-6 py-3.5 font-bold text-slate-700 text-right">{item.TotalUnitsSold}</td>
-                                          <td className="px-6 py-3.5 font-black text-green-600 text-right">{formatCurrency(item.TotalRevenue)}</td>
+                                          <td className="px-6 py-3.5 font-medium text-slate-800 whitespace-nowrap">{item.ArticleName}</td>
+                                          <td className="px-6 py-3.5 text-slate-500 text-xs whitespace-nowrap">{item.ProductType}</td>
+                                          <td className="px-6 py-3.5 font-bold text-slate-700 text-right whitespace-nowrap">{item.TotalUnitsSold}</td>
+                                          <td className="px-6 py-3.5 font-black text-green-600 text-right whitespace-nowrap">{formatCurrency(item.TotalRevenue)}</td>
                                         </tr>
                                       ))}
                                     </tbody>
@@ -2706,7 +2683,7 @@ export default function App() {
 
             {/* 4. DEAD STOCK WITH AI OUTFIT MATCHER */}
             {activeTab === 'deadstock' && (
-              <div className="p-8">
+              <div className="p-4 sm:p-6 lg:p-8">
                 <div className="border-b border-slate-200 pb-5 mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                   <div>
                     <h3 className="text-2xl font-bold text-slate-800 flex items-center">
@@ -2716,9 +2693,9 @@ export default function App() {
                   </div>
                   <div className="relative w-full md:w-80">
                     <Search className="w-5 h-5 text-slate-400 absolute left-3 top-2.5" />
-                    <input 
-                      type="text" 
-                      placeholder="Filter Dead Stock by SKU or Name..." 
+                    <input
+                      type="text"
+                      placeholder="Filter Dead Stock by SKU or Name..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:bg-white transition-colors shadow-sm"
@@ -2729,10 +2706,10 @@ export default function App() {
                   <table className="min-w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-slate-50 border-b border-slate-200">
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">SKU</th>
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Article Description</th>
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Stock</th>
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">AI Styling Pitch</th>
+                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">SKU</th>
+                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Article Description</th>
+                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Stock</th>
+                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right whitespace-nowrap">AI Styling Pitch</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -2741,13 +2718,13 @@ export default function App() {
                         .map((item, idx) => (
                           <React.Fragment key={idx}>
                             <tr className={`hover:bg-slate-50 transition-colors ${activeOutfitMatch === item.SKU ? 'bg-indigo-50/50' : ''}`}>
-                              <td className="px-6 py-4 font-bold text-slate-700 text-sm">{item.SKU}</td>
-                              <td className="px-6 py-4 text-slate-600 text-sm">{item.ItemName}</td>
-                              <td className="px-6 py-4 font-black text-amber-600">
+                              <td className="px-6 py-4 font-bold text-slate-700 text-sm whitespace-nowrap">{item.SKU}</td>
+                              <td className="px-6 py-4 text-slate-600 text-sm whitespace-nowrap">{item.ItemName}</td>
+                              <td className="px-6 py-4 font-black text-amber-600 whitespace-nowrap">
                                 <span className="bg-amber-50 px-3 py-1 rounded-lg border border-amber-100">{item.CurrentStock} Units</span>
                               </td>
-                              <td className="px-6 py-4 text-right">
-                                <button 
+                              <td className="px-6 py-4 text-right whitespace-nowrap">
+                                <button
                                   onClick={() => handleGenerateOutfitMatch(item)}
                                   disabled={isGeneratingOutfit && activeOutfitMatch === item.SKU}
                                   className="inline-flex items-center px-4 py-2 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 hover:shadow-sm rounded-lg font-bold text-xs transition-all cursor-pointer disabled:opacity-50"
@@ -2766,7 +2743,7 @@ export default function App() {
                                     </p>
                                     <p className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">{outfitPitch}</p>
                                     <div className="mt-4 flex justify-end">
-                                      <button 
+                                      <button
                                         onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(outfitPitch)}`, '_blank')}
                                         className="text-xs bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-lg font-bold flex items-center shadow-md transition-colors cursor-pointer"
                                       >
@@ -2778,7 +2755,7 @@ export default function App() {
                               </tr>
                             )}
                           </React.Fragment>
-                      ))}
+                        ))}
                     </tbody>
                   </table>
                 </div>
@@ -2787,7 +2764,7 @@ export default function App() {
 
             {/* 5. SEARCHABLE INVENTORY + MASTER RESTOCK */}
             {activeTab === 'inventory' && (
-              <div className="p-8 space-y-6">
+              <div className="p-4 sm:p-6 lg:p-8 space-y-6">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-200 pb-5 gap-4">
                   <div>
                     <h3 className="text-2xl font-bold text-slate-800 flex items-center">
@@ -2796,7 +2773,7 @@ export default function App() {
                     <p className="text-sm text-slate-500 mt-2">Instant live search across articles, color, fit, and current stock sizes.</p>
                   </div>
                   <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
-                    <button 
+                    <button
                       onClick={handleMasterRestock}
                       className="w-full sm:w-auto bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 px-5 rounded-xl text-sm shadow-md shadow-amber-500/20 flex items-center transition-all cursor-pointer"
                     >
@@ -2804,9 +2781,9 @@ export default function App() {
                     </button>
                     <div className="relative w-full sm:w-72">
                       <Search className="w-5 h-5 text-slate-400 absolute left-3 top-2.5" />
-                      <input 
-                        type="text" 
-                        placeholder="Search Article No, Color..." 
+                      <input
+                        type="text"
+                        placeholder="Search Article No, Color..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:bg-white transition-colors shadow-sm"
@@ -2828,7 +2805,7 @@ export default function App() {
 
                   return (
                     <div key={index} className="border border-slate-200 rounded-2xl overflow-hidden shadow-sm bg-white">
-                      <button 
+                      <button
                         onClick={() => setOpenProductType(isOpen ? null : productType)}
                         className="w-full bg-white hover:bg-slate-50 p-5 flex items-center justify-between transition-colors cursor-pointer border-b border-slate-100"
                       >
@@ -2857,11 +2834,11 @@ export default function App() {
                             <table className="min-w-full text-left text-sm">
                               <thead>
                                 <tr className="bg-slate-50 border-b border-slate-200">
-                                  <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">Article No</th>
-                                  <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">Item Name</th>
-                                  <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">Color</th>
-                                  <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">Size</th>
-                                  <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider">Stock</th>
+                                  <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Article No</th>
+                                  <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Item Name</th>
+                                  <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Color</th>
+                                  <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Size</th>
+                                  <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Stock</th>
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-100">
@@ -2869,12 +2846,12 @@ export default function App() {
                                   const isLow = item.CurrentStock <= 3;
                                   return (
                                     <tr key={idx} className={`hover:bg-blue-50/30 transition-colors ${isLow ? 'bg-red-50/20' : ''}`}>
-                                      <td className="px-5 py-3.5 font-bold text-slate-700">{item.ArticleNo}</td>
-                                      <td className="px-5 py-3.5 text-slate-600">{item.ItemName}</td>
-                                      <td className="px-5 py-3.5 text-slate-600">{item.Color}</td>
-                                      <td className="px-5 py-3.5 text-slate-600 font-medium">{item.Size}</td>
+                                      <td className="px-5 py-3.5 font-bold text-slate-700 whitespace-nowrap">{item.ArticleNo}</td>
+                                      <td className="px-5 py-3.5 text-slate-600 whitespace-nowrap">{item.ItemName}</td>
+                                      <td className="px-5 py-3.5 text-slate-600 whitespace-nowrap">{item.Color}</td>
+                                      <td className="px-5 py-3.5 text-slate-600 font-medium whitespace-nowrap">{item.Size}</td>
                                       <td className={`px-5 py-3.5 font-black ${isLow ? 'text-red-600' : 'text-slate-700'}`}>
-                                        {item.CurrentStock} 
+                                        {item.CurrentStock}
                                         {isLow && <span className="ml-2 text-[10px] bg-red-100 text-red-700 border border-red-200 px-2 py-0.5 rounded-full uppercase tracking-wider">Low</span>}
                                       </td>
                                     </tr>
@@ -2893,7 +2870,7 @@ export default function App() {
 
             {/* 6. AI CAMPAIGN BUILDER */}
             {activeTab === 'campaigns' && (
-              <div className="p-8">
+              <div className="p-4 sm:p-6 lg:p-8">
                 <div className="border-b border-slate-200 pb-5 mb-8">
                   <h3 className="text-2xl font-bold text-slate-800 flex items-center">
                     <Megaphone className="w-6 h-6 mr-3 text-indigo-600" /> Seasonal Campaign Builder
@@ -2902,12 +2879,12 @@ export default function App() {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  <div className="bg-white p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
-                    
+                  <div className="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+
                     <div>
                       <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Upcoming Event / Season</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={campaignEvent}
                         onChange={(e) => setCampaignEvent(e.target.value)}
                         placeholder="e.g., Diwali Prep, Autumn Transition, Winter Wedding"
@@ -2917,7 +2894,7 @@ export default function App() {
 
                     <div>
                       <label className="block text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">Target Audience Segment</label>
-                      <select 
+                      <select
                         value={campaignAudience}
                         onChange={(e) => setCampaignAudience(e.target.value)}
                         className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 transition-all shadow-inner cursor-pointer"
@@ -2929,7 +2906,7 @@ export default function App() {
                       </select>
                     </div>
 
-                    <button 
+                    <button
                       onClick={handleGenerateCampaign}
                       disabled={isGeneratingCampaign || !campaignEvent}
                       className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 rounded-xl text-sm transition-all flex items-center justify-center disabled:opacity-50 cursor-pointer shadow-lg shadow-indigo-600/30 mt-6"
@@ -2947,7 +2924,7 @@ export default function App() {
                         <Wand2 className="w-4 h-4 text-indigo-300 mr-2" />
                         <p className="text-xs font-bold text-indigo-300 uppercase tracking-widest">AI Generated Draft</p>
                       </div>
-                      <textarea 
+                      <textarea
                         value={campaignDraft}
                         onChange={(e) => setCampaignDraft(e.target.value)}
                         placeholder="Your AI generated campaign message will appear here..."
@@ -2955,7 +2932,7 @@ export default function App() {
                       />
                     </div>
                     {campaignDraft && (
-                      <button 
+                      <button
                         onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(campaignDraft)}`, '_blank')}
                         className="mt-4 bg-green-600 hover:bg-green-700 text-white font-bold py-3.5 rounded-xl text-sm transition-all flex items-center justify-center cursor-pointer shadow-lg shadow-green-600/20"
                       >
@@ -2969,7 +2946,7 @@ export default function App() {
 
             {/* 7. AUTOMATION ENGINE */}
             {activeTab === 'automation' && (
-              <div className="p-8 space-y-8">
+              <div className="p-4 sm:p-6 lg:p-8 space-y-8">
                 <div className="border-b border-slate-200 pb-5 mb-2">
                   <h3 className="text-2xl font-bold text-slate-800 flex items-center">
                     <Terminal className="w-6 h-6 mr-3 text-slate-600" /> Automation Engine
@@ -2979,7 +2956,7 @@ export default function App() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   {/* WhatsApp Gateway Card with Live Embedded QR */}
-                  <div className="bg-slate-900 text-white p-8 rounded-2xl border border-slate-800 shadow-xl flex flex-col justify-between">
+                  <div className="bg-slate-900 text-white p-4 sm:p-6 lg:p-8 rounded-2xl border border-slate-800 shadow-xl flex flex-col justify-between">
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-[10px] uppercase font-black tracking-widest text-blue-400">Step 1: Sender Gateway</span>
@@ -3021,8 +2998,8 @@ export default function App() {
                       <button onClick={() => setActiveConsole('gateway')} className={`text-xs px-3 py-1.5 rounded-lg font-bold cursor-pointer ${activeConsole === 'gateway' ? 'bg-blue-900/50 text-blue-300' : 'text-slate-400 hover:text-white'}`}>
                         Console Logs
                       </button>
-                      <button 
-                        onClick={toggleGateway} 
+                      <button
+                        onClick={toggleGateway}
                         disabled={isTogglingGateway}
                         className={`flex items-center px-5 py-2.5 rounded-xl font-bold text-xs shadow-lg transition-all cursor-pointer active:scale-95 disabled:opacity-50 ${isGatewayRunning ? 'bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/50' : 'bg-green-500 hover:bg-green-400 text-slate-900'}`}
                       >
@@ -3033,7 +3010,7 @@ export default function App() {
                   </div>
 
                   {/* POS Listener Card */}
-                  <div className="bg-slate-900 text-white p-8 rounded-2xl border border-slate-800 shadow-xl flex flex-col justify-between">
+                  <div className="bg-slate-900 text-white p-4 sm:p-6 lg:p-8 rounded-2xl border border-slate-800 shadow-xl flex flex-col justify-between">
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-[10px] uppercase font-black tracking-widest text-purple-400">Step 2: Bill Detector</span>
@@ -3049,8 +3026,8 @@ export default function App() {
                       <button onClick={() => setActiveConsole('listener')} className={`text-xs px-4 py-2 rounded-lg font-bold transition-colors cursor-pointer ${activeConsole === 'listener' ? 'bg-purple-900/50 text-purple-300' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
                         View Console Logs
                       </button>
-                      <button 
-                        onClick={toggleListener} 
+                      <button
+                        onClick={toggleListener}
                         disabled={isTogglingListener}
                         className={`flex items-center px-6 py-2.5 rounded-xl font-bold text-sm cursor-pointer active:scale-95 disabled:opacity-50 shadow-lg transition-all ${isListenerRunning ? 'bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/50' : 'bg-green-500 hover:bg-green-400 text-slate-900 shadow-green-500/20'}`}
                       >
@@ -3071,7 +3048,7 @@ export default function App() {
                       <button onClick={() => setActiveConsole('listener')} className={`px-3 py-1.5 rounded-lg text-xs font-bold cursor-pointer transition-colors ${activeConsole === 'listener' ? 'bg-indigo-650/30 text-indigo-300 border border-indigo-500/20' : 'text-slate-500 hover:text-slate-300'}`}>Listener Logs</button>
                     </div>
                   </div>
-                  
+
                   {((activeConsole === 'gateway' ? gatewayLogs : listenerLogs).length === 0) ? (
                     <p className="text-slate-600 italic py-4 text-center text-xs">No output recorded yet. Start a service to view logs.</p>
                   ) : (
@@ -3094,8 +3071,8 @@ export default function App() {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
                     <div>
                       <label className="block text-[11px] font-bold text-slate-400 uppercase mb-1">Target Phone Number</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={testPhone}
                         onChange={(e) => setTestPhone(e.target.value)}
                         placeholder="e.g. 9812423377"
@@ -3104,8 +3081,8 @@ export default function App() {
                     </div>
                     <div>
                       <label className="block text-[11px] font-bold text-slate-400 uppercase mb-1">Test Message Body (Optional)</label>
-                      <input 
-                        type="text" 
+                      <input
+                        type="text"
                         value={testMsg}
                         onChange={(e) => setTestMsg(e.target.value)}
                         placeholder="Leave blank for default test note..."
@@ -3113,7 +3090,7 @@ export default function App() {
                       />
                     </div>
                     <div>
-                      <button 
+                      <button
                         onClick={handleSendTestWhatsApp}
                         disabled={isSendingTestWa || !testPhone}
                         className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 rounded-xl text-sm transition-all flex items-center justify-center cursor-pointer shadow-md disabled:opacity-50"
@@ -3129,7 +3106,7 @@ export default function App() {
 
             {/* 8. LIVE BILLS */}
             {activeTab === 'live' && (
-              <div className="p-8">
+              <div className="p-4 sm:p-6 lg:p-8">
                 <div className="border-b border-slate-200 pb-5 mb-6 flex items-center justify-between">
                   <div className="flex items-center">
                     <Receipt className="w-6 h-6 mr-3 text-slate-700" />
@@ -3146,43 +3123,99 @@ export default function App() {
                   <table className="min-w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-slate-50 border-b border-slate-200">
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Time</th>
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Invoice No.</th>
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Customer Name & Contact</th>
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center">Mode of Payment</th>
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Invoice Amount</th>
+                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Time</th>
+                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Invoice No.</th>
+                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Customer Name & Contact</th>
+                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-center whitespace-nowrap">Mode of Payment</th>
+                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right whitespace-nowrap">Invoice Amount</th>
+                        <th className="px-4 py-4 w-10"></th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {liveBills.map((bill, idx) => (
-                        <tr key={idx} className="hover:bg-blue-50/30 transition-colors">
-                          <td className="px-6 py-4 text-slate-500 font-medium whitespace-nowrap">
+                        <React.Fragment key={idx}>
+                        <tr className="hover:bg-blue-50/30 transition-colors cursor-pointer" onClick={() => toggleBillExpansion(bill.BillId)}>
+                          <td className="px-6 py-4 text-slate-500 font-medium whitespace-nowrap whitespace-nowrap">
                             {new Date(bill.BillTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </td>
-                          <td className="px-6 py-4 font-bold text-slate-700">{bill.BillNumber}</td>
-                          <td className="px-6 py-4">
+                          <td className="px-6 py-4 font-bold text-slate-700 whitespace-nowrap">{bill.BillNumber}</td>
+                          <td className="px-6 py-4 whitespace-nowrap">
                             <span className="font-bold text-slate-800 text-base">{bill.CustomerName?.trim() || bill.FirstName?.trim() || 'Guest Customer'}</span>
-                            <br/><span className="text-xs text-slate-400 font-mono mt-0.5 inline-block">{bill.Phone}</span>
+                            <br /><span className="text-xs text-slate-400 font-mono mt-0.5 inline-block">{bill.Phone}</span>
                           </td>
-                          <td className="px-6 py-4 text-center">
-                            <span className={`px-3.5 py-1.5 rounded-xl text-xs font-bold border inline-flex items-center gap-1.5 ${
-                              bill.PaymentMode === 'Cash' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                              bill.PaymentMode === 'UPI / Online' ? 'bg-purple-50 text-purple-700 border-purple-200' :
-                              bill.PaymentMode === 'Debit / Credit Card' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                              'bg-amber-50 text-amber-700 border-amber-200'
-                            }`}>
+                          <td className="px-6 py-4 text-center whitespace-nowrap">
+                            <span className={`px-3.5 py-1.5 rounded-xl text-xs font-bold border inline-flex items-center gap-1.5 ${bill.PaymentMode === 'Cash' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                bill.PaymentMode === 'UPI / Online' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                                  bill.PaymentMode === 'Debit / Credit Card' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                    'bg-amber-50 text-amber-700 border-amber-200'
+                              }`}>
                               {bill.PaymentMode === 'Cash' ? '💵 Cash' :
-                               bill.PaymentMode === 'UPI / Online' ? '⚡ UPI / Online' :
-                               bill.PaymentMode === 'Debit / Credit Card' ? '💳 Card' :
-                               '🔀 Split (Cash + Digital)'}
+                                bill.PaymentMode === 'UPI / Online' ? '⚡ UPI / Online' :
+                                  bill.PaymentMode === 'Debit / Credit Card' ? '💳 Card' :
+                                    '🔀 Split (Cash + Digital)'}
                             </span>
                           </td>
-                          <td className="px-6 py-4 text-lg font-black text-green-600 text-right">{formatCurrency(bill.Amount)}</td>
+                          <td className="px-6 py-4 text-lg font-black text-green-600 text-right whitespace-nowrap">{formatCurrency(bill.Amount)}</td>
+                        
+                          <td className="px-4 py-4 text-right">
+                            <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${expandedBillId === bill.BillId ? 'rotate-180' : ''}`} />
+                          </td>
                         </tr>
+                        {expandedBillId === bill.BillId && (
+                          <tr className="bg-slate-50 border-b border-slate-100">
+                            <td colSpan="6" className="p-0">
+                              <div className="px-6 py-4 animate-in slide-in-from-top-2 duration-200">
+                                <h4 className="text-sm font-bold text-slate-700 mb-3 flex items-center">
+                                  <Package className="w-4 h-4 mr-2 text-indigo-500" /> 
+                                  Purchased Items
+                                </h4>
+                                {loadingBillItems && !billItemsCache[bill.BillId] ? (
+                                  <div className="text-sm text-slate-500 flex items-center gap-2">
+                                    <div className="w-4 h-4 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin"></div>
+                                    Loading items...
+                                  </div>
+                                ) : billItemsCache[bill.BillId]?.length > 0 ? (
+                                  <div className="bg-white rounded-xl border border-slate-200 overflow-x-auto">
+                                    <table className="min-w-full text-left text-sm">
+                                      <thead className="bg-slate-50/50">
+                                        <tr>
+                                          <th className="px-4 py-2 text-xs font-bold text-slate-500 whitespace-nowrap">Item</th>
+                                          <th className="px-4 py-2 text-xs font-bold text-slate-500 whitespace-nowrap">Color</th>
+                                          <th className="px-4 py-2 text-xs font-bold text-slate-500 whitespace-nowrap">Size</th>
+                                          <th className="px-4 py-2 text-xs font-bold text-slate-500 text-right whitespace-nowrap">Qty</th>
+                                          <th className="px-4 py-2 text-xs font-bold text-slate-500 text-right whitespace-nowrap">Price</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody className="divide-y divide-slate-100">
+                                        {billItemsCache[bill.BillId].map((item, i) => (
+                                          <tr key={i} className="hover:bg-slate-50/50">
+                                            <td className="px-4 py-2.5 font-medium text-slate-700 whitespace-nowrap">
+                                              <div className="flex flex-col">
+                                                <span>{item.ArticleName}</span>
+                                                <span className="text-xs text-slate-400 font-mono">{item.ArticleNo}</span>
+                                              </div>
+                                            </td>
+                                            <td className="px-4 py-2.5 text-slate-600 whitespace-nowrap">{item.Color}</td>
+                                            <td className="px-4 py-2.5 text-slate-600 whitespace-nowrap">{item.Size}</td>
+                                            <td className="px-4 py-2.5 text-slate-700 font-bold text-right whitespace-nowrap">{item.Quantity}</td>
+                                            <td className="px-4 py-2.5 text-slate-700 text-right whitespace-nowrap">{formatCurrency(item.NetPrice)}</td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                ) : (
+                                  <div className="text-sm text-slate-500 italic">No item details available.</div>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                       ))}
                       {liveBills.length === 0 && (
                         <tr>
-                          <td colSpan="5" className="px-6 py-16 text-center text-slate-400 font-medium">
+                          <td colSpan="6" className="px-6 py-16 text-center text-slate-400 font-medium">
                             <Receipt className="w-10 h-10 mb-3 text-slate-300 mx-auto" />
                             No invoices processed today.
                           </td>
@@ -3196,7 +3229,7 @@ export default function App() {
 
             {/* 9. VIP & DORMANT */}
             {(activeTab === 'vip' || activeTab === 'dormant') && (
-              <div className="p-8 min-h-screen">
+              <div className="p-4 sm:p-6 lg:p-8 min-h-screen">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-200 pb-6 mb-6 gap-4">
                   <div>
                     <h3 className="text-2xl font-bold text-slate-800 flex items-center">
@@ -3207,9 +3240,9 @@ export default function App() {
                   </div>
                   <div className="relative w-full md:w-80">
                     <Search className="w-5 h-5 text-slate-400 absolute left-3 top-2.5" />
-                    <input 
-                      type="text" 
-                      placeholder="Search by Name or Phone..." 
+                    <input
+                      type="text"
+                      placeholder="Search by Name or Phone..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 shadow-sm transition-colors"
@@ -3221,11 +3254,11 @@ export default function App() {
                   <table className="min-w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-slate-50 border-b border-slate-200">
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Client Identity</th>
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Contact</th>
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Lifetime Value</th>
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">{activeTab === 'vip' ? 'Total Visits' : 'Days Inactive'}</th>
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Profile</th>
+                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Client Identity</th>
+                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Contact</th>
+                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Lifetime Value</th>
+                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">{activeTab === 'vip' ? 'Total Visits' : 'Days Inactive'}</th>
+                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right whitespace-nowrap">Profile</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -3233,27 +3266,27 @@ export default function App() {
                         .filter(c => `${c.FirstName} ${c.LastName}`.toLowerCase().includes(searchQuery.toLowerCase()) || c.Phone?.includes(searchQuery))
                         .map((customer, idx) => (
                           <tr key={idx} onClick={() => openCustomerCard(customer)} className="hover:bg-blue-50/50 cursor-pointer transition-all group">
-                            <td className="px-6 py-4 font-bold text-slate-800 flex items-center">
+                            <td className="px-6 py-4 font-bold text-slate-800 flex items-center whitespace-nowrap">
                               <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mr-3 font-black text-xs">
                                 {customer.FirstName?.charAt(0) || 'C'}
                               </div>
                               {customer.FirstName} {customer.LastName || ''}
                             </td>
-                            <td className="px-6 py-4 text-slate-500 font-mono text-sm">{customer.Phone}</td>
-                            <td className="px-6 py-4 font-black text-green-600">{formatCurrency(customer.LifetimeSpend)}</td>
-                            <td className="px-6 py-4">
-                              {activeTab === 'vip' 
+                            <td className="px-6 py-4 text-slate-500 font-mono text-sm whitespace-nowrap">{customer.Phone}</td>
+                            <td className="px-6 py-4 font-black text-green-600 whitespace-nowrap">{formatCurrency(customer.LifetimeSpend)}</td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {activeTab === 'vip'
                                 ? <span className="bg-slate-100 text-slate-600 font-bold px-3 py-1 rounded-lg text-sm">{customer.TotalBills} Invoices</span>
                                 : <span className="text-red-500 font-bold bg-red-50 px-3 py-1 rounded-lg text-sm border border-red-100">{customer.DaysSinceLastVisit} Days</span>
                               }
                             </td>
-                            <td className="px-6 py-4 text-right">
+                            <td className="px-6 py-4 text-right whitespace-nowrap">
                               <span className="inline-flex items-center text-xs text-blue-600 font-bold opacity-0 group-hover:opacity-100 transition-opacity bg-blue-50 px-3 py-1.5 rounded-lg">
                                 Open Profile &rarr;
                               </span>
                             </td>
                           </tr>
-                      ))}
+                        ))}
                       {(activeTab === 'vip' ? vips : dormant).length === 0 && (
                         <tr>
                           <td colSpan="5" className="px-6 py-12 text-center text-slate-400">No customer records found.</td>
@@ -3265,16 +3298,145 @@ export default function App() {
               </div>
             )}
 
+            {/* RETURNS & EXCHANGES TRACKER */}
+            {activeTab === 'returns' && (
+              <div className="space-y-6">
+                <div className="border-b border-slate-200 pb-5">
+                  <h3 className="text-2xl font-bold text-slate-800 flex items-center">
+                    <RotateCcw className="w-6 h-6 mr-3 text-amber-500" /> Returns & Exchange Tracker
+                  </h3>
+                  <p className="text-sm text-slate-500 mt-1">Track cancelled bills, return rates, and top returned product categories.</p>
+                </div>
+
+                {returnsData ? (
+                  <>
+                    {/* Summary Cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Today's Returns</p>
+                        <h4 className="text-3xl font-black text-amber-600 mt-2">{returnsData.today.ReturnCount}</h4>
+                        <p className="text-xs text-slate-400 mt-1">Refund: <span className="font-bold text-slate-700">{formatCurrency(returnsData.today.RefundAmount)}</span></p>
+                      </div>
+                      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Monthly Returns</p>
+                        <h4 className="text-3xl font-black text-rose-600 mt-2">{returnsData.monthly.ReturnCount}</h4>
+                        <p className="text-xs text-slate-400 mt-1">Refund: <span className="font-bold text-slate-700">{formatCurrency(returnsData.monthly.RefundAmount)}</span></p>
+                      </div>
+                      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Monthly Return Rate</p>
+                        <h4 className={`text-3xl font-black mt-2 ${returnsData.returnRatePct <= 3 ? 'text-green-600' : returnsData.returnRatePct <= 8 ? 'text-amber-600' : 'text-rose-600'}`}>{returnsData.returnRatePct}%</h4>
+                        <p className="text-xs text-slate-400 mt-1">{returnsData.monthly.ReturnCount} of {returnsData.totalMonthlyBills} total bills</p>
+                      </div>
+                      <div className={`p-5 rounded-2xl shadow-sm border ${returnsData.returnRatePct <= 3 ? 'bg-green-50 border-green-200' : returnsData.returnRatePct <= 8 ? 'bg-amber-50 border-amber-200' : 'bg-rose-50 border-rose-200'}`}>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Health Status</p>
+                        <h4 className={`text-xl font-black mt-2 ${returnsData.returnRatePct <= 3 ? 'text-green-700' : returnsData.returnRatePct <= 8 ? 'text-amber-700' : 'text-rose-700'}`}>
+                          {returnsData.returnRatePct <= 3 ? '✅ Excellent' : returnsData.returnRatePct <= 8 ? '⚠️ Watch' : '🚨 High'}
+                        </h4>
+                        <p className="text-xs text-slate-500 mt-1">{returnsData.returnRatePct <= 3 ? 'Return rate is healthy and within normal range.' : returnsData.returnRatePct <= 8 ? 'Slightly elevated — review sizing and quality.' : 'Investigate product quality or sizing issues.'}</p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      {/* Top Returned Categories */}
+                      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div className="p-4 border-b border-slate-100 bg-slate-50/50">
+                          <h4 className="text-sm font-bold text-slate-800 flex items-center">
+                            <Tag className="w-4 h-4 mr-2 text-amber-500" /> Top Returned Categories
+                          </h4>
+                          <p className="text-xs text-slate-400 mt-0.5">Last 3 months</p>
+                        </div>
+                        <div className="divide-y divide-slate-100">
+                          {returnsData.topReturnedCategories.length > 0 ? returnsData.topReturnedCategories.map((cat, idx) => {
+                            const maxUnits = returnsData.topReturnedCategories[0]?.ReturnedUnits || 1;
+                            const barWidth = Math.max((cat.ReturnedUnits / maxUnits) * 100, 8);
+                            return (
+                              <div key={idx} className="p-4 hover:bg-slate-50 transition-colors">
+                                <div className="flex justify-between items-center mb-1.5">
+                                  <span className="text-sm font-bold text-slate-700">{cat.Category}</span>
+                                  <span className="text-xs font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-100">{cat.ReturnedUnits} units</span>
+                                </div>
+                                <div className="w-full bg-slate-100 rounded-full h-1.5">
+                                  <div className="bg-amber-500 h-1.5 rounded-full transition-all duration-500" style={{ width: `${barWidth}%` }}></div>
+                                </div>
+                                <div className="flex justify-between mt-1">
+                                  <span className="text-[10px] text-slate-400">{cat.ReturnBills} bills</span>
+                                  <span className="text-[10px] text-slate-400">{formatCurrency(cat.RefundValue)}</span>
+                                </div>
+                              </div>
+                            );
+                          }) : (
+                            <div className="p-8 text-center text-sm text-slate-400">No return category data available.</div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Recent Returns List */}
+                      <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
+                          <h4 className="text-sm font-bold text-slate-800 flex items-center">
+                            <Receipt className="w-4 h-4 mr-2 text-rose-500" /> Recent Returned Bills
+                          </h4>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{returnsData.recentReturns.length} Records</span>
+                        </div>
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full text-left">
+                            <thead>
+                              <tr className="bg-slate-50 border-b border-slate-200">
+                                <th className="px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Bill #</th>
+                                <th className="px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Customer</th>
+                                <th className="px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Items</th>
+                                <th className="px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Refund</th>
+                                <th className="px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Date</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                              {returnsData.recentReturns.length > 0 ? returnsData.recentReturns.map((ret, idx) => (
+                                <tr key={idx} className="hover:bg-red-50/30 transition-colors">
+                                  <td className="px-5 py-3.5 text-sm font-bold text-slate-700">{ret.BillNumber}</td>
+                                  <td className="px-5 py-3.5">
+                                    <span className="text-sm font-bold text-slate-800">{ret.CustomerName?.trim() || 'Guest'}</span>
+                                    {ret.Phone && <p className="text-xs text-slate-400 font-mono mt-0.5">{ret.Phone}</p>}
+                                  </td>
+                                  <td className="px-5 py-3.5">
+                                    <span className="text-sm font-bold text-slate-800">{ret.ItemCount} pcs</span>
+                                    {ret.ArticleDetails && <p className="text-xs text-slate-400 mt-0.5">{ret.ArticleDetails}</p>}
+                                  </td>
+                                  <td className="px-5 py-3.5 text-sm font-black text-rose-600 text-right">{formatCurrency(ret.RefundAmount)}</td>
+                                  <td className="px-5 py-3.5 text-xs text-slate-400 text-right">{ret.ReturnDate ? new Date(ret.ReturnDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' }) : '-'}</td>
+                                </tr>
+                              )) : (
+                                <tr>
+                                  <td colSpan="5" className="px-5 py-10 text-center text-sm text-slate-400">
+                                    <RotateCcw className="w-6 h-6 mx-auto mb-2 text-slate-300" />
+                                    No returns found. Great news!
+                                  </td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-12 text-center">
+                    <RotateCcw className="w-8 h-8 mx-auto mb-3 text-slate-300 animate-spin" />
+                    <p className="text-sm text-slate-400">Loading returns data...</p>
+                  </div>
+                )}
+              </div>
+            )}
+
           </div>
         </div>
 
         {/* CUSTOMER PROFILE MODAL / DRAWER WITH AI */}
         {selectedCustomer && (
           <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex justify-end z-50 transition-opacity">
-            <div className="bg-white w-full max-w-xl h-full shadow-2xl p-0 overflow-hidden flex flex-col relative">
-              
+            <div className="bg-white w-full sm:max-w-xl h-full shadow-2xl p-0 overflow-hidden flex flex-col relative">
+
               {/* Modal Header */}
-              <div className="p-8 border-b border-slate-100 bg-slate-50">
+              <div className="p-4 sm:p-6 lg:p-8 border-b border-slate-100 bg-slate-50">
                 <div className="flex justify-between items-start">
                   <div>
                     <span className="text-[10px] uppercase font-black text-blue-600 tracking-widest">Client Dossier</span>
@@ -3284,11 +3446,11 @@ export default function App() {
                     <div className="flex items-center mt-3 gap-3">
                       <p className="text-sm text-slate-500 font-mono bg-white px-3 py-1 rounded-lg border border-slate-200">{selectedCustomer.Phone}</p>
                       {loadingPersona ? (
-                         <span className="px-3 py-1 bg-slate-200 text-slate-500 rounded-lg text-xs font-bold animate-pulse">Analyzing Style...</span>
+                        <span className="px-3 py-1 bg-slate-200 text-slate-500 rounded-lg text-xs font-bold animate-pulse">Analyzing Style...</span>
                       ) : customerPersona ? (
-                         <span className="px-3 py-1 bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-lg text-xs font-bold flex items-center shadow-sm">
-                           <Sparkles className="w-3 h-3 mr-1.5 text-indigo-500" /> {customerPersona}
-                         </span>
+                        <span className="px-3 py-1 bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-lg text-xs font-bold flex items-center shadow-sm">
+                          <Sparkles className="w-3 h-3 mr-1.5 text-indigo-500" /> {customerPersona}
+                        </span>
                       ) : null}
                     </div>
                   </div>
@@ -3297,7 +3459,7 @@ export default function App() {
                   </button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 mt-8">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8">
                   <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Lifetime Value</p>
                     <p className="text-2xl font-black text-green-600 mt-1">{formatCurrency(selectedCustomer.LifetimeSpend)}</p>
@@ -3310,21 +3472,21 @@ export default function App() {
               </div>
 
               {/* Modal Body */}
-              <div className="p-8 flex-1 overflow-y-auto">
-                
+              <div className="p-4 sm:p-6 lg:p-8 flex-1 overflow-y-auto">
+
                 {/* AI Assistant Section */}
                 <div className="bg-gradient-to-br from-indigo-900 to-indigo-950 p-6 rounded-2xl shadow-lg mb-8 text-white border border-indigo-800/50 relative overflow-hidden">
                   <div className="absolute -right-4 -top-4 opacity-10 pointer-events-none">
-                     <Wand2 className="w-32 h-32" />
+                    <Wand2 className="w-32 h-32" />
                   </div>
                   <div className="relative z-10">
                     <h4 className="text-xs font-black uppercase tracking-widest mb-3 flex items-center text-indigo-300">
                       <Sparkles className="w-4 h-4 mr-2" /> Gemini AI Messenger
                     </h4>
                     <p className="text-sm text-indigo-100/70 mb-5 leading-relaxed">Generate a tailored, franchise-safe message based on their actual wardrobe history.</p>
-                    
+
                     <div className="flex flex-col gap-4">
-                      <select 
+                      <select
                         value={aiMessageType}
                         onChange={(e) => setAiMessageType(e.target.value)}
                         className="w-full bg-slate-900/50 border border-indigo-500/30 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-indigo-400 focus:bg-slate-900 transition-colors cursor-pointer"
@@ -3335,7 +3497,7 @@ export default function App() {
                         <option value="vip">✨ VIP Appreciation (White-glove thank you)</option>
                       </select>
 
-                      <button 
+                      <button
                         onClick={handleGenerateAI}
                         disabled={isGenerating || loadingHistory}
                         className="w-full bg-indigo-500 hover:bg-indigo-400 text-white font-bold py-3 rounded-xl text-sm transition-all flex items-center justify-center disabled:opacity-50 cursor-pointer shadow-lg shadow-indigo-500/20"
@@ -3347,12 +3509,12 @@ export default function App() {
                     {generatedMsg && (
                       <div className="mt-6 pt-5 border-t border-indigo-800/50">
                         <p className="text-[10px] text-indigo-300 uppercase font-bold tracking-widest mb-3">Review & Edit</p>
-                        <textarea 
+                        <textarea
                           value={generatedMsg}
                           onChange={(e) => setGeneratedMsg(e.target.value)}
                           className="w-full h-32 bg-slate-900/50 border border-indigo-500/30 rounded-xl p-4 text-sm leading-relaxed text-slate-100 focus:outline-none focus:border-indigo-400 resize-none shadow-inner"
                         />
-                        <button 
+                        <button
                           onClick={() => {
                             window.open(`https://wa.me/91${selectedCustomer.Phone}?text=${encodeURIComponent(generatedMsg)}`, '_blank');
                           }}
@@ -3370,7 +3532,7 @@ export default function App() {
                   <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center">
                     <ShoppingBag className="w-5 h-5 mr-2 text-slate-400" /> Itemized Wardrobe History
                   </h4>
-                  
+
                   {loadingHistory ? (
                     <div className="py-12 flex flex-col items-center justify-center text-slate-400">
                       <RefreshCw className="w-8 h-8 mb-4 animate-spin text-slate-300" />
@@ -3412,7 +3574,7 @@ export default function App() {
         {/* EOD CASH RECONCILIATION MODAL */}
         {showReconModal && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-3xl max-w-lg w-full p-8 shadow-2xl border border-slate-200">
+            <div className="bg-white rounded-3xl w-full sm:max-w-lg p-4 sm:p-6 lg:p-8 shadow-2xl border border-slate-200">
               <div className="flex justify-between items-start mb-6">
                 <div>
                   <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
@@ -3433,7 +3595,7 @@ export default function App() {
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Physical Cash Counted in Drawer (₹)</label>
-                  <input 
+                  <input
                     type="number"
                     value={countedCashInput}
                     onChange={(e) => setCountedCashInput(e.target.value)}
@@ -3458,7 +3620,7 @@ export default function App() {
 
                 <div>
                   <label className="block text-xs font-bold text-slate-700 uppercase mb-2">Manager Notes / Reason (Optional)</label>
-                  <textarea 
+                  <textarea
                     value={reconNotes}
                     onChange={(e) => setReconNotes(e.target.value)}
                     placeholder="e.g. Petty cash withdrawn ₹200 for store tea/cleaning..."
@@ -3467,13 +3629,13 @@ export default function App() {
                 </div>
 
                 <div className="flex gap-3 pt-2">
-                  <button 
+                  <button
                     onClick={() => setShowReconModal(false)}
                     className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition-colors cursor-pointer"
                   >
                     Cancel
                   </button>
-                  <button 
+                  <button
                     onClick={handleSaveReconciliation}
                     disabled={!countedCashInput}
                     className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition-colors disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 cursor-pointer"
@@ -3489,7 +3651,7 @@ export default function App() {
         {/* EOD WHATSAPP REPORT MODAL */}
         {showEodModal && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-3xl max-w-lg w-full p-8 shadow-2xl border border-slate-200">
+            <div className="bg-white rounded-3xl w-full sm:max-w-lg p-4 sm:p-6 lg:p-8 shadow-2xl border border-slate-200">
               <div className="flex justify-between items-start mb-6">
                 <div>
                   <h3 className="text-xl font-bold text-slate-800 flex items-center gap-2">
@@ -3503,14 +3665,14 @@ export default function App() {
               </div>
 
               <div className="space-y-4">
-                <textarea 
+                <textarea
                   value={eodSummaryText}
                   onChange={(e) => setEodSummaryText(e.target.value)}
                   className="w-full h-56 p-4 bg-slate-900 text-slate-100 font-mono text-xs leading-relaxed rounded-2xl border border-slate-800 focus:outline-none resize-none shadow-inner"
                 />
 
                 <div className="flex gap-3">
-                  <button 
+                  <button
                     onClick={() => {
                       navigator.clipboard.writeText(eodSummaryText);
                       setEodCopied(true);
@@ -3520,7 +3682,7 @@ export default function App() {
                   >
                     {eodCopied ? '✅ Copied!' : '📋 Copy Summary'}
                   </button>
-                  <button 
+                  <button
                     onClick={() => {
                       window.open(`https://wa.me/?text=${encodeURIComponent(eodSummaryText)}`, '_blank');
                     }}
@@ -3537,7 +3699,7 @@ export default function App() {
         {/* Floating Toast Notifications Container with Timer Progress Bar */}
         <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3 pointer-events-none">
           {toasts.map(toast => (
-            <div 
+            <div
               key={toast.id}
               onClick={() => {
                 setActiveTab('live');
@@ -3563,7 +3725,7 @@ export default function App() {
                   </span>
                 </div>
               </div>
-              <button 
+              <button
                 onClick={(e) => {
                   e.stopPropagation();
                   setToasts(prev => prev.filter(t => t.id !== toast.id));
@@ -3574,9 +3736,9 @@ export default function App() {
               </button>
 
               {/* Toast Visual Progress Countdown Bar */}
-              <div 
-                className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-green-400 origin-left animate-toast-timer" 
-                style={{ animationDuration: `${toast.duration || 5000}ms` }} 
+              <div
+                className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 to-green-400 origin-left animate-toast-timer"
+                style={{ animationDuration: `${toast.duration || 5000}ms` }}
               />
             </div>
           ))}
