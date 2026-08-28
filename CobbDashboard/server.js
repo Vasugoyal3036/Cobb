@@ -5,11 +5,21 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { spawn, execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const multer = require('multer');
 require('dotenv').config();
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// Multer setup for broadcast media uploads
+const broadcastUploadDir = path.join(__dirname, 'uploads', 'broadcast');
+if (!fs.existsSync(broadcastUploadDir)) fs.mkdirSync(broadcastUploadDir, { recursive: true });
+const broadcastStorage = multer.diskStorage({
+    destination: (req, file, cb) => cb(null, broadcastUploadDir),
+    filename: (req, file, cb) => cb(null, `broadcast_media_${Date.now()}${path.extname(file.originalname)}`)
+});
+const broadcastUpload = multer({ storage: broadcastStorage, limits: { fileSize: 16 * 1024 * 1024 } });
 
 process.on('uncaughtException', (err) => {
     console.error('Unhandled Exception:', err);
@@ -972,8 +982,14 @@ app.get('/api/broadcast/status', (req, res) => {
     res.json(activeBroadcast);
 });
 
+// Upload endpoint for broadcast media
+app.post('/api/broadcast/upload', broadcastUpload.single('media'), (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded.' });
+    res.json({ success: true, filePath: req.file.path, fileName: req.file.originalname, size: req.file.size });
+});
+
 app.post('/api/broadcast/start', async (req, res) => {
-    const { message, delayMs = 1500 } = req.body;
+    const { message, delayMs = 1500, mediaPath } = req.body;
     if (!message) return res.status(400).json({ error: 'Broadcast message body is required.' });
     if (activeBroadcast.isRunning) return res.status(400).json({ error: 'A broadcast is already running.' });
 
@@ -994,7 +1010,8 @@ app.post('/api/broadcast/start', async (req, res) => {
         currentIndex: 0,
         currentContact: '',
         status: 'running',
-        logs: [`[${new Date().toLocaleTimeString()}] Started Mass WhatsApp Broadcast to ${contacts.length} billed customers...`]
+        mediaAttached: !!mediaPath,
+        logs: [`[${new Date().toLocaleTimeString()}] Started Mass WhatsApp Broadcast to ${contacts.length} billed customers...${mediaPath ? ' (with media attachment)' : ''}`]
     };
 
     res.json({ success: true, message: `Mass broadcast started to ${contacts.length} customers.` });
@@ -1017,10 +1034,12 @@ app.post('/api/broadcast/start', async (req, res) => {
             const targetPhone = contact.formattedPhone;
 
             try {
+                const sendPayload = { number: targetPhone, message: personalizedMsg };
+                if (mediaPath) sendPayload.mediaPath = mediaPath;
                 const response = await fetch('http://localhost:3000/send', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ number: targetPhone, message: personalizedMsg })
+                    body: JSON.stringify(sendPayload)
                 });
                 const data = await response.json();
                 if (response.ok) {

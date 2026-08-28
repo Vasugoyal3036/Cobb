@@ -51,9 +51,7 @@ import {
   Flame,
   Award,
   Trophy,
-  RotateCcw,
-  Paperclip,
-  Image
+  RotateCcw
 } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -123,9 +121,6 @@ export default function App() {
   const [broadcastStatus, setBroadcastStatus] = useState({ isRunning: false, total: 0, sentCount: 0, failedCount: 0, currentIndex: 0, status: 'idle', logs: [] });
   const [broadcastMsg, setBroadcastMsg] = useState('🎉 *SPECIAL OFFER FROM COBB PUNDRI!* 🎉\n\nHello *{name}*! 👋\n\nEnjoy *BUY 2 GET 1 FREE* on all Suits, Formals, & Denim Collections this week at Cobb Pundri! 🏷️✨\n\n-----------------------------------\n📍 *Store Location:*\nhttps://maps.app.goo.gl/HxgE1M25h32oWY2H9?g_st=ac\n-----------------------------------\n\nShow this WhatsApp message at counter to claim your deal!\n\nWarm Regards,\n*Parbhat Goyal*\nCobb Pundri');
   const [isStartingBroadcast, setIsStartingBroadcast] = useState(false);
-  const [broadcastMedia, setBroadcastMedia] = useState(null);
-  const [broadcastMediaPath, setBroadcastMediaPath] = useState(null);
-  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
   const [isSyncingGroup, setIsSyncingGroup] = useState(false);
   const [groupSearchQuery, setGroupSearchQuery] = useState('');
   const [topMoversData, setTopMoversData] = useState({ topArticles: [], sizeDemand: [] });
@@ -160,48 +155,25 @@ export default function App() {
 
   const DAILY_TARGET = 50000;
 
-  // Core dashboard metrics needed on mount for alerts and command center
   useEffect(() => {
+    axios.get(`${API_BASE}/api/customers/vip`).then(res => setVips(res.data)).catch(console.error);
+    axios.get(`${API_BASE}/api/customers/dormant`).then(res => setDormant(res.data)).catch(console.error);
     axios.get(`${API_BASE}/api/sales/overview`).then(res => setOverviewStats(res.data)).catch(console.error);
     axios.get(`${API_BASE}/api/sales/live`).then(res => setLiveBills(res.data)).catch(console.error);
-    axios.get(`${API_BASE}/api/analytics/hourly`).then(res => setHourlySales(res.data)).catch(console.error);
+    axios.get(`${API_BASE}/api/inventory`).then(res => setInventory(res.data)).catch(console.error);
     axios.get(`${API_BASE}/api/inventory/dead-stock`).then(res => setDeadStock(res.data)).catch(console.error);
+    axios.get(`${API_BASE}/api/analytics/hourly`).then(res => setHourlySales(res.data)).catch(console.error);
+    axios.get(`${API_BASE}/api/analytics/monthly-products`).then(res => setMonthlyProducts(res.data)).catch(console.error);
+    axios.get(`${API_BASE}/api/financials/gst-summary`).then(res => setGstSummary(res.data)).catch(console.error);
+    axios.get(`${API_BASE}/api/inventory/size-matrix`).then(res => setSizeMatrix(res.data)).catch(console.error);
     axios.get(`${API_BASE}/api/reconciliation/latest`).then(res => setReconData(res.data)).catch(console.error);
+    axios.get(`${API_BASE}/api/analytics/top-movers`).then(res => setTopMoversData(res.data)).catch(console.error);
+    axios.get(`${API_BASE}/api/sales/returns`).then(res => setReturnsData(res.data)).catch(console.error);
+    axios.get(`${API_BASE}/api/broadcast/group`).then(res => {
+      setBroadcastGroup(res.data.contacts || []);
+      setBroadcastGroupCount(res.data.totalCount || 0);
+    }).catch(console.error);
   }, []);
-
-  // Lazy load data only when its tab is active
-  useEffect(() => {
-    if (activeTab === 'vip' && (!vips || vips.length === 0)) {
-      axios.get(`${API_BASE}/api/customers/vip`).then(res => setVips(res.data)).catch(console.error);
-    }
-    if (activeTab === 'dormant' && (!dormant || dormant.length === 0)) {
-      axios.get(`${API_BASE}/api/customers/dormant`).then(res => setDormant(res.data)).catch(console.error);
-    }
-    if (activeTab === 'inventory' && (!inventory || inventory.length === 0)) {
-      axios.get(`${API_BASE}/api/inventory`).then(res => setInventory(res.data)).catch(console.error);
-    }
-    if (activeTab === 'monthly' && !monthlyProducts) {
-      axios.get(`${API_BASE}/api/analytics/monthly-products`).then(res => setMonthlyProducts(res.data)).catch(console.error);
-    }
-    if (activeTab === 'gst' && !gstSummary) {
-      axios.get(`${API_BASE}/api/financials/gst-summary`).then(res => setGstSummary(res.data)).catch(console.error);
-    }
-    if (activeTab === 'sizematrix' && !sizeMatrix) {
-      axios.get(`${API_BASE}/api/inventory/size-matrix`).then(res => setSizeMatrix(res.data)).catch(console.error);
-    }
-    if (activeTab === 'topmovers' && !topMoversData) {
-      axios.get(`${API_BASE}/api/analytics/top-movers`).then(res => setTopMoversData(res.data)).catch(console.error);
-    }
-    if (activeTab === 'returns' && !returnsData) {
-      axios.get(`${API_BASE}/api/sales/returns`).then(res => setReturnsData(res.data)).catch(console.error);
-    }
-    if (activeTab === 'broadcast' && (!broadcastGroup || broadcastGroup.length === 0)) {
-      axios.get(`${API_BASE}/api/broadcast/group`).then(res => {
-        setBroadcastGroup(res.data.contacts || []);
-        setBroadcastGroupCount(res.data.totalCount || 0);
-      }).catch(console.error);
-    }
-  }, [activeTab]);
 
   // Hardware Barcode Scanner Listener (HID Emulation)
   const barcodeBufferRef = useRef('');
@@ -456,39 +428,16 @@ export default function App() {
 
     setIsStartingBroadcast(true);
     try {
-      const payload = { message: broadcastMsg, delayMs: 1500 };
-      if (broadcastMediaPath) payload.mediaPath = broadcastMediaPath;
-      const res = await axios.post(`${API_BASE}/api/broadcast/start`, payload);
+      const res = await axios.post(`${API_BASE}/api/broadcast/start`, {
+        message: broadcastMsg,
+        delayMs: 1500
+      });
       alert(`✅ ${res.data.message}`);
     } catch (err) {
       alert(`Broadcast failed to start: ${err.response?.data?.error || err.message}`);
     } finally {
       setIsStartingBroadcast(false);
     }
-  };
-
-  const handleBroadcastMediaUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setIsUploadingMedia(true);
-    const formData = new FormData();
-    formData.append('media', file);
-    try {
-      const res = await axios.post(`${API_BASE}/api/broadcast/upload`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      setBroadcastMedia({ name: file.name, size: file.size, type: file.type });
-      setBroadcastMediaPath(res.data.filePath);
-    } catch (err) {
-      alert(`Upload failed: ${err.response?.data?.error || err.message}`);
-    } finally {
-      setIsUploadingMedia(false);
-    }
-  };
-
-  const handleRemoveBroadcastMedia = () => {
-    setBroadcastMedia(null);
-    setBroadcastMediaPath(null);
   };
 
   const handleStopBroadcast = async () => {
@@ -902,6 +851,201 @@ export default function App() {
           border-bottom: 1px solid #1e293b !important;
         }
         .dark-mode table tr {
+          border-color: #1e293b !important;
+        }
+        .dark-mode table tr:hover {
+          background-color: rgba(30, 41, 59, 0.4) !important;
+        }
+        .dark-mode .hover\/bg-slate-50:hover {
+          background-color: #1e293b !important;
+        }
+        .dark-mode .hover\/bg-blue-50\/30:hover {
+          background-color: rgba(30, 41, 59, 0.2) !important;
+        }
+        .dark-mode .bg-blue-50 {
+          background-color: rgba(30, 41, 59, 0.6) !important;
+          color: #60a5fa !important;
+          border-color: rgba(96, 165, 250, 0.2) !important;
+        }
+        .dark-mode .text-blue-600 {
+          color: #60a5fa !important;
+        }
+        .dark-mode .text-blue-800 {
+          color: #93c5fd !important;
+        }
+        .dark-mode .bg-green-50 {
+          background-color: rgba(6, 78, 59, 0.4) !important;
+          color: #34d399 !important;
+          border-color: rgba(52, 211, 153, 0.2) !important;
+        }
+        .dark-mode .text-green-600 {
+          color: #34d399 !important;
+        }
+        .dark-mode .bg-red-50 {
+          background-color: rgba(127, 29, 29, 0.4) !important;
+          color: #f87171 !important;
+          border-color: rgba(248, 113, 113, 0.2) !important;
+        }
+        .dark-mode .text-red-500 {
+          color: #f87171 !important;
+        }
+        .dark-mode .text-red-900 {
+          color: #fca5a5 !important;
+        }
+        .dark-mode .bg-red-50\/50 {
+          background-color: rgba(239, 68, 68, 0.03) !important;
+        }
+        .dark-mode .border-red-100 {
+          border-color: rgba(239, 68, 68, 0.15) !important;
+        }
+        .dark-mode .bg-red-100 {
+          background-color: rgba(239, 68, 68, 0.2) !important;
+          color: #f87171 !important;
+        }
+        .dark-mode .bg-amber-50 {
+          background-color: rgba(120, 53, 4, 0.4) !important;
+          color: #fbbf24 !important;
+          border-color: rgba(251, 191, 36, 0.2) !important;
+        }
+        .dark-mode .text-amber-600 {
+          color: #fbbf24 !important;
+        }
+        .dark-mode .text-amber-700 {
+          color: #fde047 !important;
+        }
+        .dark-mode .bg-indigo-50 {
+          background-color: rgba(49, 46, 129, 0.4) !important;
+          color: #818cf8 !important;
+          border-color: rgba(129, 140, 248, 0.2) !important;
+        }
+        .dark-mode .text-indigo-600 {
+          color: #818cf8 !important;
+        }
+        .dark-mode .hover\:bg-indigo-50:hover {
+          background-color: rgba(99, 102, 241, 0.15) !important;
+        }
+        .dark-mode .border-indigo-200 {
+          border-color: rgba(99, 102, 241, 0.3) !important;
+        }
+        .dark-mode .bg-slate-50\/80 {
+          background-color: rgba(15, 23, 42, 0.8) !important;
+        }
+        .dark-mode .bg-indigo-100 {
+          background-color: rgba(99, 102, 241, 0.15) !important;
+          color: #a5b4fc !important;
+          border-color: rgba(165, 180, 252, 0.2) !important;
+        }
+        .dark-mode .text-indigo-700 {
+          color: #c7d2fe !important;
+        }
+        .dark-mode .bg-indigo-950, .dark-mode .bg-indigo-900 {
+          background-color: #0f172a !important;
+          border-color: #1e293b !important;
+        }
+        .dark-mode .from-slate-900, .dark-mode .to-indigo-950 {
+          background-image: none !important;
+          background-color: #0f172a !important;
+          border-color: #1e293b !important;
+        }
+        .dark-mode .bg-slate-900 {
+          background-color: #090d16 !important;
+          border-color: #1e293b !important;
+        }
+        .dark-mode .bg-slate-950 {
+          background-color: #020617 !important;
+        }
+        .dark-mode .bg-slate-200 {
+          background-color: #1e293b !important;
+        }
+        .dark-mode .bg-gradient-to-t.from-blue-600 {
+          background-image: linear-gradient(to top, #2563eb, #60a5fa) !important;
+        }
+        .dark-mode .bg-white.w-full.max-w-xl {
+          background-color: #090d16 !important;
+          border-left: 1px solid #1e293b !important;
+        }
+        .dark-mode .bg-slate-50.p-8,
+        .dark-mode .bg-slate-50.p-6,
+        .dark-mode .bg-slate-50.border-b {
+          background-color: #0f172a !important;
+          border-color: #1e293b !important;
+        }
+        .dark-mode .dark-toggle-btn {
+          background-color: #0f172a !important;
+          border-color: #1e293b !important;
+          color: #fbbf24 !important;
+        }
+        .dark-mode .dark-toggle-btn:hover {
+          background-color: #1e293b !important;
+        }
+        .dark-mode .status-badge {
+          background-color: #0f172a !important;
+          border-color: #1e293b !important;
+          color: #e2e8f0 !important;
+        }
+        .dark-mode .from-indigo-900 {
+          background-image: none !important;
+          background-color: #0f172a !important;
+          border-color: #1e293b !important;
+        }
+      `}</style>
+
+      {/* Mobile Drawer Overlay */}
+      {isMobileMenuOpen && (
+        <div
+          onClick={() => setIsMobileMenuOpen(false)}
+          className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-30 lg:hidden"
+        />
+      )}
+
+      {/* Sidebar Navigation */}
+      <div className={`fixed lg:static inset-y-0 left-0 w-64 bg-slate-950 text-slate-300 flex flex-col shadow-xl z-40 border-r border-slate-800 transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+        <div className="p-6 border-b border-slate-800 flex justify-between items-center">
+          <div>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/30">
+                <span className="text-white font-bold text-lg">C</span>
+              </div>
+              <h1 className="text-xl font-bold tracking-wider text-white">COBB ITALY</h1>
+            </div>
+            <p className="text-slate-500 text-xs font-medium ml-11">Smart CRM System</p>
+          </div>
+          <button
+            onClick={() => setIsMobileMenuOpen(false)}
+            className="lg:hidden text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-900"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <nav className="flex-1 px-3 space-y-4 mt-6 overflow-y-auto custom-scrollbar">
+          {navigationItems.map((cat, catIdx) => (
+            <div key={catIdx} className="space-y-1">
+              <p className="px-4 text-[9px] font-bold text-slate-600 uppercase tracking-widest mb-1.5">{cat.category}</p>
+              {cat.items.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.id;
+
+                const normalColor = item.colorClass || "text-slate-400 hover:bg-slate-900/60 hover:text-slate-200";
+                const activeColor = item.activeColorClass || "bg-blue-600/15 text-blue-400 font-semibold border-l-2 border-blue-500";
+
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => { setActiveTab(item.id); setSearchQuery(''); setIsMobileMenuOpen(false); }}
+                    className={`w-full flex items-center px-4 py-2.5 rounded-lg transition-all duration-200 cursor-pointer relative group text-xs ${isActive ? activeColor : normalColor}`}
+                  >
+                    <Icon className={`w-4 h-4 mr-3 transition-colors ${isActive ? "" : "opacity-60 group-hover:opacity-100"}`} />
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+          <div className="pb-8"></div>
+        </nav>
+      </div>
+
           border-color: #1e293b !important;
         }
         .dark-mode table tr:hover {
@@ -1829,23 +1973,6 @@ export default function App() {
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm font-sans focus:outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all leading-relaxed shadow-inner"
                     placeholder="Type your offer broadcast text here..."
                   />
-
-                  {/* Media Attachment Section */}
-                  <div className="flex items-center gap-3">
-                    <label className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold cursor-pointer transition-all border border-slate-200">
-                      <Paperclip className="w-4 h-4" />
-                      {isUploadingMedia ? 'Uploading...' : 'Attach Media'}
-                      <input type="file" accept="image/*,video/*,.pdf,.doc,.docx" className="hidden" onChange={handleBroadcastMediaUpload} disabled={isUploadingMedia} />
-                    </label>
-                    {broadcastMedia && (
-                      <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-xl text-xs">
-                        <Image className="w-4 h-4 text-emerald-600" />
-                        <span className="font-bold text-emerald-700 max-w-[200px] truncate">{broadcastMedia.name}</span>
-                        <span className="text-emerald-500">({(broadcastMedia.size / 1024).toFixed(0)} KB)</span>
-                        <button onClick={handleRemoveBroadcastMedia} className="ml-1 text-red-400 hover:text-red-600 cursor-pointer"><X className="w-4 h-4" /></button>
-                      </div>
-                    )}
-                  </div>
 
                   {/* Live Progress Bar Container */}
                   {broadcastStatus.isRunning && (
