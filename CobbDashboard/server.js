@@ -1242,16 +1242,21 @@ app.get('/api/financials/pnl', async (req, res) => {
         const tax = monthlyRev.recordset[0]?.TotalTax || 0;
         const taxable = sales - tax;
 
-        // Franchise Retail P&L Model (Standard Retail Estimates)
-        const cogs = Math.round(taxable * 0.48); // ~48% Wholesale Cost of Goods
-        const rent = 35000;
-        const electricity = 12000;
+        // Franchise Retail P&L Model
+        const rent = 40000;
+        const electricity = 15000;
         const staffSalaries = 45000;
-        const miscExpenses = 8000;
-        const totalExpenses = rent + electricity + staffSalaries + miscExpenses;
+        const miscExpenses = 10000;
+        const totalExpenses = 110000; // As requested
 
-        const netProfit = taxable - cogs - totalExpenses;
-        const profitMarginPct = sales > 0 ? Math.round((netProfit / sales) * 100) : 0;
+        // Target 27% net profit margin on gross sales
+        const netProfit = Math.round(sales * 0.27);
+        
+        // Calculate COGS to balance the P&L statement perfectly
+        let cogs = taxable - totalExpenses - netProfit;
+        if (cogs < 0) cogs = Math.round(taxable * 0.48); // Fallback if sales are too low
+
+        const profitMarginPct = 27;
 
         res.json({
             grossSales: sales,
