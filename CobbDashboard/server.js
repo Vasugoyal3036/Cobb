@@ -486,6 +486,36 @@ app.get('/api/customers/vip', async (req, res) => {
     }
 });
 
+app.get('/api/customers/search', async (req, res) => {
+    try {
+        const { q } = req.query;
+        if (!q) return res.json([]);
+        const result = await sql.query`
+            SELECT TOP 50 
+                CUSTOMER_CODE as Phone, 
+                CUSTOMER_FNAME as FirstName, 
+                CUSTOMER_LNAME as LastName, 
+                SUM(NET_AMOUNT) as LifetimeSpend, 
+                COUNT(CM_ID) as TotalBills,
+                CONVERT(varchar, MAX(CM_TIME), 126) as LastVisit
+            FROM VW_CASHMEMO_PRINT_MST 
+            WHERE CANCELLED = 0 
+              AND CUSTOMER_CODE IS NOT NULL 
+              AND LEN(CUSTOMER_CODE) >= 10
+              AND (
+                  CUSTOMER_FNAME LIKE '%' + ${q} + '%' OR 
+                  CUSTOMER_LNAME LIKE '%' + ${q} + '%' OR 
+                  CUSTOMER_CODE LIKE '%' + ${q} + '%'
+              )
+            GROUP BY CUSTOMER_CODE, CUSTOMER_FNAME, CUSTOMER_LNAME
+            ORDER BY LifetimeSpend DESC
+        `;
+        res.json(result.recordset);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.get('/api/customers/dormant', async (req, res) => {
     try {
         const result = await sql.query(`

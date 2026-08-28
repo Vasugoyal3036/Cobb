@@ -79,6 +79,8 @@ export default function App() {
 
   const [returnsData, setReturnsData] = useState(null);
 
+  const [globalCustomers, setGlobalCustomers] = useState([]);
+  const [isSearchingCustomers, setIsSearchingCustomers] = useState(false);
   const [liveBills, setLiveBills] = useState([]);
   const [toasts, setToasts] = useState([]);
   const prevLiveBillsRef = useRef([]);
@@ -204,6 +206,27 @@ export default function App() {
   // Hardware Barcode Scanner Listener (HID Emulation)
   const barcodeBufferRef = useRef('');
   const lastKeyTimeRef = useRef(0);
+
+  // Global Customer Search Debouncer
+  useEffect(() => {
+    if ((activeTab !== 'vip' && activeTab !== 'dormant') || !searchQuery.trim()) {
+      setGlobalCustomers([]);
+      return;
+    }
+    const delayDebounceFn = setTimeout(async () => {
+      setIsSearchingCustomers(true);
+      try {
+        const res = await axios.get(`${API_BASE}/api/customers/search?q=${encodeURIComponent(searchQuery.trim())}`);
+        setGlobalCustomers(res.data);
+      } catch (err) {
+        console.error('Customer search error:', err);
+      } finally {
+        setIsSearchingCustomers(false);
+      }
+    }, 500);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery, activeTab]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -728,24 +751,33 @@ export default function App() {
       const isAmount = /^\d+(\.\d{1,2})?$/.test(query);
       const isPhone = /^[0-9]{10}$/.test(query);
 
-      const matchesCustomer = [...vips, ...dormant].some(c => 
-        `${c.FirstName || ''} ${c.LastName || ''}`.toLowerCase().includes(query) ||
-        c.Phone?.includes(query) ||
-        (isAmount && Math.round(c.LifetimeSpend) === Math.round(parseFloat(query)))
-      );
-
-      if (isPhone || matchesCustomer) {
+      // Force search execution
+      if (isPhone || isAmount || !/^[A-Z0-9-]+$/i.test(query)) {
         setActiveTab('vip');
         setToasts(prev => [
           ...prev,
-          { id: Date.now(), title: 'CUSTOMER SEARCH 🔍', message: `Filtering customers for: ${query}` }
+          { id: Date.now(), title: 'CUSTOMER SEARCH 🔍', message: `Searching entire database for: ${query}` }
         ]);
       } else {
-        setActiveTab('inventory');
-        setToasts(prev => [
-          ...prev,
-          { id: Date.now(), title: 'STOCK SCAN / SEARCH 🔍', message: `Filtering inventory for: ${query}` }
-        ]);
+        const matchesCustomer = [...vips, ...dormant].some(c => 
+          `${c.FirstName || ''} ${c.LastName || ''}`.toLowerCase().includes(query) ||
+          c.Phone?.includes(query) ||
+          (isAmount && Math.round(c.LifetimeSpend) === Math.round(parseFloat(query)))
+        );
+
+        if (matchesCustomer) {
+          setActiveTab('vip');
+          setToasts(prev => [
+            ...prev,
+            { id: Date.now(), title: 'CUSTOMER SEARCH 🔍', message: `Found match for: ${query}` }
+          ]);
+        } else {
+          setActiveTab('inventory');
+          setToasts(prev => [
+            ...prev,
+            { id: Date.now(), title: 'STOCK SCAN / SEARCH 🔍', message: `Filtering inventory for: ${query}` }
+          ]);
+        }
       }
     }
   };
@@ -3286,6 +3318,11 @@ export default function App() {
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 shadow-sm transition-colors"
                     />
+                    {isSearchingCustomers && (
+                      <div className="absolute right-3 top-2.5">
+                        <RefreshCw className="w-5 h-5 text-blue-500 animate-spin" />
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -3345,7 +3382,7 @@ export default function App() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {(activeTab === 'vip' ? vips : dormant)
+                      {(searchQuery.trim() !== '' ? globalCustomers : (activeTab === 'vip' ? vips : dormant))
                         .filter(c => {
                           const sq = searchQuery.toLowerCase();
                           return `${c.FirstName || ''} ${c.LastName || ''}`.toLowerCase().includes(sq) || 
