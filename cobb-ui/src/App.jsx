@@ -155,25 +155,48 @@ export default function App() {
 
   const DAILY_TARGET = 50000;
 
+  // Core dashboard metrics needed on mount for alerts and command center
   useEffect(() => {
-    axios.get(`${API_BASE}/api/customers/vip`).then(res => setVips(res.data)).catch(console.error);
-    axios.get(`${API_BASE}/api/customers/dormant`).then(res => setDormant(res.data)).catch(console.error);
     axios.get(`${API_BASE}/api/sales/overview`).then(res => setOverviewStats(res.data)).catch(console.error);
     axios.get(`${API_BASE}/api/sales/live`).then(res => setLiveBills(res.data)).catch(console.error);
-    axios.get(`${API_BASE}/api/inventory`).then(res => setInventory(res.data)).catch(console.error);
-    axios.get(`${API_BASE}/api/inventory/dead-stock`).then(res => setDeadStock(res.data)).catch(console.error);
     axios.get(`${API_BASE}/api/analytics/hourly`).then(res => setHourlySales(res.data)).catch(console.error);
-    axios.get(`${API_BASE}/api/analytics/monthly-products`).then(res => setMonthlyProducts(res.data)).catch(console.error);
-    axios.get(`${API_BASE}/api/financials/gst-summary`).then(res => setGstSummary(res.data)).catch(console.error);
-    axios.get(`${API_BASE}/api/inventory/size-matrix`).then(res => setSizeMatrix(res.data)).catch(console.error);
+    axios.get(`${API_BASE}/api/inventory/dead-stock`).then(res => setDeadStock(res.data)).catch(console.error);
     axios.get(`${API_BASE}/api/reconciliation/latest`).then(res => setReconData(res.data)).catch(console.error);
-    axios.get(`${API_BASE}/api/analytics/top-movers`).then(res => setTopMoversData(res.data)).catch(console.error);
-    axios.get(`${API_BASE}/api/sales/returns`).then(res => setReturnsData(res.data)).catch(console.error);
-    axios.get(`${API_BASE}/api/broadcast/group`).then(res => {
-      setBroadcastGroup(res.data.contacts || []);
-      setBroadcastGroupCount(res.data.totalCount || 0);
-    }).catch(console.error);
   }, []);
+
+  // Lazy load data only when its tab is active
+  useEffect(() => {
+    if (activeTab === 'vip' && (!vips || vips.length === 0)) {
+      axios.get(`${API_BASE}/api/customers/vip`).then(res => setVips(res.data)).catch(console.error);
+    }
+    if (activeTab === 'dormant' && (!dormant || dormant.length === 0)) {
+      axios.get(`${API_BASE}/api/customers/dormant`).then(res => setDormant(res.data)).catch(console.error);
+    }
+    if (activeTab === 'inventory' && (!inventory || inventory.length === 0)) {
+      axios.get(`${API_BASE}/api/inventory`).then(res => setInventory(res.data)).catch(console.error);
+    }
+    if (activeTab === 'monthly' && !monthlyProducts) {
+      axios.get(`${API_BASE}/api/analytics/monthly-products`).then(res => setMonthlyProducts(res.data)).catch(console.error);
+    }
+    if (activeTab === 'gst' && !gstSummary) {
+      axios.get(`${API_BASE}/api/financials/gst-summary`).then(res => setGstSummary(res.data)).catch(console.error);
+    }
+    if (activeTab === 'sizematrix' && !sizeMatrix) {
+      axios.get(`${API_BASE}/api/inventory/size-matrix`).then(res => setSizeMatrix(res.data)).catch(console.error);
+    }
+    if (activeTab === 'topmovers' && !topMoversData) {
+      axios.get(`${API_BASE}/api/analytics/top-movers`).then(res => setTopMoversData(res.data)).catch(console.error);
+    }
+    if (activeTab === 'returns' && !returnsData) {
+      axios.get(`${API_BASE}/api/sales/returns`).then(res => setReturnsData(res.data)).catch(console.error);
+    }
+    if (activeTab === 'broadcast' && (!broadcastGroup || broadcastGroup.length === 0)) {
+      axios.get(`${API_BASE}/api/broadcast/group`).then(res => {
+        setBroadcastGroup(res.data.contacts || []);
+        setBroadcastGroupCount(res.data.totalCount || 0);
+      }).catch(console.error);
+    }
+  }, [activeTab]);
 
   // Hardware Barcode Scanner Listener (HID Emulation)
   const barcodeBufferRef = useRef('');
