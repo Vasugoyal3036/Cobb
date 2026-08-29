@@ -564,7 +564,8 @@ app.get('/api/customers/search', async (req, res) => {
               AND (
                   CUSTOMER_FNAME LIKE '%' + ${q} + '%' OR 
                   CUSTOMER_LNAME LIKE '%' + ${q} + '%' OR 
-                  CUSTOMER_CODE LIKE '%' + ${q} + '%'
+                  CUSTOMER_CODE LIKE '%' + ${q} + '%' OR
+                  LTRIM(RTRIM(ISNULL(CUSTOMER_FNAME, '') + ' ' + ISNULL(CUSTOMER_LNAME, ''))) LIKE '%' + ${q} + '%'
               )
             GROUP BY CUSTOMER_CODE, CUSTOMER_FNAME, CUSTOMER_LNAME
             ORDER BY LifetimeSpend DESC

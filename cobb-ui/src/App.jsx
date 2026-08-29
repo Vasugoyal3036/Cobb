@@ -882,40 +882,52 @@ export default function App() {
   const averageOrderValue = overviewStats.today.BillCount > 0 ? (overviewStats.today.TotalSales / overviewStats.today.BillCount) : 0;
   const targetProgress = Math.min((overviewStats.today.TotalSales / DAILY_TARGET) * 100, 100);
 
-  const handleGlobalSearch = (e) => {
+  const handleGlobalSearch = async (e) => {
     if (e.key === 'Enter' && searchQuery.trim() !== '') {
       const query = searchQuery.trim().toLowerCase();
       const isAmount = /^\d+(\.\d{1,2})?$/.test(query);
       const isPhone = /^[0-9]{10}$/.test(query);
 
-      // Force search execution
-      if (isPhone || isAmount || !/^[A-Z0-9-]+$/i.test(query)) {
+      // Check local VIP/Dormant lists first for quick matches
+      const matchesLocalCustomer = [...vips, ...dormant].some(c => 
+        `${c.FirstName || ''} ${c.LastName || ''}`.toLowerCase().includes(query) ||
+        c.Phone?.includes(query) ||
+        (isAmount && Math.round(c.LifetimeSpend) === Math.round(parseFloat(query)))
+      );
+
+      if (matchesLocalCustomer) {
         setActiveTab('vip');
         setToasts(prev => [
           ...prev,
-          { id: Date.now(), title: 'CUSTOMER SEARCH 🔍', message: `Searching entire database for: ${query}` }
+          { id: Date.now(), title: 'CUSTOMER SEARCH 🔍', message: `Found local match for: ${query}` }
         ]);
-      } else {
-        const matchesCustomer = [...vips, ...dormant].some(c => 
-          `${c.FirstName || ''} ${c.LastName || ''}`.toLowerCase().includes(query) ||
-          c.Phone?.includes(query) ||
-          (isAmount && Math.round(c.LifetimeSpend) === Math.round(parseFloat(query)))
-        );
+        return;
+      }
 
-        if (matchesCustomer) {
+      // If not found locally, ask the backend directly to see if any customer exists
+      try {
+        const res = await axios.get(`${API_BASE}/api/customers/search?q=${encodeURIComponent(query)}`);
+        const foundCustomers = res.data;
+        
+        if (foundCustomers && foundCustomers.length > 0) {
+          setGlobalCustomers(foundCustomers);
           setActiveTab('vip');
           setToasts(prev => [
             ...prev,
-            { id: Date.now(), title: 'CUSTOMER SEARCH 🔍', message: `Found match for: ${query}` }
+            { id: Date.now(), title: 'CUSTOMER SEARCH 🔍', message: `Found ${foundCustomers.length} database match(es) for: ${query}` }
           ]);
-        } else {
-          setActiveTab('inventory');
-          setToasts(prev => [
-            ...prev,
-            { id: Date.now(), title: 'STOCK SCAN / SEARCH 🔍', message: `Filtering inventory for: ${query}` }
-          ]);
+          return;
         }
+      } catch (err) {
+        console.error('Customer search error:', err);
       }
+
+      // If still no customer found, treat as an inventory search
+      setActiveTab('inventory');
+      setToasts(prev => [
+        ...prev,
+        { id: Date.now(), title: 'STOCK SCAN / SEARCH 🔍', message: `Filtering inventory for: ${query}` }
+      ]);
     }
   };
 
@@ -3797,8 +3809,8 @@ export default function App() {
                     <tbody className="divide-y divide-slate-100">
                       {(searchQuery.trim() !== '' ? globalCustomers : (activeTab === 'vip' ? vips : dormant))
                         .filter(c => {
-                          const sq = searchQuery.toLowerCase();
-                          return `${c.FirstName || ''} ${c.LastName || ''}`.toLowerCase().includes(sq) || 
+                          const sq = searchQuery.trim().toLowerCase();
+                          return `${c.FirstName || ''} ${c.LastName || ''}`.trim().toLowerCase().includes(sq) || 
                                  c.Phone?.includes(sq) || 
                                  (!isNaN(parseFloat(sq)) && Math.round(c.LifetimeSpend) === Math.round(parseFloat(sq)));
                         })
