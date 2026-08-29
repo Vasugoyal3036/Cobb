@@ -29,11 +29,48 @@ connectDB();
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
+const multer = require('multer');
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir);
+}
+const upload = multer({ dest: uploadsDir });
+
 let pythonProcess = null;
 let pythonLogs = [];
 
 let gatewayProcess = null;
 let gatewayLogs = [];
+
+const mapLoyalty = (customers) => {
+    return customers.map(c => {
+        let tier = 'Bronze';
+        let nextTier = 'Silver';
+        let threshold = 10000;
+        const spend = c.LifetimeSpend || 0;
+        
+        if (spend >= 50000) {
+            tier = 'Platinum';
+            nextTier = null;
+            threshold = null;
+        } else if (spend >= 25000) {
+            tier = 'Gold';
+            nextTier = 'Platinum';
+            threshold = 50000;
+        } else if (spend >= 10000) {
+            tier = 'Silver';
+            nextTier = 'Gold';
+            threshold = 25000;
+        }
+
+        return {
+            ...c,
+            loyaltyTier: tier,
+            nextTier: nextTier,
+            spendToNextTier: threshold ? threshold - spend : 0
+        };
+    });
+};
 
 function getListenerScriptPath() {
     const currentDirPath = path.join(__dirname, 'cobb_pos_listener.py');
@@ -170,6 +207,7 @@ app.get('/api/analytics/monthly-products', async (req, res) => {
         res.status(500).json({ error: err.message });
     }
 });
+
 
 app.get('/api/inventory/dead-stock', async (req, res) => {
     try {
@@ -393,6 +431,27 @@ app.post('/api/ai/outfit-matcher', async (req, res) => {
     }
 });
 
+app.post('/api/ai/smart-coordinate', async (req, res) => {
+    const { items, customerName } = req.body;
+    try {
+        const model = genAI.getGenerativeModel({ model: 'gemini-3.7-flash' });
+        const prompt = `
+        You are an expert fashion stylist for Cobb Pundri menswear.
+        Customer ${customerName || 'Valued Customer'} just bought these items: ${items.join(', ')}.
+        
+        Suggest 1 or 2 matching items from a menswear collection (like a belt, specific shoes, or a jacket) that perfectly complete this outfit.
+        Write a short, friendly WhatsApp message (under 50 words) suggesting they add these to their wardrobe on their next visit. 
+        Do not mention discounts. Sign off as "Parbhat Goyal, Cobb Pundri".
+        `;
+        const result = await model.generateContent(prompt);
+        res.json({ message: result.response.text() });
+    } catch (err) {
+        console.warn("AI Smart Coordinate Error:", err.message);
+        const fallbackMsg = `Hey ${customerName || 'Valued Customer'}, we hope you love your new items! To complete the look, we highly recommend pairing them with our premium leather belts or a smart casual jacket. Drop by soon! - Parbhat Goyal, Cobb Pundri`;
+        res.json({ message: fallbackMsg, isFallback: true });
+    }
+});
+
 app.post('/api/ai/campaign-builder', async (req, res) => {
     const { event, audience } = req.body;
     try {
@@ -480,7 +539,7 @@ app.get('/api/customers/vip', async (req, res) => {
             GROUP BY CUSTOMER_CODE, CUSTOMER_FNAME, CUSTOMER_LNAME
             ORDER BY LifetimeSpend DESC
         `);
-        res.json(result.recordset);
+        res.json(mapLoyalty(result.recordset));
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -510,7 +569,7 @@ app.get('/api/customers/search', async (req, res) => {
             GROUP BY CUSTOMER_CODE, CUSTOMER_FNAME, CUSTOMER_LNAME
             ORDER BY LifetimeSpend DESC
         `;
-        res.json(result.recordset);
+        res.json(mapLoyalty(result.recordset));
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -531,7 +590,7 @@ app.get('/api/customers/dormant', async (req, res) => {
             HAVING DATEDIFF(day, MAX(CM_TIME), GETDATE()) > 60
             ORDER BY LifetimeSpend DESC
         `);
-        res.json(result.recordset);
+        res.json(mapLoyalty(result.recordset));
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -1496,6 +1555,302 @@ app.get('/api/reports/eod-summary', async (req, res) => {
         res.json({ text: summaryText, data });
     } catch (err) {
         res.status(500).json({ error: err.message });
+    }
+});
+
+app.post('/api/ai/vm-audit', upload.array('images', 5), async (req, res) => {
+    try {
+        if (!req.files || req.files.length === 0) {
+            return res.status(400).json({ error: "No image files provided." });
+        }
+
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+        const parts = [];
+        
+        // Add images to the parts array
+        for (const file of req.files) {
+            const imageBuffer = fs.readFileSync(file.path);
+            const base64Image = imageBuffer.toString('base64');
+            parts.push({
+                inlineData: {
+                    data: base64Image,
+                    mimeType: file.mimetype
+                }
+            });
+        }
+
+        const prompt = `You are a Visual Merchandising Auditor for COBB retail clothing stores.
+Analyze these store display photos (e.g. mannequin layout, hanger racks, folded display shelves, window displays).
+You must return a raw JSON response (without markdown code blocks or wrapping) containing the compliance audit result.
+The JSON must follow this exact structure:
+{
+  "score": 82,
+  "metrics": {
+    "colorHarmony": 85,
+    "sizingOrder": 70,
+    "accessibility": 90,
+    "density": 75
+  },
+  "critiques": [
+    "One critique point about what is wrong or needs improvement",
+    "Another critique point..."
+  ],
+  "recommendations": [
+    "Actionable step to fix the critiques",
+    "Another suggestion..."
+  ]
+}
+Be realistic, critical, and constructive based on standard visual merchandising principles. Return only the raw JSON.`;
+
+        parts.push(prompt);
+
+        const result = await model.generateContent(parts);
+
+        const textResponse = result.response.text().trim();
+        const cleanJson = textResponse.replace(/^```json\s*/i, '').replace(/```$/, '').trim();
+        const auditResult = JSON.parse(cleanJson);
+
+        try {
+            for (const file of req.files) {
+                fs.unlinkSync(file.path);
+            }
+        } catch (e) {}
+
+        res.json(auditResult);
+    } catch (err) {
+        console.error("VM Audit failed:", err);
+        res.status(500).json({ error: err.message || "Visual Merchandising Audit failed" });
+    }
+});
+
+app.get('/api/smart-bundles', async (req, res) => {
+    try {
+        let slowItems = [];
+        try {
+            const queryRes = await sql.query(`
+                SELECT TOP 10
+                    RTRIM(d.ARTICLE_NO) as ArticleNo,
+                    MAX(RTRIM(d.ARTICLE_NAME)) as ArticleName,
+                    MAX(RTRIM(d.SECTION_NAME)) as Category,
+                    SUM(d.QUANTITY) as TotalUnitsSold,
+                    SUM(d.NET) as TotalRevenue
+                FROM VW_CASHMEMO_PRINT_DET d
+                INNER JOIN VW_CASHMEMO_PRINT_MST m ON d.CM_ID = m.CM_ID
+                WHERE m.CANCELLED = 0 
+                  AND d.ARTICLE_NO IS NOT NULL 
+                  AND LEN(RTRIM(d.ARTICLE_NO)) > 1
+                  AND m.CM_TIME >= DATEADD(month, -3, GETDATE())
+                GROUP BY RTRIM(d.ARTICLE_NO)
+                ORDER BY SUM(d.QUANTITY) ASC
+            `);
+            slowItems = queryRes.recordset;
+        } catch (e) {
+            console.error("DB query for slow items failed, using fallbacks:", e);
+        }
+
+        const staticBundles = [
+            {
+                id: "b1",
+                name: "Summer Formal Styling Set",
+                items: [
+                    { name: "Cobb Slim-Fit Cotton White Shirt", category: "Formal Shirts", originalPrice: 1499, isSlow: false },
+                    { name: "Cobb Charcoal Grey Trouser", category: "Formal Trousers", originalPrice: 2299, isSlow: true, reason: "Slow moving size/color" }
+                ],
+                originalPrice: 3798,
+                bundlePrice: 2999,
+                discountPct: 21,
+                marginImpact: "-5.2%",
+                velocityBoost: "+45%"
+            },
+            {
+                id: "b2",
+                name: "Weekend Denim Combo",
+                items: [
+                    { name: "Cobb Casual Indigo Jeans", category: "Denim Jeans", originalPrice: 2499, isSlow: false },
+                    { name: "Cobb Polo Graphic Tee", category: "T-Shirts", originalPrice: 999, isSlow: true, reason: "Overstocked color" }
+                ],
+                originalPrice: 3498,
+                bundlePrice: 2699,
+                discountPct: 23,
+                marginImpact: "-4.8%",
+                velocityBoost: "+60%"
+            },
+            {
+                id: "b3",
+                name: "Business Casual Ensemble",
+                items: [
+                    { name: "Cobb Premium Blazer Navy", category: "Suits & Blazers", originalPrice: 4999, isSlow: false },
+                    { name: "Cobb Olive Smart Chino", category: "Chinos", originalPrice: 1999, isSlow: true, reason: "Slow moving size/color" }
+                ],
+                originalPrice: 6998,
+                bundlePrice: 5299,
+                discountPct: 24,
+                marginImpact: "-6.0%",
+                velocityBoost: "+35%"
+            }
+        ];
+
+        if (slowItems && slowItems.length > 0) {
+            slowItems.forEach((slowItem, index) => {
+                if (index < staticBundles.length) {
+                    const bundle = staticBundles[index];
+                    const itemToReplace = bundle.items.find(i => i.isSlow);
+                    if (itemToReplace) {
+                        itemToReplace.name = `${slowItem.ArticleName} (${slowItem.ArticleNo})`;
+                        itemToReplace.category = slowItem.Category;
+                    }
+                }
+            });
+        }
+
+        res.json(staticBundles);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/ai/trend-forecast', async (req, res) => {
+    try {
+        // Query top current stock
+        const stockRes = await sql.query(`
+            SELECT TOP 50 
+                ISNULL(s.article_name, s.section_name) as ItemName,
+                s.section_name as Category,
+                s.para1_name as Color,
+                SUM(p.quantity_in_stock) as CurrentStock
+            FROM PMT01106 p
+            INNER JOIN SKU_NAMES s ON p.product_code = s.product_Code
+            WHERE p.quantity_in_stock > 0
+            GROUP BY ISNULL(s.article_name, s.section_name), s.section_name, s.para1_name
+            ORDER BY CurrentStock DESC
+        `);
+        const stockItems = stockRes.recordset.map(i => `${i.ItemName} (${i.Color}) - ${i.CurrentStock} in stock`).join(', ');
+
+        // Query top recent sales
+        const salesRes = await sql.query(`
+            SELECT TOP 30
+                MAX(RTRIM(d.ARTICLE_NAME)) as ArticleName,
+                MAX(RTRIM(d.SECTION_NAME)) as Category,
+                SUM(d.QUANTITY) as TotalUnitsSold
+            FROM VW_CASHMEMO_PRINT_DET d
+            WHERE d.QUANTITY > 0
+            GROUP BY d.ARTICLE_NO
+            ORDER BY TotalUnitsSold DESC
+        `);
+        const salesItems = salesRes.recordset.map(i => `${i.ArticleName} (${i.Category}) - ${i.TotalUnitsSold} sold`).join(', ');
+
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        
+        const currentDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+        const prompt = `You are an expert Retail Fashion Analyst for Cobb Italy (men's apparel). 
+Today's date is ${currentDate}. Based on current global fashion trends for the Indian market, the current date, and our actual store data, predict the top 3 trends for the UPCOMING season (e.g., if it is August, predict for Autumn/Winter). Do not suggest trends for past years or current ending seasons.
+
+Here is our Top Selling Items recently:
+${salesItems}
+
+Here is our Top Inventory In-Stock right now:
+${stockItems}
+
+Return a raw JSON response (no markdown) with this exact structure:
+{
+  "season": "Upcoming Season (e.g. Autumn/Winter 2026)",
+  "trends": [
+    {
+      "trendName": "E.g. Earthy Tones",
+      "category": "E.g. Casual Shirts",
+      "predictedDemandSurge": "+45%",
+      "confidenceScore": 92,
+      "suggestedItems": [
+        {
+          "name": "Item Name (Color)",
+          "suggestedPrice": "₹1,499",
+          "estimatedMargin": "55%"
+        }
+      ]
+    }
+  ]
+}
+Ensure exactly 3 trends are returned. For each trend, provide a 'confidenceScore' between 70 and 99. The 'suggestedItems' MUST be an array of 4 objects representing specific items ACTUALLY found in the inventory or sales list above, along with a realistic retail price point for the Indian market and an estimated margin percentage. Do not hallucinate item names. Return only the JSON.`;
+
+        const result = await model.generateContent(prompt);
+        const textResponse = result.response.text().trim();
+        const cleanJson = textResponse.replace(/^```json\s*/i, '').replace(/```$/, '').trim();
+        const forecast = JSON.parse(cleanJson);
+        
+        res.json(forecast);
+    } catch (err) {
+        console.error("Trend forecast failed:", err);
+        res.status(500).json({ error: "Failed to generate trend forecast." });
+    }
+});
+
+app.post('/api/ai/whatsapp-draft', async (req, res) => {
+    try {
+        const { customerName, pastPurchases, stylePreferences } = req.body;
+        
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+        
+        const prompt = `You are an expert retail marketer. Write a highly personalized, short WhatsApp message (max 3 sentences) for a customer named ${customerName}.
+Their past purchases include: ${pastPurchases}.
+Their style preference seems to be: ${stylePreferences}.
+The message should inform them of a new collection arriving at Cobb Pundri that matches their style, and offer them a 10% VIP discount if they visit this week. Use emojis appropriately. DO NOT return JSON. Return only the raw message string.`;
+
+        const result = await model.generateContent(prompt);
+        res.json({ message: result.response.text().trim() });
+    } catch (err) {
+        console.error("WhatsApp draft failed:", err);
+        res.status(500).json({ error: "Failed to generate WhatsApp draft." });
+    }
+});
+
+app.post('/api/ai/competitor-intel', upload.single('image'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: "No image file provided." });
+        }
+
+        const imagePath = req.file.path;
+        const imageBuffer = fs.readFileSync(imagePath);
+        const base64Image = imageBuffer.toString('base64');
+        const mimeType = req.file.mimetype;
+
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+        const prompt = `You are a Retail Pricing Strategist. Analyze this image of a competitor's promotional flyer or advertisement.
+Extract their discount strategy, and propose a counter-strategy for Cobb (our store) that matches or beats their offer while protecting our margins (we have an average 45% margin).
+Return a raw JSON response (no markdown) with this exact structure:
+{
+  "detectedCompetitorOffer": "E.g. Flat 50% off on all jeans",
+  "cobbCounterStrategy": "E.g. Buy 1 Jeans, Get 2 T-Shirts Free (perceived higher value, moves dead stock)",
+  "marginImpact": "E.g. Protects margin by 12% compared to flat 50% discount",
+  "executionDifficulty": "Low/Medium/High"
+}
+Return only the raw JSON.`;
+
+        const result = await model.generateContent([
+            {
+                inlineData: {
+                    data: base64Image,
+                    mimeType: mimeType
+                }
+            },
+            prompt
+        ]);
+
+        const textResponse = result.response.text().trim();
+        const cleanJson = textResponse.replace(/^```json\s*/i, '').replace(/```$/, '').trim();
+        const intelResult = JSON.parse(cleanJson);
+
+        try {
+            fs.unlinkSync(imagePath);
+        } catch (e) {}
+
+        res.json(intelResult);
+    } catch (err) {
+        console.error("Competitor Intel failed:", err);
+        res.status(500).json({ error: "Failed to process competitor intelligence." });
     }
 });
 

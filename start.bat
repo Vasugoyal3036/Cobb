@@ -1,3 +1,4 @@
 @echo off
-echo Starting Cobb Project (UI, Backend Server, and Ngrok) in one window...
-npx -y concurrently -c "blue.bold,green.bold,magenta.bold" -n "UI,SERVER,NGROK" "cd cobb-ui && npm run dev" "cd CobbDashboard && node server.js" "cd CobbDashboard && node auto_ngrok.js"
+echo Starting Cobb Project UI...
+echo (Backend and Ngrok are managed automatically in the background by PM2)
+cd cobb-ui && npm run dev

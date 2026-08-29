@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import {
+  LineChart,
+  MessageCircle,
   Users,
   AlertCircle,
   MessageSquare,
@@ -51,7 +53,15 @@ import {
   Flame,
   Award,
   Trophy,
-  RotateCcw
+  RotateCcw,
+  Map,
+  Crown,
+  ThumbsUp,
+  Upload,
+  Camera,
+  Percent,
+  CheckCircle,
+  AlertTriangle
 } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -78,6 +88,106 @@ export default function App() {
   });
 
   const [returnsData, setReturnsData] = useState(null);
+  const [smartCoordinate, setSmartCoordinate] = useState({ data: null, loading: false, itemText: '' });
+  const [showCoordinateModal, setShowCoordinateModal] = useState(false);
+
+  // VM Auditor State
+  const [vmImages, setVmImages] = useState([]);
+  const [vmImageUrls, setVmImageUrls] = useState([]);
+  const [vmAuditResult, setVmAuditResult] = useState(null);
+  const [isAuditing, setIsAuditing] = useState(false);
+  const [vmError, setVmError] = useState('');
+
+  // Smart Bundling State
+  const [bundles, setBundles] = useState([]);
+  const [isLoadingBundles, setIsLoadingBundles] = useState(false);
+  const [publishedBundles, setPublishedBundles] = useState(new Set());
+
+  const handleVmUpload = async (files) => {
+    if (!files || files.length === 0) return;
+    const fileArray = Array.from(files);
+    setVmImages(fileArray);
+    setVmImageUrls(fileArray.map(f => URL.createObjectURL(f)));
+    setVmAuditResult(null);
+    setVmError('');
+    setIsAuditing(true);
+
+    const formData = new FormData();
+    fileArray.forEach(file => {
+      formData.append('images', file);
+    });
+
+    try {
+      const res = await axios.post(`${API_BASE}/api/ai/vm-audit`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setVmAuditResult(res.data);
+    } catch (err) {
+      console.error(err);
+      setVmError(err.response?.data?.error || 'Audit request failed. Please try again.');
+    } finally {
+      setIsAuditing(false);
+    }
+  };
+
+  const [trendForecast, setTrendForecast] = useState(null);
+  const [isForecasting, setIsForecasting] = useState(false);
+
+  const fetchTrendForecast = async () => {
+    setIsForecasting(true);
+    try {
+      const res = await axios.get(`${API_BASE}/api/ai/trend-forecast`);
+      setTrendForecast(res.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsForecasting(false);
+    }
+  };
+
+  const [compImage, setCompImage] = useState(null);
+  const [compImageUrl, setCompImageUrl] = useState('');
+  const [compIntelResult, setCompIntelResult] = useState(null);
+  const [isAnalyzingComp, setIsAnalyzingComp] = useState(false);
+  const [compError, setCompError] = useState('');
+
+  const handleCompUpload = async (file) => {
+    if (!file) return;
+    setCompImage(file);
+    setCompImageUrl(URL.createObjectURL(file));
+    setCompIntelResult(null);
+    setCompError('');
+    setIsAnalyzingComp(true);
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const res = await axios.post(`${API_BASE}/api/ai/competitor-intel`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setCompIntelResult(res.data);
+    } catch (err) {
+      console.error(err);
+      setCompError('Analysis failed. Please try again.');
+    } finally {
+      setIsAnalyzingComp(false);
+    }
+  };
+
+  const fetchBundles = async () => {
+    setIsLoadingBundles(true);
+    try {
+      const res = await axios.get(`${API_BASE}/api/smart-bundles`);
+      setBundles(res.data);
+    } catch (err) {
+      console.error("Failed to fetch bundles:", err);
+    } finally {
+      setIsLoadingBundles(false);
+    }
+  };
+
+
 
   const [globalCustomers, setGlobalCustomers] = useState([]);
   const [isSearchingCustomers, setIsSearchingCustomers] = useState(false);
@@ -128,6 +238,12 @@ export default function App() {
   const [topMoversData, setTopMoversData] = useState({ topArticles: [], sizeDemand: [] });
 
   const [activeTab, setActiveTab] = useState('dashboard');
+  
+  useEffect(() => {
+    if (activeTab === 'smart_bundles') {
+      fetchBundles();
+    }
+  }, [activeTab]);
   const [activeConsole, setActiveConsole] = useState('listener');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -139,6 +255,23 @@ export default function App() {
   const [aiMessageType, setAiMessageType] = useState('cross-sell');
   const [generatedMsg, setGeneratedMsg] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
+
+  const generateWhatsAppDraft = async (customer) => {
+    setLoadingPersona(true);
+    try {
+      const res = await axios.post(`${API_BASE}/api/ai/whatsapp-draft`, {
+        customerName: customer.CustomerName,
+        pastPurchases: "Assorted Casuals and Formals",
+        stylePreferences: customer.PrimaryStyle || "Unknown"
+      });
+      setGeneratedMsg(res.data.message);
+    } catch (err) {
+      console.error(err);
+      setGeneratedMsg("Failed to generate message.");
+    } finally {
+      setLoadingPersona(false);
+    }
+  };
   const [activeOutfitMatch, setActiveOutfitMatch] = useState(null);
   const [outfitPitch, setOutfitPitch] = useState('');
   const [isGeneratingOutfit, setIsGeneratingOutfit] = useState(false);
@@ -692,6 +825,10 @@ export default function App() {
         { id: "inventory", label: "Live Inventory", icon: Package },
         { id: "sizematrix", label: "Size Matrix Heatmap", icon: Grid, colorClass: "text-blue-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-blue-500/15 text-blue-400 font-bold border-l-2 border-blue-500" },
         { id: "deadstock", label: "Dead Stock", icon: Archive },
+        { id: "vm_auditor", label: "VM Auditor", icon: Camera, colorClass: "text-purple-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-purple-500/15 text-purple-400 font-bold border-l-2 border-purple-500" },
+        { id: "smart_bundles", label: "Smart Bundling", icon: Percent, colorClass: "text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-400 font-bold border-l-2 border-amber-500" },
+        { id: "trend_forecast", label: "Trend Forecaster", icon: LineChart, colorClass: "text-indigo-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-indigo-500/15 text-indigo-400 font-bold border-l-2 border-indigo-500" },
+        { id: "competitor_intel", label: "Competitor Intel", icon: Target, colorClass: "text-red-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-red-500/15 text-red-400 font-bold border-l-2 border-red-500" },
       ]
     },
     {
@@ -2601,6 +2738,8 @@ export default function App() {
               );
             })()}
 
+
+
             {/* 3. VISUAL CHARTS & HOURLY RUSH */}
             {activeTab === 'analytics' && (
               <div className="p-4 sm:p-6 lg:p-8">
@@ -3015,6 +3154,259 @@ export default function App() {
               </div>
             )}
 
+
+            {/* VM AUDITOR PAGE */}
+            {activeTab === 'vm_auditor' && (
+              <div className="p-4 sm:p-6 lg:p-8 space-y-8 animate-in fade-in duration-500">
+                <div className="border-b border-slate-200 pb-5">
+                  <h3 className="text-2xl font-bold text-slate-800 flex items-center">
+                    <Camera className="w-6 h-6 mr-3 text-purple-600" /> AI Visual Merchandising Auditor
+                  </h3>
+                  <p className="text-sm text-slate-500 mt-2">Upload a photograph of a mannequin, window display, or rack layout for an instant design audit.</p>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  {/* Upload Card */}
+                  <div className="space-y-6">
+                    <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+                      <h4 className="font-bold text-slate-800">Upload Display Image</h4>
+                      
+                      <div className="flex flex-col items-center justify-center border-2 border-dashed border-slate-300 rounded-2xl p-8 bg-slate-50 hover:bg-slate-100/50 transition-colors cursor-pointer relative">
+                        <input
+                          type="file"
+                          multiple
+                          accept="image/*"
+                          onChange={(e) => handleVmUpload(e.target.files)}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                        />
+                        <Upload className="w-10 h-10 text-slate-400 mb-3" />
+                        <span className="text-sm font-bold text-slate-600">Drag & drop or click to upload</span>
+                        <span className="text-xs text-slate-400 mt-1">Supports JPG, PNG (Multiple files allowed)</span>
+                      </div>
+
+                      {vmImageUrls.length > 0 && (
+                        <div className="mt-4 grid grid-cols-2 gap-2">
+                          {vmImageUrls.map((url, i) => (
+                            <div key={i} className="rounded-xl overflow-hidden border border-slate-200 shadow-sm relative group">
+                              <img src={url} alt={`VM Source ${i+1}`} className="w-full h-32 object-cover" />
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                                <span className="text-white text-xs font-bold bg-slate-900/80 px-3 py-1.5 rounded-full">Photo {i+1}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Audit Results */}
+                  <div>
+                    {isAuditing ? (
+                      <div className="bg-white p-12 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-center items-center text-center space-y-4 min-h-[300px]">
+                        <RefreshCw className="w-10 h-10 animate-spin text-purple-500" />
+                        <div>
+                          <h4 className="font-bold text-slate-800">Analyzing visual layout...</h4>
+                          <p className="text-xs text-slate-500 mt-1">Evaluating sizing sequence, alignment, and color harmony.</p>
+                        </div>
+                      </div>
+                    ) : vmAuditResult ? (
+                      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6 animate-in slide-in-from-bottom duration-300">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-bold text-slate-800">Compliance Audit Result</h4>
+                          <div className="flex items-center gap-1 bg-purple-50 text-purple-700 px-3.5 py-1.5 rounded-full border border-purple-100">
+                            <Sparkles className="w-4 h-4" />
+                            <span className="text-sm font-black">{vmAuditResult.score}% Compliance</span>
+                          </div>
+                        </div>
+
+                        {/* Radial Indicator Mock / Stats */}
+                        <div className="grid grid-cols-2 gap-4">
+                          {[
+                            { label: "Color Harmony", score: vmAuditResult.metrics?.colorHarmony || 0 },
+                            { label: "Sizing Order", score: vmAuditResult.metrics?.sizingOrder || 0 },
+                            { label: "Accessibility", score: vmAuditResult.metrics?.accessibility || 0 },
+                            { label: "Density / Clutter", score: vmAuditResult.metrics?.density || 0 }
+                          ].map((item, idx) => (
+                            <div key={idx} className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                              <span className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">{item.label}</span>
+                              <div className="flex items-center gap-3 mt-1.5">
+                                <div className="flex-1 h-2 bg-slate-200 rounded-full overflow-hidden">
+                                  <div className="h-full bg-purple-500 rounded-full" style={{ width: `${item.score}%` }} />
+                                </div>
+                                <span className="text-xs font-bold text-slate-700">{item.score}%</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Critiques */}
+                        <div className="space-y-3">
+                          <h5 className="text-xs font-black text-slate-400 uppercase tracking-wider">Identified Critiques</h5>
+                          <ul className="space-y-2">
+                            {vmAuditResult.critiques?.map((crit, idx) => (
+                              <li key={idx} className="flex gap-2 text-xs text-slate-600 bg-rose-50/50 p-3 rounded-xl border border-rose-100/50">
+                                <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0" />
+                                <span>{crit}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+
+                        {/* Recommendations */}
+                        <div className="space-y-3">
+                          <h5 className="text-xs font-black text-slate-400 uppercase tracking-wider">VM Recommendations</h5>
+                          <ul className="space-y-2">
+                            {vmAuditResult.recommendations?.map((rec, idx) => (
+                              <li key={idx} className="flex gap-2 text-xs text-slate-600 bg-emerald-50/50 p-3 rounded-xl border border-emerald-100/50">
+                                <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
+                                <span>{rec}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                    ) : vmError ? (
+                      <div className="bg-white p-12 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-center items-center text-center space-y-3 min-h-[300px]">
+                        <AlertTriangle className="w-10 h-10 text-rose-500" />
+                        <div>
+                          <h4 className="font-bold text-slate-800">Audit Failed</h4>
+                          <p className="text-xs text-rose-500 mt-1">{vmError}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-slate-50 border border-slate-200 border-dashed rounded-3xl p-12 flex flex-col justify-center items-center text-center space-y-4 min-h-[300px]">
+                        <Camera className="w-12 h-12 text-slate-300" />
+                        <div>
+                          <h4 className="font-bold text-slate-500">Waiting for display photo</h4>
+                          <p className="text-xs text-slate-400 mt-1">Upload an image to start visual auditing.</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* SMART BUNDLING PAGE */}
+            {activeTab === 'smart_bundles' && (
+              <div className="p-4 sm:p-6 lg:p-8 space-y-8 animate-in fade-in duration-500">
+                <div className="border-b border-slate-200 pb-5">
+                  <h3 className="text-2xl font-bold text-slate-800 flex items-center">
+                    <Percent className="w-6 h-6 mr-3 text-amber-600" /> Dynamic Bundling & Smart Markdown Engine
+                  </h3>
+                  <p className="text-sm text-slate-500 mt-2">Identify slow-moving items in your SQL inventory and combine them with popular articles to boost floor velocity.</p>
+                </div>
+
+                {/* Metrics Header */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Slow-Moving Articles Found</span>
+                    <h3 className="text-2xl font-black text-slate-800 mt-1.5">3 Critical Items</h3>
+                    <p className="text-[10px] text-amber-500 font-bold mt-1">Shorter than standard turnover rate</p>
+                  </div>
+                  <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Avg. Suggested Discount</span>
+                    <h3 className="text-2xl font-black text-slate-800 mt-1.5">22% Off</h3>
+                    <p className="text-[10px] text-slate-500 font-bold mt-1">Designed to protect initial margin</p>
+                  </div>
+                  <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Est. Sell-Through Boost</span>
+                    <h3 className="text-2xl font-black text-emerald-600 mt-1.5">+48% Velocity</h3>
+                    <p className="text-[10px] text-emerald-500 font-bold mt-1">Expected velocity lift in 14 days</p>
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <h4 className="font-bold text-slate-800">Suggested Promotions</h4>
+
+                  {isLoadingBundles ? (
+                    <div className="py-12 text-center">
+                      <RefreshCw className="w-8 h-8 animate-spin text-amber-500 mx-auto" />
+                      <p className="text-xs text-slate-500 mt-2">Analyzing sales velocity databases...</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {bundles.map((bundle) => (
+                        <div key={bundle.id} className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between">
+                          <div className="p-6 space-y-4">
+                            <div className="flex justify-between items-start">
+                              <span className="text-xs font-black text-slate-400 uppercase tracking-wider">Bundle Offer</span>
+                              <span className="bg-amber-50 text-amber-700 text-[10px] font-black uppercase px-2 py-0.5 rounded border border-amber-100">
+                                {bundle.discountPct}% Off
+                              </span>
+                            </div>
+
+                            <h4 className="font-black text-slate-800 text-lg leading-snug">{bundle.name}</h4>
+
+                            <div className="space-y-3">
+                              {bundle.items.map((item, idx) => (
+                                <div key={idx} className="flex justify-between items-center bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                                  <div className="flex flex-col">
+                                    <span className="text-xs font-bold text-slate-800">{item.name}</span>
+                                    <span className="text-[9px] text-slate-400 uppercase tracking-wider">{item.category}</span>
+                                  </div>
+                                  <div className="text-right">
+                                    <span className="text-xs font-bold text-slate-500">₹{item.originalPrice}</span>
+                                    {item.isSlow && (
+                                      <span className="block text-[8px] font-bold text-rose-500">Slow Stock</span>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+
+                            <div className="border-t border-slate-100 pt-4 flex justify-between items-baseline">
+                              <div>
+                                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Original Total</span>
+                                <p className="text-xs line-through text-slate-400">₹{bundle.originalPrice}</p>
+                              </div>
+                              <div className="text-right">
+                                <span className="text-[9px] text-amber-500 font-black uppercase tracking-wider">Suggested Combo Price</span>
+                                <p className="text-xl font-black text-slate-800">₹{bundle.bundlePrice}</p>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2 pt-2 text-center text-[10px] font-bold">
+                              <div className="bg-rose-50 text-rose-700 p-2 rounded-xl">
+                                <span>Margin Impact</span>
+                                <p className="font-black mt-0.5">{bundle.marginImpact}</p>
+                              </div>
+                              <div className="bg-emerald-50 text-emerald-700 p-2 rounded-xl">
+                                <span>Velocity Lift</span>
+                                <p className="font-black mt-0.5">{bundle.velocityBoost}</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="p-4 bg-slate-50 border-t border-slate-100">
+                            <button
+                              onClick={() => {
+                                const newPublished = new Set(publishedBundles);
+                                if (newPublished.has(bundle.id)) {
+                                  newPublished.delete(bundle.id);
+                                } else {
+                                  newPublished.add(bundle.id);
+                                }
+                                setPublishedBundles(newPublished);
+                              }}
+                              className={`w-full py-2.5 rounded-xl font-bold text-xs transition-colors cursor-pointer ${
+                                publishedBundles.has(bundle.id)
+                                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                                  : 'bg-amber-500 hover:bg-amber-600 text-white'
+                              }`}
+                            >
+                              {publishedBundles.has(bundle.id) ? '✓ Promotion Published' : 'Publish Promotion to POS'}
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+
             {/* 7. AUTOMATION ENGINE */}
             {activeTab === 'automation' && (
               <div className="p-4 sm:p-6 lg:p-8 space-y-8">
@@ -3236,10 +3628,31 @@ export default function App() {
                             <tr className="bg-slate-50 border-b border-slate-100">
                               <td colSpan="6" className="p-0">
                                 <div className="px-6 py-4 animate-in slide-in-from-top-2 duration-200">
-                                  <h4 className="text-sm font-bold text-slate-700 mb-3 flex items-center">
-                                    <Package className="w-4 h-4 mr-2 text-indigo-500" />
-                                    Purchased Items
-                                  </h4>
+                                  <div className="flex justify-between items-center mb-3">
+                                    <h4 className="text-sm font-bold text-slate-700 flex items-center">
+                                      <Package className="w-4 h-4 mr-2 text-indigo-500" />
+                                      Purchased Items
+                                    </h4>
+                                    <button 
+                                      onClick={() => {
+                                        if(!billItemsCache[bill.BillId]) return;
+                                        setSmartCoordinate({ loading: true, data: null, itemText: '' });
+                                        setShowCoordinateModal(true);
+                                        const itemNames = billItemsCache[bill.BillId].map(i => i.ArticleName);
+                                        axios.post(`${API_BASE}/api/ai/smart-coordinate`, {
+                                          items: itemNames,
+                                          customerName: bill.CustomerName
+                                        }).then(res => {
+                                          setSmartCoordinate({ loading: false, data: res.data.message, itemText: itemNames.join(', ') });
+                                        }).catch(err => {
+                                          setSmartCoordinate({ loading: false, data: "Error generating recommendation.", itemText: '' });
+                                        });
+                                      }}
+                                      className="bg-indigo-50 text-indigo-600 hover:bg-indigo-100 px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-2 border border-indigo-200 cursor-pointer shadow-sm"
+                                    >
+                                      <Wand2 className="w-3.5 h-3.5" /> AI Stylist Suggestion
+                                    </button>
+                                  </div>
                                   {loadingBillItems && !billItemsCache[bill.BillId] ? (
                                     <div className="text-sm text-slate-500 flex items-center gap-2">
                                       <div className="w-4 h-4 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin"></div>
@@ -3398,7 +3811,26 @@ export default function App() {
                               {customer.FirstName} {customer.LastName || ''}
                             </td>
                             <td className="px-6 py-4 text-slate-500 font-mono text-sm whitespace-nowrap">{customer.Phone}</td>
-                            <td className="px-6 py-4 font-black text-green-600 whitespace-nowrap">{formatCurrency(customer.LifetimeSpend)}</td>
+                            <td className="px-6 py-4 font-black text-green-600 whitespace-nowrap">
+                              {formatCurrency(customer.LifetimeSpend)}
+                              {customer.loyaltyTier && (
+                                <div className="mt-1">
+                                  <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded flex items-center gap-1 w-max ${
+                                    customer.loyaltyTier === 'Platinum' ? 'bg-blue-100 text-blue-700 border border-blue-200' :
+                                    customer.loyaltyTier === 'Gold' ? 'bg-yellow-100 text-yellow-700 border border-yellow-200' :
+                                    customer.loyaltyTier === 'Silver' ? 'bg-slate-200 text-slate-700 border border-slate-300' :
+                                    'bg-orange-100 text-orange-700 border border-orange-200'
+                                  }`}>
+                                    <Crown className="w-3 h-3" /> {customer.loyaltyTier}
+                                  </span>
+                                  {customer.nextTier && (
+                                    <p className="text-[9px] text-slate-400 mt-0.5 font-normal">
+                                      ₹{formatCurrency(customer.spendToNextTier)} to {customer.nextTier}
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                            </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               {activeTab === 'vip'
                                 ? <span className="bg-slate-100 text-slate-600 font-bold px-3 py-1 rounded-lg text-sm">{customer.TotalBills} Invoices</span>
@@ -3551,6 +3983,168 @@ export default function App() {
                 )}
               </div>
             )}
+
+
+          {/* TREND FORECAST PAGE */}
+          {activeTab === 'trend_forecast' && (
+            <div className="p-4 sm:p-6 lg:p-8 space-y-8 animate-in fade-in duration-500">
+              <div className="border-b border-slate-200 pb-5 flex justify-between items-center">
+                <div>
+                  <h3 className="text-2xl font-bold text-slate-800 flex items-center">
+                    <LineChart className="w-6 h-6 mr-3 text-indigo-600" /> AI Fashion Trend Forecaster
+                  </h3>
+                  <p className="text-sm text-slate-500 mt-2">Predict upcoming seasonal demands based on market analysis and past performance.</p>
+                </div>
+                <button onClick={fetchTrendForecast} className="bg-white border border-slate-200 px-4 py-2 rounded-xl text-sm font-bold text-slate-600 shadow-sm flex items-center gap-2 hover:bg-slate-50 cursor-pointer">
+                  <Sparkles className={`w-4 h-4 ${isForecasting ? 'animate-spin' : 'text-indigo-500'}`} /> {isForecasting ? 'Forecasting...' : 'Generate AI Forecast'}
+                </button>
+              </div>
+
+              {isForecasting ? (
+                <div className="flex flex-col items-center justify-center py-24 text-slate-400">
+                  <LineChart className="w-10 h-10 animate-bounce mb-4 text-indigo-400" />
+                  <p className="font-bold">Analyzing fashion trends and cross-referencing sales data...</p>
+                </div>
+              ) : trendForecast ? (
+                <div className="space-y-6">
+                  <div className="bg-indigo-50 text-indigo-800 p-4 rounded-xl border border-indigo-100 flex justify-between items-center">
+                    <h4 className="font-black text-lg">Forecast for: {trendForecast.season}</h4>
+                    <span className="text-xs font-bold uppercase tracking-wider bg-white px-2 py-1 rounded text-indigo-600">High Confidence</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    {trendForecast.trends.map((trend, idx) => (
+                      <div key={idx} className="bg-slate-800/40 backdrop-blur-xl border border-slate-700/50 rounded-[2rem] p-8 shadow-[0_8px_30px_rgb(0,0,0,0.2)] flex flex-col justify-between group hover:shadow-[0_8px_30px_rgb(0,0,0,0.4)] transition-all">
+                        
+                        <div>
+                          <div className="flex justify-between items-start mb-6">
+                            <span className="text-[10px] font-black uppercase text-indigo-300 tracking-wider bg-indigo-900/50 backdrop-blur-sm border border-indigo-700/50 px-3 py-1.5 rounded-full">{trend.category}</span>
+                            <div className="bg-emerald-900/30 backdrop-blur-sm border border-emerald-800/50 px-4 py-2 rounded-2xl text-center shadow-sm">
+                              <span className="block text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-0.5">Demand Surge</span>
+                              <span className="block text-xl font-black text-emerald-400">{trend.predictedDemandSurge}</span>
+                            </div>
+                          </div>
+                          
+                          <h4 className="text-3xl font-black text-white tracking-tight">{trend.trendName}</h4>
+                          
+                          {/* Confidence Score Gauge */}
+                          <div className="mt-5 mb-8">
+                            <div className="flex justify-between items-end mb-2">
+                              <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">AI Confidence</span>
+                              <span className="text-sm font-black text-indigo-400">{trend.confidenceScore}%</span>
+                            </div>
+                            <div className="w-full bg-slate-700/50 rounded-full h-2 overflow-hidden">
+                              <div className="bg-gradient-to-r from-indigo-500 to-indigo-400 h-2 rounded-full" style={{ width: `${trend.confidenceScore}%` }}></div>
+                            </div>
+                          </div>
+                          
+                          <div className="p-5 bg-slate-900/50 backdrop-blur-md border border-slate-700/50 rounded-2xl shadow-sm">
+                            <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center">
+                              <Tag className="w-3 h-3 mr-1.5 text-slate-400" /> High-Margin Catalog Matches
+                            </span>
+                            <ul className="space-y-4">
+                              {trend.suggestedItems?.map((item, i) => (
+                                <li key={i} className="flex justify-between items-center border-b border-slate-700/50 pb-3 last:border-0 last:pb-0">
+                                  <div className="flex-1 pr-4">
+                                    <p className="text-sm font-bold text-slate-200 leading-tight">{item.name}</p>
+                                  </div>
+                                  <div className="text-right shrink-0">
+                                    <p className="text-sm font-black text-white">{item.suggestedPrice}</p>
+                                    <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">{item.estimatedMargin} Margin</p>
+                                  </div>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                        
+                        <div className="mt-8">
+                          <button className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-2xl transition-colors text-sm flex justify-center items-center shadow-lg shadow-indigo-600/20">
+                            Auto-Draft Purchase Order
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-slate-50 rounded-2xl border border-slate-200 border-dashed py-16 text-center text-slate-400">
+                  <LineChart className="w-12 h-12 mx-auto mb-4 text-slate-300" />
+                  <p className="font-bold text-slate-600">No Forecast Generated</p>
+                  <p className="text-sm mt-1">Click "Generate AI Forecast" to view upcoming trends.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* COMPETITOR INTEL PAGE */}
+          {activeTab === 'competitor_intel' && (
+            <div className="p-4 sm:p-6 lg:p-8 space-y-8 animate-in fade-in duration-500">
+              <div className="border-b border-slate-200 pb-5">
+                <h3 className="text-2xl font-bold text-slate-800 flex items-center">
+                  <Target className="w-6 h-6 mr-3 text-red-600" /> Competitor Promotion Counter-Intelligence
+                </h3>
+                <p className="text-sm text-slate-500 mt-2">Upload a photo or screenshot of a competitor's offer, and AI will generate a counter-strategy to protect margins.</p>
+              </div>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="space-y-6">
+                  <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+                    <h4 className="font-bold text-slate-800">Upload Competitor Ad</h4>
+                    <div className="flex flex-col items-center justify-center border-2 border-dashed border-slate-300 rounded-2xl p-8 bg-slate-50 hover:bg-slate-100/50 transition-colors cursor-pointer relative">
+                      <input type="file" accept="image/*" onChange={(e) => handleCompUpload(e.target.files[0])} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                      <Target className="w-10 h-10 text-slate-400 mb-3" />
+                      <span className="text-sm font-bold text-slate-600">Upload Flyer / Screenshot</span>
+                    </div>
+                    {compImageUrl && (
+                      <div className="rounded-xl overflow-hidden border border-slate-200 mt-4">
+                        <img src={compImageUrl} alt="Competitor Intel" className="w-full h-48 object-cover" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  {isAnalyzingComp ? (
+                    <div className="bg-white p-12 rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-center items-center text-center min-h-[300px]">
+                      <Target className="w-10 h-10 animate-ping text-red-500 mb-4" />
+                      <h4 className="font-bold text-slate-800">Extracting Offer Logic...</h4>
+                    </div>
+                  ) : compIntelResult ? (
+                    <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm space-y-6 animate-in slide-in-from-bottom duration-300">
+                      <div className="bg-red-50 border border-red-100 p-4 rounded-2xl">
+                        <span className="text-[10px] text-red-600 uppercase font-black">Detected Competitor Offer</span>
+                        <p className="font-bold text-slate-800 mt-1">{compIntelResult.detectedCompetitorOffer}</p>
+                      </div>
+                      
+                      <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl">
+                        <span className="text-[10px] text-emerald-600 uppercase font-black flex items-center"><Sparkles className="w-3 h-3 mr-1" /> Cobb Counter-Strategy</span>
+                        <p className="font-black text-slate-800 mt-1 text-lg">{compIntelResult.cobbCounterStrategy}</p>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="border border-slate-100 p-3 rounded-xl bg-slate-50">
+                          <span className="block text-[10px] text-slate-400 uppercase font-bold">Margin Impact</span>
+                          <span className="text-sm font-bold text-emerald-600">{compIntelResult.marginImpact}</span>
+                        </div>
+                        <div className="border border-slate-100 p-3 rounded-xl bg-slate-50">
+                          <span className="block text-[10px] text-slate-400 uppercase font-bold">Execution Difficulty</span>
+                          <span className="text-sm font-bold text-amber-600">{compIntelResult.executionDifficulty}</span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : compError ? (
+                    <div className="bg-red-50 text-red-600 p-6 rounded-3xl">{compError}</div>
+                  ) : (
+                    <div className="bg-slate-50 border border-slate-200 border-dashed rounded-3xl p-12 flex flex-col justify-center items-center text-center min-h-[300px] text-slate-400">
+                      <Target className="w-12 h-12 mb-4 text-slate-300" />
+                      <p className="font-bold">Awaiting Target Image</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           </div>
         </div>
@@ -3868,6 +4462,60 @@ export default function App() {
             </div>
           ))}
         </div>
+
+        {/* Smart Coordinate Modal */}
+        {showCoordinateModal && (
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-200">
+              <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-indigo-50/50">
+                <h3 className="text-xl font-black text-indigo-900 flex items-center gap-2">
+                  <Wand2 className="w-5 h-5 text-indigo-500" /> AI Style Coordinate Maker
+                </h3>
+                <button onClick={() => setShowCoordinateModal(false)} className="text-slate-400 hover:text-slate-600 p-1 bg-white rounded-lg border border-slate-200">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-6">
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Purchased Items</p>
+                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 mb-6 text-sm font-medium text-slate-700">
+                  {smartCoordinate.itemText}
+                </div>
+                
+                <p className="text-xs font-bold text-indigo-400 uppercase tracking-widest mb-3">AI Coordinate Match</p>
+                <div className="min-h-32 flex flex-col justify-center">
+                  {smartCoordinate.loading ? (
+                    <div className="flex flex-col items-center justify-center py-8">
+                      <RefreshCw className="w-8 h-8 text-indigo-400 animate-spin mb-4" />
+                      <p className="text-sm font-medium text-slate-500 animate-pulse">Generating the perfect styling combination...</p>
+                    </div>
+                  ) : (
+                    <div className="bg-indigo-50 p-5 rounded-2xl border border-indigo-100 shadow-inner">
+                      <p className="text-indigo-900 whitespace-pre-wrap text-sm leading-relaxed font-medium">
+                        {smartCoordinate.data}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="p-5 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+                <button onClick={() => setShowCoordinateModal(false)} className="px-5 py-2.5 rounded-xl text-slate-600 font-bold hover:bg-slate-200 transition-colors cursor-pointer text-sm">
+                  Close
+                </button>
+                <button 
+                  disabled={smartCoordinate.loading}
+                  onClick={() => {
+                    const phone = "919876543210"; // Placeholder for demo since we didn't pass phone
+                    const text = encodeURIComponent(smartCoordinate.data);
+                    window.open(`https://wa.me/${phone}?text=${text}`, '_blank');
+                  }} 
+                  className="px-5 py-2.5 rounded-xl bg-green-500 hover:bg-green-600 text-white font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer text-sm disabled:opacity-50"
+                >
+                  <Send className="w-4 h-4" /> Send WhatsApp Pitch
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* BOTTOM NAVIGATION BAR (MOBILE ONLY) */}
         <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex items-center justify-around pb-safe-bottom z-40 shadow-[0_-5px_15px_rgba(0,0,0,0.05)]">

@@ -25,13 +25,13 @@ async function startTunnel() {
         fs.writeFileSync(ENV_FILE, `VITE_API_URL=${NGROK_URL}\n`);
         console.log('✅ Config updated.');
         
-
         
         console.log('Ngrok tunnel is active. Keeping process alive...');
         // Keep the Node process running infinitely
         setInterval(() => {}, 1000 * 60 * 60);
     } catch (e) {
         console.error('❌ Error during ngrok start:', e.message || e);
+        fs.writeFileSync(path.join(__dirname, 'ngrok_error.log'), (e.message || e).toString());
         process.exit(1);
     }
 }
