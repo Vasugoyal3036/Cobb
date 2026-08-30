@@ -1605,30 +1605,35 @@ export default function App() {
                           </h3>
                         </div>
                         <div className="flex-1 flex flex-col justify-center">
-                          {(() => {
                             const totalSales = overviewStats.today?.TotalSales || 0;
-                            // Using the standard 27% gross margin from your P&L financials
-                            const margin = Math.round(totalSales * 0.27);
-                            const cogs = totalSales - margin;
                             const total = totalSales > 0 ? totalSales : 1;
                             
+                            // 73% COGS, 10% Expense, 17% Net Margin
+                            const cogs = Math.round(totalSales * 0.73);
+                            const expense = Math.round(totalSales * 0.10);
+                            const netMargin = totalSales - cogs - expense;
+                            
                             const cogsPct = ((cogs / total) * 100).toFixed(0);
-                            const marginPct = ((margin / total) * 100).toFixed(0);
+                            const expensePct = ((expense / total) * 100).toFixed(0);
+                            const marginPct = ((netMargin / total) * 100).toFixed(0);
                             
                             return (
                               <>
-                                <p className="text-xs text-slate-500 mb-4">Revenue split between Cost of Goods (COGS) and Gross Margin today.</p>
-                                <div className="flex justify-between text-xs font-bold mb-2">
-                                  <span className="text-slate-600 uppercase tracking-wide">Product Cost ({cogsPct}%)</span>
-                                  <span className="text-emerald-500 uppercase tracking-wide">Gross Margin ({marginPct}%)</span>
+                                <p className="text-xs text-slate-500 mb-4">Daily Revenue split: Cost, OpEx (10%), and Net Margin.</p>
+                                <div className="flex justify-between text-[10px] font-bold mb-2">
+                                  <span className="text-slate-500 uppercase tracking-wide">Cost ({cogsPct}%)</span>
+                                  <span className="text-amber-500 uppercase tracking-wide">OpEx ({expensePct}%)</span>
+                                  <span className="text-emerald-500 uppercase tracking-wide">Net ({marginPct}%)</span>
                                 </div>
                                 <div className="w-full h-4 rounded-full flex overflow-hidden bg-slate-100 shadow-inner">
                                   <div className="bg-slate-400 h-full transition-all duration-1000" style={{ width: `${cogsPct}%` }}></div>
+                                  <div className="bg-amber-400 h-full transition-all duration-1000" style={{ width: `${expensePct}%` }}></div>
                                   <div className="bg-emerald-500 h-full transition-all duration-1000" style={{ width: `${marginPct}%` }}></div>
                                 </div>
-                                <div className="flex justify-between text-[11px] text-slate-500 mt-2 font-mono">
+                                <div className="flex justify-between text-[10px] text-slate-500 mt-2 font-mono">
                                   <span>{formatCurrency(cogs)}</span>
-                                  <span>{formatCurrency(margin)}</span>
+                                  <span className="text-center flex-1">{formatCurrency(expense)}</span>
+                                  <span className="text-right">{formatCurrency(netMargin)}</span>
                                 </div>
                               </>
                             );
