@@ -1605,6 +1605,7 @@ export default function App() {
                           </h3>
                         </div>
                         <div className="flex-1 flex flex-col justify-center">
+                          {(() => {
                             const totalSales = overviewStats.today?.TotalSales || 0;
                             const total = totalSales > 0 ? totalSales : 1;
                             
