@@ -1606,26 +1606,29 @@ export default function App() {
                         </div>
                         <div className="flex-1 flex flex-col justify-center">
                           {(() => {
-                            const fullPrice = overviewStats.today?.FullPriceSalesAmount || 0;
-                            const discounted = overviewStats.today?.DiscountedSalesAmount || 0;
-                            const total = (fullPrice + discounted) > 0 ? (fullPrice + discounted) : 1;
-                            const fullPricePct = ((fullPrice / total) * 100).toFixed(0);
-                            const discountPct = ((discounted / total) * 100).toFixed(0);
+                            const totalSales = overviewStats.today?.TotalSales || 0;
+                            // Using the standard 27% gross margin from your P&L financials
+                            const margin = Math.round(totalSales * 0.27);
+                            const cogs = totalSales - margin;
+                            const total = totalSales > 0 ? totalSales : 1;
+                            
+                            const cogsPct = ((cogs / total) * 100).toFixed(0);
+                            const marginPct = ((margin / total) * 100).toFixed(0);
                             
                             return (
                               <>
-                                <p className="text-xs text-slate-500 mb-4">Revenue split between full price vs discounted items today.</p>
+                                <p className="text-xs text-slate-500 mb-4">Revenue split between Cost of Goods (COGS) and Gross Margin today.</p>
                                 <div className="flex justify-between text-xs font-bold mb-2">
-                                  <span className="text-emerald-600 uppercase tracking-wide">Full Price ({fullPricePct}%)</span>
-                                  <span className="text-rose-500 uppercase tracking-wide">Discounted ({discountPct}%)</span>
+                                  <span className="text-slate-600 uppercase tracking-wide">Product Cost ({cogsPct}%)</span>
+                                  <span className="text-emerald-500 uppercase tracking-wide">Gross Margin ({marginPct}%)</span>
                                 </div>
                                 <div className="w-full h-4 rounded-full flex overflow-hidden bg-slate-100 shadow-inner">
-                                  <div className="bg-emerald-500 h-full transition-all duration-1000" style={{ width: `${fullPricePct}%` }}></div>
-                                  <div className="bg-rose-500 h-full transition-all duration-1000" style={{ width: `${discountPct}%` }}></div>
+                                  <div className="bg-slate-400 h-full transition-all duration-1000" style={{ width: `${cogsPct}%` }}></div>
+                                  <div className="bg-emerald-500 h-full transition-all duration-1000" style={{ width: `${marginPct}%` }}></div>
                                 </div>
                                 <div className="flex justify-between text-[11px] text-slate-500 mt-2 font-mono">
-                                  <span>{formatCurrency(fullPrice)}</span>
-                                  <span>{formatCurrency(discounted)}</span>
+                                  <span>{formatCurrency(cogs)}</span>
+                                  <span>{formatCurrency(margin)}</span>
                                 </div>
                               </>
                             );
