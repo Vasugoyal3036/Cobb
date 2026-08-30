@@ -292,24 +292,26 @@ export default function App() {
 
   // Core dashboard metrics needed on mount for alerts and command center
   useEffect(() => {
+    // Priority 1: Core Dashboard (Instant)
     axios.get(`${API_BASE}/api/sales/overview`).then(res => setOverviewStats(res.data)).catch(console.error);
     axios.get(`${API_BASE}/api/sales/live`).then(res => setLiveBills(res.data)).catch(console.error);
     axios.get(`${API_BASE}/api/analytics/hourly`).then(res => setHourlySales(res.data)).catch(console.error);
-    axios.get(`${API_BASE}/api/inventory/dead-stock`).then(res => setDeadStock(res.data)).catch(console.error);
+    axios.get(`${API_BASE}/api/sales/daily-month`).then(res => setDailySales(res.data)).catch(console.error);
     axios.get(`${API_BASE}/api/reconciliation/latest`).then(res => setReconData(res.data)).catch(console.error);
-    // Fetch customer data on load for global search
-    axios.get(`${API_BASE}/api/customers/vip`).then(res => setVips(res.data)).catch(console.error);
-    axios.get(`${API_BASE}/api/customers/dormant`).then(res => setDormant(res.data)).catch(console.error);
+    axios.get(`${API_BASE}/api/inventory/dead-stock`).then(res => setDeadStock(res.data)).catch(console.error);
+
+    // Priority 2: Pre-fetch background data for instant tab switching (delayed slightly to unblock UI)
+    setTimeout(() => {
+      axios.get(`${API_BASE}/api/customers/vip`).then(res => setVips(res.data)).catch(console.error);
+      axios.get(`${API_BASE}/api/customers/dormant`).then(res => setDormant(res.data)).catch(console.error);
+      axios.get(`${API_BASE}/api/analytics/retention-radar`).then(res => setRetentionData(res.data)).catch(console.error);
+      axios.get(`${API_BASE}/api/financials/pnl`).then(res => setPnlData(res.data)).catch(console.error);
+      axios.get(`${API_BASE}/api/analytics/wardrobe-profiles`).then(res => setWardrobeProfiles(res.data)).catch(console.error);
+    }, 1000);
   }, []);
 
   // Lazy load data only when its tab is active
   useEffect(() => {
-    if (activeTab === 'vip' && (!vips || vips.length === 0)) {
-      axios.get(`${API_BASE}/api/customers/vip`).then(res => setVips(res.data)).catch(console.error);
-    }
-    if (activeTab === 'dormant' && (!dormant || dormant.length === 0)) {
-      axios.get(`${API_BASE}/api/customers/dormant`).then(res => setDormant(res.data)).catch(console.error);
-    }
     if (activeTab === 'inventory' && (!inventory || inventory.length === 0)) {
       axios.get(`${API_BASE}/api/inventory`).then(res => setInventory(res.data)).catch(console.error);
     }
@@ -445,22 +447,17 @@ export default function App() {
         .then(res => setBroadcastStatus(res.data))
         .catch(console.error);
 
-      // 3. Fetch live transactions & dashboard metrics for real-time dynamic updates
-      axios.get(`${API_BASE}/api/sales/overview`)
-        .then(res => setOverviewStats(res.data))
-        .catch(console.error);
-
+      // Removed heavy polling of dashboard metrics (now relies on mount fetch and manual refresh)
+      // Only polling live sales for the Live POS Checkout Alerts
       axios.get(`${API_BASE}/api/sales/live`)
         .then(res => {
           const oldBills = prevLiveBillsRef.current;
           const newBills = res.data;
 
           if (oldBills.length > 0 && newBills.length > 0) {
-            // Find bills in newBills that weren't in oldBills
             const oldBillNumbers = new Set(oldBills.map(b => b.BillNumber.trim()));
             newBills.forEach(bill => {
               if (!oldBillNumbers.has(bill.BillNumber.trim())) {
-                // Trigger enriched toast with progress timer!
                 const toastId = Date.now() + Math.random();
                 const durationMs = 5000;
                 const newToast = {
@@ -473,7 +470,6 @@ export default function App() {
                   duration: durationMs
                 };
                 setToasts(prev => [newToast, ...prev].slice(0, 3));
-                // Auto dismiss toast after duration
                 setTimeout(() => {
                   setToasts(prev => prev.filter(t => t.id !== toastId));
                 }, durationMs);
@@ -484,26 +480,6 @@ export default function App() {
           prevLiveBillsRef.current = newBills;
           setLiveBills(newBills);
         })
-        .catch(console.error);
-
-      axios.get(`${API_BASE}/api/analytics/hourly`)
-        .then(res => setHourlySales(res.data))
-        .catch(console.error);
-
-      axios.get(`${API_BASE}/api/sales/daily-month`)
-        .then(res => setDailySales(res.data))
-        .catch(console.error);
-
-      axios.get(`${API_BASE}/api/analytics/wardrobe-profiles`)
-        .then(res => setWardrobeProfiles(res.data))
-        .catch(console.error);
-
-      axios.get(`${API_BASE}/api/financials/pnl`)
-        .then(res => setPnlData(res.data))
-        .catch(console.error);
-
-      axios.get(`${API_BASE}/api/analytics/retention-radar`)
-        .then(res => setRetentionData(res.data))
         .catch(console.error);
     };
 
@@ -822,9 +798,8 @@ export default function App() {
         { id: "live", label: "Live Checkouts", icon: Receipt },
         { id: "returns", label: "Returns & Exchanges", icon: RotateCcw, colorClass: "text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-400 font-bold border-l-2 border-amber-500" },
         { id: "topmovers", label: "Top Movers & Size Demand", icon: Flame, colorClass: "text-rose-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-rose-500/15 text-rose-400 font-bold border-l-2 border-rose-500" },
-        { id: "inventory", label: "Live Inventory", icon: Package },
         { id: "sizematrix", label: "Size Matrix Heatmap", icon: Grid, colorClass: "text-blue-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-blue-500/15 text-blue-400 font-bold border-l-2 border-blue-500" },
-        { id: "deadstock", label: "Dead Stock", icon: Archive },
+        { id: "deadstock", label: "Inventory", icon: Package },
         { id: "vm_auditor", label: "VM Auditor", icon: Camera, colorClass: "text-purple-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-purple-500/15 text-purple-400 font-bold border-l-2 border-purple-500" },
         { id: "smart_bundles", label: "Smart Bundling", icon: Percent, colorClass: "text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-400 font-bold border-l-2 border-amber-500" },
         { id: "trend_forecast", label: "Trend Forecaster", icon: LineChart, colorClass: "text-indigo-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-indigo-500/15 text-indigo-400 font-bold border-l-2 border-indigo-500" },
@@ -1369,70 +1344,73 @@ export default function App() {
                         <TrendingUp className="w-5 h-5 text-green-600" />
                       </div>
                     </div>
-                    <div>
-                      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs mb-3">
-                        {/* vs Yesterday */}
-                        <div className="flex items-center gap-1">
-                          {(() => {
-                            const diff = overviewStats.yesterday.TotalSales > 0
-                              ? (((overviewStats.today.TotalSales - overviewStats.yesterday.TotalSales) / overviewStats.yesterday.TotalSales) * 100).toFixed(1)
-                              : overviewStats.today.TotalSales > 0 ? 100 : 0;
-                            const isUp = diff >= 0;
-                            return (
-                              <>
-                                <span className={`font-black ${isUp ? 'text-green-600' : 'text-rose-500'}`}>
-                                  {isUp ? '↑' : '↓'} {Math.abs(diff)}%
-                                </span>
-                                <span className="text-slate-400">vs yesterday</span>
-                              </>
-                            );
-                          })()}
-                        </div>
-                        {/* vs Last Week */}
-                        <div className="flex items-center gap-1">
-                          {(() => {
-                            const thisW = overviewStats.thisWeek?.TotalSales || 0;
-                            const lastW = overviewStats.lastWeek?.TotalSales || 0;
-                            const diff = lastW > 0 ? (((thisW - lastW) / lastW) * 100).toFixed(1) : (thisW > 0 ? 100 : 0);
-                            const isUp = diff >= 0;
-                            return (
-                              <>
-                                <span className={`font-black ${isUp ? 'text-green-600' : 'text-rose-500'}`}>
-                                  {isUp ? '↑' : '↓'} {Math.abs(diff)}%
-                                </span>
-                                <span className="text-slate-400">WoW</span>
-                              </>
-                            );
-                          })()}
-                        </div>
-                        {/* vs Last Month */}
-                        <div className="flex items-center gap-1">
-                          {(() => {
-                            const thisM = overviewStats.thisMonth?.TotalSales || 0;
-                            const lastM = overviewStats.lastMonth?.TotalSales || 0;
-                            const diff = lastM > 0 ? (((thisM - lastM) / lastM) * 100).toFixed(1) : (thisM > 0 ? 100 : 0);
-                            const isUp = diff >= 0;
-                            return (
-                              <>
-                                <span className={`font-black ${isUp ? 'text-green-600' : 'text-rose-500'}`}>
-                                  {isUp ? '↑' : '↓'} {Math.abs(diff)}%
-                                </span>
-                                <span className="text-slate-400">MoM</span>
-                              </>
-                            );
-                          })()}
-                        </div>
+
+                    <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-xs mb-3">
+                      {/* vs Yesterday */}
+                      <div className="flex items-center gap-1">
+                        {(() => {
+                          const diff = overviewStats.yesterday.TotalSales > 0
+                            ? (((overviewStats.today.TotalSales - overviewStats.yesterday.TotalSales) / overviewStats.yesterday.TotalSales) * 100).toFixed(1)
+                            : overviewStats.today.TotalSales > 0 ? 100 : 0;
+                          const isUp = diff >= 0;
+                          return (
+                            <>
+                              <span className={`font-black ${isUp ? 'text-green-600' : 'text-rose-500'}`}>
+                                {isUp ? '↑' : '↓'} {Math.abs(diff)}%
+                              </span>
+                              <span className="text-slate-400">vs yesterday</span>
+                            </>
+                          );
+                        })()}
                       </div>
-                      <div className="flex flex-wrap gap-2 text-[10px] font-bold tracking-wide uppercase">
-                        <span className={`px-2.5 py-1 rounded-md border ${darkMode ? 'bg-emerald-900/30 text-emerald-400 border-emerald-800/50' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
-                          Cash: {formatCurrency(overviewStats.today.CashAmount || 0)}
-                        </span>
-                        <span className={`px-2.5 py-1 rounded-md border ${darkMode ? 'bg-blue-900/30 text-blue-400 border-blue-800/50' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
-                          Card: {formatCurrency(overviewStats.today.CardAmount || 0)}
-                        </span>
-                        <span className={`px-2.5 py-1 rounded-md border ${darkMode ? 'bg-purple-900/30 text-purple-400 border-purple-800/50' : 'bg-purple-50 text-purple-700 border-purple-200'}`}>
-                          UPI: {formatCurrency(overviewStats.today.UPIAmount || 0)}
-                        </span>
+                      {/* vs Last Week */}
+                      <div className="flex items-center gap-1">
+                        {(() => {
+                          const thisW = overviewStats.thisWeek?.TotalSales || 0;
+                          const lastW = overviewStats.lastWeek?.TotalSales || 0;
+                          const diff = lastW > 0 ? (((thisW - lastW) / lastW) * 100).toFixed(1) : (thisW > 0 ? 100 : 0);
+                          const isUp = diff >= 0;
+                          return (
+                            <>
+                              <span className={`font-black ${isUp ? 'text-green-600' : 'text-rose-500'}`}>
+                                {isUp ? '↑' : '↓'} {Math.abs(diff)}%
+                              </span>
+                              <span className="text-slate-400">WoW</span>
+                            </>
+                          );
+                        })()}
+                      </div>
+                      {/* vs Last Month */}
+                      <div className="flex items-center gap-1">
+                        {(() => {
+                          const thisM = overviewStats.thisMonth?.TotalSales || 0;
+                          const lastM = overviewStats.lastMonth?.TotalSales || 0;
+                          const diff = lastM > 0 ? (((thisM - lastM) / lastM) * 100).toFixed(1) : (thisM > 0 ? 100 : 0);
+                          const isUp = diff >= 0;
+                          return (
+                            <>
+                              <span className={`font-black ${isUp ? 'text-green-600' : 'text-rose-500'}`}>
+                                {isUp ? '↑' : '↓'} {Math.abs(diff)}%
+                              </span>
+                              <span className="text-slate-400">MoM</span>
+                            </>
+                          );
+                        })()}
+                      </div>
+                    </div>
+
+                    <div className="mt-auto pt-4 flex gap-2 text-xs font-bold tracking-wide uppercase">
+                      <div className={`flex-1 flex flex-col justify-center items-center px-2 py-2.5 rounded-lg border shadow-sm ${darkMode ? 'bg-emerald-900/30 text-emerald-400 border-emerald-800/50' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+                        <span className="text-[10px] opacity-80 mb-1">Cash</span>
+                        <span className="text-sm">{formatCurrency(overviewStats.today.CashAmount || 0)}</span>
+                      </div>
+                      <div className={`flex-1 flex flex-col justify-center items-center px-2 py-2.5 rounded-lg border shadow-sm ${darkMode ? 'bg-blue-900/30 text-blue-400 border-blue-800/50' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
+                        <span className="text-[10px] opacity-80 mb-1">Card</span>
+                        <span className="text-sm">{formatCurrency(overviewStats.today.CardAmount || 0)}</span>
+                      </div>
+                      <div className={`flex-1 flex flex-col justify-center items-center px-2 py-2.5 rounded-lg border shadow-sm ${darkMode ? 'bg-purple-900/30 text-purple-400 border-purple-800/50' : 'bg-purple-50 text-purple-700 border-purple-200'}`}>
+                        <span className="text-[10px] opacity-80 mb-1">UPI</span>
+                        <span className="text-sm">{formatCurrency(overviewStats.today.UPIAmount || 0)}</span>
                       </div>
                     </div>
                   </div>
@@ -1589,31 +1567,70 @@ export default function App() {
                   <div className="lg:col-span-2 flex flex-col gap-6">
 
                     {/* Visual Sales Trend */}
-                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex-1">
-                      <div className="flex justify-between items-center mb-6">
-                        <h3 className="font-bold text-slate-800 flex items-center">
-                          <BarChart3 className="w-4 h-4 mr-2 text-blue-500" /> Hourly Footfall Velocity
-                        </h3>
-                        <button onClick={() => setActiveTab('analytics')} className="text-xs font-bold text-blue-600 hover:text-blue-800 cursor-pointer">View Full &rarr;</button>
-                      </div>
-                      <div className="h-40 flex items-end justify-between gap-2">
-                        {hourlySales.map((h, i) => {
-                          const heightPercent = Math.max((h.TotalRevenue / maxHourlyRevenue) * 100, 10);
-                          const isPeak = h.TotalRevenue === maxHourlyRevenue && maxHourlyRevenue > 0;
-                          return (
-                            <div key={i} className="flex-1 flex flex-col items-center group relative h-full justify-end">
-                              <div className="absolute -top-10 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] py-1 px-2 rounded shadow-lg whitespace-nowrap z-20 pointer-events-none">
-                                {formatCurrency(h.TotalRevenue)}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">
+                      {/* Visual Sales Trend */}
+                      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col">
+                        <div className="flex justify-between items-center mb-6">
+                          <h3 className="font-bold text-slate-800 flex items-center">
+                            <BarChart3 className="w-4 h-4 mr-2 text-blue-500" /> Hourly Footfall
+                          </h3>
+                          <button onClick={() => setActiveTab('analytics')} className="text-xs font-bold text-blue-600 hover:text-blue-800 cursor-pointer">Full &rarr;</button>
+                        </div>
+                        <div className="h-24 flex items-end justify-between gap-1 flex-1">
+                          {hourlySales.map((h, i) => {
+                            const heightPercent = Math.max((h.TotalRevenue / maxHourlyRevenue) * 100, 10);
+                            const isPeak = h.TotalRevenue === maxHourlyRevenue && maxHourlyRevenue > 0;
+                            return (
+                              <div key={i} className="flex-1 flex flex-col items-center group relative h-full justify-end">
+                                <div className="absolute -top-10 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] py-1 px-2 rounded shadow-lg whitespace-nowrap z-20 pointer-events-none">
+                                  {formatCurrency(h.TotalRevenue)}
+                                </div>
+                                <div
+                                  style={{ height: `${heightPercent}%` }}
+                                  className={`w-full max-w-[24px] rounded-t-md transition-all duration-500 ${isPeak ? 'bg-blue-500' : 'bg-slate-200 group-hover:bg-blue-300'}`}
+                                />
+                                <span className="text-[9px] text-slate-400 mt-2 font-medium">{h.SaleHour}:00</span>
                               </div>
-                              <div
-                                style={{ height: `${heightPercent}%` }}
-                                className={`w-full max-w-[36px] rounded-t-md transition-all duration-500 ${isPeak ? 'bg-blue-500' : 'bg-slate-200 group-hover:bg-blue-300'}`}
-                              />
-                              <span className="text-[10px] text-slate-400 mt-2 font-medium">{h.SaleHour}:00</span>
-                            </div>
-                          );
-                        })}
-                        {hourlySales.length === 0 && <div className="w-full text-center text-sm text-slate-400 mb-8">Waiting for checkout data...</div>}
+                            );
+                          })}
+                          {hourlySales.length === 0 && <div className="w-full text-center text-sm text-slate-400 mb-8">Waiting for checkout data...</div>}
+                        </div>
+                      </div>
+
+                      {/* Discount & Margin Tracker */}
+                      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col justify-between">
+                        <div className="flex justify-between items-center mb-4">
+                          <h3 className="font-bold text-slate-800 flex items-center">
+                            <Tag className="w-4 h-4 mr-2 text-purple-500" /> Margin Tracker
+                          </h3>
+                        </div>
+                        <div className="flex-1 flex flex-col justify-center">
+                          {(() => {
+                            const fullPrice = overviewStats.today?.FullPriceSalesAmount || 0;
+                            const discounted = overviewStats.today?.DiscountedSalesAmount || 0;
+                            const total = (fullPrice + discounted) > 0 ? (fullPrice + discounted) : 1;
+                            const fullPricePct = ((fullPrice / total) * 100).toFixed(0);
+                            const discountPct = ((discounted / total) * 100).toFixed(0);
+                            
+                            return (
+                              <>
+                                <p className="text-xs text-slate-500 mb-4">Revenue split between full price vs discounted items today.</p>
+                                <div className="flex justify-between text-xs font-bold mb-2">
+                                  <span className="text-emerald-600 uppercase tracking-wide">Full Price ({fullPricePct}%)</span>
+                                  <span className="text-rose-500 uppercase tracking-wide">Discounted ({discountPct}%)</span>
+                                </div>
+                                <div className="w-full h-4 rounded-full flex overflow-hidden bg-slate-100 shadow-inner">
+                                  <div className="bg-emerald-500 h-full transition-all duration-1000" style={{ width: `${fullPricePct}%` }}></div>
+                                  <div className="bg-rose-500 h-full transition-all duration-1000" style={{ width: `${discountPct}%` }}></div>
+                                </div>
+                                <div className="flex justify-between text-[11px] text-slate-500 mt-2 font-mono">
+                                  <span>{formatCurrency(fullPrice)}</span>
+                                  <span>{formatCurrency(discounted)}</span>
+                                </div>
+                              </>
+                            );
+                          })()}
+                        </div>
                       </div>
                     </div>
 
@@ -1628,8 +1645,8 @@ export default function App() {
                         <span className="text-xs font-bold text-slate-700">AI Broadcast</span>
                       </button>
                       <button onClick={() => setActiveTab('deadstock')} className="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center gap-2 group text-center cursor-pointer">
-                        <div className="bg-red-50 p-3 rounded-full text-red-600 group-hover:scale-110 transition-transform"><Archive className="w-5 h-5" /></div>
-                        <span className="text-xs font-bold text-slate-700">Clear Dead Stock</span>
+                        <div className="bg-blue-50 p-3 rounded-full text-blue-600 group-hover:scale-110 transition-transform"><Package className="w-5 h-5" /></div>
+                        <span className="text-xs font-bold text-slate-700">Inventory</span>
                       </button>
                       <button onClick={() => setActiveTab('automation')} className="bg-white border border-slate-200 p-4 rounded-2xl shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center gap-2 group text-center cursor-pointer">
                         <div className="bg-green-50 p-3 rounded-full text-green-600 group-hover:scale-110 transition-transform"><Zap className="w-5 h-5" /></div>
@@ -1668,7 +1685,7 @@ export default function App() {
                         )}
                         {deadStock.length > 0 && (
                           <div className="p-4 text-sm flex justify-between items-center group cursor-pointer hover:bg-slate-50" onClick={() => setActiveTab('deadstock')}>
-                            <span className="text-slate-700 font-medium"><span className="font-bold text-red-600">{deadStock.length} items</span> in Dead Stock.</span>
+                            <span className="text-slate-700 font-medium"><span className="font-bold text-blue-600">{deadStock.length} items</span> in Inventory.</span>
                             <span className="text-blue-600 font-bold text-xs opacity-0 group-hover:opacity-100 transition-opacity">Review &rarr;</span>
                           </div>
                         )}
@@ -2378,7 +2395,7 @@ export default function App() {
                       </div>
 
                       <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Overdue VIPs (30+ Days)</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Overdue VIPs (15+ Days)</p>
                         <h4 className="text-3xl font-black text-amber-600 mt-2">{retentionData.overdueVips.length}</h4>
                         <p className="text-xs text-slate-400 mt-1">Ready for re-activation</p>
                       </div>
@@ -2399,7 +2416,7 @@ export default function App() {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-100">
-                            {retentionData.overdueVips.map((v, idx) => (
+                            {retentionData.overdueVips.slice(0, 10).map((v, idx) => (
                               <tr key={idx} className="hover:bg-slate-50 transition-colors">
                                 <td className="py-3.5 pr-4 font-bold text-slate-800 whitespace-nowrap">{v.CustomerName?.trim() || 'VIP Customer'}</td>
                                 <td className="py-3.5 px-3 text-xs font-mono text-slate-500 whitespace-nowrap">{v.Phone}</td>
@@ -2419,6 +2436,69 @@ export default function App() {
                                 </td>
                               </tr>
                             ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-6 mt-6">
+                      <h4 className="font-bold text-slate-800 text-lg mb-4">Recent Repeat Buyers</h4>
+                      <p className="text-sm text-slate-500 mb-4">Customers who have successfully returned for another visit recently.</p>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm border-collapse">
+                          <thead>
+                            <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase text-[11px]">
+                              <th className="pb-3 pr-4 whitespace-nowrap">Client Name</th>
+                              <th className="pb-3 px-3 whitespace-nowrap">Phone</th>
+                              <th className="pb-3 px-3 text-right whitespace-nowrap">Total Spent</th>
+                              <th className="pb-3 px-3 text-right whitespace-nowrap">Total Visits</th>
+                              <th className="pb-3 px-3 text-right whitespace-nowrap">Last Visit Date</th>
+                              <th className="pb-3 pl-4 text-center whitespace-nowrap">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100">
+                            {retentionData.recentRepeatBuyers?.slice(0, 10).map((v, idx) => (
+                              <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                                <td className="py-3.5 pr-4 font-bold text-slate-800 whitespace-nowrap">
+                                  {v.CustomerName?.trim() || 'Loyal Customer'}
+                                  {v.Bills && v.Bills.length > 0 && (
+                                    <details className="mt-1">
+                                      <summary className="text-xs text-indigo-500 font-semibold cursor-pointer select-none">View All Bills</summary>
+                                      <ul className="mt-2 space-y-1 bg-slate-50 p-2 rounded-md border border-slate-100 min-w-max">
+                                        {v.Bills.map(b => (
+                                          <li key={b.BillNo} className="text-[11px] flex justify-between gap-4">
+                                            <span className="font-mono text-slate-500">{b.BillNo}</span>
+                                            <span className="font-bold text-slate-700">{formatCurrency(b.Amount)}</span>
+                                            <span className="text-slate-400">{new Date(b.BillDate).toLocaleDateString()}</span>
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </details>
+                                  )}
+                                </td>
+                                <td className="py-3.5 px-3 text-xs font-mono text-slate-500 whitespace-nowrap align-top pt-4">{v.Phone}</td>
+                                <td className="py-3.5 px-3 text-right font-black text-green-600 whitespace-nowrap align-top pt-4">{formatCurrency(v.TotalSpent)}</td>
+                                <td className="py-3.5 px-3 text-right text-xs font-bold text-slate-700 whitespace-nowrap align-top pt-4">{v.TotalVisits} Visits</td>
+                                <td className="py-3.5 px-3 text-right font-mono font-bold text-slate-600 whitespace-nowrap align-top pt-4">
+                                  {new Date(v.LastVisitDate).toLocaleDateString()}
+                                </td>
+                                <td className="py-3.5 pl-4 text-center whitespace-nowrap align-top pt-3">
+                                  <button
+                                    onClick={() => {
+                                      const msg = `Hi ${v.CustomerName?.trim() || 'Sir'}! Thank you for visiting Cobb Pundri again! We hope you loved your recent purchase. Drop by anytime for fresh styles! 👕✨`;
+                                      window.open(`https://wa.me/${v.Phone.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
+                                    }}
+                                    className="px-3.5 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 transition-all cursor-pointer"
+                                  >
+                                    🎉 Send Thank You
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                            {!retentionData.recentRepeatBuyers?.length && (
+                              <tr>
+                                <td colSpan="6" className="py-8 text-center text-slate-400 font-medium">No recent repeat buyers found.</td>
+                              </tr>
+                            )}
                           </tbody>
                         </table>
                       </div>
@@ -2909,15 +2989,15 @@ export default function App() {
                 <div className="border-b border-slate-200 pb-5 mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                   <div>
                     <h3 className="text-2xl font-bold text-slate-800 flex items-center">
-                      <Archive className="w-6 h-6 mr-3 text-red-500" /> Dead Stock Control
+                      <Package className="w-6 h-6 mr-3 text-blue-500" /> Inventory
                     </h3>
-                    <p className="text-sm text-slate-500 mt-2">Articles stagnant for 60+ days. Use AI to generate fresh styling pitches to move stock.</p>
+                    <p className="text-sm text-slate-500 mt-2">Full store inventory. Use AI to generate fresh styling pitches for any item.</p>
                   </div>
                   <div className="relative w-full md:w-80">
                     <Search className="w-5 h-5 text-slate-400 absolute left-3 top-2.5" />
                     <input
                       type="text"
-                      placeholder="Filter Dead Stock by SKU or Name..."
+                      placeholder="Filter Inventory by SKU or Name..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:bg-white transition-colors shadow-sm"
@@ -2928,7 +3008,7 @@ export default function App() {
                   <table className="min-w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-slate-50 border-b border-slate-200">
-                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">SKU</th>
+                        <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Article Number</th>
                         <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Article Description</th>
                         <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Stock</th>
                         <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right whitespace-nowrap">AI Styling Pitch</th>
@@ -2936,26 +3016,41 @@ export default function App() {
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {deadStock
-                        .filter(i => i.SKU?.toLowerCase().includes(searchQuery.toLowerCase()) || i.ItemName?.toLowerCase().includes(searchQuery.toLowerCase()))
+                        .filter(i => i.ArticleNo?.toLowerCase().includes(searchQuery.toLowerCase()) || i.ItemName?.toLowerCase().includes(searchQuery.toLowerCase()))
                         .map((item, idx) => (
                           <React.Fragment key={idx}>
-                            <tr className={`hover:bg-slate-50 transition-colors ${activeOutfitMatch === item.SKU ? 'bg-indigo-50/50' : ''}`}>
-                              <td className="px-6 py-4 font-bold text-slate-700 text-sm whitespace-nowrap">{item.SKU}</td>
+                            <tr className={`hover:bg-slate-50 transition-colors ${activeOutfitMatch === item.ArticleNo ? 'bg-indigo-50/50' : ''}`}>
+                              <td className="px-6 py-4 font-bold text-slate-700 text-sm whitespace-nowrap">
+                                <div>{item.ArticleNo}</div>
+                                {item.SkuDetails && (
+                                  <select className="mt-2 text-xs bg-white border border-slate-200 rounded p-1 w-full max-w-[200px] focus:outline-none focus:border-blue-500">
+                                    <option value="">View Colors / Sizes</option>
+                                    {item.SkuDetails.split(',').map((detail, dIdx) => {
+                                      const [sku, color, size] = detail.split('|');
+                                      return (
+                                        <option key={dIdx} value={sku}>
+                                          {color || 'N/A'} - {size || 'N/A'} ({sku})
+                                        </option>
+                                      );
+                                    })}
+                                  </select>
+                                )}
+                              </td>
                               <td className="px-6 py-4 text-slate-600 text-sm whitespace-nowrap">{item.ItemName}</td>
-                              <td className="px-6 py-4 font-black text-amber-600 whitespace-nowrap">
-                                <span className="bg-amber-50 px-3 py-1 rounded-lg border border-amber-100">{item.CurrentStock} Units</span>
+                              <td className="px-6 py-4 font-black text-blue-600 whitespace-nowrap">
+                                <span className="bg-blue-50 px-3 py-1 rounded-lg border border-blue-100">{item.SkuCount} SKUs in Stock</span>
                               </td>
                               <td className="px-6 py-4 text-right whitespace-nowrap">
                                 <button
                                   onClick={() => handleGenerateOutfitMatch(item)}
-                                  disabled={isGeneratingOutfit && activeOutfitMatch === item.SKU}
+                                  disabled={isGeneratingOutfit && activeOutfitMatch === item.ArticleNo}
                                   className="inline-flex items-center px-4 py-2 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 hover:shadow-sm rounded-lg font-bold text-xs transition-all cursor-pointer disabled:opacity-50"
                                 >
-                                  {isGeneratingOutfit && activeOutfitMatch === item.SKU ? 'Thinking...' : <><Sparkles className="w-3 h-3 mr-1.5" /> Style Match</>}
+                                  {isGeneratingOutfit && activeOutfitMatch === item.ArticleNo ? 'Thinking...' : <><Sparkles className="w-3 h-3 mr-1.5" /> Style Match</>}
                                 </button>
                               </td>
                             </tr>
-                            {activeOutfitMatch === item.SKU && outfitPitch && (
+                            {activeOutfitMatch === item.ArticleNo && outfitPitch && (
                               <tr className="bg-indigo-50/30 border-b border-indigo-100">
                                 <td colSpan="4" className="px-6 py-6">
                                   <div className="border border-indigo-200 bg-white p-5 rounded-xl shadow-sm relative overflow-hidden">
@@ -2984,111 +3079,6 @@ export default function App() {
               </div>
             )}
 
-            {/* 5. SEARCHABLE INVENTORY + MASTER RESTOCK */}
-            {activeTab === 'inventory' && (
-              <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-200 pb-5 gap-4">
-                  <div>
-                    <h3 className="text-2xl font-bold text-slate-800 flex items-center">
-                      <Tag className="w-6 h-6 mr-3 text-blue-600" /> Live Inventory Explorer
-                    </h3>
-                    <p className="text-sm text-slate-500 mt-2">Instant live search across articles, color, fit, and current stock sizes.</p>
-                  </div>
-                  <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
-                    <button
-                      onClick={handleMasterRestock}
-                      className="w-full sm:w-auto bg-amber-500 hover:bg-amber-600 text-white font-bold py-2.5 px-5 rounded-xl text-sm shadow-md shadow-amber-500/20 flex items-center transition-all cursor-pointer"
-                    >
-                      <Package className="w-4 h-4 mr-2" /> Generate Auto-Restock
-                    </button>
-                    <div className="relative w-full sm:w-72">
-                      <Search className="w-5 h-5 text-slate-400 absolute left-3 top-2.5" />
-                      <input
-                        type="text"
-                        placeholder="Search Article No, Color..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-blue-500 focus:bg-white transition-colors shadow-sm"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {Object.keys(groupedByType).length === 0 && (
-                  <div className="text-center py-16 bg-slate-50 rounded-2xl border border-slate-200 border-dashed">
-                    <Package className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                    <p className="text-slate-500 font-medium">No matching inventory items found for "{searchQuery}".</p>
-                  </div>
-                )}
-
-                {Object.entries(groupedByType).map(([productType, items], index) => {
-                  const isOpen = openProductType === productType || searchQuery.length > 0;
-                  const totalUnits = items.reduce((sum, item) => sum + item.CurrentStock, 0);
-
-                  return (
-                    <div key={index} className="border border-slate-200 rounded-2xl overflow-hidden shadow-sm bg-white">
-                      <button
-                        onClick={() => setOpenProductType(isOpen ? null : productType)}
-                        className="w-full bg-white hover:bg-slate-50 p-5 flex items-center justify-between transition-colors cursor-pointer border-b border-slate-100"
-                      >
-                        <div className="flex items-center space-x-4">
-                          <div className="p-3 bg-blue-50 rounded-xl">
-                            <Layers className="w-6 h-6 text-blue-600" />
-                          </div>
-                          <div className="text-left">
-                            <h4 className="font-bold text-slate-800 text-lg">{productType}</h4>
-                            <p className="text-sm text-slate-500 mt-0.5">{items.length} Matching Variants</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-6">
-                          <span className="px-4 py-1.5 bg-blue-100 text-blue-800 rounded-lg font-black text-sm border border-blue-200">
-                            {totalUnits} Total Units
-                          </span>
-                          <div className="bg-slate-100 p-2.5 rounded-full">
-                            {isOpen ? <ChevronUp className="w-5 h-5 text-slate-700" /> : <ChevronDown className="w-5 h-5 text-slate-700" />}
-                          </div>
-                        </div>
-                      </button>
-
-                      {isOpen && (
-                        <div className="bg-slate-50/50 overflow-x-auto p-4">
-                          <div className="border border-slate-200 rounded-xl overflow-hidden bg-white">
-                            <table className="min-w-full text-left text-sm">
-                              <thead>
-                                <tr className="bg-slate-50 border-b border-slate-200">
-                                  <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Article No</th>
-                                  <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Item Name</th>
-                                  <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Color</th>
-                                  <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Size</th>
-                                  <th className="px-5 py-3.5 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Stock</th>
-                                </tr>
-                              </thead>
-                              <tbody className="divide-y divide-slate-100">
-                                {items.map((item, idx) => {
-                                  const isLow = item.CurrentStock <= 3;
-                                  return (
-                                    <tr key={idx} className={`hover:bg-blue-50/30 transition-colors ${isLow ? 'bg-red-50/20' : ''}`}>
-                                      <td className="px-5 py-3.5 font-bold text-slate-700 whitespace-nowrap">{item.ArticleNo}</td>
-                                      <td className="px-5 py-3.5 text-slate-600 whitespace-nowrap">{item.ItemName}</td>
-                                      <td className="px-5 py-3.5 text-slate-600 whitespace-nowrap">{item.Color}</td>
-                                      <td className="px-5 py-3.5 text-slate-600 font-medium whitespace-nowrap">{item.Size}</td>
-                                      <td className={`px-5 py-3.5 font-black ${isLow ? 'text-red-600' : 'text-slate-700'}`}>
-                                        {item.CurrentStock}
-                                        {isLow && <span className="ml-2 text-[10px] bg-red-100 text-red-700 border border-red-200 px-2 py-0.5 rounded-full uppercase tracking-wider">Low</span>}
-                                      </td>
-                                    </tr>
-                                  );
-                                })}
-                              </tbody>
-                            </table>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
 
             {/* 6. AI CAMPAIGN BUILDER */}
             {activeTab === 'campaigns' && (

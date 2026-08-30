@@ -93,7 +93,9 @@ app.get('/api/sales/overview', async (req, res) => {
                 COUNT(m.CM_ID) as BillCount,
                 ISNULL(SUM(m.CASH_AMOUNT), 0) as CashAmount,
                 ISNULL(SUM(m.CC_AMOUNT), 0) - ISNULL(SUM(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0)), 0) as CardAmount,
-                ISNULL(SUM(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0)), 0) as UPIAmount
+                ISNULL(SUM(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0)), 0) as UPIAmount,
+                ISNULL(SUM(CASE WHEN m.CMD_DISCOUNT > 0 OR m.DISCOUNT_AMOUNT > 0 THEN m.NET_AMOUNT ELSE 0 END), 0) as DiscountedSalesAmount,
+                ISNULL(SUM(CASE WHEN ISNULL(m.CMD_DISCOUNT, 0) = 0 AND ISNULL(m.DISCOUNT_AMOUNT, 0) = 0 THEN m.NET_AMOUNT ELSE 0 END), 0) as FullPriceSalesAmount
             FROM VW_CASHMEMO_PRINT_MST m
             LEFT JOIN VW_WL_CASHMEMOLIST w ON m.CM_ID = w.MEMO_ID
             WHERE CAST(m.CM_TIME AS DATE) = CAST(GETDATE() AS DATE) AND m.CANCELLED = 0
@@ -212,20 +214,15 @@ app.get('/api/analytics/monthly-products', async (req, res) => {
 app.get('/api/inventory/dead-stock', async (req, res) => {
     try {
         const result = await sql.query(`
-            SELECT TOP 100
-                p.product_code AS SKU,
-                CONCAT(s.article_no, ' - ', s.section_name, ' (', s.para1_name, ', ', s.para2_name, ')') AS ItemName,
-                p.quantity_in_stock AS CurrentStock
-            FROM PMT01106 p
-            INNER JOIN SKU_NAMES s ON p.product_code = s.product_Code
-            WHERE p.quantity_in_stock >= 3
-              AND p.product_code NOT IN (
-                  SELECT DISTINCT d.PRODUCT_CODE 
-                  FROM VW_CASHMEMO_PRINT_DET d
-                  INNER JOIN VW_CASHMEMO_PRINT_MST m ON d.CM_ID = m.CM_ID
-                  WHERE m.CM_TIME >= DATEADD(day, -60, GETDATE()) AND m.CANCELLED = 0
-              )
-            ORDER BY p.quantity_in_stock DESC
+            SELECT TOP 1000
+                s.article_no AS ArticleNo,
+                MAX(s.section_name + ' / ' + s.sub_section_name) AS ItemName,
+                COUNT(DISTINCT s.product_Code) as SkuCount,
+                STRING_AGG(CAST(s.product_Code AS VARCHAR(100)) + '|' + ISNULL(CAST(s.para1_name AS VARCHAR(100)), '') + '|' + ISNULL(CAST(s.para2_name AS VARCHAR(100)), ''), ',') as SkuDetails
+            FROM PMT01106 p (NOLOCK)
+            INNER JOIN SKU_NAMES s (NOLOCK) ON p.product_code = s.product_Code
+            GROUP BY s.article_no
+            ORDER BY SkuCount DESC
         `);
         res.json(result.recordset);
     } catch (err) {
@@ -1397,22 +1394,60 @@ app.get('/api/analytics/retention-radar', async (req, res) => {
             FROM VW_CASHMEMO_PRINT_MST
             WHERE CANCELLED = 0 AND CUSTOMER_CODE IS NOT NULL AND CUSTOMER_CODE <> '' AND CUSTOMER_CODE <> '2222222222'
             GROUP BY CUSTOMER_CODE
-            HAVING DATEDIFF(day, MAX(CM_TIME), GETDATE()) >= 30
+            HAVING DATEDIFF(day, MAX(CM_TIME), GETDATE()) >= 15
             ORDER BY TotalSpent DESC
         `);
+
+        const recentRepeatBuyersRes = await sql.query(`
+            SELECT TOP 20
+                CUSTOMER_CODE as Phone,
+                MAX(ISNULL(CUSTOMER_FNAME, '') + ' ' + ISNULL(CUSTOMER_LNAME, '')) as CustomerName,
+                SUM(NET_AMOUNT) as TotalSpent,
+                COUNT(CM_ID) as TotalVisits,
+                CONVERT(varchar, MAX(CM_TIME), 126) as LastVisitDate
+            FROM VW_CASHMEMO_PRINT_MST
+            WHERE CANCELLED = 0 AND CUSTOMER_CODE IS NOT NULL AND CUSTOMER_CODE <> '' AND CUSTOMER_CODE <> '2222222222'
+            GROUP BY CUSTOMER_CODE
+            HAVING COUNT(CM_ID) > 1
+            ORDER BY MAX(CM_TIME) DESC
+        `);
+
+        let recentRepeatBuyers = recentRepeatBuyersRes.recordset || [];
+        if (recentRepeatBuyers.length > 0) {
+            const phones = recentRepeatBuyers.map(b => `'${b.Phone.trim()}'`).join(',');
+            const billsRes = await sql.query(`
+                SELECT 
+                    CUSTOMER_CODE as Phone,
+                    CM_NO as BillNo,
+                    NET_AMOUNT as Amount,
+                    CONVERT(varchar, CM_TIME, 126) as BillDate
+                FROM VW_CASHMEMO_PRINT_MST
+                WHERE CUSTOMER_CODE IN (${phones}) AND CANCELLED = 0
+                ORDER BY CM_TIME DESC
+            `);
+            const allBills = billsRes.recordset || [];
+            recentRepeatBuyers = recentRepeatBuyers.map(buyer => ({
+                ...buyer,
+                Bills: allBills.filter(b => b.Phone.trim() === buyer.Phone.trim())
+            }));
+        }
 
         const totalCust = summary.recordset[0]?.TotalCustomers || 1;
         const repeatCust = summary.recordset[0]?.RepeatCustomers || 0;
         const repeatRatePct = Math.round((repeatCust / totalCust) * 100);
+
+        console.log("DEBUG: overdueVips length:", overdueVips.recordset ? overdueVips.recordset.length : 'undefined');
 
         res.json({
             totalCustomers: totalCust,
             repeatCustomers: repeatCust,
             repeatRatePct: repeatRatePct,
             avgLtv: summary.recordset[0]?.AvgLtv || 0,
-            overdueVips: overdueVips.recordset || []
+            overdueVips: overdueVips.recordset || [],
+            recentRepeatBuyers: recentRepeatBuyers
         });
     } catch (err) {
+        console.error("Retention Radar Error:", err);
         res.status(500).json({ error: err.message });
     }
 });
