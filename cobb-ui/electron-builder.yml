@@ -1,0 +1,14 @@
+appId: com.cobbpundri.crm
+productName: Cobb Pundri CRM
+directories:
+  output: release/${version}
+files:
+  - dist
+  - dist-electron
+win:
+  target:
+    - nsis
+  icon: public/favicon.ico
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
