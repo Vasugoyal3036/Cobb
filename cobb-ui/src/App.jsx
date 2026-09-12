@@ -78,10 +78,11 @@ import {
   AlertTriangle
 } from 'lucide-react';
 
-const isLocalhost = window.location.protocol === 'app:' || window.location.protocol === 'file:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.startsWith('192.168.');
+const isElectron = window.location.protocol === 'app:' || window.location.protocol === 'file:' || (typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('electron'));
+const isLocalhost = isElectron || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.startsWith('192.168.');
 const isTunnel = window.location.hostname.includes('trycloudflare.com') || window.location.hostname.includes('ngrok') || window.location.hostname.includes('loca.lt');
-const isLocalEnvironment = isLocalhost || isTunnel || window.location.protocol === 'app:' || window.location.protocol === 'file:';
-const API_BASE = isTunnel ? window.location.origin : (import.meta.env.VITE_API_URL || (isLocalhost ? 'http://localhost:5000' : window.location.origin));
+const isLocalEnvironment = isLocalhost || isTunnel;
+const API_BASE = isTunnel ? window.location.origin : 'http://localhost:5000';
 
 
 axios.defaults.headers.common['Bypass-Tunnel-Reminder'] = 'true';
@@ -435,14 +436,16 @@ export default function App() {
     // Priority 1: The absolute fastest queries first — fire immediately
     axios.get(`${API_BASE}/api/sales/overview`).then(res => {
       if(res.data && !res?.data?.error) {
+        console.log('[RENDERER] Overview Stats loaded:', res.data);
         setOverviewStats(res.data);
         setLocalCache('overviewStats', res.data);
       }
-    }).catch(console.error);
+    }).catch(err => console.error('[RENDERER] Overview fetch failed:', err));
 
     axios.get(`${API_BASE}/api/sales/live`).then(res => {
       if(res.data && !res?.data?.error) {
         const bills = Array.isArray(res.data) ? res.data : [];
+        console.log(`[RENDERER] Live Bills loaded: ${bills.length} bills`);
         setLiveBills(bills);
         const itemsCache = {};
         bills.forEach(bill => {
@@ -454,7 +457,7 @@ export default function App() {
           setBillItemsCache(prev => ({ ...prev, ...itemsCache }));
         }
       }
-    }).catch(console.error);
+    }).catch(err => console.error('[RENDERER] Live bills fetch failed:', err));
 
     axios.get(`${API_BASE}/api/analytics/hourly`).then(res => {
       if(!res?.data?.error) {

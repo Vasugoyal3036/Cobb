@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fs from 'node:fs';
 import { spawn } from 'node:child_process';
+import http from 'node:http';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -16,7 +17,7 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 
 
 // Register custom protocol scheme before app is ready
 protocol.registerSchemesAsPrivileged([
-  { scheme: 'app', privileges: { secure: true, standard: true, supportFetchAPI: true } }
+  { scheme: 'app', privileges: { secure: true, standard: true, supportFetchAPI: true, corsEnabled: true } }
 ]);
 
 let win;
@@ -24,33 +25,49 @@ let backendProcess = null;
 
 // --- AUTO-START BACKEND SERVER ---
 function startBackendServer() {
-  const backendDir = path.join(process.env.APP_ROOT, '..', 'CobbDashboard');
-  const serverScript = path.join(backendDir, 'server.js');
+  const possiblePaths = [
+    path.join(process.env.APP_ROOT, '..', 'CobbDashboard', 'server.js'),
+    'D:\\cobbbb\\CobbDashboard\\server.js',
+    path.join(process.cwd(), '..', 'CobbDashboard', 'server.js'),
+    path.join(process.cwd(), 'CobbDashboard', 'server.js')
+  ];
+  const serverScript = possiblePaths.find(p => fs.existsSync(p));
 
-  if (!fs.existsSync(serverScript)) {
-    console.log('[Electron] Backend server.js not found at:', serverScript);
+  if (!serverScript) {
+    console.log('[Electron] Backend server.js not found at any candidate path');
     return;
   }
 
-  console.log('[Electron] Starting backend server...');
-  backendProcess = spawn('node', [serverScript], {
-    cwd: backendDir,
-    stdio: 'pipe',
-    shell: true
-  });
+  const backendDir = path.dirname(serverScript);
 
-  backendProcess.stdout.on('data', (data) => {
-    console.log(`[Backend] ${data.toString().trim()}`);
-  });
+  try {
+    const req = http.get('http://localhost:5000/api/sales/overview', (res) => {
+      console.log('[Electron] Backend server is already running on port 5000');
+    });
+    req.on('error', () => {
+      console.log('[Electron] Starting backend server from:', serverScript);
+      backendProcess = spawn('node', [serverScript], {
+        cwd: backendDir,
+        stdio: 'pipe',
+        shell: true
+      });
 
-  backendProcess.stderr.on('data', (data) => {
-    console.error(`[Backend ERR] ${data.toString().trim()}`);
-  });
+      backendProcess.stdout.on('data', (data) => {
+        console.log(`[Backend] ${data.toString().trim()}`);
+      });
 
-  backendProcess.on('close', (code) => {
-    console.log(`[Backend] Process exited with code ${code}`);
-    backendProcess = null;
-  });
+      backendProcess.stderr.on('data', (data) => {
+        console.error(`[Backend ERR] ${data.toString().trim()}`);
+      });
+
+      backendProcess.on('close', (code) => {
+        console.log(`[Backend] Process exited with code ${code}`);
+        backendProcess = null;
+      });
+    });
+  } catch (err) {
+    console.error('[Electron] Error checking backend status:', err);
+  }
 }
 
 function stopBackendServer() {
@@ -62,16 +79,18 @@ function stopBackendServer() {
 }
 
 function createWindow() {
+  const iconPath = path.join(process.env.VITE_PUBLIC, 'favicon.svg');
   win = new BrowserWindow({
     width: 1280,
     height: 800,
     minWidth: 1024,
     minHeight: 768,
-    icon: path.join(process.env.VITE_PUBLIC, 'favicon.ico'),
+    icon: fs.existsSync(iconPath) ? iconPath : undefined,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: true,
       contextIsolation: true,
+      webSecurity: false,
     },
   });
 

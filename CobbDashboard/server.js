@@ -150,40 +150,42 @@ app.get('/api/sales/overview', async (req, res) => {
             DECLARE @yesterdayStart DATE = DATEADD(day, -1, @todayStart);
             DECLARE @thisWeekStart DATE = DATEADD(day, 1 - DATEPART(dw, GETDATE()), @todayStart);
             DECLARE @lastWeekStart DATE = DATEADD(day, -7, @thisWeekStart);
-            DECLARE @thisMonthStr VARCHAR(7) = FORMAT(GETDATE(), 'yyyy-MM');
-            DECLARE @lastMonthStr VARCHAR(7) = FORMAT(DATEADD(month, -1, GETDATE()), 'yyyy-MM');
+            DECLARE @thisMonthStart DATE = DATEFROMPARTS(YEAR(@todayStart), MONTH(@todayStart), 1);
+            DECLARE @nextMonthStart DATE = DATEADD(month, 1, @thisMonthStart);
+            DECLARE @lastMonthStart DATE = DATEADD(month, -1, @thisMonthStart);
 
             SELECT 
                 ISNULL(SUM(m.NET_AMOUNT), 0) as TotalSales, 
                 COUNT(m.CM_ID) as BillCount,
-                ISNULL(SUM(m.CASH_AMOUNT), 0) as CashAmount,
-                ISNULL(SUM(m.CC_AMOUNT), 0) - ISNULL(SUM(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0)), 0) as CardAmount,
+                ISNULL(SUM(p.CASH_AMOUNT), 0) as CashAmount,
+                ISNULL(SUM(p.CC_AMOUNT), 0) - ISNULL(SUM(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0)), 0) as CardAmount,
                 ISNULL(SUM(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0)), 0) as UPIAmount,
-                ISNULL(SUM(CASE WHEN m.CMD_DISCOUNT > 0 OR m.DISCOUNT_AMOUNT > 0 THEN m.NET_AMOUNT ELSE 0 END), 0) as DiscountedSalesAmount,
-                ISNULL(SUM(CASE WHEN ISNULL(m.CMD_DISCOUNT, 0) = 0 AND ISNULL(m.DISCOUNT_AMOUNT, 0) = 0 THEN m.NET_AMOUNT ELSE 0 END), 0) as FullPriceSalesAmount
-            FROM VW_CASHMEMO_PRINT_MST m WITH (NOLOCK)
+                ISNULL(SUM(CASE WHEN m.DISCOUNT_AMOUNT > 0 THEN m.NET_AMOUNT ELSE 0 END), 0) as DiscountedSalesAmount,
+                ISNULL(SUM(CASE WHEN ISNULL(m.DISCOUNT_AMOUNT, 0) = 0 THEN m.NET_AMOUNT ELSE 0 END), 0) as FullPriceSalesAmount
+            FROM CMM01106 m WITH (NOLOCK)
+            LEFT JOIN VW_BILL_PAYMODE p WITH (NOLOCK) ON m.CM_ID = p.MEMO_ID
             LEFT JOIN VW_WL_CASHMEMOLIST w WITH (NOLOCK) ON m.CM_ID = w.MEMO_ID
             WHERE m.CM_TIME >= @todayStart AND m.CANCELLED = 0;
 
             SELECT ISNULL(SUM(NET_AMOUNT), 0) as TotalSales, COUNT(CM_ID) as BillCount 
-            FROM VW_CASHMEMO_PRINT_MST WITH (NOLOCK) 
+            FROM CMM01106 WITH (NOLOCK) 
             WHERE CM_TIME >= @yesterdayStart AND CM_TIME < @todayStart AND CANCELLED = 0;
 
             SELECT ISNULL(SUM(NET_AMOUNT), 0) as TotalSales, COUNT(CM_ID) as BillCount
-            FROM VW_CASHMEMO_PRINT_MST WITH (NOLOCK)
+            FROM CMM01106 WITH (NOLOCK)
             WHERE CANCELLED = 0 AND CM_TIME >= @thisWeekStart;
 
             SELECT ISNULL(SUM(NET_AMOUNT), 0) as TotalSales, COUNT(CM_ID) as BillCount
-            FROM VW_CASHMEMO_PRINT_MST WITH (NOLOCK)
+            FROM CMM01106 WITH (NOLOCK)
             WHERE CANCELLED = 0 AND CM_TIME >= @lastWeekStart AND CM_TIME < @thisWeekStart;
 
             SELECT ISNULL(SUM(NET_AMOUNT), 0) as TotalSales, COUNT(CM_ID) as BillCount
-            FROM VW_CASHMEMO_PRINT_MST WITH (NOLOCK)
-            WHERE CANCELLED = 0 AND FORMAT(CM_TIME, 'yyyy-MM') = @thisMonthStr;
+            FROM CMM01106 WITH (NOLOCK)
+            WHERE CANCELLED = 0 AND CM_TIME >= @thisMonthStart AND CM_TIME < @nextMonthStart;
 
             SELECT ISNULL(SUM(NET_AMOUNT), 0) as TotalSales, COUNT(CM_ID) as BillCount
-            FROM VW_CASHMEMO_PRINT_MST WITH (NOLOCK)
-            WHERE CANCELLED = 0 AND FORMAT(CM_TIME, 'yyyy-MM') = @lastMonthStr;
+            FROM CMM01106 WITH (NOLOCK)
+            WHERE CANCELLED = 0 AND CM_TIME >= @lastMonthStart AND CM_TIME < @thisMonthStart;
         `);
 
         const sets = batchResult.recordsets;
@@ -208,10 +210,11 @@ app.get('/api/sales/daily-month', async (req, res) => {
             SELECT 
                 CAST(m.CM_TIME AS DATE) AS SaleDate,
                 ISNULL(SUM(m.NET_AMOUNT), 0) AS TotalSales,
-                ISNULL(SUM(m.CASH_AMOUNT), 0) AS CashAmount,
-                ISNULL(SUM(m.CC_AMOUNT), 0) - ISNULL(SUM(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0)), 0) as CardAmount,
+                ISNULL(SUM(p.CASH_AMOUNT), 0) AS CashAmount,
+                ISNULL(SUM(p.CC_AMOUNT), 0) - ISNULL(SUM(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0)), 0) as CardAmount,
                 ISNULL(SUM(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0)), 0) as UPIAmount
-            FROM VW_CASHMEMO_PRINT_MST m WITH (NOLOCK)
+            FROM CMM01106 m WITH (NOLOCK)
+            LEFT JOIN VW_BILL_PAYMODE p WITH (NOLOCK) ON m.CM_ID = p.MEMO_ID
             LEFT JOIN VW_WL_CASHMEMOLIST w WITH (NOLOCK) ON m.CM_ID = w.MEMO_ID
             WHERE m.CM_TIME >= DATEADD(month, -6, GETDATE()) 
               AND m.CANCELLED = 0
@@ -231,8 +234,8 @@ app.get('/api/analytics/hourly', async (req, res) => {
                 DATEPART(hour, CM_TIME) AS SaleHour,
                 COUNT(CM_ID) AS TotalBills,
                 SUM(NET_AMOUNT) AS TotalRevenue
-            FROM VW_CASHMEMO_PRINT_MST WITH (NOLOCK)
-            WHERE CAST(CM_TIME AS DATE) = CAST(GETDATE() AS DATE) AND CANCELLED = 0
+            FROM CMM01106 WITH (NOLOCK)
+            WHERE CM_TIME >= CAST(GETDATE() AS DATE) AND CANCELLED = 0
             GROUP BY DATEPART(hour, CM_TIME)
             ORDER BY SaleHour ASC
         `);
@@ -791,20 +794,23 @@ app.get('/api/sales/returns', async (req, res) => {
 app.get('/api/sales/live', async (req, res) => {
     try {
         const result = await sql.query(`
+            DECLARE @today DATE = CAST(GETDATE() AS DATE);
             SELECT TOP 50 
                 m.CM_ID as BillId,
                 m.CM_NO as BillNumber,
                 m.CUSTOMER_CODE as Phone,
-                ISNULL(m.CUSTOMER_FNAME, '') + ' ' + ISNULL(m.CUSTOMER_LNAME, '') as CustomerName,
-                m.CUSTOMER_FNAME as FirstName,
+                ISNULL(c.CUSTOMER_FNAME, '') + ' ' + ISNULL(c.CUSTOMER_LNAME, '') as CustomerName,
+                c.CUSTOMER_FNAME as FirstName,
                 m.NET_AMOUNT as Amount,
                 CONVERT(varchar, m.CM_TIME, 126) as BillTime,
-                ISNULL(m.CASH_AMOUNT, 0) as CashAmount,
-                ISNULL(m.CC_AMOUNT, 0) - ISNULL(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0), 0) as CardAmount,
+                ISNULL(p.CASH_AMOUNT, 0) as CashAmount,
+                ISNULL(p.CC_AMOUNT, 0) - ISNULL(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0), 0) as CardAmount,
                 ISNULL(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0), 0) as UpiAmount
-            FROM VW_CASHMEMO_PRINT_MST m WITH (NOLOCK)
+            FROM CMM01106 m WITH (NOLOCK)
+            LEFT JOIN CUSTDYM c WITH (NOLOCK) ON m.CUSTOMER_CODE = c.CUSTOMER_CODE
+            LEFT JOIN VW_BILL_PAYMODE p WITH (NOLOCK) ON m.CM_ID = p.MEMO_ID
             LEFT JOIN VW_WL_CASHMEMOLIST w WITH (NOLOCK) ON m.CM_ID = w.MEMO_ID
-            WHERE CAST(m.CM_TIME AS DATE) = CAST(GETDATE() AS DATE) AND m.CANCELLED = 0
+            WHERE m.CM_TIME >= @today AND m.CANCELLED = 0
             ORDER BY m.CM_TIME DESC
         `);
 
