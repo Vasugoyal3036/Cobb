@@ -2,10 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { ClipboardList, AlertTriangle, FileText, CheckCircle2, Package, Search, Share2, Printer, RefreshCw } from 'lucide-react';
 import axios from 'axios';
 
-// The API base should match the current origin in prod or localhost in dev
-const API_BASE = window.location.origin.includes('localhost:5173') ? 'http://localhost:5000' : window.location.origin;
-
-export default function ReorderTab() {
+export default function ReorderTab(props) {
+  const { API_BASE } = props;
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState([]);
   const [search, setSearch] = useState('');

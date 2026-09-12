@@ -2,9 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Wallet, Calculator, Send, CheckCircle2, AlertTriangle, FileText, IndianRupee, Clock, RefreshCw } from 'lucide-react';
 import axios from 'axios';
 
-const API_BASE = window.location.origin.includes('localhost:5173') ? 'http://localhost:5000' : window.location.origin;
-
-export default function DenominationTab() {
+export default function DenominationTab(props) {
+  const { API_BASE } = props;
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState({ 
     billCount: 0, grossSales: 0, netSales: 0, taxCollected: 0, 

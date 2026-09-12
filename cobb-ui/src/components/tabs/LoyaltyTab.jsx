@@ -2,9 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Crown, Search, Send, Users, ArrowUpRight, Trophy, Sparkles, RefreshCw, Smartphone } from 'lucide-react';
 import axios from 'axios';
 
-const API_BASE = window.location.origin.includes('localhost:5173') ? 'http://localhost:5000' : window.location.origin;
-
-export default function LoyaltyTab() {
+export default function LoyaltyTab(props) {
+  const { API_BASE } = props;
   const [loading, setLoading] = useState(true);
   const [leaderboard, setLeaderboard] = useState([]);
   const [searchPhone, setSearchPhone] = useState('');
