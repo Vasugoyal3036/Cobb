@@ -60,7 +60,9 @@ import {
   Camera,
   Percent,
   CheckCircle,
-  AlertTriangle
+  AlertTriangle,
+  ClipboardList,
+  Wallet
 } from 'lucide-react';
 
 const navigationItems = [
@@ -80,6 +82,8 @@ const navigationItems = [
       { id: "topmovers", label: "Top Movers & Size Demand", icon: Flame, colorClass: "text-rose-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-rose-500/15 text-rose-400 font-bold border-l-2 border-rose-500" },
       { id: "sizematrix", label: "Size Matrix Heatmap", icon: Grid, colorClass: "text-blue-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-blue-500/15 text-blue-400 font-bold border-l-2 border-blue-500" },
       { id: "deadstock", label: "Inventory", icon: Package },
+      { id: "reorder", label: "Warehouse Reorder", icon: ClipboardList, colorClass: "text-blue-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-blue-500/15 text-blue-400 font-bold border-l-2 border-blue-500" },
+      { id: "denomination", label: "Night Closing", icon: Wallet, colorClass: "text-emerald-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-emerald-500/15 text-emerald-400 font-bold border-l-2 border-emerald-500" },
       { id: "vm_auditor", label: "VM Auditor", icon: Camera, colorClass: "text-purple-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-purple-500/15 text-purple-400 font-bold border-l-2 border-purple-500" },
       { id: "smart_bundles", label: "Smart Bundling", icon: Percent, colorClass: "text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-400 font-bold border-l-2 border-amber-500" },
       { id: "trend_forecast", label: "Trend Forecaster", icon: LineChart, colorClass: "text-indigo-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-indigo-500/15 text-indigo-400 font-bold border-l-2 border-indigo-500" },
@@ -88,6 +92,7 @@ const navigationItems = [
   },
   {
     category: "Marketing & CRM", items: [
+      { id: "loyalty", label: "Loyalty & Points", icon: Crown, colorClass: "text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-400 font-bold border-l-2 border-amber-500" },
       { id: "broadcast", label: "Mass Offer Broadcast", icon: Send, colorClass: "text-emerald-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-emerald-500/15 text-emerald-400 font-bold border-l-2 border-emerald-500" },
       { id: "wardrobe", label: "Wardrobe Profiler", icon: Shirt, colorClass: "text-purple-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-purple-500/15 text-purple-400 font-bold border-l-2 border-purple-500" },
       { id: "retention", label: "Retention Radar", icon: Activity, colorClass: "text-rose-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-rose-500/15 text-rose-400 font-bold border-l-2 border-rose-500" },
@@ -121,7 +126,7 @@ const Layout = ({
   userRole // <-- Added for RBAC
 }) => {
   // Filter navigation items based on role
-  const staffAllowedItems = ['dashboard', 'live', 'returns', 'deadstock', 'vip', 'dormant'];
+  const staffAllowedItems = ['dashboard', 'live', 'returns', 'deadstock', 'reorder', 'denomination', 'loyalty', 'vip', 'dormant'];
   
   const filteredNavigation = navigationItems.map(cat => {
     return {

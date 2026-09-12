@@ -7,6 +7,9 @@ import CustomerInsightsTab from './components/tabs/CustomerInsightsTab';
 import LiveBillsTab from './components/tabs/LiveBillsTab';
 import AutomationEngineTab from './components/tabs/AutomationEngineTab';
 import CampaignBuilderTab from './components/tabs/CampaignBuilderTab';
+import ReorderTab from './components/tabs/ReorderTab';
+import DenominationTab from './components/tabs/DenominationTab';
+import LoyaltyTab from './components/tabs/LoyaltyTab';
 import { fetchWithOfflineFallback, subscribeToData } from './utils/offlineDb';
 import Layout from './components/Layout';
 import SetupScreen from './components/SetupScreen';
@@ -1724,6 +1727,21 @@ export default function App() {
             {/* 4. DEAD STOCK WITH AI OUTFIT MATCHER */}
             {['deadstock', 'inventory'].includes(activeTab) && (
               <InventoryTab {...appState} />
+            )}
+
+            {/* WAREHOUSE REORDER */}
+            {activeTab === 'reorder' && (
+              <ReorderTab {...appState} />
+            )}
+
+            {/* NIGHT CLOSING DENOMINATION */}
+            {activeTab === 'denomination' && (
+              <DenominationTab {...appState} />
+            )}
+
+            {/* NO-APP CUSTOMER LOYALTY */}
+            {activeTab === 'loyalty' && (
+              <LoyaltyTab {...appState} />
             )}
 
             {/* 6. AI CAMPAIGN BUILDER */}
