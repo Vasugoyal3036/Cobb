@@ -15,6 +15,14 @@ module.exports = {
       env: {
         NODE_ENV: "production"
       }
+    },
+    {
+      name: "cobb-sync",
+      script: "cloud_sync.js",
+      watch: false,
+      env: {
+        NODE_ENV: "production"
+      }
     }
   ]
 };

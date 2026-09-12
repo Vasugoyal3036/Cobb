@@ -17,8 +17,8 @@ process.env.VITE_PUBLIC = u ? i.join(process.env.APP_ROOT, "public") : f, r.regi
 		corsEnabled: !0
 	}
 }]);
-var p, m = null;
-function h() {
+var p, m = null, h = null;
+function g() {
 	let e = [
 		i.join(process.env.APP_ROOT, "..", "CobbDashboard", "server.js"),
 		"D:\\cobbbb\\CobbDashboard\\server.js",
@@ -29,7 +29,7 @@ function h() {
 		console.log("[Electron] Backend server.js not found at any candidate path");
 		return;
 	}
-	let t = i.dirname(e);
+	let t = i.dirname(e), n = i.join(t, "cloud_sync.js");
 	try {
 		c.get("http://localhost:5000/api/sales/overview", (e) => {
 			console.log("[Electron] Backend server is already running on port 5000");
@@ -44,16 +44,26 @@ function h() {
 				console.error(`[Backend ERR] ${e.toString().trim()}`);
 			}), m.on("close", (e) => {
 				console.log(`[Backend] Process exited with code ${e}`), m = null;
-			});
+			}), o.existsSync(n) && (console.log("[Electron] Starting sync agent from:", n), h = s("node", [n], {
+				cwd: t,
+				stdio: "pipe",
+				shell: !0
+			}), h.stdout.on("data", (e) => {
+				console.log(`[Sync Agent] ${e.toString().trim()}`);
+			}), h.stderr.on("data", (e) => {
+				console.error(`[Sync Agent ERR] ${e.toString().trim()}`);
+			}), h.on("close", (e) => {
+				console.log(`[Sync Agent] Process exited with code ${e}`), h = null;
+			}));
 		});
 	} catch (e) {
 		console.error("[Electron] Error checking backend status:", e);
 	}
 }
-function g() {
-	m &&= (console.log("[Electron] Stopping backend server..."), m.kill(), null);
-}
 function _() {
+	m &&= (console.log("[Electron] Stopping backend server..."), m.kill(), null), h &&= (console.log("[Electron] Stopping sync agent..."), h.kill(), null);
+}
+function v() {
 	let t = i.join(process.env.VITE_PUBLIC, "favicon.svg");
 	p = new e({
 		width: 1280,
@@ -74,18 +84,18 @@ function _() {
 	});
 }
 t.on("window-all-closed", () => {
-	g(), process.platform !== "darwin" && (t.quit(), p = null);
+	_(), process.platform !== "darwin" && (t.quit(), p = null);
 }), t.on("activate", () => {
-	e.getAllWindows().length === 0 && _();
+	e.getAllWindows().length === 0 && v();
 }), t.on("before-quit", () => {
-	g();
+	_();
 }), t.whenReady().then(() => {
-	h(), r.handle("app", (e) => {
+	g(), r.handle("app", (e) => {
 		let t = e.url.substring(8);
 		t ||= "index.html", t = t.split("?")[0].split("#")[0];
 		let r = i.join(f, t);
 		return o.existsSync(r) || (r = i.join(f, "index.html")), n.fetch("file://" + r);
-	}), _();
+	}), v();
 });
 //#endregion
 export { d as MAIN_DIST, f as RENDERER_DIST, u as VITE_DEV_SERVER_URL };

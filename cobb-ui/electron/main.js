@@ -22,6 +22,7 @@ protocol.registerSchemesAsPrivileged([
 
 let win;
 let backendProcess = null;
+let syncProcess = null;
 
 // --- AUTO-START BACKEND SERVER ---
 function startBackendServer() {
@@ -39,6 +40,7 @@ function startBackendServer() {
   }
 
   const backendDir = path.dirname(serverScript);
+  const syncScript = path.join(backendDir, 'cloud_sync.js');
 
   try {
     const req = http.get('http://localhost:5000/api/sales/overview', (res) => {
@@ -64,6 +66,28 @@ function startBackendServer() {
         console.log(`[Backend] Process exited with code ${code}`);
         backendProcess = null;
       });
+
+      if (fs.existsSync(syncScript)) {
+        console.log('[Electron] Starting sync agent from:', syncScript);
+        syncProcess = spawn('node', [syncScript], {
+          cwd: backendDir,
+          stdio: 'pipe',
+          shell: true
+        });
+
+        syncProcess.stdout.on('data', (data) => {
+          console.log(`[Sync Agent] ${data.toString().trim()}`);
+        });
+
+        syncProcess.stderr.on('data', (data) => {
+          console.error(`[Sync Agent ERR] ${data.toString().trim()}`);
+        });
+
+        syncProcess.on('close', (code) => {
+          console.log(`[Sync Agent] Process exited with code ${code}`);
+          syncProcess = null;
+        });
+      }
     });
   } catch (err) {
     console.error('[Electron] Error checking backend status:', err);
@@ -75,6 +99,11 @@ function stopBackendServer() {
     console.log('[Electron] Stopping backend server...');
     backendProcess.kill();
     backendProcess = null;
+  }
+  if (syncProcess) {
+    console.log('[Electron] Stopping sync agent...');
+    syncProcess.kill();
+    syncProcess = null;
   }
 }
 

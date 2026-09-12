@@ -2547,7 +2547,7 @@ function startCloudSyncHelper() {
     const scriptPath = path.join(__dirname, 'cloud_sync.js');
     if (!fs.existsSync(scriptPath)) return false;
     try {
-        cloudSyncProcess = spawn('node', ['cloud_sync.js'], { cwd: __dirname, shell: true, windowsHide: true });
+        cloudSyncProcess = spawn('node', ['cloud_sync.js'], { cwd: __dirname, shell: true });
         cloudSyncProcess.on('close', () => { cloudSyncProcess = null; });
         console.log("Auto-spawned Cloud Sync Agent for Phone Link.");
     } catch (e) {}
