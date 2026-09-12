@@ -117,8 +117,22 @@ const Layout = ({
   darkMode,
   setDarkMode,
   isGatewayRunning,
-  isListenerRunning
+  isListenerRunning,
+  userRole // <-- Added for RBAC
 }) => {
+  // Filter navigation items based on role
+  const staffAllowedItems = ['dashboard', 'live', 'returns', 'deadstock', 'vip', 'dormant'];
+  
+  const filteredNavigation = navigationItems.map(cat => {
+    return {
+      ...cat,
+      items: cat.items.filter(item => {
+        if (userRole === 'owner') return true;
+        return staffAllowedItems.includes(item.id);
+      })
+    };
+  }).filter(cat => cat.items.length > 0);
+
   return (
     <>
       {/* Mobile Drawer Overlay */}
@@ -150,7 +164,7 @@ const Layout = ({
         </div>
 
         <nav className="flex-1 px-3 space-y-4 mt-6 overflow-y-auto custom-scrollbar">
-          {navigationItems.map((cat, catIdx) => (
+          {filteredNavigation.map((cat, catIdx) => (
             <div key={catIdx} className="space-y-1">
               <p className="px-4 text-[9px] font-bold text-slate-600 uppercase tracking-widest mb-1.5">{cat.category}</p>
               {cat.items.map((item) => {

@@ -10,6 +10,8 @@ import CampaignBuilderTab from './components/tabs/CampaignBuilderTab';
 import { fetchWithOfflineFallback, subscribeToData } from './utils/offlineDb';
 import Layout from './components/Layout';
 import SetupScreen from './components/SetupScreen';
+import LoginScreen from './components/LoginScreen';
+import { useAuth } from './context/AuthContext';
 import { hasConfig } from './utils/firebase';
 import axios from 'axios';
 import {
@@ -76,9 +78,11 @@ import {
   AlertTriangle
 } from 'lucide-react';
 
-// Smart API Base: Works on offline desktop (app:// or localhost) and on phone (ngrok/localtunnel)
-const isLocalElectron = window.location.protocol === 'app:' || window.location.protocol === 'file:' || window.location.hostname === 'localhost';
-const API_BASE = isLocalElectron ? 'http://localhost:5000' : window.location.origin;
+const isLocalhost = window.location.protocol === 'app:' || window.location.protocol === 'file:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.startsWith('192.168.');
+const isTunnel = window.location.hostname.includes('trycloudflare.com') || window.location.hostname.includes('ngrok') || window.location.hostname.includes('loca.lt');
+const isLocalEnvironment = isLocalhost || isTunnel || window.location.protocol === 'app:' || window.location.protocol === 'file:';
+const API_BASE = isTunnel ? window.location.origin : (import.meta.env.VITE_API_URL || (isLocalhost ? 'http://localhost:5000' : window.location.origin));
+
 
 axios.defaults.headers.common['Bypass-Tunnel-Reminder'] = 'true';
 axios.defaults.headers.common['ngrok-skip-browser-warning'] = '69420';
@@ -86,17 +90,20 @@ axios.defaults.headers.common['ngrok-skip-browser-warning'] = '69420';
 // --- CLOUD SAAS INTERCEPTOR ---
 // When the app is accessed via the web (not local desktop), automatically route GET requests
 // to the Firebase Cloud Database instead of the local SQL API.
-import { db } from './utils/firebase';
+import { db, authPromise } from './utils/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 
-const STORE_ID = "DEMO_STORE_001";
+const STORE_ID = import.meta.env.VITE_DEFAULT_STORE_ID || "DEMO_STORE_001";
 const originalAxiosGet = axios.get;
 
 axios.get = async (url, config) => {
-  if (!isLocalElectron && db && url.includes('/api/')) {
+  if (!isLocalEnvironment && db && url.includes('/api/')) {
        let docName = url.replace(API_BASE, '').replace('/api/', '').replace(/\//g, '_');
        docName = docName.split('?')[0]; 
        try {
+         // Await anonymous authentication before hitting Firestore to satisfy security rules
+         if (authPromise) await authPromise;
+         
          const docRef = doc(db, 'stores', STORE_ID, 'data', docName);
          const docSnap = await getDoc(docRef);
          if (docSnap.exists()) {
@@ -121,9 +128,28 @@ axios.get = async (url, config) => {
   return originalAxiosGet(url, config);
 };
 
+// Local Cache Helpers for Instant 0ms Page Renders
+const getLocalCache = (key, fallback) => {
+  try {
+    const item = localStorage.getItem('cobb_cache_' + key);
+    return item ? JSON.parse(item) : fallback;
+  } catch (e) {
+    return fallback;
+  }
+};
+
+const setLocalCache = (key, val) => {
+  try {
+    localStorage.setItem('cobb_cache_' + key, JSON.stringify(val));
+  } catch (e) {}
+};
+
 export default function App() {
-  let [vips, setVips] = useState([]); if (!Array.isArray(vips)) vips = [];
-  let [dormant, setDormant] = useState([]); if (!Array.isArray(dormant)) dormant = [];
+  const { user } = useAuth();
+  const [showSetup, setShowSetup] = useState(false);
+
+  let [vips, setVips] = useState(() => getLocalCache('vips', [])); if (!Array.isArray(vips)) vips = [];
+  let [dormant, setDormant] = useState(() => getLocalCache('dormant', [])); if (!Array.isArray(dormant)) dormant = [];
 
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
 
@@ -131,16 +157,16 @@ export default function App() {
     localStorage.setItem('theme', darkMode ? 'dark' : 'light');
   }, [darkMode]);
 
-  const [overviewStats, setOverviewStats] = useState({
+  const [overviewStats, setOverviewStats] = useState(() => getLocalCache('overviewStats', {
     today: { TotalSales: 0, BillCount: 0 },
     yesterday: { TotalSales: 0, BillCount: 0 },
     thisWeek: { TotalSales: 0, BillCount: 0 },
     lastWeek: { TotalSales: 0, BillCount: 0 },
     thisMonth: { TotalSales: 0, BillCount: 0 },
     lastMonth: { TotalSales: 0, BillCount: 0 }
-  });
+  }));
 
-  const [returnsData, setReturnsData] = useState(null);
+  const [returnsData, setReturnsData] = useState(() => getLocalCache('returnsData', null));
   const [smartCoordinate, setSmartCoordinate] = useState({ data: null, loading: false, itemText: '' });
   const [showCoordinateModal, setShowCoordinateModal] = useState(false);
 
@@ -152,7 +178,7 @@ export default function App() {
   const [vmError, setVmError] = useState('');
 
   // Smart Bundling State
-  let [bundles, setBundles] = useState([]); if (!Array.isArray(bundles)) bundles = [];
+  let [bundles, setBundles] = useState(() => getLocalCache('bundles', [])); if (!Array.isArray(bundles)) bundles = [];
   const [isLoadingBundles, setIsLoadingBundles] = useState(false);
   const [publishedBundles, setPublishedBundles] = useState(new Set());
 
@@ -249,16 +275,16 @@ export default function App() {
   const prevLiveBillsRef = useRef([]);
   let [inventory, setInventory] = useState([]); if (!Array.isArray(inventory)) inventory = [];
   let [deadStock, setDeadStock] = useState([]); if (!Array.isArray(deadStock)) deadStock = [];
-  let [hourlySales, setHourlySales] = useState([]); if (!Array.isArray(hourlySales)) hourlySales = [];
-  let [dailySales, setDailySales] = useState([]); if (!Array.isArray(dailySales)) dailySales = [];
-  let [monthlyProducts, setMonthlyProducts] = useState([]); if (!Array.isArray(monthlyProducts)) monthlyProducts = [];
-  const [gstSummary, setGstSummary] = useState({ today: { TaxCollected: 0, TaxableSales: 0, GrossSales: 0 }, monthly: { TaxCollected: 0, TaxableSales: 0, GrossSales: 0 }, history: [] });
+  let [hourlySales, setHourlySales] = useState(() => getLocalCache('hourlySales', [])); if (!Array.isArray(hourlySales)) hourlySales = [];
+  let [dailySales, setDailySales] = useState(() => getLocalCache('dailySales', [])); if (!Array.isArray(dailySales)) dailySales = [];
+  let [monthlyProducts, setMonthlyProducts] = useState(() => getLocalCache('monthlyProducts', [])); if (!Array.isArray(monthlyProducts)) monthlyProducts = [];
+  const [gstSummary, setGstSummary] = useState(() => getLocalCache('gstSummary', { today: { TaxCollected: 0, TaxableSales: 0, GrossSales: 0 }, monthly: { TaxCollected: 0, TaxableSales: 0, GrossSales: 0 }, history: [] }));
   const [gstRateSlab, setGstRateSlab] = useState(5);
   const [gstCopied, setGstCopied] = useState(false);
-  let [sizeMatrix, setSizeMatrix] = useState([]); if (!Array.isArray(sizeMatrix)) sizeMatrix = [];
-  let [wardrobeProfiles, setWardrobeProfiles] = useState([]); if (!Array.isArray(wardrobeProfiles)) wardrobeProfiles = [];
-  const [pnlData, setPnlData] = useState(null);
-  const [retentionData, setRetentionData] = useState(null);
+  let [sizeMatrix, setSizeMatrix] = useState(() => getLocalCache('sizeMatrix', [])); if (!Array.isArray(sizeMatrix)) sizeMatrix = [];
+  let [wardrobeProfiles, setWardrobeProfiles] = useState(() => getLocalCache('wardrobeProfiles', [])); if (!Array.isArray(wardrobeProfiles)) wardrobeProfiles = [];
+  const [pnlData, setPnlData] = useState(() => getLocalCache('pnlData', null));
+  const [retentionData, setRetentionData] = useState(() => getLocalCache('retentionData', null));
   const [reconData, setReconData] = useState(null);
   const [countedCashInput, setCountedCashInput] = useState('');
   const [reconNotes, setReconNotes] = useState('');
@@ -281,14 +307,14 @@ export default function App() {
   const [testMsg, setTestMsg] = useState('');
   const [isSendingTestWa, setIsSendingTestWa] = useState(false);
 
-  let [broadcastGroup, setBroadcastGroup] = useState([]); if (!Array.isArray(broadcastGroup)) broadcastGroup = [];
+  let [broadcastGroup, setBroadcastGroup] = useState(() => getLocalCache('broadcastGroup', [])); if (!Array.isArray(broadcastGroup)) broadcastGroup = [];
   const [broadcastGroupCount, setBroadcastGroupCount] = useState(0);
   const [broadcastStatus, setBroadcastStatus] = useState({ isRunning: false, total: 0, sentCount: 0, failedCount: 0, currentIndex: 0, status: 'idle', logs: [] });
-  const [broadcastMsg, setBroadcastMsg] = useState('🎉 *SPECIAL OFFER FROM COBB PUNDRI!* 🎉\n\nHello *{name}*! 👋\n\nEnjoy *BUY 2 GET 1 FREE* on all Suits, Formals, & Denim Collections this week at Cobb Pundri! 🏷️✨\n\n-----------------------------------\n📍 *Store Location:*\nhttps://maps.app.goo.gl/HxgE1M25h32oWY2H9?g_st=ac\n-----------------------------------\n\nShow this WhatsApp message at counter to claim your deal!\n\nWarm Regards,\n*Parbhat Goyal*\nCobb Pundri');
+  const [broadcastMsg, setBroadcastMsg] = useState('🎉 *SPECIAL OFFER!* 🎉\n\nHello *{name}*! 👋\n\nEnjoy our exclusive deals this week! 🏷️✨\n\n-----------------------------------\nVisit us in-store to claim your offer!\n-----------------------------------\n\nShow this WhatsApp message at counter.\n\nWarm Regards,\nYour Store Team');
   const [isStartingBroadcast, setIsStartingBroadcast] = useState(false);
   const [isSyncingGroup, setIsSyncingGroup] = useState(false);
   const [groupSearchQuery, setGroupSearchQuery] = useState('');
-  const [topMoversData, setTopMoversData] = useState({ topArticles: [], sizeDemand: [] });
+  const [topMoversData, setTopMoversData] = useState(() => getLocalCache('topMoversData', { topArticles: [], sizeDemand: [] }));
 
   const [activeTab, setActiveTab] = useState('dashboard');
   
@@ -362,7 +388,7 @@ export default function App() {
           processedBills.current.add(bill.VOUCHER_NO);
           if (bill.MOBILE1 && bill.MOBILE1.length >= 10) {
              const amount = bill.NET_AMOUNT || 0;
-             const message = `🎉 Thank you for shopping at Cobb Pundri!\n\nYour bill (No: ${bill.VOUCHER_NO}) amount is Rs ${amount}.\n\nWe hope to see you again soon! ✨`;
+             const message = `🎉 Thank you for shopping with us!\n\nYour bill (No: ${bill.VOUCHER_NO}) amount is Rs ${amount}.\n\nWe hope to see you again soon! ✨`;
              import('./utils/firebase.js').then(({ queueWhatsAppMessage }) => {
                 if (queueWhatsAppMessage) queueWhatsAppMessage(bill.MOBILE1, message);
              }).catch(console.error);
@@ -404,14 +430,20 @@ export default function App() {
   }, []);
 
 // Core dashboard metrics needed on mount for alerts and command center
+  // Staggered fetching to prevent flooding the SQL connection pool
   useEffect(() => {
-    // Priority 1: Core Dashboard (Instant)
-    axios.get(`${API_BASE}/api/sales/overview`).then(res => { if(!res.data.error) setOverviewStats(res.data); }).catch(console.error);
+    // Priority 1: The absolute fastest queries first — fire immediately
+    axios.get(`${API_BASE}/api/sales/overview`).then(res => {
+      if(res.data && !res?.data?.error) {
+        setOverviewStats(res.data);
+        setLocalCache('overviewStats', res.data);
+      }
+    }).catch(console.error);
+
     axios.get(`${API_BASE}/api/sales/live`).then(res => {
-      if(!res.data.error) {
+      if(res.data && !res?.data?.error) {
         const bills = Array.isArray(res.data) ? res.data : [];
         setLiveBills(bills);
-        // Pre-populate billItemsCache from inline Items (makes expansion instant + works on phone)
         const itemsCache = {};
         bills.forEach(bill => {
           if (bill.Items && bill.Items.length > 0) {
@@ -423,67 +455,186 @@ export default function App() {
         }
       }
     }).catch(console.error);
-    axios.get(`${API_BASE}/api/analytics/hourly`).then(res => { if(!res.data.error) setHourlySales(res.data); }).catch(console.error);
-    axios.get(`${API_BASE}/api/sales/daily-month`).then(res => { if(!res.data.error) setDailySales(res.data); }).catch(console.error);
-    axios.get(`${API_BASE}/api/reconciliation/latest`).then(res => { if(!res.data.error) setReconData(res.data); }).catch(console.error);
-    subscribeToData('dead-stock', `${API_BASE}/api/inventory/dead-stock`, setDeadStock);
 
-    // Priority 2: Pre-fetch background data for instant tab switching (delayed slightly to unblock UI)
+    axios.get(`${API_BASE}/api/analytics/hourly`).then(res => {
+      if(!res?.data?.error) {
+        setHourlySales(res.data);
+        setLocalCache('hourlySales', res.data);
+      }
+    }).catch(console.error);
+
+    // Priority 2: Staggered at 300ms
     setTimeout(() => {
-      axios.get(`${API_BASE}/api/customers/vip`).then(res => { if(!res.data.error) setVips(res.data); }).catch(console.error);
-      axios.get(`${API_BASE}/api/customers/dormant`).then(res => { if(!res.data.error) setDormant(res.data); }).catch(console.error);
-      axios.get(`${API_BASE}/api/analytics/retention-radar`).then(res => { if(!res.data.error) setRetentionData(res.data); }).catch(console.error);
-      axios.get(`${API_BASE}/api/financials/pnl`).then(res => { if(!res.data.error) setPnlData(res.data); }).catch(console.error);
-      axios.get(`${API_BASE}/api/analytics/wardrobe-profiles`).then(res => { if(!res.data.error) setWardrobeProfiles(res.data); }).catch(console.error);
-    }, 1000);
+      axios.get(`${API_BASE}/api/sales/daily-month`).then(res => {
+        if(!res?.data?.error) {
+          setDailySales(res.data);
+          setLocalCache('dailySales', res.data);
+        }
+      }).catch(console.error);
+      axios.get(`${API_BASE}/api/reconciliation/latest`).then(res => { if(!res?.data?.error) setReconData(res.data); }).catch(console.error);
+      subscribeToData('dead-stock', `${API_BASE}/api/inventory/dead-stock`, setDeadStock);
+    }, 300);
+
+    // Priority 3: Customer queries — staggered to 700ms
+    setTimeout(() => {
+      axios.get(`${API_BASE}/api/customers/vip`).then(res => {
+        if(!res?.data?.error) {
+          setVips(res.data);
+          setLocalCache('vips', res.data);
+        }
+      }).catch(console.error);
+      axios.get(`${API_BASE}/api/customers/dormant`).then(res => {
+        if(!res?.data?.error) {
+          setDormant(res.data);
+          setLocalCache('dormant', res.data);
+        }
+      }).catch(console.error);
+    }, 700);
+
+    // Priority 4: Financial & Inventory analytics — staggered to 1200ms
+    setTimeout(() => {
+      axios.get(`${API_BASE}/api/financials/gst-summary`).then(res => {
+        if(!res?.data?.error && res?.data) {
+          const payload = { ...res.data, lastFetched: Date.now() };
+          setGstSummary(payload);
+          setLocalCache('gstSummary', payload);
+        }
+      }).catch(console.error);
+
+      axios.get(`${API_BASE}/api/sales/returns`).then(res => {
+        if(!res?.data?.error && res?.data?.today) {
+          setReturnsData(res.data);
+          setLocalCache('returnsData', res.data);
+        }
+      }).catch(console.error);
+
+      axios.get(`${API_BASE}/api/inventory/size-matrix`).then(res => {
+        if(!res?.data?.error) {
+          setSizeMatrix(res.data);
+          setLocalCache('sizeMatrix', res.data);
+        }
+      }).catch(console.error);
+
+      axios.get(`${API_BASE}/api/analytics/monthly-products`).then(res => {
+        if(!res?.data?.error) {
+          setMonthlyProducts(res.data);
+          setLocalCache('monthlyProducts', res.data);
+        }
+      }).catch(console.error);
+
+      axios.get(`${API_BASE}/api/analytics/retention-radar`).then(res => {
+        if(!res?.data?.error) {
+          setRetentionData(res.data);
+          setLocalCache('retentionData', res.data);
+        }
+      }).catch(console.error);
+
+      axios.get(`${API_BASE}/api/financials/pnl`).then(res => {
+        if(!res?.data?.error) {
+          setPnlData(res.data);
+          setLocalCache('pnlData', res.data);
+        }
+      }).catch(console.error);
+
+      axios.get(`${API_BASE}/api/analytics/wardrobe-profiles`).then(res => {
+        if(!res?.data?.error) {
+          setWardrobeProfiles(res.data);
+          setLocalCache('wardrobeProfiles', res.data);
+        }
+      }).catch(console.error);
+    }, 1200);
+
+    // Priority 5: Marketing & Bundles — staggered to 2000ms
+    setTimeout(() => {
+      axios.get(`${API_BASE}/api/smart-bundles`).then(res => {
+        if(!res?.data?.error && Array.isArray(res.data)) {
+          setBundles(res.data);
+          setLocalCache('bundles', res.data);
+        }
+      }).catch(console.error);
+
+      axios.get(`${API_BASE}/api/broadcast/group`).then(res => {
+        if(!res?.data?.error && res.data?.contacts) {
+          setBroadcastGroup(res.data.contacts);
+          setBroadcastGroupCount(res.data.totalCount || 0);
+          setLocalCache('broadcastGroup', res.data.contacts);
+        }
+      }).catch(console.error);
+
+      axios.get(`${API_BASE}/api/analytics/top-movers`).then(res => {
+        if(!res?.data?.error && res.data?.topArticles) {
+          setTopMoversData(res.data);
+          setLocalCache('topMoversData', res.data);
+        }
+      }).catch(console.error);
+    }, 2000);
   }, []);
 
   // Lazy load data only when its tab is active
   useEffect(() => {
-    if (activeTab === 'inventory' && (!inventory || inventory.length === 0)) {
-      subscribeToData('inventory', `${API_BASE}/api/inventory`, setInventory);
+    if (['inventory', 'deadstock'].includes(activeTab) && (!deadStock || deadStock.length === 0)) {
+      subscribeToData('dead-stock', `${API_BASE}/api/inventory/dead-stock`, setDeadStock);
     }
     if (activeTab === 'monthly' && (!monthlyProducts || monthlyProducts.length === 0)) {
-      axios.get(`${API_BASE}/api/analytics/monthly-products`).then(res => { if(!res.data.error) setMonthlyProducts(res.data); }).catch(console.error);
+      axios.get(`${API_BASE}/api/analytics/monthly-products`).then(res => {
+        if(!res?.data?.error) {
+          setMonthlyProducts(res.data);
+          setLocalCache('monthlyProducts', res.data);
+        }
+      }).catch(console.error);
     }
-    if (activeTab === 'gst' && !gstSummary) {
-      axios.get(`${API_BASE}/api/financials/gst-summary`).then(res => { if(!res.data.error) setGstSummary(res.data); }).catch(console.error);
+    if (activeTab === 'gst') {
+      if (!gstSummary?.history || gstSummary.history.length === 0 || !gstSummary.lastFetched) {
+        setGstSummary(prev => ({ ...(prev || {}), fetching: true }));
+        axios.get(`${API_BASE}/api/financials/gst-summary`).then(res => {
+          if (!res?.data?.error && res?.data) {
+            const payload = { ...res.data, lastFetched: Date.now(), fetching: false };
+            setGstSummary(payload);
+            setLocalCache('gstSummary', payload);
+          } else {
+            setGstSummary(prev => ({ ...(prev || {}), fetching: false }));
+          }
+        }).catch(err => {
+          console.error("GST Fetch error:", err);
+          setGstSummary(prev => ({ ...(prev || {}), fetching: false }));
+        });
+      }
     }
     if (activeTab === 'sizematrix' && (!sizeMatrix || sizeMatrix.length === 0)) {
-      axios.get(`${API_BASE}/api/inventory/size-matrix`).then(res => { if(!res.data.error) setSizeMatrix(res.data); }).catch(console.error);
+      axios.get(`${API_BASE}/api/inventory/size-matrix`).then(res => {
+        if(!res?.data?.error) {
+          setSizeMatrix(res.data);
+          setLocalCache('sizeMatrix', res.data);
+        }
+      }).catch(console.error);
     }
     if (activeTab === 'topmovers' && (!topMoversData || !topMoversData.topArticles || topMoversData.topArticles.length === 0)) {
-      subscribeToData('top-movers', `${API_BASE}/api/analytics/top-movers`, (data) => {
-        if (data && data.topArticles && data.topArticles.length > 0) {
-          setTopMoversData(data);
-        } else {
-          setTopMoversData({
-            topArticles: [
-              { ArticleNo: "CBB-M-TS-104", ArticleName: "Cobb Signature Cotton Polo", Category: "T-Shirts", TotalUnitsSold: 342, TotalRevenue: 444600, TotalBills: 290 },
-              { ArticleNo: "CBB-M-JE-401", ArticleName: "Slim Fit Stretch Denim", Category: "Jeans", TotalUnitsSold: 289, TotalRevenue: 577711, TotalBills: 245 },
-              { ArticleNo: "CBB-M-SH-205", ArticleName: "Casual Linen Button Down", Category: "Shirts", TotalUnitsSold: 215, TotalRevenue: 322285, TotalBills: 198 },
-              { ArticleNo: "CBB-M-JA-902", ArticleName: "Lightweight Bomber Jacket", Category: "Outerwear", TotalUnitsSold: 184, TotalRevenue: 551816, TotalBills: 176 },
-              { ArticleNo: "CBB-M-TR-603", ArticleName: "Formal Charcoal Trousers", Category: "Trousers", TotalUnitsSold: 156, TotalRevenue: 311844, TotalBills: 142 }
-            ],
-            sizeDemand: [
-              { Size: "M", TotalUnitsSold: 420, TotalRevenue: 630000 },
-              { Size: "L", TotalUnitsSold: 385, TotalRevenue: 577500 },
-              { Size: "S", TotalUnitsSold: 210, TotalRevenue: 315000 },
-              { Size: "XL", TotalUnitsSold: 195, TotalRevenue: 292500 },
-              { Size: "XXL", TotalUnitsSold: 90, TotalRevenue: 135000 }
-            ]
-          });
+      axios.get(`${API_BASE}/api/analytics/top-movers`).then(res => {
+        if(!res?.data?.error && res.data?.topArticles) {
+          setTopMoversData(res.data);
+          setLocalCache('topMoversData', res.data);
         }
-      });
+      }).catch(console.error);
     }
     if (activeTab === 'returns' && !returnsData) {
-      axios.get(`${API_BASE}/api/sales/returns`).then(res => { if(!res.data.error) setReturnsData(res.data); }).catch(console.error);
+      axios.get(`${API_BASE}/api/sales/returns`).then(res => { 
+        if (res.data && typeof res.data === 'object' && !res?.data?.error && res.data.today) {
+          setReturnsData(res.data);
+          setLocalCache('returnsData', res.data);
+        }
+      }).catch(console.error);
     }
     if (activeTab === 'broadcast' && (!broadcastGroup || broadcastGroup.length === 0)) {
       axios.get(`${API_BASE}/api/broadcast/group`).then(res => {
-        setBroadcastGroup(res.data.contacts || []);
-        setBroadcastGroupCount(res.data.totalCount || 0);
+        if(!res?.data?.error && res.data?.contacts) {
+          setBroadcastGroup(res.data.contacts);
+          setBroadcastGroupCount(res.data.totalCount || 0);
+          setLocalCache('broadcastGroup', res.data.contacts);
+        }
       }).catch(console.error);
+    }
+    if (activeTab === 'smart_bundles' && (!bundles || bundles.length === 0)) {
+      fetchBundles();
     }
   }, [activeTab]);
 
@@ -602,7 +753,7 @@ export default function App() {
 
       // 3. Fetch broadcast status
       axios.get(`${API_BASE}/api/broadcast/status`)
-        .then(res => { if(!res.data.error) setBroadcastStatus(res.data); })
+        .then(res => { if(!res?.data?.error) setBroadcastStatus(res.data); })
         .catch(console.error);
 
       // Removed heavy polling of dashboard metrics (now relies on mount fetch and manual refresh)
@@ -647,7 +798,8 @@ export default function App() {
 
     autoStartServicesOnLoad();
     fetchAutomationStatus();
-    const interval = setInterval(fetchAutomationStatus, 3000);
+    // Reduced from 3s to 10s — each call fires 4 parallel requests which was starving the SQL pool
+    const interval = setInterval(fetchAutomationStatus, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -689,13 +841,32 @@ export default function App() {
     }
   };
 
+  const resetGateway = async () => {
+    if (!confirm("⚠️ Are you sure you want to reset the WhatsApp session?\n\nThis will clear cached locks, wipe corrupted data, and generate a fresh QR code if re-pairing is needed.")) return;
+    setIsTogglingGateway(true);
+    try {
+      await axios.post(`${API_BASE}/api/gateway/reset`);
+      const res = await axios.get(`${API_BASE}/api/gateway/status`);
+      setIsGatewayRunning(res.data.isRunning);
+      setIsGatewayReady(res.data.isReady);
+      setGatewayQr(res.data.qrCodeUrl);
+      setGatewayLogs(res.data.logs || []);
+      alert("✅ WhatsApp Gateway has been reset. Please check the dashboard for the fresh status/QR.");
+    } catch (err) {
+      console.error("Reset Gateway error:", err);
+      alert(`Gateway reset failed: ${err.response?.data?.error || err.message}`);
+    } finally {
+      setIsTogglingGateway(false);
+    }
+  };
+
   const handleSendTestWhatsApp = async () => {
     if (!testPhone) return alert("Please enter a target 10-digit mobile number.");
     setIsSendingTestWa(true);
     try {
       await axios.post(`${API_BASE}/api/whatsapp/send`, {
         phone: testPhone,
-        message: testMsg || 'Hello! 👋 This is a live test message sent from Cobb Store Automation Engine via local WhatsApp Gateway.'
+        message: testMsg || 'Hello! 👋 This is a live test message sent from your Store Automation Engine via local WhatsApp Gateway.'
       });
       alert(`✅ WhatsApp message sent successfully to ${testPhone}!`);
       setTestMsg('');
@@ -862,8 +1033,18 @@ export default function App() {
 
   const handleGenerateEodReport = async () => {
     try {
-      const res = await axios.get(`${API_BASE}/api/reports/eod-summary`);
-      setEodSummaryText(res.data.text);
+      if (isLocalhost || isTunnel) {
+        const res = await axios.get(`${API_BASE}/api/reports/eod-summary`);
+        setEodSummaryText(res.data.text);
+      } else {
+        const docRef = doc(db, "stores", "DEMO_STORE_001", "data", "reports_eod-summary");
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists() && docSnap.data().text) {
+          setEodSummaryText(docSnap.data().text);
+        } else {
+          setEodSummaryText("EOD Report is still being synced from the store. Please try again later.");
+        }
+      }
       setShowEodModal(true);
     } catch (err) {
       alert(`Failed to generate report: ${err.message}`);
@@ -883,7 +1064,7 @@ export default function App() {
       return acc;
     }, {});
 
-    let message = `Hello Supplier, please process the following stock replenishment for *Cobb Pundri*:\n\n`;
+    let message = `Hello Supplier, please process the following stock replenishment for our store:\n\n`;
     Object.entries(grouped).forEach(([type, items]) => {
       message += `*${type}*\n`;
       items.forEach(i => {
@@ -1232,6 +1413,7 @@ export default function App() {
     fetchAutomationStatus: typeof fetchAutomationStatus !== 'undefined' ? fetchAutomationStatus : undefined,
     toggleListener: typeof toggleListener !== 'undefined' ? toggleListener : undefined,
     toggleGateway: typeof toggleGateway !== 'undefined' ? toggleGateway : undefined,
+    resetGateway: typeof resetGateway !== 'undefined' ? resetGateway : undefined,
     handleSendTestWhatsApp: typeof handleSendTestWhatsApp !== 'undefined' ? handleSendTestWhatsApp : undefined,
     handleSyncBroadcastGroup: typeof handleSyncBroadcastGroup !== 'undefined' ? handleSyncBroadcastGroup : undefined,
     handleStartBroadcast: typeof handleStartBroadcast !== 'undefined' ? handleStartBroadcast : undefined,
@@ -1260,8 +1442,16 @@ export default function App() {
     compError: typeof compError !== 'undefined' ? compError : undefined
   };
 
+  if (showSetup) {
+    return <SetupScreen onComplete={() => setShowSetup(false)} />;
+  }
+
+  if (!user) {
+    return <LoginScreen onSetup={() => setShowSetup(true)} />;
+  }
+
   return (
-    <div className={`flex h-screen font-sans transition-colors duration-300 ${darkMode ? 'dark-mode bg-slate-950 text-slate-100' : 'bg-slate-100 text-slate-800'}`}>
+    <div className={`flex h-screen bg-slate-100 ${darkMode ? 'dark' : ''} font-sans transition-colors duration-300 ${darkMode ? 'dark-mode bg-slate-950 text-slate-100' : 'bg-slate-100 text-slate-800'}`}>
       <style>{`
         @keyframes slideIn {
           from {
@@ -1502,6 +1692,7 @@ export default function App() {
 
       
       <Layout
+        userRole={user.role}
         isMobileMenuOpen={isMobileMenuOpen}
         setIsMobileMenuOpen={setIsMobileMenuOpen}
         activeTab={activeTab}

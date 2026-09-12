@@ -11,8 +11,14 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+const { router: authRouter, checkRole } = require('./routes/auth');
+app.use('/api/auth', authRouter);
+
+const tunnelRouter = require('./routes/tunnel');
+app.use('/api/tunnel', tunnelRouter);
+
 const GlobalNodeCache = require('node-cache');
-const globalApiCache = new GlobalNodeCache({ stdTTL: 60 }); // 60 seconds global cache TTL
+const globalApiCache = new GlobalNodeCache({ stdTTL: 300 }); // 5 minutes cache for blazing fast tab switches
 
 // Global Cache Middleware
 app.use((req, res, next) => {
@@ -32,26 +38,27 @@ app.use((req, res, next) => {
         '/api/financials/gst-summary',
         '/api/inventory/size-matrix',
         '/api/analytics/top-movers',
-        '/api/sales/returns'
+        '/api/sales/returns',
+        '/api/broadcast/group',
+        '/api/smart-bundles',
+        '/api/reports/eod-summary'
     ];
 
-    if (req.method === 'GET' && cacheEndpoints.includes(req.path)) {
+    if (req.method === 'GET' && cacheEndpoints.includes(req.path) && req.query.refresh !== 'true') {
         const key = req.originalUrl;
         const cachedResponse = globalApiCache.get(key);
         if (cachedResponse) {
-            console.log(`[CACHE HIT] ${key}`);
             return res.json(cachedResponse);
-        } else {
-            console.log(`[CACHE MISS] ${key}`);
-            const originalJson = res.json;
-            res.json = function(body) {
-                if (res.statusCode >= 200 && res.statusCode < 300) {
-                    globalApiCache.set(key, body);
-                }
-                originalJson.call(this, body);
-            };
-            next();
         }
+        
+        const originalJson = res.json;
+        res.json = function(body) {
+            if (res.statusCode >= 200 && res.statusCode < 300 && body && !body.error) {
+                globalApiCache.set(key, body);
+            }
+            return originalJson.call(this, body);
+        };
+        next();
     } else {
         next();
     }
@@ -138,7 +145,14 @@ function getListenerScriptPath() {
 
 app.get('/api/sales/overview', async (req, res) => {
     try {
-        const todayResult = await sql.query(`
+        const batchResult = await sql.query(`
+            DECLARE @todayStart DATE = CAST(GETDATE() AS DATE);
+            DECLARE @yesterdayStart DATE = DATEADD(day, -1, @todayStart);
+            DECLARE @thisWeekStart DATE = DATEADD(day, 1 - DATEPART(dw, GETDATE()), @todayStart);
+            DECLARE @lastWeekStart DATE = DATEADD(day, -7, @thisWeekStart);
+            DECLARE @thisMonthStr VARCHAR(7) = FORMAT(GETDATE(), 'yyyy-MM');
+            DECLARE @lastMonthStr VARCHAR(7) = FORMAT(DATEADD(month, -1, GETDATE()), 'yyyy-MM');
+
             SELECT 
                 ISNULL(SUM(m.NET_AMOUNT), 0) as TotalSales, 
                 COUNT(m.CM_ID) as BillCount,
@@ -149,50 +163,37 @@ app.get('/api/sales/overview', async (req, res) => {
                 ISNULL(SUM(CASE WHEN ISNULL(m.CMD_DISCOUNT, 0) = 0 AND ISNULL(m.DISCOUNT_AMOUNT, 0) = 0 THEN m.NET_AMOUNT ELSE 0 END), 0) as FullPriceSalesAmount
             FROM VW_CASHMEMO_PRINT_MST m WITH (NOLOCK)
             LEFT JOIN VW_WL_CASHMEMOLIST w WITH (NOLOCK) ON m.CM_ID = w.MEMO_ID
-            WHERE CAST(m.CM_TIME AS DATE) = CAST(GETDATE() AS DATE) AND m.CANCELLED = 0
-        `);
+            WHERE m.CM_TIME >= @todayStart AND m.CANCELLED = 0;
 
-        const yesterdayResult = await sql.query(`
             SELECT ISNULL(SUM(NET_AMOUNT), 0) as TotalSales, COUNT(CM_ID) as BillCount 
             FROM VW_CASHMEMO_PRINT_MST WITH (NOLOCK) 
-            WHERE CAST(CM_TIME AS DATE) = CAST(DATEADD(day, -1, GETDATE()) AS DATE) AND CANCELLED = 0
-        `);
+            WHERE CM_TIME >= @yesterdayStart AND CM_TIME < @todayStart AND CANCELLED = 0;
 
-        // Week-over-Week comparison (Mon-Sun)
-        const thisWeekResult = await sql.query(`
             SELECT ISNULL(SUM(NET_AMOUNT), 0) as TotalSales, COUNT(CM_ID) as BillCount
             FROM VW_CASHMEMO_PRINT_MST WITH (NOLOCK)
-            WHERE CANCELLED = 0 AND CM_TIME >= DATEADD(day, 1 - DATEPART(dw, GETDATE()), CAST(GETDATE() AS DATE))
-        `);
+            WHERE CANCELLED = 0 AND CM_TIME >= @thisWeekStart;
 
-        const lastWeekResult = await sql.query(`
             SELECT ISNULL(SUM(NET_AMOUNT), 0) as TotalSales, COUNT(CM_ID) as BillCount
             FROM VW_CASHMEMO_PRINT_MST WITH (NOLOCK)
-            WHERE CANCELLED = 0
-              AND CM_TIME >= DATEADD(day, 1 - DATEPART(dw, GETDATE()) - 7, CAST(GETDATE() AS DATE))
-              AND CM_TIME < DATEADD(day, 1 - DATEPART(dw, GETDATE()), CAST(GETDATE() AS DATE))
-        `);
+            WHERE CANCELLED = 0 AND CM_TIME >= @lastWeekStart AND CM_TIME < @thisWeekStart;
 
-        // Month-over-Month comparison
-        const thisMonthResult = await sql.query(`
             SELECT ISNULL(SUM(NET_AMOUNT), 0) as TotalSales, COUNT(CM_ID) as BillCount
             FROM VW_CASHMEMO_PRINT_MST WITH (NOLOCK)
-            WHERE CANCELLED = 0 AND FORMAT(CM_TIME, 'yyyy-MM') = FORMAT(GETDATE(), 'yyyy-MM')
-        `);
+            WHERE CANCELLED = 0 AND FORMAT(CM_TIME, 'yyyy-MM') = @thisMonthStr;
 
-        const lastMonthResult = await sql.query(`
             SELECT ISNULL(SUM(NET_AMOUNT), 0) as TotalSales, COUNT(CM_ID) as BillCount
             FROM VW_CASHMEMO_PRINT_MST WITH (NOLOCK)
-            WHERE CANCELLED = 0 AND FORMAT(CM_TIME, 'yyyy-MM') = FORMAT(DATEADD(month, -1, GETDATE()), 'yyyy-MM')
+            WHERE CANCELLED = 0 AND FORMAT(CM_TIME, 'yyyy-MM') = @lastMonthStr;
         `);
 
+        const sets = batchResult.recordsets;
         const responseData = {
-            today: todayResult.recordset[0] || { TotalSales: 0, BillCount: 0, CashAmount: 0, CardAmount: 0, UPIAmount: 0 },
-            yesterday: yesterdayResult.recordset[0] || { TotalSales: 0, BillCount: 0 },
-            thisWeek: thisWeekResult.recordset[0] || { TotalSales: 0, BillCount: 0 },
-            lastWeek: lastWeekResult.recordset[0] || { TotalSales: 0, BillCount: 0 },
-            thisMonth: thisMonthResult.recordset[0] || { TotalSales: 0, BillCount: 0 },
-            lastMonth: lastMonthResult.recordset[0] || { TotalSales: 0, BillCount: 0 }
+            today: sets[0]?.[0] || { TotalSales: 0, BillCount: 0, CashAmount: 0, CardAmount: 0, UPIAmount: 0 },
+            yesterday: sets[1]?.[0] || { TotalSales: 0, BillCount: 0 },
+            thisWeek: sets[2]?.[0] || { TotalSales: 0, BillCount: 0 },
+            lastWeek: sets[3]?.[0] || { TotalSales: 0, BillCount: 0 },
+            thisMonth: sets[4]?.[0] || { TotalSales: 0, BillCount: 0 },
+            lastMonth: sets[5]?.[0] || { TotalSales: 0, BillCount: 0 }
         };
         
         res.json(responseData);
@@ -245,15 +246,19 @@ app.get('/api/analytics/monthly-products', async (req, res) => {
     try {
         const result = await sql.query(`
             SELECT 
-                FORMAT(m.CM_TIME, 'yyyy-MM') AS SaleMonth,
-                ISNULL(d.SECTION_NAME, 'Uncategorized') AS ProductType,
+                CONVERT(varchar(7), b.CM_TIME, 120) AS SaleMonth,
+                ISNULL(f.SECTION_NAME, 'Uncategorized') AS ProductType,
                 ISNULL(d.ARTICLE_NAME, 'General Article') AS ArticleName,
-                SUM(d.QUANTITY) AS TotalUnitsSold,
-                SUM(d.NET) AS TotalRevenue
-            FROM VW_CASHMEMO_PRINT_DET d WITH (NOLOCK)
-            INNER JOIN VW_CASHMEMO_PRINT_MST m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
-            WHERE m.CANCELLED = 0 AND m.CM_TIME IS NOT NULL
-            GROUP BY FORMAT(m.CM_TIME, 'yyyy-MM'), d.SECTION_NAME, d.ARTICLE_NAME
+                SUM(a.QUANTITY) AS TotalUnitsSold,
+                SUM(a.NET) AS TotalRevenue
+            FROM CMD01106 a WITH (NOLOCK)
+            JOIN CMM01106 b WITH (NOLOCK) ON b.CM_ID = a.CM_ID
+            JOIN SKU c WITH (NOLOCK) ON a.PRODUCT_CODE = c.PRODUCT_CODE
+            JOIN ARTICLE d WITH (NOLOCK) ON c.ARTICLE_CODE = d.ARTICLE_CODE
+            LEFT JOIN SECTIOND e WITH (NOLOCK) ON d.SUB_SECTION_CODE = e.SUB_SECTION_CODE
+            LEFT JOIN SECTIONM f WITH (NOLOCK) ON e.SECTION_CODE = f.SECTION_CODE
+            WHERE b.CANCELLED = 0 AND b.CM_TIME >= DATEADD(month, -4, GETDATE())
+            GROUP BY CONVERT(varchar(7), b.CM_TIME, 120), f.SECTION_NAME, d.ARTICLE_NAME
             ORDER BY SaleMonth DESC, TotalRevenue DESC
         `);
         res.json(result.recordset);
@@ -269,10 +274,11 @@ app.get('/api/inventory/dead-stock', async (req, res) => {
             SELECT TOP 1000
                 s.article_no AS ArticleNo,
                 MAX(s.section_name + ' / ' + s.sub_section_name) AS ItemName,
-                COUNT(DISTINCT s.product_Code) as SkuCount,
-                STRING_AGG(CAST(s.product_Code AS VARCHAR(100)) + '|' + ISNULL(CAST(s.para1_name AS VARCHAR(100)), '') + '|' + ISNULL(CAST(s.para2_name AS VARCHAR(100)), ''), ',') as SkuDetails
+                COUNT(s.product_Code) as SkuCount,
+                '' as SkuDetails
             FROM PMT01106 p WITH (NOLOCK)
             INNER JOIN SKU_NAMES s WITH (NOLOCK) ON p.product_code = s.product_Code
+            WHERE p.quantity_in_stock > 0
             GROUP BY s.article_no
             ORDER BY SkuCount DESC
         `);
@@ -304,8 +310,8 @@ app.post('/api/ai/demand-forecasts', async (req, res) => {
             WHERE p.quantity_in_stock >= 3
               AND p.product_code NOT IN (
                   SELECT DISTINCT d.PRODUCT_CODE 
-                  FROM VW_CASHMEMO_PRINT_DET d WITH (NOLOCK)
-                  INNER JOIN VW_CASHMEMO_PRINT_MST m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
+                  FROM CMD01106 d WITH (NOLOCK)
+                  INNER JOIN CMM01106 m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
                   WHERE m.CM_TIME >= DATEADD(day, -60, GETDATE()) AND m.CANCELLED = 0
               )
             ORDER BY p.quantity_in_stock DESC
@@ -577,15 +583,16 @@ app.get('/api/customers/vip', async (req, res) => {
     try {
         const result = await sql.query(`
             SELECT TOP 50 
-                CUSTOMER_CODE as Phone, 
-                CUSTOMER_FNAME as FirstName, 
-                CUSTOMER_LNAME as LastName, 
-                SUM(NET_AMOUNT) as LifetimeSpend, 
-                COUNT(CM_ID) as TotalBills,
-                CONVERT(varchar, MAX(CM_TIME), 126) as LastVisit
-            FROM VW_CASHMEMO_PRINT_MST WITH (NOLOCK) 
-            WHERE CANCELLED = 0 AND CUSTOMER_CODE IS NOT NULL AND LEN(CUSTOMER_CODE) >= 10
-            GROUP BY CUSTOMER_CODE, CUSTOMER_FNAME, CUSTOMER_LNAME
+                A.CUSTOMER_CODE as Phone, 
+                B.CUSTOMER_FNAME as FirstName, 
+                B.CUSTOMER_LNAME as LastName, 
+                SUM(A.NET_AMOUNT) as LifetimeSpend, 
+                COUNT(A.CM_ID) as TotalBills,
+                CONVERT(varchar, MAX(A.CM_TIME), 126) as LastVisit
+            FROM CMM01106 A WITH (NOLOCK)
+            JOIN CUSTDYM B WITH (NOLOCK) ON B.CUSTOMER_CODE = A.CUSTOMER_CODE
+            WHERE A.CANCELLED = 0 AND A.CUSTOMER_CODE IS NOT NULL AND LEN(A.CUSTOMER_CODE) >= 10
+            GROUP BY A.CUSTOMER_CODE, B.CUSTOMER_FNAME, B.CUSTOMER_LNAME
             ORDER BY LifetimeSpend DESC
         `);
         res.json(mapLoyalty(result.recordset));
@@ -600,23 +607,24 @@ app.get('/api/customers/search', async (req, res) => {
         if (!q) return res.json([]);
         const result = await sql.query`
             SELECT TOP 50 
-                CUSTOMER_CODE as Phone, 
-                CUSTOMER_FNAME as FirstName, 
-                CUSTOMER_LNAME as LastName, 
-                SUM(NET_AMOUNT) as LifetimeSpend, 
-                COUNT(CM_ID) as TotalBills,
-                CONVERT(varchar, MAX(CM_TIME), 126) as LastVisit
-            FROM VW_CASHMEMO_PRINT_MST WITH (NOLOCK) 
-            WHERE CANCELLED = 0 
-              AND CUSTOMER_CODE IS NOT NULL 
-              AND LEN(CUSTOMER_CODE) >= 10
+                A.CUSTOMER_CODE as Phone, 
+                B.CUSTOMER_FNAME as FirstName, 
+                B.CUSTOMER_LNAME as LastName, 
+                SUM(A.NET_AMOUNT) as LifetimeSpend, 
+                COUNT(A.CM_ID) as TotalBills,
+                CONVERT(varchar, MAX(A.CM_TIME), 126) as LastVisit
+            FROM CMM01106 A WITH (NOLOCK)
+            JOIN CUSTDYM B WITH (NOLOCK) ON B.CUSTOMER_CODE = A.CUSTOMER_CODE
+            WHERE A.CANCELLED = 0 
+              AND A.CUSTOMER_CODE IS NOT NULL 
+              AND LEN(A.CUSTOMER_CODE) >= 10
               AND (
-                  CUSTOMER_FNAME LIKE '%' + ${q} + '%' OR 
-                  CUSTOMER_LNAME LIKE '%' + ${q} + '%' OR 
-                  CUSTOMER_CODE LIKE '%' + ${q} + '%' OR
-                  LTRIM(RTRIM(ISNULL(CUSTOMER_FNAME, '') + ' ' + ISNULL(CUSTOMER_LNAME, ''))) LIKE '%' + ${q} + '%'
+                  B.CUSTOMER_FNAME LIKE '%' + ${q} + '%' OR 
+                  B.CUSTOMER_LNAME LIKE '%' + ${q} + '%' OR 
+                  A.CUSTOMER_CODE LIKE '%' + ${q} + '%' OR
+                  LTRIM(RTRIM(ISNULL(B.CUSTOMER_FNAME, '') + ' ' + ISNULL(B.CUSTOMER_LNAME, ''))) LIKE '%' + ${q} + '%'
               )
-            GROUP BY CUSTOMER_CODE, CUSTOMER_FNAME, CUSTOMER_LNAME
+            GROUP BY A.CUSTOMER_CODE, B.CUSTOMER_FNAME, B.CUSTOMER_LNAME
             ORDER BY LifetimeSpend DESC
         `;
         res.json(mapLoyalty(result.recordset));
@@ -629,15 +637,16 @@ app.get('/api/customers/dormant', async (req, res) => {
     try {
         const result = await sql.query(`
             SELECT TOP 50 
-                CUSTOMER_CODE as Phone, 
-                CUSTOMER_FNAME as FirstName, 
-                CUSTOMER_LNAME as LastName, 
-                SUM(NET_AMOUNT) as LifetimeSpend, 
-                DATEDIFF(day, MAX(CM_TIME), GETDATE()) as DaysSinceLastVisit
-            FROM VW_CASHMEMO_PRINT_MST WITH (NOLOCK) 
-            WHERE CANCELLED = 0 AND CUSTOMER_CODE IS NOT NULL AND LEN(CUSTOMER_CODE) >= 10
-            GROUP BY CUSTOMER_CODE, CUSTOMER_FNAME, CUSTOMER_LNAME
-            HAVING DATEDIFF(day, MAX(CM_TIME), GETDATE()) > 60
+                A.CUSTOMER_CODE as Phone, 
+                B.CUSTOMER_FNAME as FirstName, 
+                B.CUSTOMER_LNAME as LastName, 
+                SUM(A.NET_AMOUNT) as LifetimeSpend, 
+                DATEDIFF(day, MAX(A.CM_TIME), GETDATE()) as DaysSinceLastVisit
+            FROM CMM01106 A WITH (NOLOCK)
+            JOIN CUSTDYM B WITH (NOLOCK) ON B.CUSTOMER_CODE = A.CUSTOMER_CODE
+            WHERE A.CANCELLED = 0 AND A.CUSTOMER_CODE IS NOT NULL AND LEN(A.CUSTOMER_CODE) >= 10
+            GROUP BY A.CUSTOMER_CODE, B.CUSTOMER_FNAME, B.CUSTOMER_LNAME
+            HAVING DATEDIFF(day, MAX(A.CM_TIME), GETDATE()) > 60
             ORDER BY LifetimeSpend DESC
         `);
         res.json(mapLoyalty(result.recordset));
@@ -705,67 +714,72 @@ app.get('/api/sales/returns', async (req, res) => {
         const startOfMonth = `${year}-${month}-01`;
         const startOfToday = `${year}-${month}-${date}`;
 
-        const monthlyBillsResult = await sql.query(`
+        const batch = await sql.query(`
+            -- 1. Monthly Bills
             SELECT COUNT(CM_ID) as BillCount
-            FROM VW_CASHMEMO_PRINT_MST WITH (NOLOCK)
-            WHERE CANCELLED = 0 AND CM_TIME >= '${startOfMonth}'
-        `);
-        const totalMonthlyBills = monthlyBillsResult.recordset[0]?.BillCount || 0;
+            FROM CMM01106 WITH (NOLOCK)
+            WHERE CANCELLED = 0 AND CM_TIME >= '${startOfMonth}';
 
-        const todayResult = await sql.query(`
-            SELECT COUNT(*) as ReturnCount, ISNULL(SUM(ABS(NET)), 0) as RefundAmount
-            FROM VW_CASHMEMO_PRINT_DET d WITH (NOLOCK)
-            JOIN VW_CASHMEMO_PRINT_MST m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
-            WHERE d.QUANTITY < 0 AND m.CANCELLED = 0 
-            AND m.CM_TIME >= '${startOfToday}'
-        `);
+            -- 2. Today Returns
+            SELECT COUNT(*) as ReturnCount, ISNULL(SUM(ABS(d.NET)), 0) as RefundAmount
+            FROM CMD01106 d WITH (NOLOCK)
+            JOIN CMM01106 m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
+            WHERE d.QUANTITY < 0 AND m.CANCELLED = 0 AND m.CM_TIME >= '${startOfToday}';
 
-        const monthlyResult = await sql.query(`
-            SELECT COUNT(*) as ReturnCount, ISNULL(SUM(ABS(NET)), 0) as RefundAmount
-            FROM VW_CASHMEMO_PRINT_DET d WITH (NOLOCK)
-            JOIN VW_CASHMEMO_PRINT_MST m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
-            WHERE d.QUANTITY < 0 AND m.CANCELLED = 0 
-            AND m.CM_TIME >= '${startOfMonth}'
-        `);
+            -- 3. Monthly Returns
+            SELECT COUNT(*) as ReturnCount, ISNULL(SUM(ABS(d.NET)), 0) as RefundAmount
+            FROM CMD01106 d WITH (NOLOCK)
+            JOIN CMM01106 m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
+            WHERE d.QUANTITY < 0 AND m.CANCELLED = 0 AND m.CM_TIME >= '${startOfMonth}';
 
-        const topCatResult = await sql.query(`
+            -- 4. Top Return Categories
             SELECT TOP 5 
-                d.SUB_SECTION_NAME as Category, 
+                ISNULL(e.SUB_SECTION_NAME, 'General') as Category, 
                 SUM(ABS(d.QUANTITY)) as ReturnedUnits, 
                 COUNT(DISTINCT m.CM_ID) as ReturnBills,
                 ISNULL(SUM(ABS(d.NET)), 0) as RefundValue
-            FROM VW_CASHMEMO_PRINT_DET d WITH (NOLOCK)
-            JOIN VW_CASHMEMO_PRINT_MST m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
+            FROM CMD01106 d WITH (NOLOCK)
+            JOIN CMM01106 m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
+            JOIN SKU c WITH (NOLOCK) ON d.PRODUCT_CODE = c.PRODUCT_CODE
+            JOIN ARTICLE a WITH (NOLOCK) ON c.ARTICLE_CODE = a.ARTICLE_CODE
+            LEFT JOIN SECTIOND e WITH (NOLOCK) ON a.SUB_SECTION_CODE = e.SUB_SECTION_CODE
             WHERE d.QUANTITY < 0 AND m.CANCELLED = 0 AND m.CM_TIME >= '${startOfMonth}'
-            GROUP BY d.SUB_SECTION_NAME
-            ORDER BY ReturnedUnits DESC
-        `);
+            GROUP BY e.SUB_SECTION_NAME
+            ORDER BY ReturnedUnits DESC;
 
-        const recentResult = await sql.query(`
+            -- 5. Recent Returns
             SELECT TOP 10
                 m.CM_NO as BillNumber,
-                ISNULL(m.CUSTOMER_FNAME, '') + ' ' + ISNULL(m.CUSTOMER_LNAME, '') as CustomerName,
-                m.MOBILE as Phone,
-                SUM(ABS(d.QUANTITY)) as ItemCount,
-                MIN(d.PRODUCT_NAME) as ArticleDetails,
-                SUM(ABS(d.NET)) as RefundAmount,
+                ISNULL(cust.CUSTOMER_FNAME, '') + ' ' + ISNULL(cust.CUSTOMER_LNAME, '') as CustomerName,
+                cust.MOBILE as Phone,
+                ABS(d.QUANTITY) as ItemCount,
+                ISNULL(a.ARTICLE_NAME, 'Returned Item') as ArticleDetails,
+                ABS(d.NET) as RefundAmount,
                 CONVERT(varchar, m.CM_TIME, 126) as ReturnDate
-            FROM VW_CASHMEMO_PRINT_DET d WITH (NOLOCK)
-            JOIN VW_CASHMEMO_PRINT_MST m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
+            FROM CMD01106 d WITH (NOLOCK)
+            JOIN CMM01106 m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
+            JOIN SKU c WITH (NOLOCK) ON d.PRODUCT_CODE = c.PRODUCT_CODE
+            JOIN ARTICLE a WITH (NOLOCK) ON c.ARTICLE_CODE = a.ARTICLE_CODE
+            LEFT JOIN CUSTDYM cust WITH (NOLOCK) ON m.CUSTOMER_CODE = cust.CUSTOMER_CODE
             WHERE d.QUANTITY < 0 AND m.CANCELLED = 0 AND m.CM_TIME >= '${startOfMonth}'
-            GROUP BY m.CM_NO, m.CUSTOMER_FNAME, m.CUSTOMER_LNAME, m.MOBILE, m.CM_TIME
-            ORDER BY m.CM_TIME DESC
+            ORDER BY m.CM_TIME DESC;
         `);
 
-        const returnRatePct = totalMonthlyBills > 0 ? ((monthlyResult.recordset[0].ReturnCount / totalMonthlyBills) * 100).toFixed(1) : 0;
+        const totalMonthlyBills = batch.recordsets[0]?.[0]?.BillCount || 0;
+        const todayResult = batch.recordsets[1]?.[0] || { ReturnCount: 0, RefundAmount: 0 };
+        const monthlyResult = batch.recordsets[2]?.[0] || { ReturnCount: 0, RefundAmount: 0 };
+        const topCatResult = batch.recordsets[3] || [];
+        const recentResult = batch.recordsets[4] || [];
+
+        const returnRatePct = totalMonthlyBills > 0 ? ((monthlyResult.ReturnCount / totalMonthlyBills) * 100).toFixed(1) : 0;
 
         const responseData = {
-            today: todayResult.recordset[0] || { ReturnCount: 0, RefundAmount: 0 },
-            monthly: monthlyResult.recordset[0] || { ReturnCount: 0, RefundAmount: 0 },
+            today: todayResult,
+            monthly: monthlyResult,
             returnRatePct: parseFloat(returnRatePct),
             totalMonthlyBills: totalMonthlyBills,
-            topReturnedCategories: topCatResult.recordset || [],
-            recentReturns: recentResult.recordset || []
+            topReturnedCategories: topCatResult,
+            recentReturns: recentResult || []
         };
 
         res.json(responseData);
@@ -794,44 +808,6 @@ app.get('/api/sales/live', async (req, res) => {
             ORDER BY m.CM_TIME DESC
         `);
 
-        // Batch-fetch all item details for today's bills in a single query
-        // This eliminates per-bill API calls and makes items available on phone (via Firestore sync)
-        const billIds = result.recordset.map(b => b.BillId);
-        let itemsByBill = {};
-        if (billIds.length > 0) {
-            try {
-                const idList = billIds.map(id => `'${String(id).replace(/'/g, "''")}'`).join(',');
-                const itemsResult = await sql.query(`
-                    SELECT 
-                        d.CM_ID as BillId,
-                        d.ARTICLE_NO as ArticleNo,
-                        d.ARTICLE_NAME as ArticleName,
-                        d.QUANTITY as Quantity,
-                        d.NET as NetPrice,
-                        ISNULL(s.para1_name, 'Standard') as Color,
-                        ISNULL(s.para2_name, 'Standard') as Size,
-                        ISNULL(d.SECTION_NAME, 'Apparel') as Category
-                    FROM VW_CASHMEMO_PRINT_DET d WITH (NOLOCK)
-                    LEFT JOIN SKU_NAMES s WITH (NOLOCK) ON d.PRODUCT_CODE = s.product_Code
-                    WHERE d.CM_ID IN (${idList})
-                    ORDER BY d.CM_ID, d.NET DESC
-                `);
-                for (const item of itemsResult.recordset) {
-                    if (!itemsByBill[item.BillId]) itemsByBill[item.BillId] = [];
-                    itemsByBill[item.BillId].push({
-                        ArticleNo: item.ArticleNo,
-                        ArticleName: item.ArticleName,
-                        Quantity: item.Quantity,
-                        NetPrice: item.NetPrice,
-                        Color: item.Color,
-                        Size: item.Size,
-                        Category: item.Category
-                    });
-                }
-            } catch (itemErr) {
-                console.error('Failed to batch-fetch bill items:', itemErr.message);
-            }
-        }
 
         const enriched = result.recordset.map(b => {
             const cash = b.CashAmount || 0;
@@ -856,7 +832,7 @@ app.get('/api/sales/live', async (req, res) => {
             return {
                 ...b,
                 PaymentMode: paymentMode,
-                Items: itemsByBill[b.BillId] || []
+                Items: [] // Items fetched on-demand via /api/sales/bill/:id/items when bill is expanded
             };
         });
 
@@ -877,11 +853,10 @@ app.get('/api/sales/bill/:id/items', async (req, res) => {
                 d.ARTICLE_NAME as ArticleName,
                 d.QUANTITY as Quantity,
                 d.NET as NetPrice,
-                ISNULL(s.para1_name, 'Standard') as Color,
-                ISNULL(s.para2_name, 'Standard') as Size,
+                ISNULL(d.PARA1_NAME, 'Standard') as Color,
+                ISNULL(d.PARA2_NAME, 'Standard') as Size,
                 ISNULL(d.SECTION_NAME, 'Apparel') as Category
             FROM VW_CASHMEMO_PRINT_DET d WITH (NOLOCK)
-            LEFT JOIN SKU_NAMES s WITH (NOLOCK) ON d.PRODUCT_CODE = s.product_Code
             WHERE d.CM_ID = @id
             ORDER BY d.NET DESC
         `);
@@ -915,7 +890,7 @@ app.get('/api/inventory', async (req, res) => {
 // Helper functions for auto-starting background services
 async function startGatewayHelper() {
     try {
-        const ping = await fetch('http://localhost:3000/status');
+        const ping = await fetch('http://localhost:3000/status', { signal: AbortSignal.timeout(3000) });
         if (ping.ok) return true;
     } catch (e) { }
 
@@ -1036,13 +1011,59 @@ app.post('/api/gateway/stop', (req, res) => {
     res.json({ status: 'stopped' });
 });
 
+app.post('/api/gateway/reset', async (req, res) => {
+    gatewayLogs.push(`[${new Date().toLocaleTimeString()}] Reset request received. Halting gateway and clearing session cache...`);
+    try {
+        try {
+            await fetch('http://localhost:3000/reset', { method: 'POST', signal: AbortSignal.timeout(2000) });
+        } catch (e) {}
+
+        if (gatewayProcess) {
+            try { spawn('taskkill', ['/PID', gatewayProcess.pid.toString(), '/F', '/T'], { windowsHide: true }); } catch (e) { gatewayProcess.kill(); }
+            gatewayProcess = null;
+        }
+        try {
+            execSync('powershell -WindowStyle Hidden -Command "Get-CimInstance Win32_Process | Where-Object ExecutablePath -match \'puppeteer\' | Invoke-CimMethod -MethodName Terminate"', { windowsHide: true });
+        } catch (e) {}
+        try {
+            const stdout = execSync('netstat -ano | findstr :3000', { windowsHide: true }).toString();
+            const lines = stdout.split('\n');
+            for (const line of lines) {
+                if (line.includes('LISTENING')) {
+                    const parts = line.trim().split(/\s+/);
+                    const pid = parts[parts.length - 1];
+                    if (pid && pid !== '0') {
+                        try { execSync(`taskkill /F /PID ${pid} /T 2>NUL`, { windowsHide: true }); } catch (err) {}
+                    }
+                }
+            }
+        } catch (e) {}
+
+        const gatewayDir = 'C:\\CobbWhatsAppGateway';
+        const sessionDir = path.join(gatewayDir, '.wwebjs_auth');
+        if (fs.existsSync(sessionDir)) {
+            try { fs.rmSync(sessionDir, { recursive: true, force: true }); } catch (e) {}
+        }
+
+        gatewayLogs.push(`[${new Date().toLocaleTimeString()}] Session wiped. Auto-spawning fresh gateway instance...`);
+        setTimeout(() => {
+            startGatewayHelper();
+        }, 1500);
+
+        res.json({ status: 'resetting', message: 'WhatsApp session wiped and restarting fresh.' });
+    } catch (err) {
+        gatewayLogs.push(`[ERROR ${new Date().toLocaleTimeString()}] Reset failed: ${err.message}`);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 app.get('/api/gateway/status', async (req, res) => {
     let qrCodeUrl = null;
     let isReady = false;
     let isRunning = !!gatewayProcess;
 
     try {
-        const response = await fetch('http://localhost:3000/status');
+        const response = await fetch('http://localhost:3000/status', { signal: AbortSignal.timeout(3000) });
         if (response.ok) {
             const data = await response.json();
             qrCodeUrl = data.qrCodeUrl;
@@ -1216,8 +1237,13 @@ async function syncBilledCustomerGroup() {
 
 // Billed Customer Group Endpoints
 app.get('/api/broadcast/group', async (req, res) => {
-    let groupMap = await syncBilledCustomerGroup();
-    const groupList = Object.values(groupMap).sort((a, b) => new Date(b.lastBilledAt || 0) - new Date(a.lastBilledAt || 0));
+    let groupMap = loadCustomerGroupFile();
+    let groupList = Object.values(groupMap);
+    if (groupList.length === 0 || req.query.refresh === 'true') {
+        groupMap = await syncBilledCustomerGroup();
+        groupList = Object.values(groupMap);
+    }
+    groupList.sort((a, b) => new Date(b.lastBilledAt || 0) - new Date(a.lastBilledAt || 0));
     res.json({
         totalCount: groupList.length,
         contacts: groupList
@@ -1332,43 +1358,48 @@ app.post('/api/broadcast/stop', (req, res) => {
 // Top-Moving Articles Leaderboard & Size Demand Matrix Endpoint
 app.get('/api/analytics/top-movers', async (req, res) => {
     try {
-        const topArticles = await sql.query(`
+        const batch = await sql.query(`
+            -- Top Articles
             SELECT TOP 15
                 RTRIM(d.ARTICLE_NO) as ArticleNo,
                 MAX(RTRIM(d.ARTICLE_NAME)) as ArticleName,
-                MAX(RTRIM(d.SECTION_NAME)) as Category,
-                SUM(d.QUANTITY) as TotalUnitsSold,
-                SUM(d.NET) as TotalRevenue,
-                COUNT(DISTINCT d.CM_ID) as TotalBills
-            FROM VW_CASHMEMO_PRINT_DET d WITH (NOLOCK)
-            INNER JOIN VW_CASHMEMO_PRINT_MST m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
-            WHERE m.CANCELLED = 0 
+                MAX(RTRIM(ISNULL(f.SECTION_NAME, 'General'))) as Category,
+                SUM(a.QUANTITY) as TotalUnitsSold,
+                SUM(a.NET) as TotalRevenue,
+                COUNT(DISTINCT a.CM_ID) as TotalBills
+            FROM CMD01106 a WITH (NOLOCK)
+            JOIN CMM01106 b WITH (NOLOCK) ON b.CM_ID = a.CM_ID
+            JOIN SKU c WITH (NOLOCK) ON a.PRODUCT_CODE = c.PRODUCT_CODE
+            JOIN ARTICLE d WITH (NOLOCK) ON c.ARTICLE_CODE = d.ARTICLE_CODE
+            LEFT JOIN SECTIOND e WITH (NOLOCK) ON d.SUB_SECTION_CODE = e.SUB_SECTION_CODE
+            LEFT JOIN SECTIONM f WITH (NOLOCK) ON e.SECTION_CODE = f.SECTION_CODE
+            WHERE b.CANCELLED = 0 
               AND d.ARTICLE_NO IS NOT NULL 
               AND LEN(RTRIM(d.ARTICLE_NO)) > 1
-              AND m.CM_TIME >= DATEADD(month, -3, GETDATE())
+              AND b.CM_TIME >= DATEADD(month, -3, GETDATE())
             GROUP BY RTRIM(d.ARTICLE_NO)
-            ORDER BY SUM(d.QUANTITY) DESC
-        `);
+            ORDER BY SUM(a.QUANTITY) DESC;
 
-        const sizeDemand = await sql.query(`
+            -- Size Demand
             SELECT TOP 12
-                RTRIM(d.PARA2_NAME) as Size,
-                SUM(d.QUANTITY) as TotalUnitsSold,
-                SUM(d.NET) as TotalRevenue
-            FROM VW_CASHMEMO_PRINT_DET d WITH (NOLOCK)
-            INNER JOIN VW_CASHMEMO_PRINT_MST m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
-            WHERE m.CANCELLED = 0 
-              AND d.PARA2_NAME IS NOT NULL 
-              AND LEN(RTRIM(d.PARA2_NAME)) > 0 
-              AND d.PARA2_NAME <> 'NA'
-              AND m.CM_TIME >= DATEADD(month, -3, GETDATE())
-            GROUP BY RTRIM(d.PARA2_NAME)
-            ORDER BY SUM(d.QUANTITY) DESC
+                RTRIM(s.para2_name) as Size,
+                SUM(a.QUANTITY) as TotalUnitsSold,
+                SUM(a.NET) as TotalRevenue
+            FROM CMD01106 a WITH (NOLOCK)
+            JOIN CMM01106 b WITH (NOLOCK) ON b.CM_ID = a.CM_ID
+            JOIN SKU_NAMES s WITH (NOLOCK) ON a.PRODUCT_CODE = s.product_code
+            WHERE b.CANCELLED = 0 
+              AND s.para2_name IS NOT NULL 
+              AND LEN(RTRIM(s.para2_name)) > 0 
+              AND s.para2_name <> 'NA'
+              AND b.CM_TIME >= DATEADD(month, -3, GETDATE())
+            GROUP BY RTRIM(s.para2_name)
+            ORDER BY SUM(a.QUANTITY) DESC;
         `);
 
         res.json({
-            topArticles: topArticles.recordset,
-            sizeDemand: sizeDemand.recordset
+            topArticles: batch.recordsets[0] || [],
+            sizeDemand: batch.recordsets[1] || []
         });
     } catch (err) {
         console.error("Top Movers Analytics Error, using fallbacks:", err.message);
@@ -1394,67 +1425,121 @@ app.get('/api/analytics/top-movers', async (req, res) => {
 // 1. GST & Tax Summary Endpoint
 app.get('/api/financials/gst-summary', async (req, res) => {
     try {
-        const todayGst = await sql.query(`
+        const batch = await sql.query(`
+            -- Today GST
             SELECT 
                 COUNT(CM_ID) as BillCount,
-                ISNULL(SUM(TOTAL_TAX), 0) as TaxCollected,
-                ISNULL(SUM(NET_AMOUNT - TOTAL_TAX), 0) as TaxableSales,
+                ISNULL(SUM(TOTAL_GST_AMOUNT), 0) as TaxCollected,
+                ISNULL(SUM(NET_AMOUNT - TOTAL_GST_AMOUNT), 0) as TaxableSales,
                 ISNULL(SUM(NET_AMOUNT), 0) as GrossSales
-            FROM VW_CASHMEMO_PRINT_MST WITH (NOLOCK)
-            WHERE CAST(CM_TIME AS DATE) = CAST(GETDATE() AS DATE) AND CANCELLED = 0
-        `);
+            FROM CMM01106 WITH (NOLOCK)
+            WHERE CM_TIME >= CAST(GETDATE() AS DATE) AND CANCELLED = 0;
 
-        const monthlyGst = await sql.query(`
+            -- Month GST
             SELECT 
                 COUNT(CM_ID) as BillCount,
-                ISNULL(SUM(TOTAL_TAX), 0) as TaxCollected,
-                ISNULL(SUM(NET_AMOUNT - TOTAL_TAX), 0) as TaxableSales,
+                ISNULL(SUM(TOTAL_GST_AMOUNT), 0) as TaxCollected,
+                ISNULL(SUM(NET_AMOUNT - TOTAL_GST_AMOUNT), 0) as TaxableSales,
                 ISNULL(SUM(NET_AMOUNT), 0) as GrossSales
-            FROM VW_CASHMEMO_PRINT_MST WITH (NOLOCK)
-            WHERE CM_TIME IS NOT NULL AND CANCELLED = 0 AND FORMAT(CM_TIME, 'yyyy-MM') = FORMAT(GETDATE(), 'yyyy-MM')
-        `);
+            FROM CMM01106 WITH (NOLOCK)
+            WHERE CANCELLED = 0 AND CM_TIME >= DATEADD(month, DATEDIFF(month, 0, GETDATE()), 0) AND CM_TIME < DATEADD(month, DATEDIFF(month, 0, GETDATE()) + 1, 0);
 
-        const historyGst = await sql.query(`
+            -- 12-Month History
             SELECT TOP 12
-                FORMAT(CM_TIME, 'yyyy-MM') as MonthStr,
+                CONVERT(VARCHAR(7), CM_TIME, 126) as MonthStr,
                 COUNT(CM_ID) as TotalInvoices,
-                ISNULL(SUM(TOTAL_QTY), 0) as TotalUnits,
+                COUNT(CM_ID) as TotalUnits,
                 ISNULL(SUM(NET_AMOUNT), 0) as GrossSales,
-                ISNULL(SUM(NET_AMOUNT - TOTAL_TAX), 0) as TaxableSales,
-                ISNULL(SUM(TOTAL_TAX), 0) as TaxCollected
-            FROM VW_CASHMEMO_PRINT_MST WITH (NOLOCK)
-            WHERE CANCELLED = 0 AND CM_TIME IS NOT NULL
-            GROUP BY FORMAT(CM_TIME, 'yyyy-MM')
-            ORDER BY MonthStr DESC
+                ISNULL(SUM(NET_AMOUNT - TOTAL_GST_AMOUNT), 0) as TaxableSales,
+                ISNULL(SUM(TOTAL_GST_AMOUNT), 0) as TaxCollected
+            FROM CMM01106 WITH (NOLOCK)
+            WHERE CANCELLED = 0 AND CM_TIME >= DATEADD(month, -12, GETDATE())
+            GROUP BY CONVERT(VARCHAR(7), CM_TIME, 126)
+            ORDER BY MonthStr DESC;
         `);
 
         res.json({
-            today: todayGst.recordset[0] || { BillCount: 0, TaxCollected: 0, TaxableSales: 0, GrossSales: 0 },
-            monthly: monthlyGst.recordset[0] || { BillCount: 0, TaxCollected: 0, TaxableSales: 0, GrossSales: 0 },
-            history: historyGst.recordset || []
+            today: batch.recordsets[0]?.[0] || { BillCount: 0, TaxCollected: 0, TaxableSales: 0, GrossSales: 0 },
+            monthly: batch.recordsets[1]?.[0] || { BillCount: 0, TaxCollected: 0, TaxableSales: 0, GrossSales: 0 },
+            history: batch.recordsets[2] || []
         });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
 
-// 2. Size Matrix & Inventory Heatmap Endpoint
+// 2. EOD Report Endpoint
+app.get('/api/reports/eod-summary', async (req, res) => {
+    try {
+        const result = await sql.query(`
+            SELECT 
+                COUNT(CM_ID) as BillCount,
+                COUNT(CM_ID) as TotalUnits,
+                ISNULL(SUM(NET_AMOUNT), 0) as GrossSales,
+                ISNULL(SUM(TOTAL_GST_AMOUNT), 0) as TaxCollected,
+                ISNULL(SUM(NET_AMOUNT - TOTAL_GST_AMOUNT), 0) as NetSales
+            FROM CMM01106 WITH (NOLOCK)
+            WHERE CM_TIME >= CAST(GETDATE() AS DATE) AND CANCELLED = 0
+        `);
+        
+        const paymentModes = await sql.query(`
+            SELECT 
+                ISNULL(SUM(p.CASH_AMOUNT), 0) as Cash,
+                ISNULL(SUM(p.CC_AMOUNT), 0) as Card,
+                ISNULL(SUM(w.UPI + w.[Paytm QR] + w.Paytm + w.[PAYTM UPI] + w.RazorpayUPI), 0) as UPI
+            FROM CMM01106 m WITH (NOLOCK)
+            LEFT JOIN VW_BILL_PAYMODE p WITH (NOLOCK) ON m.CM_ID = p.MEMO_ID AND p.XN_TYPE = 'SLS'
+            LEFT JOIN VW_WL_CASHMEMOLIST w WITH (NOLOCK) ON m.CM_ID = w.MEMO_ID
+            WHERE m.CM_TIME >= CAST(GETDATE() AS DATE) AND m.CANCELLED = 0
+        `);
+        
+        const summary = result.recordset[0];
+        const pay = paymentModes.recordset[0];
+        
+        const text = `📊 *EOD REPORT - COBB PUNDRI*
+Date: ${new Date().toLocaleDateString('en-GB')}
+
+🧾 *Sales Summary:*
+• Total Bills: ${summary.BillCount}
+• Total Units: ${summary.TotalUnits}
+• Gross Sales: ₹${summary.GrossSales.toLocaleString('en-IN')}
+• Net Sales (Excl. Tax): ₹${summary.NetSales.toLocaleString('en-IN')}
+• Tax Collected: ₹${summary.TaxCollected.toLocaleString('en-IN')}
+
+💳 *Payment Breakdown:*
+• Cash: ₹${pay.Cash.toLocaleString('en-IN')}
+• Card: ₹${pay.Card.toLocaleString('en-IN')}
+• UPI/Online: ₹${pay.UPI.toLocaleString('en-IN')}
+
+✨ Generated by WizApp AI`;
+        
+        res.json({ text });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 3. Size Matrix & Inventory Heatmap Endpoint
 app.get('/api/inventory/size-matrix', async (req, res) => {
     try {
         const result = await sql.query(`
             SELECT TOP 300
-                ISNULL(d.SECTION_NAME, 'Apparel') as Category,
+                ISNULL(f.SECTION_NAME, 'Apparel') as Category,
                 ISNULL(d.ARTICLE_NAME, 'General Article') as ArticleName,
                 ISNULL(s.para2_name, 'Standard') as Size,
-                SUM(d.QUANTITY) as UnitsSold,
-                SUM(d.NET) as TotalRevenue,
-                COUNT(DISTINCT d.CM_ID) as Invoices
-            FROM VW_CASHMEMO_PRINT_DET d WITH (NOLOCK)
-            INNER JOIN VW_CASHMEMO_PRINT_MST m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
-            LEFT JOIN SKU_NAMES s ON d.PRODUCT_CODE = s.product_Code
+                SUM(a.QUANTITY) as UnitsSold,
+                SUM(a.NET) as TotalRevenue,
+                COUNT(DISTINCT a.CM_ID) as Invoices
+            FROM CMD01106 a WITH (NOLOCK)
+            JOIN CMM01106 m WITH (NOLOCK) ON a.CM_ID = m.CM_ID
+            JOIN SKU c WITH (NOLOCK) ON a.PRODUCT_CODE = c.PRODUCT_CODE
+            JOIN ARTICLE d WITH (NOLOCK) ON c.ARTICLE_CODE = d.ARTICLE_CODE
+            LEFT JOIN SECTIOND e WITH (NOLOCK) ON d.SUB_SECTION_CODE = e.SUB_SECTION_CODE
+            LEFT JOIN SECTIONM f WITH (NOLOCK) ON e.SECTION_CODE = f.SECTION_CODE
+            LEFT JOIN SKU_NAMES s WITH (NOLOCK) ON a.PRODUCT_CODE = s.product_Code
             WHERE m.CANCELLED = 0 AND m.CM_TIME >= DATEADD(day, -90, GETDATE())
-            GROUP BY d.SECTION_NAME, d.ARTICLE_NAME, s.para2_name
-            HAVING SUM(d.QUANTITY) > 0
+            GROUP BY f.SECTION_NAME, d.ARTICLE_NAME, s.para2_name
+            HAVING SUM(a.QUANTITY) > 0
             ORDER BY TotalRevenue DESC
         `);
         res.json(result.recordset);
@@ -1467,21 +1552,43 @@ app.get('/api/inventory/size-matrix', async (req, res) => {
 app.get('/api/analytics/wardrobe-profiles', async (req, res) => {
     try {
         const result = await sql.query(`
-            SELECT TOP 100
-                m.CUSTOMER_CODE as Phone,
-                MAX(ISNULL(m.CUSTOMER_FNAME, '') + ' ' + ISNULL(m.CUSTOMER_LNAME, '')) as CustomerName,
-                SUM(m.NET_AMOUNT) as TotalSpent,
-                COUNT(DISTINCT m.CM_ID) as TotalVisits,
-                CONVERT(varchar, MAX(m.CM_TIME), 126) as LastVisitDate,
-                DATEDIFF(day, MAX(m.CM_TIME), GETDATE()) as DaysInactive,
-                SUM(CASE WHEN d.SECTION_NAME LIKE '%FORMAL%' OR d.ARTICLE_NAME LIKE '%SHIRT%' THEN 1 ELSE 0 END) as FormalItems,
-                SUM(CASE WHEN d.SECTION_NAME LIKE '%JEANS%' OR d.SECTION_NAME LIKE '%SM%' OR d.ARTICLE_NAME LIKE '%T SHIRT%' THEN 1 ELSE 0 END) as CasualItems
-            FROM VW_CASHMEMO_PRINT_MST m WITH (NOLOCK)
-            LEFT JOIN VW_CASHMEMO_PRINT_DET d WITH (NOLOCK) ON m.CM_ID = d.CM_ID
-            WHERE m.CANCELLED = 0 AND m.CUSTOMER_CODE IS NOT NULL AND m.CUSTOMER_CODE <> '' AND m.CUSTOMER_CODE <> '2222222222'
-            GROUP BY m.CUSTOMER_CODE
-            HAVING SUM(m.NET_AMOUNT) > 0
-            ORDER BY TotalSpent DESC
+            ;WITH TopCust AS (
+                SELECT TOP 100
+                    A.CUSTOMER_CODE as Phone,
+                    MAX(ISNULL(B.CUSTOMER_FNAME, '') + ' ' + ISNULL(B.CUSTOMER_LNAME, '')) as CustomerName,
+                    SUM(A.NET_AMOUNT) as TotalSpent,
+                    COUNT(A.CM_ID) as TotalVisits,
+                    MAX(A.CM_TIME) as LastVisitTime
+                FROM CMM01106 A WITH (NOLOCK)
+                JOIN CUSTDYM B WITH (NOLOCK) ON B.CUSTOMER_CODE = A.CUSTOMER_CODE
+                WHERE A.CANCELLED = 0 AND A.CUSTOMER_CODE IS NOT NULL AND A.CUSTOMER_CODE <> '' AND A.CUSTOMER_CODE <> '2222222222'
+                GROUP BY A.CUSTOMER_CODE
+                HAVING SUM(A.NET_AMOUNT) > 0
+                ORDER BY TotalSpent DESC
+            )
+            SELECT 
+                tc.Phone,
+                tc.CustomerName,
+                tc.TotalSpent,
+                tc.TotalVisits,
+                CONVERT(varchar, tc.LastVisitTime, 126) as LastVisitDate,
+                DATEDIFF(day, tc.LastVisitTime, GETDATE()) as DaysInactive,
+                ISNULL(det.FormalItems, 0) as FormalItems,
+                ISNULL(det.CasualItems, 0) as CasualItems
+            FROM TopCust tc
+            OUTER APPLY (
+                SELECT 
+                    SUM(CASE WHEN f.SECTION_NAME LIKE '%FORMAL%' OR d.ARTICLE_NAME LIKE '%SHIRT%' THEN 1 ELSE 0 END) as FormalItems,
+                    SUM(CASE WHEN f.SECTION_NAME LIKE '%JEANS%' OR f.SECTION_NAME LIKE '%SM%' OR d.ARTICLE_NAME LIKE '%T SHIRT%' THEN 1 ELSE 0 END) as CasualItems
+                FROM CMM01106 m WITH (NOLOCK)
+                JOIN CMD01106 cd WITH (NOLOCK) ON m.CM_ID = cd.CM_ID
+                JOIN SKU c WITH (NOLOCK) ON cd.PRODUCT_CODE = c.PRODUCT_CODE
+                JOIN ARTICLE d WITH (NOLOCK) ON c.ARTICLE_CODE = d.ARTICLE_CODE
+                LEFT JOIN SECTIOND e WITH (NOLOCK) ON d.SUB_SECTION_CODE = e.SUB_SECTION_CODE
+                LEFT JOIN SECTIONM f WITH (NOLOCK) ON e.SECTION_CODE = f.SECTION_CODE
+                WHERE m.CUSTOMER_CODE = tc.Phone AND m.CANCELLED = 0
+            ) det
+            ORDER BY tc.TotalSpent DESC
         `);
 
         const enriched = result.recordset.map(c => {
@@ -1511,12 +1618,13 @@ app.get('/api/analytics/wardrobe-profiles', async (req, res) => {
 app.get('/api/financials/pnl', async (req, res) => {
     try {
         const monthlyRev = await sql.query(`
+            DECLARE @startOfMonth DATETIME = DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1);
             SELECT 
                 ISNULL(SUM(NET_AMOUNT), 0) as GrossSales,
-                ISNULL(SUM(TOTAL_TAX), 0) as TotalTax,
+                ISNULL(SUM(TOTAL_GST_AMOUNT), 0) as TotalTax,
                 COUNT(CM_ID) as TotalBills
-            FROM VW_CASHMEMO_PRINT_MST WITH (NOLOCK)
-            WHERE CM_TIME IS NOT NULL AND CANCELLED = 0 AND FORMAT(CM_TIME, 'yyyy-MM') = FORMAT(GETDATE(), 'yyyy-MM')
+            FROM CMM01106 WITH (NOLOCK)
+            WHERE CM_TIME >= @startOfMonth AND CANCELLED = 0
         `);
 
         const sales = monthlyRev.recordset[0]?.GrossSales || 0;
@@ -1561,83 +1669,78 @@ app.get('/api/financials/pnl', async (req, res) => {
 // 5. Repeat Customer Retention Radar Endpoint
 app.get('/api/analytics/retention-radar', async (req, res) => {
     try {
-        const summary = await sql.query(`
+        const batchQuery = `
+            ;WITH CustSummary AS (
+                SELECT 
+                    A.CUSTOMER_CODE as Phone,
+                    MAX(ISNULL(B.CUSTOMER_FNAME, '') + ' ' + ISNULL(B.CUSTOMER_LNAME, '')) as CustomerName,
+                    SUM(A.NET_AMOUNT) as TotalSpent,
+                    COUNT(A.CM_ID) as TotalVisits,
+                    MAX(A.CM_TIME) as MaxTime,
+                    DATEDIFF(day, MAX(A.CM_TIME), GETDATE()) as DaysInactive
+                FROM CMM01106 A WITH (NOLOCK)
+                JOIN CUSTDYM B WITH (NOLOCK) ON B.CUSTOMER_CODE = A.CUSTOMER_CODE
+                WHERE A.CANCELLED = 0 AND A.CUSTOMER_CODE IS NOT NULL AND A.CUSTOMER_CODE <> '' AND A.CUSTOMER_CODE <> '2222222222'
+                GROUP BY A.CUSTOMER_CODE
+            )
             SELECT 
-                COUNT(DISTINCT CustomerPhone) as TotalCustomers,
-                SUM(CASE WHEN VisitCount > 1 THEN 1 ELSE 0 END) as RepeatCustomers,
+                COUNT(*) as TotalCustomers,
+                SUM(CASE WHEN TotalVisits > 1 THEN 1 ELSE 0 END) as RepeatCustomers,
                 AVG(TotalSpent) as AvgLtv
-            FROM (
+            FROM CustSummary;
+
+            ;WITH CustSummary AS (
                 SELECT 
-                    CUSTOMER_CODE as CustomerPhone,
-                    COUNT(CM_ID) as VisitCount,
-                    SUM(NET_AMOUNT) as TotalSpent
-                FROM VW_CASHMEMO_PRINT_MST WITH (NOLOCK)
-                WHERE CANCELLED = 0 AND CUSTOMER_CODE IS NOT NULL AND CUSTOMER_CODE <> '' AND CUSTOMER_CODE <> '2222222222'
-                GROUP BY CUSTOMER_CODE
-            ) c
-        `);
+                    A.CUSTOMER_CODE as Phone,
+                    MAX(ISNULL(B.CUSTOMER_FNAME, '') + ' ' + ISNULL(B.CUSTOMER_LNAME, '')) as CustomerName,
+                    SUM(A.NET_AMOUNT) as TotalSpent,
+                    COUNT(A.CM_ID) as TotalVisits,
+                    CONVERT(varchar, MAX(A.CM_TIME), 126) as LastVisitDate,
+                    DATEDIFF(day, MAX(A.CM_TIME), GETDATE()) as DaysInactive
+                FROM CMM01106 A WITH (NOLOCK)
+                JOIN CUSTDYM B WITH (NOLOCK) ON B.CUSTOMER_CODE = A.CUSTOMER_CODE
+                WHERE A.CANCELLED = 0 AND A.CUSTOMER_CODE IS NOT NULL AND A.CUSTOMER_CODE <> '' AND A.CUSTOMER_CODE <> '2222222222'
+                GROUP BY A.CUSTOMER_CODE
+                HAVING DATEDIFF(day, MAX(A.CM_TIME), GETDATE()) >= 15
+            )
+            SELECT TOP 20 *
+            FROM CustSummary
+            ORDER BY TotalSpent DESC;
 
-        const overdueVips = await sql.query(`
-            SELECT TOP 20
-                CUSTOMER_CODE as Phone,
-                MAX(ISNULL(CUSTOMER_FNAME, '') + ' ' + ISNULL(CUSTOMER_LNAME, '')) as CustomerName,
-                SUM(NET_AMOUNT) as TotalSpent,
-                COUNT(CM_ID) as TotalVisits,
-                CONVERT(varchar, MAX(CM_TIME), 126) as LastVisitDate,
-                DATEDIFF(day, MAX(CM_TIME), GETDATE()) as DaysInactive
-            FROM VW_CASHMEMO_PRINT_MST WITH (NOLOCK)
-            WHERE CANCELLED = 0 AND CUSTOMER_CODE IS NOT NULL AND CUSTOMER_CODE <> '' AND CUSTOMER_CODE <> '2222222222'
-            GROUP BY CUSTOMER_CODE
-            HAVING DATEDIFF(day, MAX(CM_TIME), GETDATE()) >= 15
-            ORDER BY TotalSpent DESC
-        `);
-
-        const recentRepeatBuyersRes = await sql.query(`
-            SELECT TOP 20
-                CUSTOMER_CODE as Phone,
-                MAX(ISNULL(CUSTOMER_FNAME, '') + ' ' + ISNULL(CUSTOMER_LNAME, '')) as CustomerName,
-                SUM(NET_AMOUNT) as TotalSpent,
-                COUNT(CM_ID) as TotalVisits,
-                CONVERT(varchar, MAX(CM_TIME), 126) as LastVisitDate
-            FROM VW_CASHMEMO_PRINT_MST WITH (NOLOCK)
-            WHERE CANCELLED = 0 AND CUSTOMER_CODE IS NOT NULL AND CUSTOMER_CODE <> '' AND CUSTOMER_CODE <> '2222222222'
-            GROUP BY CUSTOMER_CODE
-            HAVING COUNT(CM_ID) > 1
-            ORDER BY MAX(CM_TIME) DESC
-        `);
-
-        let recentRepeatBuyers = recentRepeatBuyersRes.recordset || [];
-        if (recentRepeatBuyers.length > 0) {
-            const phones = recentRepeatBuyers.map(b => `'${b.Phone.trim()}'`).join(',');
-            const billsRes = await sql.query(`
+            ;WITH CustSummary AS (
                 SELECT 
-                    CUSTOMER_CODE as Phone,
-                    CM_NO as BillNo,
-                    NET_AMOUNT as Amount,
-                    CONVERT(varchar, CM_TIME, 126) as BillDate
-                FROM VW_CASHMEMO_PRINT_MST WITH (NOLOCK)
-                WHERE CUSTOMER_CODE IN (${phones}) AND CANCELLED = 0
-                ORDER BY CM_TIME DESC
-            `);
-            const allBills = billsRes.recordset || [];
-            recentRepeatBuyers = recentRepeatBuyers.map(buyer => ({
-                ...buyer,
-                Bills: allBills.filter(b => b.Phone.trim() === buyer.Phone.trim())
-            }));
-        }
+                    A.CUSTOMER_CODE as Phone,
+                    MAX(ISNULL(B.CUSTOMER_FNAME, '') + ' ' + ISNULL(B.CUSTOMER_LNAME, '')) as CustomerName,
+                    SUM(A.NET_AMOUNT) as TotalSpent,
+                    COUNT(A.CM_ID) as TotalVisits,
+                    CONVERT(varchar, MAX(A.CM_TIME), 126) as LastVisitDate,
+                    MAX(A.CM_TIME) as MaxTime
+                FROM CMM01106 A WITH (NOLOCK)
+                JOIN CUSTDYM B WITH (NOLOCK) ON B.CUSTOMER_CODE = A.CUSTOMER_CODE
+                WHERE A.CANCELLED = 0 AND A.CUSTOMER_CODE IS NOT NULL AND A.CUSTOMER_CODE <> '' AND A.CUSTOMER_CODE <> '2222222222'
+                GROUP BY A.CUSTOMER_CODE
+                HAVING COUNT(A.CM_ID) > 1
+            )
+            SELECT TOP 20 Phone, CustomerName, TotalSpent, TotalVisits, LastVisitDate
+            FROM CustSummary
+            ORDER BY MaxTime DESC;
+        `;
 
-        const totalCust = summary.recordset[0]?.TotalCustomers || 1;
-        const repeatCust = summary.recordset[0]?.RepeatCustomers || 0;
+        const result = await sql.query(batchQuery);
+        const summary = result.recordsets[0] || [];
+        const overdueVips = result.recordsets[1] || [];
+        const recentRepeatBuyers = (result.recordsets[2] || []).map(b => ({ ...b, Bills: [] }));
+
+        const totalCust = summary[0]?.TotalCustomers || 1;
+        const repeatCust = summary[0]?.RepeatCustomers || 0;
         const repeatRatePct = Math.round((repeatCust / totalCust) * 100);
-
-        console.log("DEBUG: overdueVips length:", overdueVips.recordset ? overdueVips.recordset.length : 'undefined');
 
         res.json({
             totalCustomers: totalCust,
             repeatCustomers: repeatCust,
             repeatRatePct: repeatRatePct,
-            avgLtv: summary.recordset[0]?.AvgLtv || 0,
-            overdueVips: overdueVips.recordset || [],
+            avgLtv: summary[0]?.AvgLtv || 0,
+            overdueVips: overdueVips,
             recentRepeatBuyers: recentRepeatBuyers
         });
     } catch (err) {
@@ -1685,108 +1788,7 @@ app.post('/api/reconciliation/save', (req, res) => {
     }
 });
 
-// Returns & Exchange Tracker Endpoint
-app.get('/api/sales/returns', async (req, res) => {
-    try {
-        // Today's returns (quantity < 0)
-        const todayReturns = await sql.query(`
-            SELECT 
-                ISNULL(COUNT(DISTINCT d.CM_ID), 0) as ReturnCount,
-                ISNULL(SUM(ABS(d.NET)), 0) as RefundAmount
-            FROM VW_CASHMEMO_PRINT_DET d WITH (NOLOCK)
-            INNER JOIN VW_CASHMEMO_PRINT_MST m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
-            WHERE d.QUANTITY < 0 AND CAST(m.CM_TIME AS DATE) = CAST(GETDATE() AS DATE)
-        `);
 
-        // Monthly returns
-        const monthlyReturns = await sql.query(`
-            SELECT 
-                ISNULL(COUNT(DISTINCT d.CM_ID), 0) as ReturnCount,
-                ISNULL(SUM(ABS(d.NET)), 0) as RefundAmount
-            FROM VW_CASHMEMO_PRINT_DET d WITH (NOLOCK)
-            INNER JOIN VW_CASHMEMO_PRINT_MST m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
-            WHERE d.QUANTITY < 0 AND FORMAT(m.CM_TIME, 'yyyy-MM') = FORMAT(GETDATE(), 'yyyy-MM')
-        `);
-
-        // Monthly total bills for return rate calculation
-        const monthlyTotal = await sql.query(`
-            SELECT COUNT(CM_ID) as TotalBills
-            FROM VW_CASHMEMO_PRINT_MST WITH (NOLOCK)
-            WHERE FORMAT(CM_TIME, 'yyyy-MM') = FORMAT(GETDATE(), 'yyyy-MM')
-        `);
-
-        // Recent returned bills with details (items returned)
-        const recentReturns = await sql.query(`
-            SELECT TOP 20
-                m.CM_NO as BillNumber,
-                ABS(d.NET) as RefundAmount,
-                ISNULL(m.CUSTOMER_FNAME, '') + ' ' + ISNULL(m.CUSTOMER_LNAME, '') as CustomerName,
-                m.CUSTOMER_CODE as Phone,
-                CONVERT(varchar, m.CM_TIME, 126) as ReturnDate,
-                ABS(d.QUANTITY) as ItemCount,
-                CONCAT(d.ARTICLE_NO, ' - ', d.ARTICLE_NAME) as ArticleDetails
-            FROM VW_CASHMEMO_PRINT_DET d WITH (NOLOCK)
-            INNER JOIN VW_CASHMEMO_PRINT_MST m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
-            WHERE d.QUANTITY < 0
-            ORDER BY m.CM_TIME DESC
-        `);
-
-        // Top returned categories (which product types are returned most)
-        const topReturnedCategories = await sql.query(`
-            SELECT TOP 10
-                ISNULL(d.SECTION_NAME, 'Uncategorized') as Category,
-                COUNT(DISTINCT d.CM_ID) as ReturnBills,
-                SUM(ABS(d.QUANTITY)) as ReturnedUnits,
-                SUM(ABS(d.NET)) as RefundValue
-            FROM VW_CASHMEMO_PRINT_DET d WITH (NOLOCK)
-            WHERE d.QUANTITY < 0
-            GROUP BY d.SECTION_NAME
-            ORDER BY SUM(ABS(d.QUANTITY)) DESC
-        `);
-
-        const totalBills = monthlyTotal.recordset[0]?.TotalBills || 1;
-        const monthReturnCount = monthlyReturns.recordset[0]?.ReturnCount || 0;
-        const returnRatePct = Math.round((monthReturnCount / totalBills) * 100 * 10) / 10;
-
-        res.json({
-            today: todayReturns.recordset[0] || { ReturnCount: 0, RefundAmount: 0 },
-            monthly: monthlyReturns.recordset[0] || { ReturnCount: 0, RefundAmount: 0 },
-            returnRatePct,
-            totalMonthlyBills: totalBills,
-            recentReturns: recentReturns.recordset || [],
-            topReturnedCategories: topReturnedCategories.recordset || []
-        });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// 4. Daily EOD Closing Summary Text for Owner
-app.get('/api/reports/eod-summary', async (req, res) => {
-    try {
-        const overview = await sql.query(`
-            SELECT 
-                ISNULL(SUM(m.NET_AMOUNT), 0) as TotalSales, 
-                COUNT(m.CM_ID) as BillCount,
-                ISNULL(SUM(m.CASH_AMOUNT), 0) as CashAmount,
-                ISNULL(SUM(m.CC_AMOUNT), 0) - ISNULL(SUM(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0)), 0) as CardAmount,
-                ISNULL(SUM(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0)), 0) as UPIAmount,
-                ISNULL(SUM(m.TOTAL_TAX), 0) as TotalTax
-            FROM VW_CASHMEMO_PRINT_MST m WITH (NOLOCK)
-            LEFT JOIN VW_WL_CASHMEMOLIST w WITH (NOLOCK) ON m.CM_ID = w.MEMO_ID
-            WHERE CAST(m.CM_TIME AS DATE) = CAST(GETDATE() AS DATE) AND m.CANCELLED = 0
-        `);
-
-        const data = overview.recordset[0] || {};
-        const todayStr = new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
-
-        const summaryText = `📊 *COBB PUNDRI - DAILY EOD CLOSING REPORT*\n📅 *Date:* ${todayStr}\n-----------------------------------\n💰 *Total Revenue:* ₹${(data.TotalSales || 0).toLocaleString('en-IN')}\n📄 *Total Invoices:* ${data.BillCount || 0}\n\n💳 *Payment Split:*\n  💵 Cash: ₹${(data.CashAmount || 0).toLocaleString('en-IN')}\n  💳 Card: ₹${(data.CardAmount || 0).toLocaleString('en-IN')}\n  📱 UPI:  ₹${(data.UPIAmount || 0).toLocaleString('en-IN')}\n\n🧾 *GST Tax Collected:* ₹${(data.TotalTax || 0).toLocaleString('en-IN')}\n-----------------------------------\nGenerated automatically by Cobb Store Intelligence System.`;
-
-        res.json({ text: summaryText, data });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
 
 app.post('/api/ai/vm-audit', upload.array('images', 5), async (req, res) => {
     try {
@@ -1859,20 +1861,15 @@ app.get('/api/smart-bundles', async (req, res) => {
         let slowItems = [];
         try {
             const queryRes = await sql.query(`
-                SELECT TOP 10
-                    RTRIM(d.ARTICLE_NO) as ArticleNo,
-                    MAX(RTRIM(d.ARTICLE_NAME)) as ArticleName,
-                    MAX(RTRIM(d.SECTION_NAME)) as Category,
-                    SUM(d.QUANTITY) as TotalUnitsSold,
-                    SUM(d.NET) as TotalRevenue
-                FROM VW_CASHMEMO_PRINT_DET d WITH (NOLOCK)
-                INNER JOIN VW_CASHMEMO_PRINT_MST m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
-                WHERE m.CANCELLED = 0 
-                  AND d.ARTICLE_NO IS NOT NULL 
-                  AND LEN(RTRIM(d.ARTICLE_NO)) > 1
-                  AND m.CM_TIME >= DATEADD(month, -3, GETDATE())
-                GROUP BY RTRIM(d.ARTICLE_NO)
-                ORDER BY SUM(d.QUANTITY) ASC
+                SELECT TOP 5
+                    s.article_no AS ArticleNo,
+                    MAX(ISNULL(s.article_name, s.section_name)) AS ArticleName,
+                    MAX(s.section_name) AS Category
+                FROM PMT01106 p WITH (NOLOCK)
+                INNER JOIN SKU_NAMES s WITH (NOLOCK) ON p.product_code = s.product_Code
+                WHERE p.quantity_in_stock > 0
+                GROUP BY s.article_no
+                ORDER BY COUNT(DISTINCT s.product_Code) DESC
             `);
             slowItems = queryRes.recordset;
         } catch (e) {
@@ -2084,12 +2081,26 @@ Return only the raw JSON.`;
     }
 });
 
+let cloudSyncProcess = null;
+function startCloudSyncHelper() {
+    if (cloudSyncProcess) return true;
+    const scriptPath = path.join(__dirname, 'cloud_sync.js');
+    if (!fs.existsSync(scriptPath)) return false;
+    try {
+        cloudSyncProcess = spawn('node', ['cloud_sync.js'], { cwd: __dirname, shell: true, windowsHide: true });
+        cloudSyncProcess.on('close', () => { cloudSyncProcess = null; });
+        console.log("Auto-spawned Cloud Sync Agent for Phone Link.");
+    } catch (e) {}
+    return true;
+}
+
 const PORT = 5000;
 app.listen(PORT, () => {
     console.log(`CRM Backend running on http://localhost:${PORT}`);
-    console.log("Auto-starting Automation Engine and WhatsApp Gateway...");
+    console.log("Auto-starting Automation Engine, WhatsApp Gateway, and Cloud Sync...");
     startAutomationHelper();
     startGatewayHelper();
+    startCloudSyncHelper();
 
     // Gateway health-check: auto-restart if it crashes (every 2 minutes)
     setInterval(async () => {

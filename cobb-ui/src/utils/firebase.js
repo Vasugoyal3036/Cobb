@@ -1,53 +1,58 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
-// Replace these with your actual Firebase project credentials
+// Firebase configuration - loaded from environment variables.
+// If no Firebase project is configured, the app runs fully offline (local SQL only).
 const firebaseConfig = {
-  apiKey: "AIzaSyDabxrr3v81IWbRI-u27a2bUa5DOGmDu78",
-  authDomain: "cobb-store.firebaseapp.com",
-  projectId: "cobb-store",
-  storageBucket: "cobb-store.firebasestorage.app",
-  messagingSenderId: "1010797128815",
-  appId: "1:1010797128815:web:2adc68eef43a09d004719a",
-  measurementId: "G-5F78Z1WTRV"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '',
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || '',
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '',
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || '',
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || ''
 };
 
-// Check if config is actually provided (not just the placeholder)
-export const hasConfig = true;
+// Firebase is only active if at least the projectId is provided
+export const hasConfig = Boolean(firebaseConfig.projectId);
 
 let app;
 let firestoreDb = null;
+export let authPromise = Promise.resolve();
 
 if (hasConfig) {
   try {
     app = initializeApp(firebaseConfig);
     firestoreDb = getFirestore(app);
+    authPromise = import('firebase/auth').then(({ getAuth, signInAnonymously }) => {
+       const auth = getAuth(app);
+       return signInAnonymously(auth).then(() => console.log('Firebase Anonymous Auth successful.')).catch(e => console.error('Anonymous Auth Failed:', e));
+    });
     console.log('Firebase initialized successfully.');
   } catch (error) {
     console.error('Error initializing Firebase:', error);
   }
+} else {
+  console.log('Firebase not configured. Running in local-only mode - phone access requires a tunnel link.');
 }
 
 export const db = firestoreDb;
 
 // Queue WhatsApp message to Firestore if online, or local array if offline.
-// In a full production app, this would use Firestore's native offline persistence.
 export const queueWhatsAppMessage = async (phone, message) => {
-  console.log('Queued WhatsApp message:', phone, message);
-  
-  if (db && hasConfig) {
+  if (hasConfig && db) {
     try {
-      await addDoc(collection(db, "whatsapp_queue"), {
+      await addDoc(collection(db, 'whatsapp_queue'), {
         phone,
         message,
-        status: "pending",
-        queuedAt: serverTimestamp()
+        status: 'pending',
+        timestamp: serverTimestamp()
       });
-      console.log('Successfully queued message to Firebase Firestore.');
-    } catch (error) {
-      console.error('Failed to queue message to Firebase, running in offline mode:', error);
+      return true;
+    } catch (e) {
+      console.error("Error queueing message to Firebase", e);
+      return false;
     }
-  } else {
-    console.log('Firebase not configured. Running in offline localhost mode.');
   }
+  return false;
 };

@@ -26,7 +26,7 @@ if (serviceAccount) {
     }
 }
 const STORE_ID = process.env.STORE_ID || "DEMO_STORE_001";
-const LOCAL_API = "http://localhost:5000";
+const LOCAL_API = process.env.LOCAL_API || `http://localhost:${process.env.PORT || 5000}`;
 
 const endpointsToSync = [
     "/api/sales/overview",
@@ -96,8 +96,8 @@ async function runSyncCycle() {
     console.log(`[SYNC AGENT] Sync cycle completed.`);
 }
 
-// Run the sync agent loop every 5 minutes (300,000 ms)
-const SYNC_INTERVAL = 5 * 60 * 1000;
+// Run the sync agent loop every 1 minute (60,000 ms)
+const SYNC_INTERVAL = 60 * 1000;
 
 console.log("[SYNC AGENT] Process started. Waiting to begin initial sync...");
 // Start immediately, then loop

@@ -2,6 +2,7 @@ import { app, BrowserWindow, protocol, net } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fs from 'node:fs';
+import { spawn } from 'node:child_process';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -19,6 +20,46 @@ protocol.registerSchemesAsPrivileged([
 ]);
 
 let win;
+let backendProcess = null;
+
+// --- AUTO-START BACKEND SERVER ---
+function startBackendServer() {
+  const backendDir = path.join(process.env.APP_ROOT, '..', 'CobbDashboard');
+  const serverScript = path.join(backendDir, 'server.js');
+
+  if (!fs.existsSync(serverScript)) {
+    console.log('[Electron] Backend server.js not found at:', serverScript);
+    return;
+  }
+
+  console.log('[Electron] Starting backend server...');
+  backendProcess = spawn('node', [serverScript], {
+    cwd: backendDir,
+    stdio: 'pipe',
+    shell: true
+  });
+
+  backendProcess.stdout.on('data', (data) => {
+    console.log(`[Backend] ${data.toString().trim()}`);
+  });
+
+  backendProcess.stderr.on('data', (data) => {
+    console.error(`[Backend ERR] ${data.toString().trim()}`);
+  });
+
+  backendProcess.on('close', (code) => {
+    console.log(`[Backend] Process exited with code ${code}`);
+    backendProcess = null;
+  });
+}
+
+function stopBackendServer() {
+  if (backendProcess) {
+    console.log('[Electron] Stopping backend server...');
+    backendProcess.kill();
+    backendProcess = null;
+  }
+}
 
 function createWindow() {
   win = new BrowserWindow({
@@ -33,8 +74,6 @@ function createWindow() {
       contextIsolation: true,
     },
   });
-
-  win.webContents.openDevTools();
 
   win.webContents.on('console-message', (event, level, message, line, sourceId) => {
     console.log(`[Renderer Console] ${message} (line ${line} in ${sourceId})`);
@@ -54,6 +93,7 @@ function createWindow() {
 }
 
 app.on('window-all-closed', () => {
+  stopBackendServer();
   if (process.platform !== 'darwin') {
     app.quit();
     win = null;
@@ -66,7 +106,14 @@ app.on('activate', () => {
   }
 });
 
+app.on('before-quit', () => {
+  stopBackendServer();
+});
+
 app.whenReady().then(() => {
+  // Start backend automatically
+  startBackendServer();
+
   // Handle custom protocol
   protocol.handle('app', (request) => {
     let url = request.url.substring('app://-/'.length);

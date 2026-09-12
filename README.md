@@ -1,63 +1,41 @@
-# Cobb Dashboard & Sync Agent Setup Guide
+# Cobb Retail CRM
 
-This guide explains how to set up the complete Cobb CRM & Analytics Dashboard on a new Windows computer.
+A robust, multi-tenant Fashion Retail CRM and Analytics Dashboard.
+
+## Features
+- **Multi-Tenant Ready**: Supports multiple stores and deployments with environment-level database and configuration isolation.
+- **Role-Based Access Control**: Differentiates access for Store Owners, Managers, and Sales Representatives.
+- **Offline-First Resilience**: Local database syncs seamlessly with Firebase for cloud access.
+- **AI-Powered Insights**: Built-in AI forecasting for trends and smart wardrobe coordination.
 
 ## Prerequisites
-Before you begin, ensure the new system has the following installed:
-1. **Node.js**: Download and install the latest LTS version from [nodejs.org](https://nodejs.org/).
-2. **SQL Server / WizApp Database**: The computer must have access to the WizApp SQL Server database.
+- Node.js (v18 or higher)
+- SQL Server (or SQL Express)
 
-## 1. Transfer the Files
-Copy the entire project folder (e.g., `d:\cobbbb`) to the friend's system. This includes both the backend (`CobbDashboard`) and the frontend (`cobb-ui`).
+## Installation & Setup
 
-## 2. Configure the Database Connection
-The backend needs to know how to connect to the SQL Server on the new computer.
-1. Open `CobbDashboard\db.js` in a text editor (like VS Code or Notepad).
-2. Update the `config` object to match the new system's SQL Server details:
-   ```javascript
-   const config = {
-       server: 'localhost', // Change if the DB is on a different server
-       database: 'RPD_AVATAR01_NEW_ST_POS', // Ensure this matches their actual database name
-       options: {
-           instanceName: 'SQLEXPRESS', // Change if their SQL instance name is different
-           trustedConnection: true, // Keep true if using Windows Authentication
-           requestTimeout: 120000
-       }
-   };
+1. **Clone or Extract the Repository**
+2. **Environment Configuration**
+   - In `CobbDashboard/`, copy `.env.example` to `.env` and fill in your SQL Server credentials and JWT secret.
+   - In `cobb-ui/`, copy `.env.example` to `.env` and set your API URL (e.g. `http://localhost:5000`).
+
+3. **Install Dependencies**
+   ```bash
+   cd CobbDashboard
+   npm install
+   
+   cd ../cobb-ui
+   npm install
    ```
 
-## 3. Install Dependencies
-Open two separate Command Prompt or PowerShell windows.
+4. **Running the Application**
+   - **Backend API**: `cd CobbDashboard && npm start` (or `node server.js`)
+   - **Frontend UI**: `cd cobb-ui && npm run dev`
 
-**Terminal 1: Backend Setup**
-1. Navigate to the backend folder: `cd path\to\cobbbb\CobbDashboard`
-2. Run: `npm install`
+5. **Initial Setup Wizard**
+   Open the Frontend URL (usually `http://localhost:5173`) in your browser. If you are logging in for the first time without an active session, you can run through the Setup Wizard to initialize the store details.
 
-**Terminal 2: Frontend Setup**
-1. Navigate to the frontend folder: `cd path\to\cobbbb\cobb-ui`
-2. Run: `npm install`
-
-## 4. Run the Application
-You need to run three separate processes for the entire system to work.
-
-**Process 1: Start the Backend Server**
-- In your backend terminal (`CobbDashboard`), run:
-  ```bash
-  node server.js
-  ```
-  *(You should see "Connected to WizApp SQL Database successfully!")*
-
-**Process 2: Start the Cloud Sync Agent**
-- Open a new terminal in the `CobbDashboard` folder and run:
-  ```bash
-  node cloud_sync.js
-  ```
-  *(This will start syncing the local SQL data to the Firebase cloud so the phone app works).*
-  *Note: Make sure your `.env` file or Firebase service account key is copied over so it has permission to write to the cloud!*
-
-**Process 3: Start the Frontend UI**
-- In your frontend terminal (`cobb-ui`), run:
-  ```bash
-  npm run dev
-  ```
-- This will give you a local URL (like `http://localhost:5173/`). Open this in Chrome or Edge to view the dashboard!
+## Production Deployment
+- **Database**: Ensure your SQL instance accepts connections if deployed to a VM.
+- **Backend (PM2)**: We recommend running the Node.js backend using PM2 (`pm2 start server.js --name "cobb-backend"`).
+- **Frontend**: Build the React app (`npm run build`) and serve using Nginx, Vercel, or any static file host.

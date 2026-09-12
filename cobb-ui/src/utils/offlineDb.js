@@ -56,7 +56,7 @@ export function subscribeToData(key, url, setter) {
     }).catch(err => {
       // Silently fail on interval if offline, UI stays populated from last cache
     });
-  }, 10000);
+  }, 120000);
   
   return () => clearInterval(interval);
 }

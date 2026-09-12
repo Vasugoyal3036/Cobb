@@ -1,5 +1,5 @@
-appId: com.cobbpundri.crm
-productName: Cobb Pundri CRM
+appId: com.cobb.retailcrm
+productName: Cobb Retail CRM
 directories:
   output: release/${version}
 files:

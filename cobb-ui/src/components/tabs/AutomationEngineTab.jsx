@@ -118,10 +118,23 @@ const AutomationEngineTab = (props) => {
                       </div>
                     </div>
 
-                    <div className="mt-6 pt-4 border-t border-slate-800 flex justify-between items-center">
-                      <button onClick={() => setActiveConsole('gateway')} className={`text-xs px-3 py-1.5 rounded-lg font-bold cursor-pointer ${activeConsole === 'gateway' ? 'bg-blue-900/50 text-blue-300' : 'text-slate-400 hover:text-white'}`}>
-                        Console Logs
-                      </button>
+                    <div className="mt-6 pt-4 border-t border-slate-800 flex flex-wrap gap-2 justify-between items-center">
+                      <div className="flex gap-2">
+                        <button onClick={() => setActiveConsole('gateway')} className={`text-xs px-3 py-1.5 rounded-lg font-bold cursor-pointer ${activeConsole === 'gateway' ? 'bg-blue-900/50 text-blue-300' : 'text-slate-400 hover:text-white'}`}>
+                          Console Logs
+                        </button>
+                        {props.resetGateway && (
+                          <button
+                            onClick={props.resetGateway}
+                            disabled={isTogglingGateway}
+                            title="Force clears corrupted locks/tokens and generates a fresh QR code"
+                            className="text-xs px-3 py-1.5 rounded-lg font-bold text-amber-400/90 hover:text-amber-300 hover:bg-amber-500/10 border border-amber-500/30 flex items-center gap-1 cursor-pointer transition-colors"
+                          >
+                            <RotateCcw className="w-3 h-3" />
+                            Reset & Re-Pair
+                          </button>
+                        )}
+                      </div>
                       <button
                         onClick={toggleGateway}
                         disabled={isTogglingGateway}

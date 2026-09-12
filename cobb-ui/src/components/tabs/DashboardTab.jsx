@@ -1,4 +1,5 @@
 import React from 'react';
+import axios from 'axios';
 import {
   LineChart,
   MessageCircle,
@@ -904,7 +905,8 @@ const DashboardTab = (props) => {
                   <div className="flex gap-2">
                     <button
                       onClick={() => {
-                        fetch(`${API_BASE}/api/analytics/top-movers`).then(r => r.json()).then(data => {
+                        axios.get(`${API_BASE}/api/analytics/top-movers`).then(res => {
+                          const data = res.data;
                           if (data && data.topArticles && data.topArticles.length > 0) {
                             setTopMoversData(data);
                           } else {
@@ -1317,15 +1319,15 @@ const DashboardTab = (props) => {
                 return { taxable, tax, cgst: tax / 2, sgst: tax / 2 };
               };
 
-              const todayComp = computeGst(gstSummary?.today.GrossSales || 0, gstSummary?.today.TaxCollected || 0);
-              const monthlyComp = computeGst(gstSummary?.monthly.GrossSales || 0, gstSummary?.monthly.TaxCollected || 0);
+              const todayComp = computeGst(gstSummary?.today?.GrossSales || 0, gstSummary?.today?.TaxCollected || 0);
+              const monthlyComp = computeGst(gstSummary?.monthly?.GrossSales || 0, gstSummary?.monthly?.TaxCollected || 0);
 
               const exportGstr1Text = () => {
                 const lines = [
                   `🧾 *COBB PUNDRI - GSTR-1 MONTHLY TAX SUMMARY*`,
                   `📅 *Month:* ${new Date().toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}`,
                   `-----------------------------------`,
-                  `💰 *Gross Sales (Inc. GST):* ${formatCurrency(gstSummary?.monthly.GrossSales || 0)}`,
+                  `💰 *Gross Sales (Inc. GST):* ${formatCurrency(gstSummary?.monthly?.GrossSales || 0)}`,
                   `💵 *Taxable Base Sales:* ${formatCurrency(monthlyComp.taxable)}`,
                   `⚡ *GST Tax Slab:* ${gstRateSlab}%`,
                   `🏛️ *CGST (${(gstRateSlab / 2)}%):* ${formatCurrency(monthlyComp.cgst)}`,
@@ -1415,7 +1417,7 @@ const DashboardTab = (props) => {
                         <p className="text-xs text-slate-500 mt-0.5">Audited monthly tax breakdowns for CA return submission (Slab: {gstRateSlab}% GST).</p>
                       </div>
                       <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
-                        {gstSummary?.history.length || 0} Months Tracked
+                        {gstSummary?.history?.length || 0} Months Tracked
                       </span>
                     </div>
 
@@ -1434,7 +1436,7 @@ const DashboardTab = (props) => {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 font-medium">
-                          {gstSummary?.history.map((row, idx) => {
+                          {(gstSummary?.history || []).map((row, idx) => {
                             const gross = row.GrossSales || 0;
                             const comp = computeGst(gross, row.TaxCollected || 0);
 
@@ -1454,11 +1456,20 @@ const DashboardTab = (props) => {
                               </tr>
                             );
                           })}
-                          {gstSummary?.history.length === 0 && (
+                          {gstSummary?.fetching ? (
                             <tr>
-                              <td colSpan="8" className="text-center py-12 text-slate-400">Loading GST return history...</td>
+                              <td colSpan="8" className="text-center py-12 text-slate-400">
+                                <div className="flex items-center justify-center gap-2">
+                                  <RefreshCw className="w-5 h-5 animate-spin text-emerald-500" />
+                                  <span>Calculating GST Tax Breakdowns...</span>
+                                </div>
+                              </td>
                             </tr>
-                          )}
+                          ) : (!gstSummary?.history || gstSummary?.history?.length === 0) ? (
+                            <tr>
+                              <td colSpan="8" className="text-center py-12 text-slate-400">No GST transactions found for this period.</td>
+                            </tr>
+                          ) : null}
                         </tbody>
                       </table>
                     </div>
@@ -1614,7 +1625,16 @@ const DashboardTab = (props) => {
                           })}
                           {filteredMatrix.length === 0 && (
                             <tr>
-                              <td colSpan="8" className="text-center py-12 text-slate-400">No size matrix records match the selected filter.</td>
+                              <td colSpan="8" className="text-center py-12 text-slate-400">
+                                {(!sizeMatrix || sizeMatrix.length === 0) ? (
+                                  <div className="flex flex-col items-center gap-2 animate-pulse">
+                                    <Grid className="w-6 h-6 text-blue-500 animate-spin" />
+                                    <span className="text-xs font-bold text-slate-500">Loading Size Heatmap Matrix...</span>
+                                  </div>
+                                ) : (
+                                  "No size matrix records match the selected filter."
+                                )}
+                              </td>
                             </tr>
                           )}
                         </tbody>
@@ -1702,7 +1722,14 @@ const DashboardTab = (props) => {
                   </div>
                 </div>
 
-                {Object.entries(groupedByMonth).map(([month, monthData], index) => {
+                {Object.keys(groupedByMonth).length === 0 ? (
+                  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-12 text-center animate-pulse">
+                    <Calendar className="w-8 h-8 mx-auto mb-3 text-blue-500 animate-bounce" />
+                    <p className="text-sm font-bold text-slate-700">Loading Monthly Category Breakdown...</p>
+                    <p className="text-xs text-slate-400 mt-1">Aggregating historical sales by department.</p>
+                  </div>
+                ) : (
+                  Object.entries(groupedByMonth).map(([month, monthData], index) => {
                   const isMonthOpen = openMonth === month;
                   return (
                     <div key={index} className="border border-slate-200 rounded-2xl overflow-hidden shadow-sm bg-white mb-4">
@@ -1732,30 +1759,33 @@ const DashboardTab = (props) => {
 
                       {isMonthOpen && (
                         <div className="p-6 bg-slate-50/50 space-y-6">
-                          {MASTER_CATEGORIES.map(category => {
-                            const items = monthData.data[category.id] || [];
+                          {MASTER_CATEGORIES.map(cat => {
+                            const items = monthData.data[cat.id] || [];
+                            if (items.length === 0) return null;
+
                             const catUnits = items.reduce((sum, i) => sum + (i.TotalUnitsSold || 0), 0);
                             const catRevenue = items.reduce((sum, i) => sum + (i.TotalRevenue || 0), 0);
 
                             return (
-                              <div key={category.id} className="border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">
-                                <div className="px-6 py-4 bg-white border-b border-slate-100 flex justify-between items-center">
-                                  <h4 className="font-bold text-slate-800 text-base flex items-center">
-                                    <span className="mr-3 text-2xl">{category.icon}</span> {category.label}
-                                  </h4>
-                                  <div className="text-right bg-slate-50 px-4 py-1.5 rounded-lg border border-slate-100">
-                                    <span className="text-sm font-bold text-slate-600 mr-4">{catUnits} Units</span>
-                                    <span className="text-sm font-black text-green-600">{formatCurrency(catRevenue)}</span>
+                              <div key={cat.id} className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                                <div className="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+                                  <div className="flex items-center space-x-2">
+                                    <span className="text-lg">{cat.icon}</span>
+                                    <h5 className="font-bold text-slate-800">{cat.label}</h5>
+                                  </div>
+                                  <div className="flex space-x-4 text-xs">
+                                    <span className="text-slate-500">Units: <strong className="text-slate-800">{catUnits}</strong></span>
+                                    <span className="text-slate-500">Revenue: <strong className="text-green-600">{formatCurrency(catRevenue)}</strong></span>
                                   </div>
                                 </div>
                                 <div className="overflow-x-auto">
                                   <table className="min-w-full text-left text-sm">
-                                    <thead>
-                                      <tr className="bg-slate-50/80 border-b border-slate-100">
-                                        <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Article Description</th>
-                                        <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Department</th>
-                                        <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider text-right whitespace-nowrap">Units</th>
-                                        <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider text-right whitespace-nowrap">Revenue</th>
+                                    <thead className="bg-slate-50/50 text-slate-400 text-[10px] uppercase font-bold tracking-wider">
+                                      <tr>
+                                        <th className="px-6 py-2.5">Article Description</th>
+                                        <th className="px-6 py-2.5">Section</th>
+                                        <th className="px-6 py-2.5 text-right">Units Sold</th>
+                                        <th className="px-6 py-2.5 text-right">Revenue</th>
                                       </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100">
@@ -1774,10 +1804,10 @@ const DashboardTab = (props) => {
                             );
                           })}
                         </div>
-              )}
+                      )}
                     </div>
                   );
-                })}
+                }))}
               </div>
 
               );

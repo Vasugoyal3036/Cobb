@@ -5,7 +5,12 @@ echo Starting Cobb Store Intelligence System (Local Setup)
 echo ========================================================
 echo.
 
-:: 1. Start the Backend server in a new window
+:: 1. Clean stale Chromium locks if PC was rebooted abruptly
+del /q /s "C:\CobbWhatsAppGateway\.wwebjs_auth\session-cobb-pos-session\*Singleton*" >nul 2>&1
+del /q /s "C:\CobbWhatsAppGateway\.wwebjs_auth\session-cobb-pos-session\DevToolsActivePort" >nul 2>&1
+del /q /s "C:\CobbWhatsAppGateway\.wwebjs_auth\session-cobb-pos-session\.parentlock" >nul 2>&1
+
+:: 2. Start the Backend server in a new window
 echo [1/3] Starting Backend Server...
 start "Cobb Backend Server" cmd /c "cd CobbDashboard && node server.js"
 
