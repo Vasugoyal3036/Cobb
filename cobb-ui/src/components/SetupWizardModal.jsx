@@ -15,11 +15,17 @@ import {
   X, 
   ShieldCheck,
   HardDrive,
-  Cpu
+  Cpu,
+  Globe,
+  ExternalLink
 } from 'lucide-react';
 import axios from 'axios';
 
-const API_BASE = 'http://localhost:5000';
+const isTunnel = typeof window !== 'undefined' && (window.location.hostname.includes('trycloudflare.com') || window.location.hostname.includes('ngrok') || window.location.hostname.includes('loca.lt'));
+const isHttpsCloud = typeof window !== 'undefined' && window.location.protocol === 'https:' && !isTunnel;
+const API_BASE = isTunnel 
+  ? window.location.origin 
+  : (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') ? '' : 'http://localhost:5000');
 
 export default function SetupWizardModal({ isOpen, onClose, onConfigSaved }) {
   const [activeStep, setActiveStep] = useState(1); // 1: Auto-Detect & Preset, 2: Database Settings, 3: Store & WhatsApp
@@ -148,9 +154,13 @@ export default function SetupWizardModal({ isOpen, onClose, onConfigSaved }) {
         }
       }
     } catch (err) {
+      let friendlyError = err.response?.data?.error || err.message;
+      if (err.message === 'Network Error' && isHttpsCloud) {
+        friendlyError = 'Cloud Security Block: You are currently testing from https://cobb-store.web.app (Cloud SaaS). Web browsers block HTTPS websites from calling local databases (localhost:5000). Please open http://localhost:5000 or the Cobb Desktop App on this PC to connect directly!';
+      }
       setTestResult({
         success: false,
-        error: err.response?.data?.error || err.message
+        error: friendlyError
       });
     } finally {
       setTesting(false);
@@ -261,6 +271,31 @@ export default function SetupWizardModal({ isOpen, onClose, onConfigSaved }) {
 
         {/* Modal Body */}
         <div className="p-6 overflow-y-auto max-h-[65vh] space-y-5">
+
+          {/* Cloud HTTPS Notice */}
+          {isHttpsCloud && (
+            <div className="p-3.5 rounded-xl bg-blue-950/40 border border-blue-500/40 text-blue-200 text-xs flex items-start gap-3">
+              <Globe className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+              <div className="space-y-1">
+                <p className="font-bold text-white">Cloud Web Mode Active (cobb-store.web.app)</p>
+                <p className="text-[11px] text-blue-300 leading-relaxed">
+                  Your store's SQL database runs on your in-store Windows PC. Web browsers block HTTPS websites from calling <code>localhost:5000</code> directly.
+                </p>
+                <div className="pt-1.5 flex items-center gap-2">
+                  <a 
+                    href="http://localhost:5000" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold text-[11px] inline-flex items-center gap-1 transition-colors"
+                  >
+                    <span>Open In-Store Dashboard (localhost:5000)</span>
+                    <ExternalLink className="w-3 h-3" />
+                  </a>
+                  <span className="text-[10px] text-slate-400">or use the Cobb Desktop App on this PC</span>
+                </div>
+              </div>
+            </div>
+          )}
           
           {/* STEP 1: Auto-Detect & Presets */}
           {activeStep === 1 && (

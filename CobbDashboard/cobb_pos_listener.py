@@ -18,6 +18,7 @@ if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
 def get_lock():
     get_lock._lock_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
+        get_lock._lock_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         get_lock._lock_socket.bind(('127.0.0.1', 47200))
         return True
     except socket.error:
@@ -503,15 +504,18 @@ def run_listener():
                             print(f"[{time.strftime('%X')}] [LOG FILE WRITE ERROR] {file_err}", flush=True)
 
         except pyodbc.Error as db_err:
-            print(f"[{time.strftime('%X')}] [DB ERROR] Reconnecting... ({db_err})", flush=True)
-            time.sleep(5)
-            try:
-                conn = get_db_connection()
-                cursor = conn.cursor()
-            except Exception:
-                pass
+            print(f"[{time.strftime('%X')}] [DB ERROR] SQL connection interrupted: {db_err}. Initiating auto-recovery...", flush=True)
+            for attempt in range(1, 6):
+                time.sleep(3)
+                try:
+                    conn = get_db_connection()
+                    cursor = conn.cursor()
+                    print(f"[{time.strftime('%X')}] [DB RECOVERED] Database connection restored successfully on attempt {attempt}.", flush=True)
+                    break
+                except Exception as rec_err:
+                    print(f"[{time.strftime('%X')}] [DB RETRY {attempt}/5] Still attempting reconnect...", flush=True)
         except Exception as e:
-            print(f"[{time.strftime('%X')}] [LOOP ERROR] {e}", flush=True)
+            print(f"[{time.strftime('%X')}] [LOOP ERROR] {e}. Resuming in 3s...", flush=True)
 
         time.sleep(5)
 

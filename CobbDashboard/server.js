@@ -8,7 +8,11 @@ const fs = require('fs');
 require('dotenv').config();
 
 const app = express();
-app.use(cors());
+app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Bypass-Tunnel-Reminder', 'ngrok-skip-browser-warning', '*']
+}));
 app.use(express.json());
 
 const { router: authRouter, checkRole } = require('./routes/auth');
@@ -2881,15 +2885,17 @@ app.listen(PORT, () => {
     startGatewayHelper();
     startCloudSyncHelper();
 
-    // Gateway health-check: auto-restart if it crashes or gets stuck in unready state (every 2 minutes)
+    // --- HIGH-AVAILABILITY SUPERVISOR (Runs every 10 seconds) ---
+    // Continuously monitors and auto-heals WhatsApp Gateway, POS Listener, and Cloud Sync
     setInterval(async () => {
+        // 1. WhatsApp Gateway Supervisor
         try {
             const ping = await fetch('http://localhost:3000/status', { signal: AbortSignal.timeout(3000) });
-            if (!ping.ok) throw new Error('not ok');
+            if (!ping.ok) throw new Error('status not ok');
             const data = await ping.json();
             if (!data.isReady && !data.qrCodeUrl) {
-                console.log('[HEALTH-CHECK] WhatsApp Gateway unresponsive/unready. Auto-restarting...');
-                gatewayLogs.push(`[${new Date().toLocaleTimeString()}] [HEALTH-CHECK] Gateway unready — auto-recovering...`);
+                console.log('[SUPERVISOR] WhatsApp Gateway unready/stalled. Auto-recovering...');
+                gatewayLogs.push(`[${new Date().toLocaleTimeString()}] [SUPERVISOR] Gateway unready — auto-recovering...`);
                 if (gatewayProcess) {
                     try { spawn('taskkill', ['/PID', gatewayProcess.pid.toString(), '/F', '/T'], { windowsHide: true }); } catch (e) {}
                     gatewayProcess = null;
@@ -2897,13 +2903,38 @@ app.listen(PORT, () => {
                 await startGatewayHelper();
             }
         } catch (e) {
-            console.log('[HEALTH-CHECK] WhatsApp Gateway is down. Auto-restarting...');
-            gatewayLogs.push(`[${new Date().toLocaleTimeString()}] [HEALTH-CHECK] Gateway down — auto-restarting...`);
+            console.log('[SUPERVISOR] WhatsApp Gateway is down. Auto-restarting immediately...');
+            gatewayLogs.push(`[${new Date().toLocaleTimeString()}] [SUPERVISOR] Gateway down — auto-respawning...`);
             if (gatewayProcess) {
                 try { spawn('taskkill', ['/PID', gatewayProcess.pid.toString(), '/F', '/T'], { windowsHide: true }); } catch (e) {}
                 gatewayProcess = null;
             }
             await startGatewayHelper();
         }
-    }, 120000);
+
+        // 2. POS Listener Automation Supervisor
+        try {
+            const isListenerAlive = pythonProcess && !pythonProcess.killed;
+            if (!isListenerAlive) {
+                console.log('[SUPERVISOR] cobb_pos_listener is offline. Auto-reviving listener...');
+                pythonLogs.push(`[${new Date().toLocaleTimeString()}] [SUPERVISOR] Listener down — auto-respawning...`);
+                pythonProcess = null;
+                startAutomationHelper();
+            }
+        } catch (listenerErr) {
+            if (!pythonProcess) {
+                startAutomationHelper();
+            }
+        }
+
+        // 3. Cloud Sync Agent Supervisor
+        try {
+            if (!cloudSyncProcess || cloudSyncProcess.killed) {
+                cloudSyncProcess = null;
+                startCloudSyncHelper();
+            }
+        } catch (syncErr) {
+            /* ignore */
+        }
+    }, 10000);
 });

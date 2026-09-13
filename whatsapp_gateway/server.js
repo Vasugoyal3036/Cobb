@@ -164,6 +164,7 @@ function initWhatsApp(isFresh = false) {
         currentQrCodeUrl = null;
         reconnectAttempts = 0;
         console.log('[WHATSAPP] Client is ONLINE and ready to dispatch messages!');
+        flushOutbox();
     });
 
     client.on('auth_failure', async (msg) => {
@@ -258,6 +259,54 @@ app.post('/reset', async (req, res) => {
     }
 });
 
+const outboxQueue = [];
+let isFlushingOutbox = false;
+
+async function dispatchMessage(number, message, mediaPath) {
+    const cleanNumber = String(number).replace(/[^0-9]/g, '');
+    const formattedNumber = cleanNumber.length === 10 ? `91${cleanNumber}` : cleanNumber;
+
+    const isRegistered = await client.isRegisteredUser(`${formattedNumber}@c.us`).catch(() => true);
+    if (isRegistered === false) {
+        console.log(`[SKIPPED] ${formattedNumber} is not registered on WhatsApp.`);
+        return { success: false, skipped: true, error: 'Phone number is not registered on WhatsApp.' };
+    }
+
+    let chatId = `${formattedNumber}@c.us`;
+
+    if (mediaPath) {
+        const resolvedPath = path.isAbsolute(mediaPath) ? mediaPath : path.join(__dirname, mediaPath);
+        if (fs.existsSync(resolvedPath)) {
+            const media = MessageMedia.fromFilePath(resolvedPath);
+            await client.sendMessage(chatId, media, { caption: message });
+            console.log(`[SENT] Media dispatched to ${chatId}`);
+            return { success: true, type: 'media' };
+        }
+    }
+
+    await client.sendMessage(chatId, message);
+    console.log(`[SENT] Text dispatched to ${chatId}`);
+    return { success: true, type: 'text' };
+}
+
+async function flushOutbox() {
+    if (!isClientReady || !client || outboxQueue.length === 0 || isFlushingOutbox) return;
+    isFlushingOutbox = true;
+    console.log(`[OUTBOX] Auto-flushing ${outboxQueue.length} buffered checkout message(s)...`);
+    
+    while (outboxQueue.length > 0 && isClientReady && client) {
+        const item = outboxQueue.shift();
+        try {
+            const result = await dispatchMessage(item.number, item.message, item.mediaPath);
+            if (item.resolve) item.resolve(result);
+        } catch (err) {
+            console.error(`[OUTBOX RETRY ERROR] Failed for ${item.number}:`, err.message);
+            if (item.reject) item.reject(err);
+        }
+    }
+    isFlushingOutbox = false;
+}
+
 app.post('/send', async (req, res) => {
     const { number, message, mediaPath } = req.body;
 
@@ -266,34 +315,42 @@ app.post('/send', async (req, res) => {
     }
 
     if (!isClientReady || !client) {
-        return res.status(503).json({ error: 'WhatsApp client is not ready. Verify QR pairing.' });
+        console.log(`[OUTBOX QUEUE] WhatsApp client momentarily reconnecting. Buffering checkout message for ${number}...`);
+        return new Promise((resolve) => {
+            const timer = setTimeout(() => {
+                const idx = outboxQueue.findIndex(q => q.timer === timer);
+                if (idx !== -1) outboxQueue.splice(idx, 1);
+                if (!res.headersSent) {
+                    res.status(503).json({ error: 'WhatsApp client is reconnecting. Message queued for automatic background delivery.' });
+                }
+                resolve();
+            }, 30000);
+
+            outboxQueue.push({
+                number,
+                message,
+                mediaPath,
+                timer,
+                resolve: (result) => {
+                    clearTimeout(timer);
+                    if (!res.headersSent) res.json(result);
+                    resolve();
+                },
+                reject: (err) => {
+                    clearTimeout(timer);
+                    if (!res.headersSent) res.status(500).json({ error: err.message });
+                    resolve();
+                }
+            });
+        });
     }
 
     try {
-        const cleanNumber = String(number).replace(/[^0-9]/g, '');
-        const formattedNumber = cleanNumber.length === 10 ? `91${cleanNumber}` : cleanNumber;
-
-        const isRegistered = await client.isRegisteredUser(`${formattedNumber}@c.us`).catch(() => true);
-        if (isRegistered === false) {
-            console.log(`[SKIPPED] ${formattedNumber} is not registered on WhatsApp.`);
-            return res.status(400).json({ error: 'Phone number is not registered on WhatsApp.' });
+        const result = await dispatchMessage(number, message, mediaPath);
+        if (result.skipped) {
+            return res.status(400).json(result);
         }
-
-        let chatId = `${formattedNumber}@c.us`;
-
-        if (mediaPath) {
-            const resolvedPath = path.isAbsolute(mediaPath) ? mediaPath : path.join(__dirname, mediaPath);
-            if (fs.existsSync(resolvedPath)) {
-                const media = MessageMedia.fromFilePath(resolvedPath);
-                await client.sendMessage(chatId, media, { caption: message });
-                console.log(`[SENT] Media dispatched to ${chatId}`);
-                return res.json({ success: true, type: 'media' });
-            }
-        }
-
-        await client.sendMessage(chatId, message);
-        console.log(`[SENT] Text dispatched to ${chatId}`);
-        res.json({ success: true, type: 'text' });
+        res.json(result);
     } catch (err) {
         console.error(`[ERROR] Send failed to ${number}:`, err);
         try {
