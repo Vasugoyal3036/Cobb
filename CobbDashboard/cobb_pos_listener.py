@@ -20,6 +20,7 @@ def get_lock():
     try:
         get_lock._lock_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         get_lock._lock_socket.bind(('127.0.0.1', 47200))
+        get_lock._lock_socket.listen(1)
         return True
     except socket.error:
         print("Another instance of the listener is already running.")

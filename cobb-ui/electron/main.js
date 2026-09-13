@@ -51,7 +51,8 @@ function startBackendServer() {
       backendProcess = spawn('node', [serverScript], {
         cwd: backendDir,
         stdio: 'pipe',
-        shell: true
+        shell: false,
+        windowsHide: true
       });
 
       backendProcess.stdout.on('data', (data) => {
@@ -72,7 +73,8 @@ function startBackendServer() {
         syncProcess = spawn('node', [syncScript], {
           cwd: backendDir,
           stdio: 'pipe',
-          shell: true
+          shell: false,
+          windowsHide: true
         });
 
         syncProcess.stdout.on('data', (data) => {

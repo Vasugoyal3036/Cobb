@@ -37,7 +37,8 @@ function g() {
 			console.log("[Electron] Starting backend server from:", e), m = s("node", [e], {
 				cwd: t,
 				stdio: "pipe",
-				shell: !0
+				shell: !1,
+				windowsHide: !0
 			}), m.stdout.on("data", (e) => {
 				console.log(`[Backend] ${e.toString().trim()}`);
 			}), m.stderr.on("data", (e) => {
@@ -47,7 +48,8 @@ function g() {
 			}), o.existsSync(n) && (console.log("[Electron] Starting sync agent from:", n), h = s("node", [n], {
 				cwd: t,
 				stdio: "pipe",
-				shell: !0
+				shell: !1,
+				windowsHide: !0
 			}), h.stdout.on("data", (e) => {
 				console.log(`[Sync Agent] ${e.toString().trim()}`);
 			}), h.stderr.on("data", (e) => {

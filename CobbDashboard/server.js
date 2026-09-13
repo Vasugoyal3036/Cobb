@@ -5,6 +5,7 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { spawn, execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const { checkPort } = require('./scanner');
 require('dotenv').config();
 
 const app = express();
@@ -1089,7 +1090,8 @@ async function startGatewayHelper() {
     gatewayLogs.push(`[${new Date().toLocaleTimeString()}] Auto-spawning WhatsApp Gateway process...`);
     gatewayProcess = spawn('node', ['server.js'], {
         cwd: gatewayDir,
-        shell: true, windowsHide: true,
+        shell: false, 
+        windowsHide: true,
         env: process.env,
         stdio: ['pipe', 'pipe', 'pipe']
     });
@@ -1119,13 +1121,15 @@ async function startGatewayHelper() {
 function startAutomationHelper() {
     if (pythonProcess) return true;
 
-    try {
-        execSync('powershell -WindowStyle Hidden -Command "Get-CimInstance Win32_Process | Where-Object CommandLine -match \'cobb_pos_listener\' | Invoke-CimMethod -MethodName Terminate"', { windowsHide: true });
-    } catch (e) { }
-
     const { scriptPath, cwd } = getListenerScriptPath();
-    pythonLogs.push(`[${new Date().toLocaleTimeString()}] Auto-spawning Automation Engine Listener...`);
-    pythonProcess = spawn('python', ['-u', scriptPath], { shell: true, windowsHide: true, cwd: cwd });
+    pythonLogs.push(`[${new Date().toLocaleTimeString()}] Auto-spawning Automation Engine Listener silently...`);
+    // Use pythonw so Windows never allocates or pops up a black console window
+    pythonProcess = spawn('pythonw', ['-u', scriptPath], { 
+        shell: false, 
+        windowsHide: true, 
+        cwd: cwd,
+        stdio: ['pipe', 'pipe', 'pipe']
+    });
     pythonProcess.stdout.on('data', (data) => pythonLogs.push(`[${new Date().toLocaleTimeString()}] ${data.toString().trim()}`));
     pythonProcess.stderr.on('data', (data) => pythonLogs.push(`[ERROR ${new Date().toLocaleTimeString()}] ${data.toString().trim()}`));
     pythonProcess.on('error', (err) => {
@@ -2870,9 +2874,14 @@ function startCloudSyncHelper() {
     const scriptPath = path.join(__dirname, 'cloud_sync.js');
     if (!fs.existsSync(scriptPath)) return false;
     try {
-        cloudSyncProcess = spawn('node', ['cloud_sync.js'], { cwd: __dirname, shell: true });
+        cloudSyncProcess = spawn('node', ['cloud_sync.js'], { 
+            cwd: __dirname, 
+            shell: false, 
+            windowsHide: true,
+            stdio: 'ignore' 
+        });
         cloudSyncProcess.on('close', () => { cloudSyncProcess = null; });
-        console.log("Auto-spawned Cloud Sync Agent for Phone Link.");
+        console.log("Auto-spawned Cloud Sync Agent silently.");
     } catch (e) {}
     return true;
 }
@@ -2912,19 +2921,17 @@ app.listen(PORT, () => {
             await startGatewayHelper();
         }
 
-        // 2. POS Listener Automation Supervisor
+        // 2. POS Listener Automation Supervisor (Check mutex port 47200)
         try {
-            const isListenerAlive = pythonProcess && !pythonProcess.killed;
-            if (!isListenerAlive) {
-                console.log('[SUPERVISOR] cobb_pos_listener is offline. Auto-reviving listener...');
+            const check = await checkPort(47200, '127.0.0.1', 800);
+            if (!check.isOpen) {
+                console.log('[SUPERVISOR] cobb_pos_listener mutex is offline. Auto-reviving listener silently...');
                 pythonLogs.push(`[${new Date().toLocaleTimeString()}] [SUPERVISOR] Listener down — auto-respawning...`);
                 pythonProcess = null;
                 startAutomationHelper();
             }
         } catch (listenerErr) {
-            if (!pythonProcess) {
-                startAutomationHelper();
-            }
+            /* ignore */
         }
 
         // 3. Cloud Sync Agent Supervisor
