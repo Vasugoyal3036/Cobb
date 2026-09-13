@@ -282,20 +282,6 @@ export default function App() {
     }
   };
 
-  const [reconPettyCash, setReconPettyCash] = useState({ totalSpent: 0, items: [] });
-  useEffect(() => {
-    if (showReconModal) {
-      axios.get(`${API_BASE}/api/expenses/today?storeId=${activeStore}`)
-        .then(res => {
-          if (res.data?.success) {
-            setReconPettyCash(res.data.summary);
-          }
-        })
-        .catch(console.error);
-    }
-  }, [showReconModal, activeStore]);
-
-
   let [globalCustomers, setGlobalCustomers] = useState([]); if (!Array.isArray(globalCustomers)) globalCustomers = [];
   const [isSearchingCustomers, setIsSearchingCustomers] = useState(false);
   let [liveBills, setLiveBills] = useState([]); if (!Array.isArray(liveBills)) liveBills = [];
@@ -317,6 +303,18 @@ export default function App() {
   const [countedCashInput, setCountedCashInput] = useState('');
   const [reconNotes, setReconNotes] = useState('');
   const [showReconModal, setShowReconModal] = useState(false);
+  const [reconPettyCash, setReconPettyCash] = useState({ totalSpent: 0, items: [] });
+  useEffect(() => {
+    if (showReconModal) {
+      axios.get(`${API_BASE}/api/expenses/today?storeId=${activeStore}`)
+        .then(res => {
+          if (res.data?.success) {
+            setReconPettyCash(res.data.summary);
+          }
+        })
+        .catch(console.error);
+    }
+  }, [showReconModal, activeStore]);
   const [showEodModal, setShowEodModal] = useState(false);
   const [eodSummaryText, setEodSummaryText] = useState('');
   const [eodCopied, setEodCopied] = useState(false);
