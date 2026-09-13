@@ -14,8 +14,11 @@ import {
   Loader2
 } from 'lucide-react';
 
-export default function FloatingCopilot({ API_BASE = 'http://localhost:5000', darkMode = false, onOpenFullTab = null }) {
+export default function FloatingCopilot({ API_BASE = 'http://localhost:5000', darkMode = false, onOpenFullTab = null, activeTab = null }) {
+  if (activeTab === 'copilot') return null;
+
   const [isOpen, setIsOpen] = useState(false);
+
   const [inputQuery, setInputQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);

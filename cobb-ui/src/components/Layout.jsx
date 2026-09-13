@@ -396,7 +396,7 @@ const Layout = ({
           </div>
         </div>
 
-        <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
+        <div className={activeTab === 'copilot' ? 'p-0 sm:p-6 lg:p-8 max-w-7xl mx-auto' : 'p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto'}>
           {children}
         </div>
       </div>
@@ -415,6 +415,7 @@ const Layout = ({
       <FloatingCopilot
         API_BASE={import.meta.env.VITE_API_BASE || 'http://localhost:5000'}
         darkMode={darkMode}
+        activeTab={activeTab}
         onOpenFullTab={() => setActiveTab('copilot')}
       />
     </>
