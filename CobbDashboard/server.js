@@ -25,6 +25,9 @@ app.use('/api/tunnel', tunnelRouter);
 const configRouter = require('./routes/config');
 app.use('/api/config', configRouter);
 
+const expensesRouter = require('./routes/expenses');
+app.use('/api/expenses', expensesRouter);
+
 const GlobalNodeCache = require('node-cache');
 const globalApiCache = new GlobalNodeCache({ stdTTL: 300 }); // 5 minutes cache for blazing fast tab switches
 
@@ -1747,6 +1750,14 @@ async function generateEodSummaryReport() {
     const dateStr = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
     const fmt = (n) => `₹${Number(Math.round(n || 0)).toLocaleString('en-IN')}`;
 
+    const expensesManager = require('./expenses_manager');
+    const pettyCash = expensesManager.getSummary();
+    const netExpectedDrawerCash = Math.max(0, (pay.Cash || 0) - (pettyCash.totalSpent || 0));
+
+    const expenseLines = pettyCash.items.length > 0
+        ? pettyCash.items.slice(0, 5).map(e => `  • ${e.categoryIcon || '•'} ${e.categoryLabel}: ${fmt(e.amount)} (${e.description || 'Routine'})`).join('\n')
+        : '  • No petty cash expenses logged today';
+
     const text = 
 `📊 *COBB PUNDRI — STORE CLOSING DIGEST*
 ━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1759,10 +1770,15 @@ async function generateEodSummaryReport() {
 • Total Customer Discounts Given: *${fmt(summary.TotalDiscount)}*
 • Tax (GST) Collected: *${fmt(summary.TaxCollected)}*
 
-💳 *COLLECTIONS BREAKDOWN:*
-• 💵 Cash in Drawer: *${fmt(pay.Cash)}*
+💳 *DRAWER & COLLECTIONS:*
+• 💵 Gross Cash Sales: *${fmt(pay.Cash)}*
+• ☕ Pocket Khata Expenses: *- ${fmt(pettyCash.totalSpent)}*
+• 🪙 Net Expected Drawer Cash: *${fmt(netExpectedDrawerCash)}*
 • 📱 UPI / Online: *${fmt(pay.UPI)}*
 • 💳 Card (POS Swipe): *${fmt(pay.Card)}*
+
+🧾 *TODAY'S COUNTER EXPENSES (${pettyCash.totalCount || 0}):*
+${expenseLines}
 
 🔄 *EXCHANGES & REPLACEMENTS:*
 • Exchange Bills Handled: *${exch.ExchangeBills || 0}*
@@ -1782,6 +1798,8 @@ async function generateEodSummaryReport() {
             discounts: summary.TotalDiscount || 0,
             gst: summary.TaxCollected || 0,
             cash: pay.Cash || 0,
+            pettyCashSpent: pettyCash.totalSpent || 0,
+            netExpectedDrawerCash,
             card: pay.Card || 0,
             upi: pay.UPI || 0,
             exchangeBills: exch.ExchangeBills || 0,

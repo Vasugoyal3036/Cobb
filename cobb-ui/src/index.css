@@ -15,3 +15,24 @@
     font-size: 112.5% !important; /* Scales all rem units (text, padding, margins) by 12.5% */
   }
 }
+
+/* Global Dark Mode Base & Color Scheme */
+html.dark, .dark, .dark-mode {
+  color-scheme: dark;
+}
+
+/* Custom Scrollbar for Dark Mode */
+.dark-mode ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.dark-mode ::-webkit-scrollbar-track {
+  background: #030712;
+}
+.dark-mode ::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 9999px;
+}
+.dark-mode ::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}

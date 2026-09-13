@@ -80,6 +80,7 @@ const navigationItems = [
   {
     category: "Operations", items: [
       { id: "live", label: "Live Checkouts", icon: Receipt },
+      { id: "pocket_khata", label: "Pocket Khata (Expenses)", icon: Wallet, colorClass: "text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-400 font-bold border-l-2 border-amber-500" },
       { id: "returns", label: "Product Exchanges", icon: RotateCcw, colorClass: "text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-400 font-bold border-l-2 border-amber-500" },
       { id: "topmovers", label: "Top Movers & Size Demand", icon: Flame, colorClass: "text-rose-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-rose-500/15 text-rose-400 font-bold border-l-2 border-rose-500" },
       { id: "sizematrix", label: "Size Matrix Heatmap", icon: Grid, colorClass: "text-blue-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-blue-500/15 text-blue-400 font-bold border-l-2 border-blue-500" },
@@ -94,6 +95,7 @@ const navigationItems = [
   },
   {
     category: "Marketing & CRM", items: [
+      { id: "shelf_talkers", label: "Shelf Talker Studio", icon: Tag, colorClass: "text-purple-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-purple-500/15 text-purple-400 font-bold border-l-2 border-purple-500" },
       { id: "loyalty", label: "Loyalty & Points", icon: Crown, colorClass: "text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-400 font-bold border-l-2 border-amber-500" },
       { id: "broadcast", label: "Mass Offer Broadcast", icon: Send, colorClass: "text-emerald-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-emerald-500/15 text-emerald-400 font-bold border-l-2 border-emerald-500" },
       { id: "wardrobe", label: "Wardrobe Profiler", icon: Shirt, colorClass: "text-purple-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-purple-500/15 text-purple-400 font-bold border-l-2 border-purple-500" },
@@ -144,6 +146,8 @@ const Layout = ({
   const managerAllowedItems = [
     'dashboard',
     'live',
+    'pocket_khata',
+    'shelf_talkers',
     'returns',
     'topmovers',
     'sizematrix',
@@ -234,14 +238,14 @@ const Layout = ({
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-auto relative bg-slate-50 min-w-0 pb-20 lg:pb-0">
+      <div className={`flex-1 overflow-auto relative min-w-0 pb-20 lg:pb-0 transition-colors duration-200 ${darkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-800'}`}>
 
         {/* Top Navbar */}
-        <div className="bg-white/80 backdrop-blur-md px-4 lg:px-8 py-3.5 border-b border-slate-200 flex flex-col md:flex-row gap-3 justify-between items-stretch md:items-center sticky top-0 z-20">
+        <div className={`backdrop-blur-md px-4 lg:px-8 py-3.5 border-b flex flex-col md:flex-row gap-3 justify-between items-stretch md:items-center sticky top-0 z-20 transition-colors ${darkMode ? 'bg-slate-900/95 border-slate-800 text-slate-100' : 'bg-white/80 border-slate-200 text-slate-800'}`}>
           <div className="flex items-center gap-3 w-full md:w-full sm:max-w-lg">
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className="hidden p-2 bg-slate-100 border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-200 transition-all cursor-pointer shrink-0"
+              className={`hidden p-2 rounded-xl transition-all cursor-pointer shrink-0 border ${darkMode ? 'bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'}`}
             >
               {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -253,27 +257,27 @@ const Layout = ({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={handleGlobalSearch}
-                className="w-full pl-9 pr-28 py-2 bg-slate-100 border-none rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all shadow-inner"
+                className={`w-full pl-9 pr-28 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-inner border ${darkMode ? 'bg-slate-950 border-slate-800 text-slate-100 placeholder-slate-500 focus:bg-slate-900' : 'bg-slate-100 border-transparent text-slate-800 focus:bg-white'}`}
               />
-              <div className="absolute right-2 top-1.5 hidden sm:flex items-center gap-1 bg-white px-2 py-0.5 rounded-lg border border-slate-200 shadow-xs pointer-events-none">
-                <Barcode className="w-3.5 h-3.5 text-blue-600" />
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">Scanner Ready</span>
+              <div className={`absolute right-2 top-1.5 hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-lg border shadow-xs pointer-events-none ${darkMode ? 'bg-slate-900 border-slate-800 text-slate-400' : 'bg-white border-slate-200 text-slate-500'}`}>
+                <Barcode className="w-3.5 h-3.5 text-blue-500" />
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Scanner Ready</span>
               </div>
             </div>
           </div>
 
           <div className="flex items-center justify-between md:justify-end gap-2 overflow-x-auto pb-1 md:pb-0">
             {/* Multi-Store Switcher */}
-            <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200 shrink-0">
-              <Store className="w-3.5 h-3.5 text-blue-600 ml-1.5 shrink-0" />
+            <div className={`flex items-center gap-1.5 p-1 rounded-xl border shrink-0 ${darkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-100 border-slate-200'}`}>
+              <Store className="w-3.5 h-3.5 text-blue-500 ml-1.5 shrink-0" />
               <select
                 value={activeStore}
                 onChange={(e) => switchStore(e.target.value)}
-                className="bg-transparent text-slate-800 text-xs font-bold rounded-lg py-0.5 pr-2 focus:outline-none cursor-pointer"
+                className={`bg-transparent text-xs font-bold rounded-lg py-0.5 pr-2 focus:outline-none cursor-pointer ${darkMode ? 'text-slate-200' : 'text-slate-800'}`}
                 title="Switch Cobb Store Branch"
               >
                 {AVAILABLE_STORES.map(store => (
-                  <option key={store.id} value={store.id} className="bg-white text-slate-800 py-1">
+                  <option key={store.id} value={store.id} className={darkMode ? "bg-slate-900 text-slate-200 py-1" : "bg-white text-slate-800 py-1"}>
                     {store.name}
                   </option>
                 ))}
@@ -288,19 +292,23 @@ const Layout = ({
               }}
               className={`px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer border shrink-0 ${
                 currentRole === 'owner'
-                  ? 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
-                  : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                  ? darkMode
+                    ? 'bg-amber-950/60 text-amber-300 border-amber-800/60 hover:bg-amber-900/60'
+                    : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
+                  : darkMode
+                    ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/60 hover:bg-emerald-900/60'
+                    : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
               }`}
               title={currentRole === 'owner' ? 'Click to preview Manager View (Counter Mode)' : 'Click to return to Owner View (Full Access)'}
             >
               {currentRole === 'owner' ? (
                 <>
-                  <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
+                  <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
                   <span>👑 Owner</span>
                 </>
               ) : (
                 <>
-                  <ShieldAlert className="w-3.5 h-3.5 text-emerald-600" />
+                  <ShieldAlert className="w-3.5 h-3.5 text-emerald-400" />
                   <span>👔 Manager</span>
                 </>
               )}
@@ -328,29 +336,41 @@ const Layout = ({
             {/* Database & Store Setup Button */}
             <button
               onClick={() => setShowSetupModal(true)}
-              className="px-2.5 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-xl font-bold text-xs transition-all shadow-xs cursor-pointer flex items-center gap-1.5 shrink-0"
+              className={`px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all shadow-xs cursor-pointer flex items-center gap-1.5 shrink-0 border ${
+                darkMode
+                  ? 'bg-blue-950/60 text-blue-300 hover:bg-blue-900/60 border-blue-800/60'
+                  : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200'
+              }`}
               title="Configure Database, Retail Presets (Cobb/Busy/Marg) & Store Profile"
             >
-              <Database className="w-3.5 h-3.5 text-blue-600" />
+              <Database className="w-3.5 h-3.5 text-blue-400" />
               <span className="hidden sm:inline">POS Setup</span>
             </button>
 
             {/* Dark Mode Toggle Button */}
             <button
               onClick={() => setDarkMode(!darkMode)}
-              className="dark-toggle-btn p-1.5 bg-slate-100 hover:bg-slate-200/80 border border-slate-200 text-slate-650 rounded-xl transition-all shadow-sm cursor-pointer flex items-center justify-center shrink-0"
+              className={`dark-toggle-btn p-1.5 rounded-xl transition-all shadow-sm cursor-pointer flex items-center justify-center shrink-0 border ${
+                darkMode
+                  ? 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-amber-400'
+                  : 'bg-slate-100 hover:bg-slate-200/80 border-slate-200 text-slate-650'
+              }`}
               title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
             >
-              {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
+              {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
             </button>
 
             {/* Systems status badge */}
-            <div className="status-badge flex items-center space-x-1.5 bg-slate-100 px-2.5 py-1 rounded-full border border-slate-200 shadow-sm cursor-help shrink-0" title="Automation Engine Status">
+            <div className={`status-badge flex items-center space-x-1.5 px-2.5 py-1 rounded-full border shadow-sm cursor-help shrink-0 ${
+              darkMode
+                ? 'bg-slate-900 border-slate-800 text-slate-300'
+                : 'bg-slate-100 border-slate-200 text-slate-600'
+            }`} title="Automation Engine Status">
               <div className="relative flex h-2 w-2">
                 {(isGatewayRunning && isListenerRunning) && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>}
                 <span className={`relative inline-flex rounded-full h-2 w-2 ${isGatewayRunning && isListenerRunning ? 'bg-green-500' : 'bg-red-500'}`}></span>
               </div>
-              <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wide">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
                 {isGatewayRunning && isListenerRunning ? 'Active' : 'Offline'}
               </span>
             </div>
