@@ -94,7 +94,29 @@ const isElectron = window.location.protocol === 'app:' || window.location.protoc
 const isLocalhost = isElectron || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.startsWith('192.168.');
 const isTunnel = window.location.hostname.includes('trycloudflare.com') || window.location.hostname.includes('ngrok') || window.location.hostname.includes('loca.lt');
 const isLocalEnvironment = isLocalhost || isTunnel;
-const API_BASE = isTunnel ? window.location.origin : 'http://localhost:5000';
+
+const resolveApiBase = () => {
+  if (isTunnel) return window.location.origin;
+  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+  if (import.meta.env.VITE_API_BASE) return import.meta.env.VITE_API_BASE;
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (host.includes('vercel.app')) {
+      return 'https://freckles-comfy-proving.ngrok-free.dev';
+    }
+    // If accessing from phone via local Wi-Fi IP (e.g. 192.168.x.x, 10.x.x.x, 172.x.x.x)
+    if (host.startsWith('192.168.') || host.startsWith('10.') || host.startsWith('172.')) {
+      return `http://${host}:5000`;
+    }
+    // Remote browser on other domain
+    if (host !== 'localhost' && host !== '127.0.0.1' && !isElectron) {
+      return 'https://freckles-comfy-proving.ngrok-free.dev';
+    }
+  }
+  return 'http://localhost:5000';
+};
+const API_BASE = resolveApiBase();
+
 
 
 axios.defaults.headers.common['Bypass-Tunnel-Reminder'] = 'true';
@@ -1798,7 +1820,9 @@ export default function App() {
         setDarkMode={setDarkMode}
         isGatewayRunning={isGatewayRunning}
         isListenerRunning={isListenerRunning}
+        API_BASE={API_BASE}
       >
+
         {/* Dynamic Views */}
 
 

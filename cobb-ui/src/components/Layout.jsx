@@ -149,8 +149,10 @@ const Layout = ({
   setDarkMode,
   isGatewayRunning,
   isListenerRunning,
-  userRole: propUserRole
+  userRole: propUserRole,
+  API_BASE
 }) => {
+
   const { role: contextRole, switchRole, activeStore, switchStore, user } = useAuth();
   const currentRole = contextRole || propUserRole || 'owner';
   const [showSetupModal, setShowSetupModal] = useState(false);
@@ -260,143 +262,230 @@ const Layout = ({
       <div className={`flex-1 overflow-auto relative min-w-0 pb-20 lg:pb-0 transition-colors duration-200 ${darkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-800'}`}>
 
         {/* Top Navbar */}
-        <div className={`backdrop-blur-md px-4 lg:px-8 py-3.5 border-b flex flex-col md:flex-row gap-3 justify-between items-stretch md:items-center sticky top-0 z-20 transition-colors ${darkMode ? 'bg-slate-900/95 border-slate-800 text-slate-100' : 'bg-white/80 border-slate-200 text-slate-800'}`}>
-          <div className="flex items-center gap-3 w-full md:w-full sm:max-w-lg">
-            <button
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className={`hidden p-2 rounded-xl transition-all cursor-pointer shrink-0 border ${darkMode ? 'bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'}`}
-            >
-              {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
-            <div className="relative flex-1">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-              <input
-                type="text"
-                placeholder="Search Article / Phone / Name / Amount..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={handleGlobalSearch}
-                className={`w-full pl-9 pr-28 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-inner border ${darkMode ? 'bg-slate-950 border-slate-800 text-slate-100 placeholder-slate-500 focus:bg-slate-900' : 'bg-slate-100 border-transparent text-slate-800 focus:bg-white'}`}
-              />
-              <div className={`absolute right-2 top-1.5 hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-lg border shadow-xs pointer-events-none ${darkMode ? 'bg-slate-900 border-slate-800 text-slate-400' : 'bg-white border-slate-200 text-slate-500'}`}>
-                <Barcode className="w-3.5 h-3.5 text-blue-500" />
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Scanner Ready</span>
-              </div>
-            </div>
-          </div>
+        <header className={`backdrop-blur-md px-3.5 sm:px-6 lg:px-8 py-2.5 sm:py-3.5 border-b sticky top-0 z-30 transition-colors ${darkMode ? 'bg-slate-900/95 border-slate-800 text-slate-100' : 'bg-white/95 border-slate-200 text-slate-800'}`}>
 
-          <div className="flex items-center justify-between md:justify-end gap-2 overflow-x-auto pb-1 md:pb-0">
-            {/* Multi-Store Switcher */}
-            <div className={`flex items-center gap-1.5 p-1 rounded-xl border shrink-0 ${darkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-100 border-slate-200'}`}>
-              <Store className="w-3.5 h-3.5 text-blue-500 ml-1.5 shrink-0" />
-              <select
-                value={activeStore}
-                onChange={(e) => switchStore(e.target.value)}
-                className={`bg-transparent text-xs font-bold rounded-lg py-0.5 pr-2 focus:outline-none cursor-pointer ${darkMode ? 'text-slate-200' : 'text-slate-800'}`}
-                title="Switch Cobb Store Branch"
+          {/* MOBILE PHONE HEADER (md:hidden) — Clean single row */}
+          <div className="flex md:hidden items-center justify-between gap-2 w-full">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                className={`p-2 rounded-xl border transition-colors cursor-pointer shrink-0 ${darkMode ? 'bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'}`}
+                title="Toggle menu"
               >
-                {AVAILABLE_STORES.map(store => (
-                  <option key={store.id} value={store.id} className={darkMode ? "bg-slate-900 text-slate-200 py-1" : "bg-white text-slate-800 py-1"}>
-                    {store.name}
-                  </option>
-                ))}
-              </select>
+                {isMobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+              </button>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center text-white font-black text-xs shadow-sm">
+                  C
+                </div>
+                <span className="font-extrabold text-xs tracking-wider uppercase">COBB</span>
+              </div>
             </div>
 
-            {/* Quick Role Switcher Pill */}
-            <button
-              onClick={() => {
-                const nextRole = currentRole === 'owner' ? 'manager' : 'owner';
-                switchRole(nextRole);
-              }}
-              className={`px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer border shrink-0 ${
-                currentRole === 'owner'
-                  ? darkMode
-                    ? 'bg-amber-950/60 text-amber-300 border-amber-800/60 hover:bg-amber-900/60'
-                    : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
-                  : darkMode
-                    ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/60 hover:bg-emerald-900/60'
-                    : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
-              }`}
-              title={currentRole === 'owner' ? 'Click to preview Manager View (Counter Mode)' : 'Click to return to Owner View (Full Access)'}
-            >
-              {currentRole === 'owner' ? (
-                <>
-                  <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
-                  <span>👑 Owner</span>
-                </>
-              ) : (
-                <>
-                  <ShieldAlert className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>👔 Manager</span>
-                </>
-              )}
-            </button>
-            {/* EOD Cash Reconciliation Button */}
-            <button
-              onClick={() => setShowReconModal(true)}
-              className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs transition-all shadow-sm cursor-pointer flex items-center gap-1 shrink-0"
-              title="EOD Cash Register Reconciliation"
-            >
-              <Calculator className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">EOD Cash</span>
-            </button>
+            {/* Quick Actions on Mobile Top Bar */}
+            <div className="flex items-center gap-1.5">
+              {/* Prominent Cobb AI button right in the top bar */}
+              <button
+                type="button"
+                onClick={() => { setActiveTab('copilot'); setIsMobileMenuOpen(false); }}
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-black transition-all shadow-xs cursor-pointer border ${
+                  activeTab === 'copilot'
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-blue-500 shadow-blue-500/25'
+                    : 'bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/60 dark:to-indigo-950/60 text-blue-600 dark:text-blue-300 border-blue-200 dark:border-blue-800'
+                }`}
+                title="Open Cobb AI Assistant"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400 animate-pulse" />
+                <span>✨ Cobb AI</span>
+              </button>
 
-            {/* EOD WhatsApp Report Button */}
-            <button
-              onClick={handleGenerateEodReport}
-              className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs transition-all shadow-sm cursor-pointer flex items-center gap-1 shrink-0"
-              title="Generate Daily EOD Report for Owner"
-            >
-              <Send className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">EOD Report</span>
-            </button>
-
-            {/* Database & Store Setup Button */}
-            <button
-              onClick={() => setShowSetupModal(true)}
-              className={`px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all shadow-xs cursor-pointer flex items-center gap-1.5 shrink-0 border ${
-                darkMode
-                  ? 'bg-blue-950/60 text-blue-300 hover:bg-blue-900/60 border-blue-800/60'
-                  : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200'
-              }`}
-              title="Configure Database, Retail Presets (Cobb/Busy/Marg) & Store Profile"
-            >
-              <Database className="w-3.5 h-3.5 text-blue-400" />
-              <span className="hidden sm:inline">POS Setup</span>
-            </button>
-
-            {/* Dark Mode Toggle Button */}
-            <button
-              onClick={() => setDarkMode(!darkMode)}
-              className={`dark-toggle-btn p-1.5 rounded-xl transition-all shadow-sm cursor-pointer flex items-center justify-center shrink-0 border ${
-                darkMode
-                  ? 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-amber-400'
-                  : 'bg-slate-100 hover:bg-slate-200/80 border-slate-200 text-slate-650'
-              }`}
-              title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
-            >
-              {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
-            </button>
-
-            {/* Systems status badge */}
-            <div className={`status-badge flex items-center space-x-1.5 px-2.5 py-1 rounded-full border shadow-sm cursor-help shrink-0 ${
-              darkMode
-                ? 'bg-slate-900 border-slate-800 text-slate-300'
-                : 'bg-slate-100 border-slate-200 text-slate-600'
-            }`} title="Automation Engine Status">
-              <div className="relative flex h-2 w-2">
-                {(isGatewayRunning && isListenerRunning) && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>}
-                <span className={`relative inline-flex rounded-full h-2 w-2 ${isGatewayRunning && isListenerRunning ? 'bg-green-500' : 'bg-red-500'}`}></span>
+              {/* Compact Store Switcher */}
+              <div className={`flex items-center p-1 rounded-xl border shrink-0 ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-200'}`}>
+                <select
+                  value={activeStore}
+                  onChange={(e) => switchStore(e.target.value)}
+                  className={`bg-transparent text-[10px] font-bold rounded py-0.5 px-0.5 focus:outline-none cursor-pointer ${darkMode ? 'text-slate-200' : 'text-slate-800'}`}
+                >
+                  {AVAILABLE_STORES.map(store => (
+                    <option key={store.id} value={store.id} className={darkMode ? "bg-slate-900 text-slate-200" : "bg-white text-slate-800"}>
+                      {store.shortName || store.name.split(' ')[0]}
+                    </option>
+                  ))}
+                </select>
               </div>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
-                {isGatewayRunning && isListenerRunning ? 'Active' : 'Offline'}
-              </span>
+
+              {/* Dark mode button */}
+              <button
+                type="button"
+                onClick={() => setDarkMode(!darkMode)}
+                className={`p-1.5 rounded-xl border shrink-0 cursor-pointer ${
+                  darkMode ? 'bg-slate-800 border-slate-700 text-amber-400' : 'bg-slate-100 border-slate-200 text-slate-600'
+                }`}
+                title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+              >
+                {darkMode ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5 text-slate-600" />}
+              </button>
             </div>
           </div>
-        </div>
+
+          {/* DESKTOP HEADER (hidden md:flex) */}
+          <div className="hidden md:flex flex-row justify-between items-center gap-4 w-full">
+            <div className="flex items-center gap-3 w-full sm:max-w-lg">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                <input
+                  type="text"
+                  placeholder="Search Article / Phone / Name / Amount..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={handleGlobalSearch}
+                  className={`w-full pl-9 pr-28 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-inner border ${darkMode ? 'bg-slate-950 border-slate-800 text-slate-100 placeholder-slate-500 focus:bg-slate-900' : 'bg-slate-100 border-transparent text-slate-800 focus:bg-white'}`}
+                />
+                <div className={`absolute right-2 top-1.5 hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-lg border shadow-xs pointer-events-none ${darkMode ? 'bg-slate-900 border-slate-800 text-slate-400' : 'bg-white border-slate-200 text-slate-500'}`}>
+                  <Barcode className="w-3.5 h-3.5 text-blue-500" />
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Scanner Ready</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 shrink-0">
+              {/* Desktop Prominent AI Copilot Shortcut */}
+              <button
+                type="button"
+                onClick={() => setActiveTab('copilot')}
+                className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer border shrink-0 ${
+                  activeTab === 'copilot'
+                    ? 'bg-blue-600 text-white border-blue-500 shadow-blue-500/20'
+                    : darkMode
+                      ? 'bg-blue-950/60 text-blue-300 border-blue-800/60 hover:bg-blue-900/60'
+                      : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
+                }`}
+                title="Open Cobb AI Assistant"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-blue-400 animate-pulse" />
+                <span>Cobb AI</span>
+              </button>
+
+              {/* Multi-Store Switcher */}
+              <div className={`flex items-center gap-1.5 p-1 rounded-xl border shrink-0 ${darkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-100 border-slate-200'}`}>
+                <Store className="w-3.5 h-3.5 text-blue-500 ml-1.5 shrink-0" />
+                <select
+                  value={activeStore}
+                  onChange={(e) => switchStore(e.target.value)}
+                  className={`bg-transparent text-xs font-bold rounded-lg py-0.5 pr-2 focus:outline-none cursor-pointer ${darkMode ? 'text-slate-200' : 'text-slate-800'}`}
+                  title="Switch Cobb Store Branch"
+                >
+                  {AVAILABLE_STORES.map(store => (
+                    <option key={store.id} value={store.id} className={darkMode ? "bg-slate-900 text-slate-200 py-1" : "bg-white text-slate-800 py-1"}>
+                      {store.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Quick Role Switcher Pill */}
+              <button
+                type="button"
+                onClick={() => {
+                  const nextRole = currentRole === 'owner' ? 'manager' : 'owner';
+                  switchRole(nextRole);
+                }}
+                className={`px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer border shrink-0 ${
+                  currentRole === 'owner'
+                    ? darkMode
+                      ? 'bg-amber-950/60 text-amber-300 border-amber-800/60 hover:bg-amber-900/60'
+                      : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
+                    : darkMode
+                      ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/60 hover:bg-emerald-900/60'
+                      : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                }`}
+                title={currentRole === 'owner' ? 'Click to preview Manager View' : 'Click to return to Owner View'}
+              >
+                {currentRole === 'owner' ? (
+                  <>
+                    <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+                    <span>👑 Owner</span>
+                  </>
+                ) : (
+                  <>
+                    <ShieldAlert className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>👔 Manager</span>
+                  </>
+                )}
+              </button>
+
+              {/* EOD Cash Reconciliation Button */}
+              <button
+                type="button"
+                onClick={() => setShowReconModal(true)}
+                className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs transition-all shadow-sm cursor-pointer flex items-center gap-1 shrink-0"
+                title="EOD Cash Register Reconciliation"
+              >
+                <Calculator className="w-3.5 h-3.5" />
+                <span>EOD Cash</span>
+              </button>
+
+              {/* EOD WhatsApp Report Button */}
+              <button
+                type="button"
+                onClick={handleGenerateEodReport}
+                className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs transition-all shadow-sm cursor-pointer flex items-center gap-1 shrink-0"
+                title="Generate Daily EOD Report for Owner"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>EOD Report</span>
+              </button>
+
+              {/* Database & Store Setup Button */}
+              <button
+                type="button"
+                onClick={() => setShowSetupModal(true)}
+                className={`px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all shadow-xs cursor-pointer flex items-center gap-1.5 shrink-0 border ${
+                  darkMode
+                    ? 'bg-blue-950/60 text-blue-300 hover:bg-blue-900/60 border-blue-800/60'
+                    : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200'
+                }`}
+                title="Configure Database, Presets & Store Profile"
+              >
+                <Database className="w-3.5 h-3.5 text-blue-400" />
+                <span>POS Setup</span>
+              </button>
+
+              {/* Dark Mode Toggle Button */}
+              <button
+                type="button"
+                onClick={() => setDarkMode(!darkMode)}
+                className={`p-1.5 rounded-xl transition-all shadow-sm cursor-pointer flex items-center justify-center shrink-0 border ${
+                  darkMode
+                    ? 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-amber-400'
+                    : 'bg-slate-100 hover:bg-slate-200/80 border-slate-200 text-slate-600'
+                }`}
+                title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+              >
+                {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
+              </button>
+
+              {/* Systems status badge */}
+              <div className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-full border shadow-sm cursor-help shrink-0 ${
+                darkMode
+                  ? 'bg-slate-900 border-slate-800 text-slate-300'
+                  : 'bg-slate-100 border-slate-200 text-slate-600'
+              }`} title="Automation Engine Status">
+                <div className="relative flex h-2 w-2">
+                  {(isGatewayRunning && isListenerRunning) && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>}
+                  <span className={`relative inline-flex rounded-full h-2 w-2 ${isGatewayRunning && isListenerRunning ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                </div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+                  {isGatewayRunning && isListenerRunning ? 'Active' : 'Offline'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </header>
 
         <div className={activeTab === 'copilot' ? 'p-0 sm:p-6 lg:p-8 max-w-7xl mx-auto' : 'p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto'}>
+
           {children}
         </div>
       </div>
@@ -413,11 +502,12 @@ const Layout = ({
 
       {/* Global Floating AI Copilot Drawer */}
       <FloatingCopilot
-        API_BASE={import.meta.env.VITE_API_BASE || 'http://localhost:5000'}
+        API_BASE={API_BASE || 'http://localhost:5000'}
         darkMode={darkMode}
         activeTab={activeTab}
         onOpenFullTab={() => setActiveTab('copilot')}
       />
+
     </>
   );
 };
