@@ -28,6 +28,20 @@ app.use('/api/config', configRouter);
 const expensesRouter = require('./routes/expenses');
 app.use('/api/expenses', expensesRouter);
 
+const holdsRouter = require('./routes/holds');
+app.use('/api/holds', holdsRouter);
+
+// Stores Network endpoint (Feature 2 — Save-The-Sale)
+const STORES_NETWORK_FILE = path.join(__dirname, 'stores_network.json');
+app.get('/api/stores/network', (req, res) => {
+    try {
+        const raw = fs.readFileSync(STORES_NETWORK_FILE, 'utf8');
+        res.json(JSON.parse(raw));
+    } catch (e) {
+        res.json({ stores: [] });
+    }
+});
+
 const GlobalNodeCache = require('node-cache');
 const globalApiCache = new GlobalNodeCache({ stdTTL: 300 }); // 5 minutes cache for blazing fast tab switches
 
@@ -2907,6 +2921,21 @@ app.listen(PORT, () => {
     startAutomationHelper();
     startGatewayHelper();
     startCloudSyncHelper();
+
+    // Inject WhatsApp sender into Hold Desk router for courtesy pings
+    holdsRouter.setSendWhatsApp(async (phone, message) => {
+        try {
+            const formatted = String(phone).replace(/[^0-9]/g, '');
+            const finalPhone = formatted.length === 10 ? `91${formatted}` : formatted;
+            await fetch('http://localhost:3000/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ number: finalPhone, message })
+            });
+        } catch (e) {
+            console.error('[HoldDesk] WA ping failed:', e.message);
+        }
+    });
 
     // --- HIGH-AVAILABILITY SUPERVISOR (Runs every 10 seconds) ---
     // Continuously monitors and auto-heals WhatsApp Gateway, POS Listener, and Cloud Sync

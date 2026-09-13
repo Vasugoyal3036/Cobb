@@ -64,7 +64,10 @@ import {
   CheckCircle,
   AlertTriangle,
   ClipboardList,
-  Wallet
+  Wallet,
+  AlarmClock,
+  Network,
+  Music
 } from 'lucide-react';
 
 const navigationItems = [
@@ -81,6 +84,9 @@ const navigationItems = [
     category: "Operations", items: [
       { id: "live", label: "Live Checkouts", icon: Receipt },
       { id: "pocket_khata", label: "Pocket Khata (Expenses)", icon: Wallet, colorClass: "text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-400 font-bold border-l-2 border-amber-500" },
+      { id: "hold_desk", label: "Hold & Reserve Desk", icon: AlarmClock, colorClass: "text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-400 font-bold border-l-2 border-amber-500" },
+      { id: "save_the_sale", label: "Save-The-Sale Network", icon: Network, colorClass: "text-emerald-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-emerald-500/15 text-emerald-400 font-bold border-l-2 border-emerald-500" },
+      { id: "lounge_radio", label: "Lounge Radio & PA", icon: Music, colorClass: "text-purple-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-purple-500/15 text-purple-400 font-bold border-l-2 border-purple-500" },
       { id: "returns", label: "Product Exchanges", icon: RotateCcw, colorClass: "text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-400 font-bold border-l-2 border-amber-500" },
       { id: "topmovers", label: "Top Movers & Size Demand", icon: Flame, colorClass: "text-rose-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-rose-500/15 text-rose-400 font-bold border-l-2 border-rose-500" },
       { id: "sizematrix", label: "Size Matrix Heatmap", icon: Grid, colorClass: "text-blue-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-blue-500/15 text-blue-400 font-bold border-l-2 border-blue-500" },
@@ -147,6 +153,9 @@ const Layout = ({
     'dashboard',
     'live',
     'pocket_khata',
+    'hold_desk',
+    'save_the_sale',
+    'lounge_radio',
     'shelf_talkers',
     'returns',
     'topmovers',
@@ -158,6 +167,7 @@ const Layout = ({
     'vip',
     'dormant'
   ];
+
   
   const filteredNavigation = navigationItems.map(cat => {
     return {

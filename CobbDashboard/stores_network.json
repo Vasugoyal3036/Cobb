@@ -1,0 +1,13 @@
+{
+  "stores": [
+    {
+      "id": "store_b",
+      "name": "Cobb — [Store B Name]",
+      "city": "Nearby City",
+      "distanceKm": 5,
+      "managerName": "Manager Name",
+      "managerPhone": "91XXXXXXXXXX",
+      "notes": "Edit this file at CobbDashboard/stores_network.json to add real store names and WhatsApp numbers"
+    }
+  ]
+}

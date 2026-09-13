@@ -13,6 +13,9 @@ import LoyaltyTab from './components/tabs/LoyaltyTab';
 import ExchangeTab from './components/tabs/ExchangeTab';
 import PocketKhataTab from './components/tabs/PocketKhataTab';
 import ShelfTalkerStudioTab from './components/tabs/ShelfTalkerStudioTab';
+import HoldDeskTab from './components/tabs/HoldDeskTab';
+import SaveTheSaleTab from './components/tabs/SaveTheSaleTab';
+import LoungeRadioTab from './components/tabs/LoungeRadioTab';
 import { fetchWithOfflineFallback, subscribeToData } from './utils/offlineDb';
 import Layout from './components/Layout';
 import SetupScreen from './components/SetupScreen';
@@ -1860,7 +1863,22 @@ export default function App() {
               <ShelfTalkerStudioTab {...appState} />
             )}
 
-            {/* CUSTOMER PROFILE MODAL / DRAWER WITH AI */}
+            {/* 12. HOLD & RESERVE DESK */}
+            {activeTab === 'hold_desk' && (
+              <HoldDeskTab darkMode={darkMode} />
+            )}
+
+            {/* 13. MULTI-STORE SAVE-THE-SALE NETWORK */}
+            {activeTab === 'save_the_sale' && (
+              <SaveTheSaleTab darkMode={darkMode} />
+            )}
+
+            {/* 14. COBB LOUNGE RADIO & FLOOR ANNOUNCEMENTS */}
+            {activeTab === 'lounge_radio' && (
+              <LoungeRadioTab darkMode={darkMode} />
+            )}
+
+
         <CustomerProfileModal {...appState} />
 
         {/* EOD CASH RECONCILIATION MODAL WITH POCKET KHATA INTEGRATION */}
