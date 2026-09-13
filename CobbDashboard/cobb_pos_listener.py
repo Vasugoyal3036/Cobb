@@ -30,6 +30,120 @@ FACEBOOK_LINK = "https://www.facebook.com/share/14ra4KrNJa3/"
 MEDIA_FILE = "WhatsApp Image 2026-08-14 at 20.35.17.jpeg"
 WHATSAPP_SERVER_URL = "http://localhost:3000/send"
 SENT_BILLS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sent_bills.txt")
+SENT_EOD_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sent_eod_date.txt")
+EOD_RECIPIENTS = ['9138122820', '8708788707', '9034522000', '9466422821']
+
+def send_daily_closing_digest(cursor):
+    """Compiles and sends the 9:30 PM store owner closing digest to all configured numbers."""
+    try:
+        # 1. Sales & Bills
+        cursor.execute("""
+            SELECT 
+                COUNT(CM_ID) as BillCount,
+                ISNULL(SUM(NET_AMOUNT), 0) as GrossSales,
+                ISNULL(SUM(DISCOUNT_AMOUNT), 0) as TotalDiscount,
+                ISNULL(SUM(TOTAL_GST_AMOUNT), 0) as TaxCollected,
+                ISNULL(SUM(NET_AMOUNT - TOTAL_GST_AMOUNT), 0) as NetSales
+            FROM CMM01106 WITH (NOLOCK)
+            WHERE CM_TIME >= CAST(GETDATE() AS DATE) AND CANCELLED = 0
+        """)
+        sales_row = cursor.fetchone()
+        bill_count = int(sales_row[0] or 0)
+        gross_sales = int(round(float(sales_row[1] or 0)))
+        total_discount = int(round(float(sales_row[2] or 0)))
+        tax_collected = int(round(float(sales_row[3] or 0)))
+
+        # 2. Payment modes
+        cursor.execute("""
+            SELECT 
+                ISNULL(SUM(p.CASH_AMOUNT), 0) as Cash,
+                ISNULL(SUM(p.CC_AMOUNT), 0) as Card,
+                ISNULL(SUM(w.UPI + w.[Paytm QR] + w.Paytm + w.[PAYTM UPI] + w.RazorpayUPI), 0) as UPI
+            FROM CMM01106 m WITH (NOLOCK)
+            LEFT JOIN VW_BILL_PAYMODE p WITH (NOLOCK) ON m.CM_ID = p.MEMO_ID AND p.XN_TYPE = 'SLS'
+            LEFT JOIN VW_WL_CASHMEMOLIST w WITH (NOLOCK) ON m.CM_ID = w.MEMO_ID
+            WHERE m.CM_TIME >= CAST(GETDATE() AS DATE) AND m.CANCELLED = 0
+        """)
+        pay_row = cursor.fetchone()
+        cash = int(round(float(pay_row[0] or 0)))
+        card = int(round(float(pay_row[1] or 0)))
+        upi = int(round(float(pay_row[2] or 0)))
+
+        # 3. Exchanges
+        cursor.execute("""
+            SELECT 
+                COUNT(DISTINCT m.CM_ID) as ExchangeBills,
+                ISNULL(SUM(ABS(d.NET)), 0) as ExchangeValue,
+                ISNULL(SUM(m.NET_AMOUNT), 0) as NetUpsellDiff
+            FROM CMD01106 d WITH (NOLOCK)
+            JOIN CMM01106 m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
+            WHERE d.QUANTITY < 0 AND m.CANCELLED = 0 AND m.CM_TIME >= CAST(GETDATE() AS DATE)
+        """)
+        exch_row = cursor.fetchone()
+        exch_bills = int(exch_row[0] or 0)
+        exch_value = int(round(float(exch_row[1] or 0)))
+        exch_upsell = int(round(float(exch_row[2] or 0)))
+
+        # 4. Top Category
+        cursor.execute("""
+            SELECT TOP 1 
+                ISNULL(e.SUB_SECTION_NAME, 'Apparel') as TopCategory, 
+                SUM(d.QUANTITY) as UnitsSold,
+                ISNULL(SUM(d.NET), 0) as CategorySales
+            FROM CMD01106 d WITH (NOLOCK)
+            JOIN CMM01106 m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
+            JOIN SKU c WITH (NOLOCK) ON d.PRODUCT_CODE = c.PRODUCT_CODE
+            JOIN ARTICLE a WITH (NOLOCK) ON c.ARTICLE_CODE = a.ARTICLE_CODE
+            LEFT JOIN SECTIOND e WITH (NOLOCK) ON a.SUB_SECTION_CODE = e.SUB_SECTION_CODE
+            WHERE d.QUANTITY > 0 AND m.CANCELLED = 0 AND m.CM_TIME >= CAST(GETDATE() AS DATE)
+            GROUP BY e.SUB_SECTION_NAME
+            ORDER BY UnitsSold DESC
+        """)
+        top_cat_row = cursor.fetchone()
+        top_cat_name = str(top_cat_row[0] or 'Apparel').strip() if top_cat_row else 'Apparel'
+        top_cat_units = int(top_cat_row[1] or 0) if top_cat_row else 0
+
+        date_str = time.strftime('%d %b %Y')
+        upsell_sign = '+' if exch_upsell >= 0 else ''
+
+        msg = (
+            f"📊 *COBB PUNDRI — STORE CLOSING DIGEST*\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"📅 *Date:* {date_str} (9:30 PM Closing)\n"
+            f"🏪 *Store:* Cobb Apparels, Fatehpur Road, Pundri\n\n"
+            f"💰 *SALES PERFORMANCE:*\n"
+            f"• Total Net Sales: *₹{gross_sales:,}*\n"
+            f"• Total Bills Processed: *{bill_count} Bills*\n"
+            f"• Total Customer Discounts Given: *₹{total_discount:,}*\n"
+            f"• Tax (GST) Collected: *₹{tax_collected:,}*\n\n"
+            f"💳 *COLLECTIONS BREAKDOWN:*\n"
+            f"• 💵 Cash in Drawer: *₹{cash:,}*\n"
+            f"• 📱 UPI / Online: *₹{upi:,}*\n"
+            f"• 💳 Card (POS Swipe): *₹{card:,}*\n\n"
+            f"🔄 *EXCHANGES & REPLACEMENTS:*\n"
+            f"• Exchange Bills Handled: *{exch_bills}*\n"
+            f"• Total Returned Merchandise: *₹{exch_value:,}*\n"
+            f"• Net Upsell Collected: *{upsell_sign}₹{exch_upsell:,}*\n\n"
+            f"🏆 *TOP PERFORMING CATEGORY:*\n"
+            f"• Best Seller: *{top_cat_name}* ({top_cat_units} units sold)\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"✨ Automated EOD Store Intelligence System"
+        )
+
+        for num in EOD_RECIPIENTS:
+            clean_phone = ''.join(filter(str.isdigit, str(num)))
+            if len(clean_phone) == 10:
+                clean_phone = f"91{clean_phone}"
+            try:
+                requests.post(WHATSAPP_SERVER_URL, json={'number': clean_phone, 'message': msg}, headers={'Content-Type': 'application/json'}, timeout=15)
+                print(f"[{time.strftime('%X')}] [EOD DIGEST SENT] Delivered to {clean_phone}", flush=True)
+            except Exception as send_err:
+                print(f"[{time.strftime('%X')}] [EOD SEND ERROR] Failed for {clean_phone}: {send_err}", flush=True)
+
+        return True
+    except Exception as e:
+        print(f"[{time.strftime('%X')}] [EOD REPORT GENERATION ERROR] {e}", flush=True)
+        return False
 
 def get_db_connection():
     available_drivers = [d for d in pyodbc.drivers() if 'SQL Server' in d]
@@ -207,7 +321,18 @@ def run_listener():
         except Exception as e:
             print(f"[{time.strftime('%X')}] [HISTORY LOAD ERROR] {e}", flush=True)
 
-    print(f"[{time.strftime('%X')}] Connecting to database and monitoring for new checkouts and exchanges...", flush=True)
+    # Load already sent EOD closing date from file
+    last_eod_date = ""
+    if os.path.exists(SENT_EOD_FILE):
+        try:
+            with open(SENT_EOD_FILE, 'r') as f:
+                last_eod_date = f.read().strip()
+            if last_eod_date:
+                print(f"[{time.strftime('%X')}] Last EOD closing digest was sent on: {last_eod_date}", flush=True)
+        except Exception as e:
+            print(f"[{time.strftime('%X')}] [EOD HISTORY LOAD ERROR] {e}", flush=True)
+
+    print(f"[{time.strftime('%X')}] Connecting to database and monitoring for checkouts, exchanges, and 9:30 PM closing digest...", flush=True)
 
     try:
         conn = get_db_connection()
@@ -218,7 +343,20 @@ def run_listener():
 
     while True:
         try:
-            # Query all bills in the last 2 days
+            # 1. Check for 9:30 PM (21:30) Automated Store Closing Digest
+            now = time.localtime()
+            today_str = time.strftime('%Y-%m-%d', now)
+            if (now.tm_hour > 21 or (now.tm_hour == 21 and now.tm_min >= 30)) and last_eod_date != today_str:
+                print(f"[{time.strftime('%X')}] [9:30 PM CLOSING] Clock is 9:30 PM. Generating and sending automated EOD digest to owners...", flush=True)
+                if send_daily_closing_digest(cursor):
+                    last_eod_date = today_str
+                    try:
+                        with open(SENT_EOD_FILE, 'w') as f:
+                            f.write(today_str)
+                    except Exception as file_err:
+                        print(f"[{time.strftime('%X')}] [SENT EOD LOG ERROR] {file_err}", flush=True)
+
+            # 2. Query all bills in the last 2 days
             query = """
                 SELECT 
                     m.CM_ID, m.CM_NO, m.CM_TIME, m.CUSTOMER_CODE, m.CUSTOMER_FNAME, m.NET_AMOUNT,

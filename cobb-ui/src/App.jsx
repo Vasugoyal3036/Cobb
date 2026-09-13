@@ -79,7 +79,8 @@ import {
   Camera,
   Percent,
   CheckCircle,
-  AlertTriangle
+  AlertTriangle,
+  Copy
 } from 'lucide-react';
 
 const isElectron = window.location.protocol === 'app:' || window.location.protocol === 'file:' || (typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('electron'));
@@ -297,6 +298,8 @@ export default function App() {
   const [showEodModal, setShowEodModal] = useState(false);
   const [eodSummaryText, setEodSummaryText] = useState('');
   const [eodCopied, setEodCopied] = useState(false);
+  const [isSendingEod, setIsSendingEod] = useState(false);
+  const [eodSendResult, setEodSendResult] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [matrixCategoryFilter, setMatrixCategoryFilter] = useState('ALL');
 
@@ -1068,6 +1071,24 @@ export default function App() {
     }
   };
 
+  const handleDispatchEodReport = async () => {
+    setIsSendingEod(true);
+    setEodSendResult('');
+    try {
+      const res = await axios.post(`${API_BASE}/api/reports/eod-summary/send`);
+      if (res.data?.success) {
+        setEodSendResult('✅ Closing digest successfully dispatched to all 4 store owners on WhatsApp!');
+      } else {
+        setEodSendResult('⚠️ Dispatched with partial response. Please verify numbers.');
+      }
+    } catch (err) {
+      console.error('Failed to dispatch EOD report:', err);
+      setEodSendResult('❌ Failed to dispatch: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setIsSendingEod(false);
+    }
+  };
+
   const handleMasterRestock = () => {
     const lowStockItems = inventory.filter(i => i.CurrentStock <= 3);
     if (lowStockItems.length === 0) {
@@ -1825,29 +1846,85 @@ export default function App() {
         {/* EOD WHATSAPP REPORT MODAL */}
         {showEodModal && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in">
-            <div className="bg-white rounded-2xl p-6 w-full max-w-lg shadow-2xl border border-slate-200">
-              <h3 className="text-xl font-black text-slate-800 mb-2 flex items-center gap-2"><FileText className="w-6 h-6 text-indigo-600"/> Daily EOD Summary</h3>
-              <p className="text-sm text-slate-500 mb-6">Review the end-of-day store performance report before sending it to the owner.</p>
-              
+            <div className="bg-white rounded-2xl p-6 w-full max-w-xl shadow-2xl border border-slate-200 space-y-4">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="text-xl font-black text-slate-900 flex items-center gap-2">
+                    <FileText className="w-6 h-6 text-amber-500" />
+                    Store Closing Digest (EOD)
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Automated nightly store intelligence report dispatched at <strong>9:30 PM</strong>.
+                  </p>
+                </div>
+                <span className="text-[11px] font-bold px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-full flex items-center gap-1">
+                  ⏰ Auto 9:30 PM
+                </span>
+              </div>
+
+              {/* Recipient list card */}
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Configured Owner Recipients (4 Numbers)
+                  </span>
+                  <span className="text-[10px] font-semibold text-emerald-600">Active</span>
+                </div>
+                <div className="flex flex-wrap gap-1.5 font-mono text-xs font-bold text-slate-700">
+                  <span className="px-2 py-0.5 bg-white rounded border border-slate-200">9138122820</span>
+                  <span className="px-2 py-0.5 bg-white rounded border border-slate-200">8708788707</span>
+                  <span className="px-2 py-0.5 bg-white rounded border border-slate-200">9034522000</span>
+                  <span className="px-2 py-0.5 bg-white rounded border border-slate-200">9466422821</span>
+                </div>
+              </div>
+
+              {/* Live Preview textarea */}
               <textarea 
                 value={eodSummaryText} 
                 readOnly 
-                className="w-full h-64 p-4 bg-slate-900 text-green-400 font-mono text-xs rounded-xl mb-6 focus:outline-none custom-scrollbar" 
+                className="w-full h-64 p-4 bg-slate-950 text-emerald-400 font-mono text-xs rounded-xl focus:outline-none custom-scrollbar leading-relaxed border border-slate-800" 
               />
+
+              {eodSendResult && (
+                <div className={`p-3 rounded-xl text-xs font-semibold ${
+                  eodSendResult.startsWith('✅') 
+                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' 
+                    : 'bg-rose-50 text-rose-800 border border-rose-200'
+                }`}>
+                  {eodSendResult}
+                </div>
+              )}
               
-              <div className="flex justify-end gap-3">
-                <button onClick={() => setShowEodModal(false)} className="px-5 py-2.5 text-slate-500 font-bold rounded-xl hover:bg-slate-100 transition-colors">Close</button>
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
                 <button 
-                  onClick={() => { 
-                    navigator.clipboard.writeText(eodSummaryText); 
-                    setEodCopied(true); 
-                    setTimeout(()=>setEodCopied(false), 2000); 
-                  }} 
-                  className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-500/30 transition-all flex items-center gap-2"
+                  onClick={() => { setShowEodModal(false); setEodSendResult(''); }} 
+                  className="px-4 py-2.5 text-slate-500 font-bold text-xs rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
                 >
-                  {eodCopied ? <CheckCircle2 className="w-5 h-5"/> : <Send className="w-5 h-5"/>}
-                  {eodCopied ? 'Copied to Clipboard!' : 'Copy Report'}
+                  Close
                 </button>
+
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => { 
+                      navigator.clipboard.writeText(eodSummaryText); 
+                      setEodCopied(true); 
+                      setTimeout(() => setEodCopied(false), 2000); 
+                    }} 
+                    className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    {eodCopied ? <CheckCircle2 className="w-4 h-4 text-emerald-600"/> : <Copy className="w-4 h-4"/>}
+                    {eodCopied ? 'Copied!' : 'Copy Text'}
+                  </button>
+
+                  <button 
+                    onClick={handleDispatchEodReport}
+                    disabled={isSendingEod}
+                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow-md shadow-emerald-600/20 transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+                  >
+                    {isSendingEod ? <RefreshCw className="w-4 h-4 animate-spin"/> : <Send className="w-4 h-4"/>}
+                    <span>{isSendingEod ? 'Dispatching...' : 'Send to 4 Owners Now'}</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>

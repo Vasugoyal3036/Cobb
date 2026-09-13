@@ -1609,52 +1609,143 @@ app.get('/api/financials/gst-summary', async (req, res) => {
     }
 });
 
-// 2. EOD Report Endpoint
+// 2. Comprehensive Store Owner EOD Closing Digest
+const EOD_DEFAULT_RECIPIENTS = ['9138122820', '8708788707', '9034522000', '9466422821'];
+
+async function generateEodSummaryReport() {
+    const batch = await sql.query(`
+        -- 1. Sales & Bills
+        SELECT 
+            COUNT(CM_ID) as BillCount,
+            ISNULL(SUM(NET_AMOUNT), 0) as GrossSales,
+            ISNULL(SUM(DISCOUNT_AMOUNT), 0) as TotalDiscount,
+            ISNULL(SUM(TOTAL_GST_AMOUNT), 0) as TaxCollected,
+            ISNULL(SUM(NET_AMOUNT - TOTAL_GST_AMOUNT), 0) as NetSales
+        FROM CMM01106 WITH (NOLOCK)
+        WHERE CM_TIME >= CAST(GETDATE() AS DATE) AND CANCELLED = 0;
+
+        -- 2. Payment Modes
+        SELECT 
+            ISNULL(SUM(p.CASH_AMOUNT), 0) as Cash,
+            ISNULL(SUM(p.CC_AMOUNT), 0) as Card,
+            ISNULL(SUM(w.UPI + w.[Paytm QR] + w.Paytm + w.[PAYTM UPI] + w.RazorpayUPI), 0) as UPI
+        FROM CMM01106 m WITH (NOLOCK)
+        LEFT JOIN VW_BILL_PAYMODE p WITH (NOLOCK) ON m.CM_ID = p.MEMO_ID AND p.XN_TYPE = 'SLS'
+        LEFT JOIN VW_WL_CASHMEMOLIST w WITH (NOLOCK) ON m.CM_ID = w.MEMO_ID
+        WHERE m.CM_TIME >= CAST(GETDATE() AS DATE) AND m.CANCELLED = 0;
+
+        -- 3. Today's Exchanges
+        SELECT 
+            COUNT(DISTINCT m.CM_ID) as ExchangeBills,
+            ISNULL(SUM(ABS(d.NET)), 0) as ExchangeValue,
+            ISNULL(SUM(m.NET_AMOUNT), 0) as NetUpsellDiff
+        FROM CMD01106 d WITH (NOLOCK)
+        JOIN CMM01106 m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
+        WHERE d.QUANTITY < 0 AND m.CANCELLED = 0 AND m.CM_TIME >= CAST(GETDATE() AS DATE);
+
+        -- 4. Top Category of the Day
+        SELECT TOP 1 
+            ISNULL(e.SUB_SECTION_NAME, 'Apparel') as TopCategory, 
+            SUM(d.QUANTITY) as UnitsSold,
+            ISNULL(SUM(d.NET), 0) as CategorySales
+        FROM CMD01106 d WITH (NOLOCK)
+        JOIN CMM01106 m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
+        JOIN SKU c WITH (NOLOCK) ON d.PRODUCT_CODE = c.PRODUCT_CODE
+        JOIN ARTICLE a WITH (NOLOCK) ON c.ARTICLE_CODE = a.ARTICLE_CODE
+        LEFT JOIN SECTIOND e WITH (NOLOCK) ON a.SUB_SECTION_CODE = e.SUB_SECTION_CODE
+        WHERE d.QUANTITY > 0 AND m.CANCELLED = 0 AND m.CM_TIME >= CAST(GETDATE() AS DATE)
+        GROUP BY e.SUB_SECTION_NAME
+        ORDER BY UnitsSold DESC;
+    `);
+
+    const summary = batch.recordsets[0]?.[0] || {};
+    const pay = batch.recordsets[1]?.[0] || {};
+    const exch = batch.recordsets[2]?.[0] || {};
+    const topCat = batch.recordsets[3]?.[0] || {};
+
+    const dateStr = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    const fmt = (n) => `₹${Number(Math.round(n || 0)).toLocaleString('en-IN')}`;
+
+    const text = 
+`📊 *COBB PUNDRI — STORE CLOSING DIGEST*
+━━━━━━━━━━━━━━━━━━━━━━━━
+📅 *Date:* ${dateStr} (9:30 PM Closing)
+🏪 *Store:* Cobb Apparels, Fatehpur Road, Pundri
+
+💰 *SALES PERFORMANCE:*
+• Total Net Sales: *${fmt(summary.GrossSales)}*
+• Total Bills Processed: *${summary.BillCount || 0} Bills*
+• Total Customer Discounts Given: *${fmt(summary.TotalDiscount)}*
+• Tax (GST) Collected: *${fmt(summary.TaxCollected)}*
+
+💳 *COLLECTIONS BREAKDOWN:*
+• 💵 Cash in Drawer: *${fmt(pay.Cash)}*
+• 📱 UPI / Online: *${fmt(pay.UPI)}*
+• 💳 Card (POS Swipe): *${fmt(pay.Card)}*
+
+🔄 *EXCHANGES & REPLACEMENTS:*
+• Exchange Bills Handled: *${exch.ExchangeBills || 0}*
+• Total Returned Merchandise: *${fmt(exch.ExchangeValue)}*
+• Net Upsell Collected: *${(exch.NetUpsellDiff || 0) >= 0 ? '+' : ''}${fmt(exch.NetUpsellDiff)}*
+
+🏆 *TOP PERFORMING CATEGORY:*
+• Best Seller: *${topCat.TopCategory || 'Apparel'}* (${topCat.UnitsSold || 0} units sold)
+━━━━━━━━━━━━━━━━━━━━━━━━
+✨ Automated EOD Store Intelligence System`;
+
+    return {
+        text,
+        summary: {
+            grossSales: summary.GrossSales || 0,
+            billCount: summary.BillCount || 0,
+            discounts: summary.TotalDiscount || 0,
+            gst: summary.TaxCollected || 0,
+            cash: pay.Cash || 0,
+            card: pay.Card || 0,
+            upi: pay.UPI || 0,
+            exchangeBills: exch.ExchangeBills || 0,
+            exchangeValue: exch.ExchangeValue || 0,
+            upsellCollected: exch.NetUpsellDiff || 0,
+            topCategory: topCat.TopCategory || 'Apparel',
+            topCategoryUnits: topCat.UnitsSold || 0
+        },
+        recipients: EOD_DEFAULT_RECIPIENTS
+    };
+}
+
 app.get('/api/reports/eod-summary', async (req, res) => {
     try {
-        const result = await sql.query(`
-            SELECT 
-                COUNT(CM_ID) as BillCount,
-                COUNT(CM_ID) as TotalUnits,
-                ISNULL(SUM(NET_AMOUNT), 0) as GrossSales,
-                ISNULL(SUM(TOTAL_GST_AMOUNT), 0) as TaxCollected,
-                ISNULL(SUM(NET_AMOUNT - TOTAL_GST_AMOUNT), 0) as NetSales
-            FROM CMM01106 WITH (NOLOCK)
-            WHERE CM_TIME >= CAST(GETDATE() AS DATE) AND CANCELLED = 0
-        `);
-        
-        const paymentModes = await sql.query(`
-            SELECT 
-                ISNULL(SUM(p.CASH_AMOUNT), 0) as Cash,
-                ISNULL(SUM(p.CC_AMOUNT), 0) as Card,
-                ISNULL(SUM(w.UPI + w.[Paytm QR] + w.Paytm + w.[PAYTM UPI] + w.RazorpayUPI), 0) as UPI
-            FROM CMM01106 m WITH (NOLOCK)
-            LEFT JOIN VW_BILL_PAYMODE p WITH (NOLOCK) ON m.CM_ID = p.MEMO_ID AND p.XN_TYPE = 'SLS'
-            LEFT JOIN VW_WL_CASHMEMOLIST w WITH (NOLOCK) ON m.CM_ID = w.MEMO_ID
-            WHERE m.CM_TIME >= CAST(GETDATE() AS DATE) AND m.CANCELLED = 0
-        `);
-        
-        const summary = result.recordset[0];
-        const pay = paymentModes.recordset[0];
-        
-        const text = `📊 *EOD REPORT - COBB PUNDRI*
-Date: ${new Date().toLocaleDateString('en-GB')}
+        const report = await generateEodSummaryReport();
+        res.json(report);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
 
-🧾 *Sales Summary:*
-• Total Bills: ${summary.BillCount}
-• Total Units: ${summary.TotalUnits}
-• Gross Sales: ₹${summary.GrossSales.toLocaleString('en-IN')}
-• Net Sales (Excl. Tax): ₹${summary.NetSales.toLocaleString('en-IN')}
-• Tax Collected: ₹${summary.TaxCollected.toLocaleString('en-IN')}
+app.post('/api/reports/eod-summary/send', async (req, res) => {
+    try {
+        const report = await generateEodSummaryReport();
+        const targets = req.body?.recipients && Array.isArray(req.body.recipients) && req.body.recipients.length > 0
+            ? req.body.recipients
+            : EOD_DEFAULT_RECIPIENTS;
 
-💳 *Payment Breakdown:*
-• Cash: ₹${pay.Cash.toLocaleString('en-IN')}
-• Card: ₹${pay.Card.toLocaleString('en-IN')}
-• UPI/Online: ₹${pay.UPI.toLocaleString('en-IN')}
-
-✨ Generated by WizApp AI`;
-        
-        res.json({ text });
+        const results = [];
+        for (const rawNumber of targets) {
+            const clean = String(rawNumber).replace(/[^0-9]/g, '');
+            const formatted = clean.length === 10 ? `91${clean}` : clean;
+            try {
+                const response = await fetch('http://localhost:3000/send', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ number: formatted, message: report.text })
+                });
+                const data = await response.json();
+                results.push({ number: clean, success: response.ok, data });
+            } catch (sendErr) {
+                results.push({ number: clean, success: false, error: sendErr.message });
+            }
+        }
+        res.json({ success: true, results, report: report.text });
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
