@@ -8,49 +8,45 @@ import {
   VolumeX,
   Mic,
   Clock,
-  ChevronRight,
-  CheckCircle2,
-  Settings,
+  Timer,
   Megaphone,
   Zap,
-  Timer,
-  SkipForward,
-  Loader
+  Loader,
+  ExternalLink,
+  Link,
+  X,
+  Check
 } from 'lucide-react';
 
-// Curated royalty-free lounge streams (public domain / free use)
-const STATIONS = [
+// Curated long-running lounge/ambient YouTube videos (8–12 hour compilations)
+const PLAYLISTS = [
   {
-    id: 'lounge1',
-    name: 'Deep Lounge Jazz',
-    desc: 'Smooth jazz perfect for luxury retail',
+    id: 'jazz_cafe',
+    name: 'Jazz Café Lounge',
+    desc: '8-hour smooth jazz for luxury retail',
     emoji: '🎷',
-    url: 'https://stream.zeno.fm/2n2j0fmf0tzuv',
-    genre: 'Jazz Lounge'
+    videoId: 'Dx5qFachd3A',
   },
   {
-    id: 'lounge2',
-    name: 'Café Bossa Nova',
-    desc: 'Relaxed Brazilian bossa for fitting rooms',
+    id: 'bossa_nova',
+    name: 'Bossa Nova & Soul',
+    desc: 'Relaxed Brazilian vibes for fitting rooms',
     emoji: '🎵',
-    url: 'https://stream.zeno.fm/yn65f92a5k0uv',
-    genre: 'Bossa Nova'
+    videoId: 'NJuSStkIZBg',
   },
   {
-    id: 'lounge3',
-    name: 'Hotel Lobby Jazz',
-    desc: 'Classic 5-star hotel ambience',
-    emoji: '🏨',
-    url: 'https://stream.zeno.fm/hcp0qvvhv8zuv',
-    genre: 'Hotel Jazz'
-  },
-  {
-    id: 'lounge4',
-    name: 'Soft Piano Classics',
+    id: 'piano_ambient',
+    name: 'Soft Piano Ambient',
     desc: 'Elegant instrumental for focused shopping',
     emoji: '🎹',
-    url: 'https://stream.zeno.fm/0r0xa792kwzuv',
-    genre: 'Piano'
+    videoId: 'lTRiuFIWV54',
+  },
+  {
+    id: 'lounge_chill',
+    name: 'Luxury Lounge Chill',
+    desc: '5-star hotel lobby atmosphere',
+    emoji: '🏨',
+    videoId: 'kZYIOYGSMaI',
   },
 ];
 
@@ -100,16 +96,30 @@ const AUTO_INTERVALS = [
   { label: 'Every 60 min', value: 60 },
 ];
 
+function extractVideoId(input) {
+  if (!input) return null;
+  // Already a clean video ID (11 chars)
+  if (/^[A-Za-z0-9_-]{11}$/.test(input.trim())) return input.trim();
+  // youtube.com/watch?v=ID
+  const match = input.match(/(?:v=|youtu\.be\/|embed\/)([A-Za-z0-9_-]{11})/);
+  return match ? match[1] : null;
+}
+
 export default function LoungeRadioTab({ darkMode }) {
-  const audioRef = useRef(null);
+  const playerRef = useRef(null);
+  const playerReadyRef = useRef(false);
+  const iframeContainerRef = useRef(null);
   const intervalRef = useRef(null);
 
-  const [activeStation, setActiveStation] = useState(STATIONS[0]);
+  const [activePlaylist, setActivePlaylist] = useState(PLAYLISTS[0]);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [volume, setVolume] = useState(0.6);
+  const [volume, setVolume] = useState(70);
   const [isMuted, setIsMuted] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [audioError, setAudioError] = useState('');
+  const [playerLoaded, setPlayerLoaded] = useState(false);
+  const [customUrl, setCustomUrl] = useState('');
+  const [customVideoId, setCustomVideoId] = useState('');
+  const [customError, setCustomError] = useState('');
+  const [showCustomInput, setShowCustomInput] = useState(false);
 
   const [selectedPreset, setSelectedPreset] = useState(ANNOUNCEMENT_PRESETS[0]);
   const [customText, setCustomText] = useState('');
@@ -118,11 +128,133 @@ export default function LoungeRadioTab({ darkMode }) {
   const [ttsSupported, setTtsSupported] = useState(false);
   const [ttsVoice, setTtsVoice] = useState(null);
   const [availableVoices, setAvailableVoices] = useState([]);
+  const [announcementCount, setAnnouncementCount] = useState(0);
 
   const [autoInterval, setAutoInterval] = useState(0);
   const [nextAnnouncementIn, setNextAnnouncementIn] = useState(null);
-  const [announcementCount, setAnnouncementCount] = useState(0);
-  const [visualizerBars] = useState(Array.from({ length: 18 }, (_, i) => i));
+
+  // Load YouTube IFrame API script once
+  useEffect(() => {
+    if (window.YT && window.YT.Player) {
+      initPlayer(activePlaylist.videoId);
+      return;
+    }
+    const tag = document.createElement('script');
+    tag.src = 'https://www.youtube.com/iframe_api';
+    document.head.appendChild(tag);
+
+    window.onYouTubeIframeAPIReady = () => {
+      initPlayer(activePlaylist.videoId);
+    };
+
+    return () => {
+      window.onYouTubeIframeAPIReady = null;
+    };
+  }, []);
+
+  const initPlayer = (videoId) => {
+    if (playerRef.current) {
+      try { playerRef.current.destroy(); } catch (e) {}
+      playerRef.current = null;
+    }
+    playerReadyRef.current = false;
+    setPlayerLoaded(false);
+
+    if (!document.getElementById('yt-player-container')) return;
+
+    // Reset the container div
+    const container = document.getElementById('yt-player-inner');
+    if (container) container.innerHTML = '<div id="yt-player"></div>';
+
+    playerRef.current = new window.YT.Player('yt-player', {
+      height: '100%',
+      width: '100%',
+      videoId,
+      playerVars: {
+        autoplay: 0,
+        controls: 0,
+        disablekb: 1,
+        fs: 0,
+        iv_load_policy: 3,
+        modestbranding: 1,
+        rel: 0,
+        showinfo: 0,
+        loop: 1,
+        playlist: videoId,
+      },
+      events: {
+        onReady: (e) => {
+          playerReadyRef.current = true;
+          e.target.setVolume(volume);
+          setPlayerLoaded(true);
+        },
+        onStateChange: (e) => {
+          setIsPlaying(e.data === window.YT.PlayerState.PLAYING);
+        },
+        onError: () => {
+          setPlayerLoaded(true); // allow UI to still show
+        }
+      }
+    });
+  };
+
+  const switchPlaylist = (playlist) => {
+    setActivePlaylist(playlist);
+    setIsPlaying(false);
+    setPlayerLoaded(false);
+    setCustomVideoId('');
+    setCustomUrl('');
+    setShowCustomInput(false);
+    if (window.YT && window.YT.Player) {
+      setTimeout(() => initPlayer(playlist.videoId), 100);
+    }
+  };
+
+  const handleCustomUrl = () => {
+    const vid = extractVideoId(customUrl);
+    if (!vid) {
+      setCustomError('Invalid YouTube URL or video ID');
+      return;
+    }
+    setCustomError('');
+    setCustomVideoId(vid);
+    setActivePlaylist({ id: 'custom', name: 'Custom YouTube', desc: customUrl, emoji: '🔗', videoId: vid });
+    setIsPlaying(false);
+    setPlayerLoaded(false);
+    if (window.YT && window.YT.Player) {
+      setTimeout(() => initPlayer(vid), 100);
+    }
+    setShowCustomInput(false);
+  };
+
+  const togglePlay = () => {
+    if (!playerRef.current || !playerReadyRef.current) return;
+    if (isPlaying) {
+      playerRef.current.pauseVideo();
+    } else {
+      playerRef.current.playVideo();
+    }
+  };
+
+  const handleVolumeChange = (val) => {
+    setVolume(val);
+    if (playerRef.current && playerReadyRef.current) {
+      playerRef.current.setVolume(val);
+      if (val > 0) setIsMuted(false);
+    }
+  };
+
+  const handleMute = () => {
+    if (!playerRef.current || !playerReadyRef.current) return;
+    if (isMuted) {
+      playerRef.current.unMute();
+      playerRef.current.setVolume(volume);
+      setIsMuted(false);
+    } else {
+      playerRef.current.mute();
+      setIsMuted(true);
+    }
+  };
 
   // TTS setup
   useEffect(() => {
@@ -131,71 +263,28 @@ export default function LoungeRadioTab({ darkMode }) {
     setTtsSupported(true);
 
     const loadVoices = () => {
-      const voices = synth.getVoices().filter(v =>
-        v.lang.startsWith('en') && (v.name.toLowerCase().includes('female') || v.name.toLowerCase().includes('google') || v.name.toLowerCase().includes('natural'))
-      );
       const all = synth.getVoices().filter(v => v.lang.startsWith('en'));
-      const best = voices.length > 0 ? voices[0] : (all.length > 0 ? all[0] : null);
+      const preferred = all.filter(v =>
+        v.name.toLowerCase().includes('female') ||
+        v.name.toLowerCase().includes('google') ||
+        v.name.toLowerCase().includes('natural')
+      );
       setAvailableVoices(all);
-      setTtsVoice(best);
+      setTtsVoice(preferred[0] || all[0] || null);
     };
-
     loadVoices();
     synth.onvoiceschanged = loadVoices;
     return () => { synth.onvoiceschanged = null; };
   }, []);
 
-  // Audio element volume
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = isMuted ? 0 : volume;
-    }
-  }, [volume, isMuted]);
-
-  const playStation = async (station) => {
-    setAudioError('');
-    setIsLoading(true);
-    setActiveStation(station);
-    if (audioRef.current) {
-      audioRef.current.src = station.url;
-      try {
-        await audioRef.current.play();
-        setIsPlaying(true);
-      } catch (e) {
-        setAudioError('Could not connect to stream. Check internet connection.');
-        setIsPlaying(false);
-      }
-    }
-    setIsLoading(false);
-  };
-
-  const togglePlay = async () => {
-    if (!audioRef.current) return;
-    setAudioError('');
-    if (isPlaying) {
-      audioRef.current.pause();
-      setIsPlaying(false);
-    } else {
-      setIsLoading(true);
-      try {
-        audioRef.current.src = activeStation.url;
-        await audioRef.current.play();
-        setIsPlaying(true);
-      } catch (e) {
-        setAudioError('Could not connect to stream. Check internet connection.');
-      }
-      setIsLoading(false);
-    }
-  };
-
   const speak = useCallback((text) => {
     const synth = window.speechSynthesis;
     if (!synth || !text.trim()) return;
 
-    // Pause music during announcement
+    // Dip music volume
     const wasPlaying = isPlaying;
-    if (audioRef.current && wasPlaying) {
-      audioRef.current.volume = 0.1;
+    if (playerRef.current && playerReadyRef.current && wasPlaying) {
+      playerRef.current.setVolume(10);
     }
 
     synth.cancel();
@@ -206,32 +295,27 @@ export default function LoungeRadioTab({ darkMode }) {
     utt.volume = 1;
     utt.lang = 'en-IN';
 
-    utt.onstart = () => {
-      setIsSpeaking(true);
-      setSpeakingText(text);
-    };
+    utt.onstart = () => { setIsSpeaking(true); setSpeakingText(text); };
     utt.onend = () => {
       setIsSpeaking(false);
       setSpeakingText('');
       setAnnouncementCount(c => c + 1);
-      // Restore music volume
-      if (audioRef.current && wasPlaying) {
-        audioRef.current.volume = isMuted ? 0 : volume;
+      if (playerRef.current && playerReadyRef.current && wasPlaying) {
+        playerRef.current.setVolume(volume);
       }
     };
     utt.onerror = () => {
       setIsSpeaking(false);
       setSpeakingText('');
-      if (audioRef.current && wasPlaying) {
-        audioRef.current.volume = isMuted ? 0 : volume;
+      if (playerRef.current && playerReadyRef.current && wasPlaying) {
+        playerRef.current.setVolume(volume);
       }
     };
     synth.speak(utt);
-  }, [isPlaying, isMuted, volume, ttsVoice]);
+  }, [isPlaying, volume, ttsVoice]);
 
   const handleAnnounce = () => {
     const text = selectedPreset.id === 'custom' ? customText : selectedPreset.text;
-    if (!text.trim()) return;
     speak(text);
   };
 
@@ -239,7 +323,7 @@ export default function LoungeRadioTab({ darkMode }) {
     window.speechSynthesis?.cancel();
     setIsSpeaking(false);
     setSpeakingText('');
-    if (audioRef.current) audioRef.current.volume = isMuted ? 0 : volume;
+    if (playerRef.current && playerReadyRef.current) playerRef.current.setVolume(volume);
   };
 
   // Auto announcement scheduler
@@ -247,20 +331,15 @@ export default function LoungeRadioTab({ darkMode }) {
     if (intervalRef.current) clearInterval(intervalRef.current);
     if (autoInterval === 0) { setNextAnnouncementIn(null); return; }
 
-    const fireAnnouncement = () => {
-      const text = selectedPreset.id === 'custom' ? customText : selectedPreset.text;
-      if (text.trim()) speak(text);
-    };
-
+    const text = selectedPreset.id === 'custom' ? customText : selectedPreset.text;
     const ms = autoInterval * 60 * 1000;
     setNextAnnouncementIn(autoInterval);
 
     intervalRef.current = setInterval(() => {
-      fireAnnouncement();
+      if (text.trim()) speak(text);
       setNextAnnouncementIn(autoInterval);
     }, ms);
 
-    // Countdown display
     let remaining = autoInterval;
     const countdown = setInterval(() => {
       remaining--;
@@ -280,14 +359,6 @@ export default function LoungeRadioTab({ darkMode }) {
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
-      {/* Hidden audio element */}
-      <audio
-        ref={audioRef}
-        onError={() => { setAudioError('Stream unavailable'); setIsPlaying(false); }}
-        onPlay={() => setIsPlaying(true)}
-        onPause={() => setIsPlaying(false)}
-      />
-
       {/* Header */}
       <div>
         <h2 className={`text-2xl font-black tracking-tight flex items-center gap-2 ${darkMode ? 'text-slate-100' : 'text-slate-800'}`}>
@@ -295,107 +366,160 @@ export default function LoungeRadioTab({ darkMode }) {
           Cobb Lounge Radio
         </h2>
         <p className={`text-sm mt-0.5 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-          Ambient luxury lounge music + smart in-store floor announcements
+          YouTube-powered ambient music + smart in-store floor announcements via Text-to-Speech
         </p>
       </div>
 
-      {/* Now Playing Card */}
-      <div className="rounded-2xl border border-purple-500/20 bg-gradient-to-br from-purple-950/40 via-slate-900 to-slate-900 p-6 shadow-2xl shadow-purple-500/10">
-        <div className="flex items-center gap-4">
-          {/* Station icon */}
-          <div className="w-16 h-16 rounded-2xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-3xl flex-shrink-0 shadow-xl">
-            {activeStation.emoji}
+      {/* YouTube Player Card */}
+      <div className="rounded-2xl border border-purple-500/20 bg-gradient-to-br from-purple-950/40 via-slate-900 to-slate-900 p-5 shadow-2xl shadow-purple-500/10 space-y-4">
+        <div className="flex items-start gap-4">
+          {/* Station icon & info */}
+          <div className="w-14 h-14 rounded-2xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-3xl flex-shrink-0">
+            {activePlaylist.emoji}
           </div>
-
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <p className={`font-black text-lg truncate ${darkMode ? 'text-slate-100' : 'text-slate-800'}`}>{activeStation.name}</p>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-400 border border-purple-500/20 font-semibold">{activeStation.genre}</span>
-            </div>
-            <p className="text-slate-500 text-sm mt-0.5">{activeStation.desc}</p>
-
-            {/* Visualizer bars */}
-            <div className="flex items-end gap-[2px] mt-3 h-6">
-              {visualizerBars.map(i => (
-                <div
-                  key={i}
-                  className={`w-1 rounded-full bg-purple-500 transition-all ${isPlaying && !isSpeaking
-                    ? 'animate-pulse opacity-80'
-                    : 'opacity-20'}`}
-                  style={{
-                    height: isPlaying && !isSpeaking
-                      ? `${12 + Math.sin(i * 0.7) * 10 + Math.random() * 4}px`
-                      : '4px',
-                    animationDelay: `${i * 60}ms`,
-                    animationDuration: `${600 + i * 80}ms`
-                  }}
-                />
-              ))}
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className={`font-black text-base truncate ${darkMode ? 'text-slate-100' : 'text-slate-800'}`}>{activePlaylist.name}</p>
+              {isPlaying && (
+                <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 border border-purple-500/30 animate-pulse font-semibold">
+                  ▶ LIVE
+                </span>
+              )}
               {isSpeaking && (
-                <span className="ml-2 text-xs text-amber-400 font-bold animate-pulse flex items-center gap-1">
-                  <Mic className="w-3 h-3" /> LIVE ANNOUNCEMENT
+                <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 animate-pulse font-semibold">
+                  <Mic className="w-3 h-3" /> ANNOUNCEMENT
                 </span>
               )}
             </div>
-          </div>
+            <p className="text-slate-500 text-xs mt-0.5 truncate">{activePlaylist.desc}</p>
 
-          {/* Controls */}
-          <div className="flex flex-col items-center gap-3 flex-shrink-0">
-            <button
-              onClick={togglePlay}
-              disabled={isLoading}
-              className={`w-12 h-12 rounded-full flex items-center justify-center shadow-xl transition-all border font-bold ${isPlaying
-                ? 'bg-purple-600 hover:bg-purple-500 border-purple-500 shadow-purple-500/30 text-white'
-                : 'bg-slate-800 hover:bg-purple-600 border-slate-700 hover:border-purple-500 text-slate-300 hover:text-white'}`}
-            >
-              {isLoading ? <Loader className="w-5 h-5 animate-spin" /> : isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ml-0.5" />}
-            </button>
-
-            {/* Volume */}
-            <div className="flex items-center gap-2">
-              <button onClick={() => setIsMuted(!isMuted)} className="text-slate-400 hover:text-white transition-colors">
-                {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            {/* Controls row */}
+            <div className="flex items-center gap-3 mt-3 flex-wrap">
+              <button
+                onClick={togglePlay}
+                disabled={!playerLoaded}
+                className={`w-10 h-10 rounded-full flex items-center justify-center shadow-lg border font-bold transition-all flex-shrink-0 ${isPlaying
+                  ? 'bg-purple-600 hover:bg-purple-500 border-purple-500 text-white shadow-purple-500/30'
+                  : 'bg-slate-800 hover:bg-purple-700 border-slate-700 text-slate-300 hover:text-white'} ${!playerLoaded ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                {!playerLoaded
+                  ? <Loader className="w-4 h-4 animate-spin" />
+                  : isPlaying
+                    ? <Pause className="w-4 h-4" />
+                    : <Play className="w-4 h-4 ml-0.5" />}
               </button>
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.05}
-                value={volume}
-                onChange={e => { setVolume(parseFloat(e.target.value)); setIsMuted(false); }}
-                className="w-20 h-1.5 accent-purple-500"
-              />
+
+              {/* Volume */}
+              <div className="flex items-center gap-2">
+                <button onClick={handleMute} disabled={!playerLoaded} className="text-slate-400 hover:text-white transition-colors disabled:opacity-40">
+                  {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+                </button>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={volume}
+                  onChange={e => handleVolumeChange(Number(e.target.value))}
+                  disabled={!playerLoaded}
+                  className="w-24 h-1.5 accent-purple-500 disabled:opacity-40"
+                />
+                <span className="text-xs text-slate-500 w-7">{isMuted ? '🔇' : `${volume}%`}</span>
+              </div>
+
+              {/* Open in YouTube */}
+              <a
+                href={`https://www.youtube.com/watch?v=${activePlaylist.videoId}`}
+                target="_blank"
+                rel="noreferrer"
+                className="ml-auto flex items-center gap-1 text-xs text-slate-500 hover:text-purple-400 transition-colors"
+              >
+                <ExternalLink className="w-3 h-3" /> Open in YouTube
+              </a>
             </div>
           </div>
         </div>
 
-        {audioError && (
-          <p className="text-xs text-rose-400 mt-3 flex items-center gap-1">
-            <Zap className="w-3 h-3" /> {audioError}
-          </p>
-        )}
+        {/* Hidden YouTube player (renders audio; video is visually hidden) */}
+        <div id="yt-player-container" className="rounded-xl overflow-hidden border border-purple-500/10" style={{ height: '0px', position: 'absolute', pointerEvents: 'none', opacity: 0 }}>
+          <div id="yt-player-inner">
+            <div id="yt-player"></div>
+          </div>
+        </div>
+
+        {/* Visualizer bars (decorative, react to playing state) */}
+        <div className="flex items-end gap-[2px] h-5">
+          {Array.from({ length: 22 }).map((_, i) => (
+            <div
+              key={i}
+              className={`w-1 rounded-full transition-all ${isPlaying && !isSpeaking ? 'bg-purple-500' : 'bg-slate-700'}`}
+              style={{
+                height: isPlaying && !isSpeaking
+                  ? `${8 + Math.abs(Math.sin(i * 0.6 + Date.now() * 0.001)) * 12}px`
+                  : '3px',
+                animationDelay: `${i * 50}ms`,
+              }}
+            />
+          ))}
+        </div>
       </div>
 
-      {/* Station Selector */}
+      {/* Playlist selector + Custom URL */}
       <div className={`rounded-2xl border p-4 space-y-3 ${darkMode ? 'border-slate-800 bg-slate-900/60' : 'border-slate-200 bg-white'}`}>
-        <p className={`text-xs font-bold uppercase tracking-widest ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>Select Station</p>
+        <div className="flex items-center justify-between">
+          <p className={`text-xs font-bold uppercase tracking-widest ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>Select Music</p>
+          <button
+            onClick={() => setShowCustomInput(!showCustomInput)}
+            className={`flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-xl border transition-all ${showCustomInput
+              ? 'bg-purple-500/20 border-purple-500/40 text-purple-400'
+              : darkMode ? 'border-slate-700 text-slate-400 hover:text-white' : 'border-slate-200 text-slate-500 hover:text-slate-800'}`}
+          >
+            <Link className="w-3 h-3" /> Custom YouTube URL
+          </button>
+        </div>
+
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          {STATIONS.map(station => (
+          {PLAYLISTS.map(pl => (
             <button
-              key={station.id}
-              onClick={() => playStation(station)}
-              className={`rounded-xl p-3 text-left transition-all border ${activeStation.id === station.id
+              key={pl.id}
+              onClick={() => switchPlaylist(pl)}
+              className={`rounded-xl p-3 text-left transition-all border ${activePlaylist.id === pl.id && !customVideoId
                 ? 'bg-purple-500/15 border-purple-500/40 text-purple-300'
                 : darkMode
-                  ? 'border-slate-700 hover:border-purple-500/40 text-slate-400 hover:text-purple-300 bg-slate-800/50'
-                  : 'border-slate-200 hover:border-purple-300 text-slate-600 hover:text-purple-600 bg-slate-50'}`}
+                  ? 'border-slate-700 hover:border-purple-500/40 text-slate-400 bg-slate-800/50'
+                  : 'border-slate-200 hover:border-purple-300 text-slate-600 bg-slate-50'}`}
             >
-              <div className="text-xl mb-1">{station.emoji}</div>
-              <div className="font-bold text-xs leading-tight">{station.name}</div>
-              <div className="text-xs opacity-60 mt-0.5 leading-tight">{station.genre}</div>
+              <div className="text-xl mb-1">{pl.emoji}</div>
+              <div className="font-bold text-xs leading-tight">{pl.name}</div>
+              <div className="text-xs opacity-60 mt-0.5 leading-tight">{pl.desc}</div>
             </button>
           ))}
         </div>
+
+        {/* Custom YouTube URL input */}
+        {showCustomInput && (
+          <div className="space-y-2 pt-1">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Paste YouTube URL or Video ID — e.g. https://youtube.com/watch?v=..."
+                value={customUrl}
+                onChange={e => { setCustomUrl(e.target.value); setCustomError(''); }}
+                className={inputClass}
+              />
+              <button
+                onClick={handleCustomUrl}
+                className="px-4 py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-sm font-bold transition-all flex-shrink-0"
+              >
+                <Check className="w-4 h-4" />
+              </button>
+            </div>
+            {customError && <p className="text-xs text-rose-400 flex items-center gap-1"><Zap className="w-3 h-3" /> {customError}</p>}
+            <p className="text-xs text-slate-600">
+              💡 Tip: Use long lounge/jazz compilations (4–12 hours) for best store experience. The video plays with audio only — video is hidden.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Floor Announcements */}
@@ -412,7 +536,6 @@ export default function LoungeRadioTab({ darkMode }) {
           )}
         </div>
 
-        {/* Preset picker */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
           {ANNOUNCEMENT_PRESETS.map(preset => (
             <button
@@ -430,7 +553,6 @@ export default function LoungeRadioTab({ darkMode }) {
           ))}
         </div>
 
-        {/* Custom text if selected */}
         {selectedPreset.id === 'custom' ? (
           <textarea
             rows={3}
@@ -440,27 +562,26 @@ export default function LoungeRadioTab({ darkMode }) {
             className={`${inputClass} resize-none`}
           />
         ) : (
-          <div className={`text-xs italic rounded-xl px-4 py-3 border ${darkMode ? 'bg-slate-950/60 border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>
-            "{selectedPreset.text.slice(0, 180)}{selectedPreset.text.length > 180 ? '...' : ''}"
+          <div className={`text-xs italic rounded-xl px-4 py-3 border leading-relaxed ${darkMode ? 'bg-slate-950/60 border-slate-800 text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-500'}`}>
+            "{selectedPreset.text.slice(0, 200)}{selectedPreset.text.length > 200 ? '...' : ''}"
           </div>
         )}
 
-        {/* TTS Voice selector */}
+        {/* Voice selector */}
         {availableVoices.length > 1 && (
           <div className="flex items-center gap-3">
-            <label className={`text-xs font-semibold ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Voice:</label>
+            <label className={`text-xs font-semibold flex-shrink-0 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Voice:</label>
             <select
               value={ttsVoice?.name || ''}
               onChange={e => setTtsVoice(availableVoices.find(v => v.name === e.target.value))}
-              className={`text-xs px-3 py-1.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-purple-500 ${darkMode ? 'bg-slate-900 border-slate-700 text-slate-200' : 'bg-white border-slate-200 text-slate-700'}`}
+              className={`text-xs px-3 py-1.5 rounded-xl border focus:outline-none focus:ring-1 focus:ring-amber-500 ${darkMode ? 'bg-slate-900 border-slate-700 text-slate-200' : 'bg-white border-slate-200 text-slate-700'}`}
             >
               {availableVoices.map(v => <option key={v.name} value={v.name}>{v.name}</option>)}
             </select>
           </div>
         )}
 
-        {/* Speak button */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           {isSpeaking ? (
             <button
               onClick={stopSpeaking}
@@ -479,7 +600,7 @@ export default function LoungeRadioTab({ darkMode }) {
             </button>
           )}
           {announcementCount > 0 && (
-            <span className="text-xs text-slate-500">{announcementCount} announcement{announcementCount > 1 ? 's' : ''} played today</span>
+            <span className="text-xs text-slate-500">{announcementCount} announcement{announcementCount > 1 ? 's' : ''} played</span>
           )}
         </div>
 
@@ -491,7 +612,7 @@ export default function LoungeRadioTab({ darkMode }) {
         )}
       </div>
 
-      {/* Auto Scheduler */}
+      {/* Auto scheduler */}
       <div className={`rounded-2xl border p-4 space-y-3 ${darkMode ? 'border-slate-800 bg-slate-900/60' : 'border-slate-200 bg-white'}`}>
         <div className="flex items-center justify-between">
           <p className={`font-bold flex items-center gap-2 text-sm ${darkMode ? 'text-slate-200' : 'text-slate-700'}`}>
@@ -518,7 +639,7 @@ export default function LoungeRadioTab({ darkMode }) {
           ))}
         </div>
         <p className={`text-xs ${darkMode ? 'text-slate-600' : 'text-slate-400'}`}>
-          When active, the selected preset announcement will play through your store speakers at the chosen interval. Music volume auto-dips during announcements.
+          Music auto-dips to 10% volume during each announcement, then restores automatically.
         </p>
       </div>
     </div>
