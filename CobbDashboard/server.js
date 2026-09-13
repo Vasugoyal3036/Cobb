@@ -1405,8 +1405,25 @@ app.get('/api/broadcast/status', (req, res) => {
     res.json(activeBroadcast);
 });
 
+// Spin-tax template parser to prevent identical message hash fingerprinting
+function parseSpinTax(text) {
+    if (!text) return '';
+    return text.replace(/\{([^{}]+)\}/g, (match, choices) => {
+        if (choices.toLowerCase() === 'name') return '{name}';
+        const options = choices.split('|');
+        return options[Math.floor(Math.random() * options.length)].trim();
+    });
+}
+
 app.post('/api/broadcast/start', async (req, res) => {
-    const { message, delayMs = 1500 } = req.body;
+    const { 
+        message, 
+        safetyMode = 'ultra', 
+        batchSize = 20, 
+        cooldownSeconds = 180, 
+        includeOptOut = true 
+    } = req.body;
+
     if (!message) return res.status(400).json({ error: 'Broadcast message body is required.' });
     if (activeBroadcast.isRunning) return res.status(400).json({ error: 'A broadcast is already running.' });
 
@@ -1427,13 +1444,23 @@ app.post('/api/broadcast/start', async (req, res) => {
         currentIndex: 0,
         currentContact: '',
         status: 'running',
-        logs: [`[${new Date().toLocaleTimeString()}] Started Mass WhatsApp Broadcast to ${contacts.length} billed customers...`]
+        safetyMode,
+        batchSize: Number(batchSize) || 20,
+        inCooldown: false,
+        cooldownRemaining: 0,
+        nextDelaySeconds: 0,
+        logs: [`[${new Date().toLocaleTimeString()}] 🛡️ Started Anti-Ban Mass WhatsApp Broadcast to ${contacts.length} billed customers (Mode: ${safetyMode.toUpperCase()}, Batch Size: ${batchSize})...`]
     };
 
-    res.json({ success: true, message: `Mass broadcast started to ${contacts.length} customers.` });
+    res.json({ 
+        success: true, 
+        message: `🛡️ Anti-Ban Mass Broadcast initiated for ${contacts.length} customers with humanized pacing & batch pauses.` 
+    });
 
     // Background Broadcast Async Execution Loop
     (async () => {
+        const optOutFooter = "\n\n-----------------------------------\n📌 _Save our number to receive exclusive VIP deals._\n_Reply STOP to unsubscribe anytime._";
+
         for (let i = 0; i < contacts.length; i++) {
             if (broadcastShouldStop) {
                 activeBroadcast.status = 'stopped';
@@ -1442,48 +1469,95 @@ app.post('/api/broadcast/start', async (req, res) => {
                 break;
             }
 
+            // --- BATCH COOLDOWN CHECK ---
+            // After every batchSize sends, pause to reset Meta's velocity trigger
+            if (i > 0 && i % (activeBroadcast.batchSize || 20) === 0) {
+                const pauseTime = Number(cooldownSeconds) || 180;
+                activeBroadcast.inCooldown = true;
+                const cdLog = `[${new Date().toLocaleTimeString()}] ☕ Batch milestone reached (${i} contacts sent). Cooling down for ${Math.round(pauseTime / 60)} minutes to protect WhatsApp account from spam filters...`;
+                activeBroadcast.logs.push(cdLog);
+                pythonLogs.push(cdLog);
+
+                for (let cd = pauseTime; cd > 0; cd--) {
+                    if (broadcastShouldStop) break;
+                    activeBroadcast.cooldownRemaining = cd;
+                    await new Promise(r => setTimeout(r, 1000));
+                }
+                activeBroadcast.inCooldown = false;
+                activeBroadcast.cooldownRemaining = 0;
+                if (broadcastShouldStop) break;
+
+                const resumeLog = `[${new Date().toLocaleTimeString()}] ▶️ Cooldown complete. Resuming next safe batch of messages...`;
+                activeBroadcast.logs.push(resumeLog);
+                pythonLogs.push(resumeLog);
+            }
+
             const contact = contacts[i];
             activeBroadcast.currentIndex = i + 1;
             activeBroadcast.currentContact = `${contact.customerName} (${contact.phone})`;
 
-            const personalizedMsg = message.replace(/{name}/g, contact.customerName || 'Valued Customer');
+            // 1. Apply Spin-Tax variation (e.g. {Hello|Hi|Dear}) to avoid identical hash spam
+            let randomizedText = parseSpinTax(message);
+
+            // 2. Personalize customer name
+            let finalMsg = randomizedText.replace(/{name}/g, contact.customerName || 'Valued Customer');
+
+            // 3. Append Opt-Out if enabled to protect against Spam reports
+            if (includeOptOut && !finalMsg.includes('STOP')) {
+                finalMsg += optOutFooter;
+            }
+
             const targetPhone = contact.formattedPhone;
 
             try {
                 const response = await fetch('http://localhost:3000/send', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ number: targetPhone, message: personalizedMsg })
+                    body: JSON.stringify({ number: targetPhone, message: finalMsg })
                 });
                 const data = await response.json();
                 if (response.ok) {
                     activeBroadcast.sentCount++;
-                    const log = `[${new Date().toLocaleTimeString()}] [${i + 1}/${contacts.length}] Sent offer to ${contact.customerName} (${targetPhone})`;
+                    const log = `[${new Date().toLocaleTimeString()}] [${i + 1}/${contacts.length}] ✅ Sent offer to ${contact.customerName} (${targetPhone})`;
                     activeBroadcast.logs.push(log);
                     gatewayLogs.push(log);
                     pythonLogs.push(log);
                 } else {
                     activeBroadcast.failedCount++;
-                    const log = `[ERROR ${new Date().toLocaleTimeString()}] [${i + 1}/${contacts.length}] Failed to send to ${contact.customerName} (${targetPhone}): ${data.error}`;
+                    const log = `[ERROR ${new Date().toLocaleTimeString()}] [${i + 1}/${contacts.length}] ❌ Failed to send to ${contact.customerName} (${targetPhone}): ${data.error}`;
                     activeBroadcast.logs.push(log);
                     gatewayLogs.push(log);
                     pythonLogs.push(log);
                 }
             } catch (err) {
                 activeBroadcast.failedCount++;
-                const log = `[ERROR ${new Date().toLocaleTimeString()}] [${i + 1}/${contacts.length}] Network error sending to ${contact.customerName} (${targetPhone})`;
+                const log = `[ERROR ${new Date().toLocaleTimeString()}] [${i + 1}/${contacts.length}] ❌ Network error sending to ${contact.customerName} (${targetPhone})`;
                 activeBroadcast.logs.push(log);
                 gatewayLogs.push(log);
                 pythonLogs.push(log);
             }
 
-            await new Promise(resolve => setTimeout(resolve, delayMs));
+            // --- HUMANIZED DELAY WITH JITTER (ANTI-BAN PACING) ---
+            if (i < contacts.length - 1 && !broadcastShouldStop) {
+                const minSec = safetyMode === 'ultra' ? 20 : 12;
+                const maxSec = safetyMode === 'ultra' ? 38 : 22;
+                const delaySec = Math.floor(Math.random() * (maxSec - minSec + 1)) + minSec;
+                activeBroadcast.nextDelaySeconds = delaySec;
+
+                for (let s = delaySec; s > 0; s--) {
+                    if (broadcastShouldStop) break;
+                    activeBroadcast.nextDelaySeconds = s;
+                    await new Promise(r => setTimeout(r, 1000));
+                }
+                activeBroadcast.nextDelaySeconds = 0;
+            }
         }
 
         if (!broadcastShouldStop) {
             activeBroadcast.isRunning = false;
             activeBroadcast.status = 'completed';
-            activeBroadcast.logs.push(`[${new Date().toLocaleTimeString()}] 🎉 Mass WhatsApp Broadcast Completed! Total Sent: ${activeBroadcast.sentCount}/${contacts.length}`);
+            activeBroadcast.inCooldown = false;
+            activeBroadcast.logs.push(`[${new Date().toLocaleTimeString()}] 🎉 Anti-Ban Mass WhatsApp Broadcast Completed! Total Sent: ${activeBroadcast.sentCount}/${contacts.length}`);
         }
     })();
 });

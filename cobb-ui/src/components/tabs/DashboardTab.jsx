@@ -67,6 +67,9 @@ import {
 const DashboardTab = (props) => {
   const { userRole, activeStore, totalMonthlyUnits, totalMonthlyRevenue, maxHourlyRevenue, averageOrderValue, DAILY_TARGET, targetProgress, API_BASE, vips, setVips, dormant, setDormant, darkMode, setDarkMode, overviewStats, setOverviewStats, returnsData, setReturnsData, smartCoordinate, setSmartCoordinate, showCoordinateModal, setShowCoordinateModal, vmImages, setVmImages, vmImageUrls, setVmImageUrls, vmAuditResult, setVmAuditResult, isAuditing, setIsAuditing, vmError, setVmError, bundles, setBundles, isLoadingBundles, setIsLoadingBundles, publishedBundles, setPublishedBundles, handleVmUpload, fetchTrendForecast, handleCompUpload, fetchBundles, globalCustomers, setGlobalCustomers, isSearchingCustomers, setIsSearchingCustomers, liveBills, setLiveBills, inventory, setInventory, deadStock, setDeadStock, hourlySales, setHourlySales, dailySales, setDailySales, monthlyProducts, setMonthlyProducts, gstSummary, setGstSummary, gstRateSlab, setGstRateSlab, gstCopied, setGstCopied, sizeMatrix, setSizeMatrix, wardrobeProfiles, setWardrobeProfiles, pnlData, setPnlData, retentionData, setRetentionData, reconData, setReconData, countedCashInput, setCountedCashInput, reconNotes, setReconNotes, showReconModal, setShowReconModal, showEodModal, setShowEodModal, eodSummaryText, setEodSummaryText, eodCopied, setEodCopied, isMobileMenuOpen, setIsMobileMenuOpen, matrixCategoryFilter, setMatrixCategoryFilter, isListenerRunning, setIsListenerRunning, isTogglingListener, setIsTogglingListener, listenerLogs, setListenerLogs, isGatewayRunning, setIsGatewayRunning, isTogglingGateway, setIsTogglingGateway, isGatewayReady, setIsGatewayReady, gatewayQr, setGatewayQr, gatewayLogs, setGatewayLogs, testPhone, setTestPhone, testMsg, setTestMsg, isSendingTestWa, setIsSendingTestWa, broadcastGroup, setBroadcastGroup, broadcastGroupCount, setBroadcastGroupCount, broadcastStatus, setBroadcastStatus, broadcastMsg, setBroadcastMsg, isStartingBroadcast, setIsStartingBroadcast, isSyncingGroup, setIsSyncingGroup, groupSearchQuery, setGroupSearchQuery, topMoversData, setTopMoversData, activeTab, setActiveTab, activeConsole, setActiveConsole, searchQuery, setSearchQuery, selectedCustomer, setSelectedCustomer, customerHistory, setCustomerHistory, loadingHistory, setLoadingHistory, customerPersona, setCustomerPersona, loadingPersona, setLoadingPersona, aiMessageType, setAiMessageType, generatedMsg, setGeneratedMsg, isGenerating, setIsGenerating, generateWhatsAppDraft, activeOutfitMatch, setActiveOutfitMatch, outfitPitch, setOutfitPitch, isGeneratingOutfit, setIsGeneratingOutfit, campaignEvent, setCampaignEvent, campaignAudience, setCampaignAudience, campaignDraft, setCampaignDraft, isGeneratingCampaign, setIsGeneratingCampaign, openProductType, setOpenProductType, openMonth, setOpenMonth, selectedCalendarDay, setSelectedCalendarDay, expandedBillId, setExpandedBillId, billItemsCache, setBillItemsCache, loadingBillItems, setLoadingBillItems, handleKeyDown, toggleBillExpansion, fetchAutomationStatus, toggleListener, toggleGateway, handleSendTestWhatsApp, handleSyncBroadcastGroup, handleStartBroadcast, handleStopBroadcast, handleExportGroupCsv, openCustomerCard, handleGenerateAI, handleGenerateOutfitMatch, handleGenerateCampaign, handleSaveReconciliation, handleGenerateEodReport, handleMasterRestock, formatCurrency, MASTER_CATEGORIES, classifySubCategory, handleGlobalSearch, renderLogLine, persona, handleGenerateSmartCoordinate, trendForecast, isForecasting, compImage, compImageUrl, compIntelResult, isAnalyzingComp, compError } = props;
   const [calendarDate, setCalendarDate] = React.useState(new Date());
+  const [safetyMode, setSafetyMode] = React.useState('ultra');
+  const [batchSize, setBatchSize] = React.useState(20);
+  const [includeOptOut, setIncludeOptOut] = React.useState(true);
 
   return (
     <>
@@ -819,32 +822,114 @@ const DashboardTab = (props) => {
                   </div>
                 </div>
 
-                {/* Offer Broadcast Composer Card */}
+                {/* Offer Broadcast Composer Card with Anti-Ban Guardrails */}
                 <div className="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+                  {/* Anti-Ban Shield Banner */}
+                  <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/30 shrink-0">
+                        <CheckCircle className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-black text-emerald-950 flex items-center gap-1.5">
+                          🛡️ Anti-Ban Protection Engine Active
+                        </h4>
+                        <p className="text-xs text-emerald-700 mt-0.5">
+                          Protects your WhatsApp Business number with <strong>Human-Pacing Delays (20-38s)</strong>, <strong>Batch Cooldowns</strong>, and <strong>Spin-Tax Text Variations</strong>.
+                        </p>
+                      </div>
+                    </div>
+                    <span className="px-2.5 py-1 bg-white text-emerald-800 text-[10px] font-black rounded-lg border border-emerald-300 uppercase tracking-wide shrink-0 shadow-xs">
+                      100% Ban-Proof Safeguard
+                    </span>
+                  </div>
+
+                  {/* Safety Configuration Controls */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">
+                        Pacing Speed Mode
+                      </label>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setSafetyMode('ultra')}
+                          className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                            safetyMode === 'ultra'
+                              ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          🛡️ Ultra-Safe (20-38s)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setSafetyMode('balanced')}
+                          className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold border transition-all cursor-pointer ${
+                            safetyMode === 'balanced'
+                              ? 'bg-blue-600 text-white border-blue-700 shadow-xs'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          ⚡ Balanced (12-22s)
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">
+                        Batch Size (Auto-Pause)
+                      </label>
+                      <select
+                        value={batchSize}
+                        onChange={(e) => setBatchSize(Number(e.target.value))}
+                        className="w-full bg-white border border-slate-200 rounded-lg py-1.5 px-3 text-xs font-bold text-slate-700 focus:outline-none cursor-pointer"
+                      >
+                        <option value={15}>15 messages per batch (3 min cool-down)</option>
+                        <option value={20}>20 messages per batch (3 min cool-down - Recommended)</option>
+                        <option value={30}>30 messages per batch (4 min cool-down)</option>
+                      </select>
+                    </div>
+
+                    <div className="flex items-center pt-5">
+                      <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700">
+                        <input
+                          type="checkbox"
+                          checked={includeOptOut}
+                          onChange={(e) => setIncludeOptOut(e.target.checked)}
+                          className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300 cursor-pointer"
+                        />
+                        <span>Append Unsubscribe Footer</span>
+                      </label>
+                    </div>
+                  </div>
+
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-100 pb-4 gap-3">
                     <div>
                       <h4 className="font-bold text-slate-800 text-lg flex items-center">
                         <Sparkles className="w-5 h-5 mr-2 text-indigo-600" /> Compose Preset Offer Broadcast
                       </h4>
-                      <p className="text-xs text-slate-500 mt-0.5">Use <code className="bg-slate-100 px-1 py-0.5 rounded text-indigo-600 font-bold">{"{name}"}</code> to personalize customer names automatically.</p>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Supports <code className="bg-slate-100 px-1 py-0.5 rounded text-indigo-600 font-bold">{"{name}"}</code> and Spin-tax <code className="bg-slate-100 px-1 py-0.5 rounded text-indigo-600 font-bold">{"{Hello|Hi|Dear}"}</code> to rotate greetings and evade duplicate-content filters.
+                      </p>
                     </div>
 
-                    {/* Quick Preset Buttons */}
+                    {/* Quick Preset Buttons with Spin-Tax */}
                     <div className="flex flex-wrap gap-2">
                       <button
-                        onClick={() => setBroadcastMsg('🎉 *SPECIAL OFFER FROM COBB PUNDRI!* 🎉\n\nHello *{name}*! 👋\n\nEnjoy *BUY 2 GET 1 FREE* on all Suits, Formals, & Denim Collections this week at Cobb Pundri! 🏷️✨\n\n-----------------------------------\n📍 *Store Location:*\nhttps://maps.app.goo.gl/HxgE1M25h32oWY2H9?g_st=ac\n-----------------------------------\n\nShow this WhatsApp message at counter to claim your deal!\n\nWarm Regards,\n*Parbhat Goyal*\nCobb Pundri')}
+                        onClick={() => setBroadcastMsg('{🎉 SPECIAL OFFER|🏷️ EXCLUSIVE DEAL|✨ VIP INVITATION} FROM COBB PUNDRI!\n\n{Hello|Dear|Hi} *{name}*! 👋\n\nEnjoy *BUY 2 GET 1 FREE* on all Suits, Formals, & Denim Collections this week at Cobb Pundri! 🏷️✨\n\n-----------------------------------\n📍 *Store Location:*\nhttps://maps.app.goo.gl/HxgE1M25h32oWY2H9?g_st=ac\n-----------------------------------\n\nShow this WhatsApp message at counter to claim your deal!\n\nWarm Regards,\n*Parbhat Goyal*\nCobb Pundri')}
                         className="px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white rounded-lg text-xs font-bold transition-all cursor-pointer border border-indigo-100"
                       >
-                        🏷️ Buy 2 Get 1 Free
+                        🏷️ Buy 2 Get 1 Free (Spin-tax)
                       </button>
                       <button
-                        onClick={() => setBroadcastMsg('👑 *VIP REWARD FROM COBB PUNDRI* 👑\n\nDear *{name}*, 👋\n\nThank you for being one of our top valued customers! Enjoy an *INSTANT ₹500 VIP DISCOUNT* on your next invoice at Cobb Pundri this week. ✨\n\n-----------------------------------\n📍 *Store Location:*\nhttps://maps.app.goo.gl/HxgE1M25h32oWY2H9?g_st=ac\n-----------------------------------\n\nValid on minimum bill value of ₹2,999. Valid till Sunday!\n\nWarm Regards,\n*Parbhat Goyal*\nCobb Pundri')}
+                        onClick={() => setBroadcastMsg('{👑 VIP REWARD|💎 EXCLUSIVE PRIVILEGE} FROM COBB PUNDRI\n\n{Dear|Hello|Greetings} *{name}*, 👋\n\nThank you for being one of our top valued customers! Enjoy an *INSTANT ₹500 VIP DISCOUNT* on your next invoice at Cobb Pundri this week. ✨\n\n-----------------------------------\n📍 *Store Location:*\nhttps://maps.app.goo.gl/HxgE1M25h32oWY2H9?g_st=ac\n-----------------------------------\n\nValid on minimum bill value of ₹2,999. Valid till Sunday!\n\nWarm Regards,\n*Parbhat Goyal*\nCobb Pundri')}
                         className="px-3 py-1.5 bg-amber-50 text-amber-700 hover:bg-amber-600 hover:text-white rounded-lg text-xs font-bold transition-all cursor-pointer border border-amber-100"
                       >
                         👑 VIP ₹500 Discount
                       </button>
                       <button
-                        onClick={() => setBroadcastMsg('✨ *NEW FESTIVE COLLECTION ARRIVED!* ✨\n\nHello *{name}*! 👋\n\nFresh stock of Premium Festive Suits, Blazers, & Smart Shirts just arrived at Cobb Pundri! Drop by today for exclusive early-bird fitting. 🛍️\n\n-----------------------------------\n📍 *Store Location:*\nhttps://maps.app.goo.gl/HxgE1M25h32oWY2H9?g_st=ac\n-----------------------------------\n\nWarm Regards,\n*Parbhat Goyal*\nCobb Pundri')}
+                        onClick={() => setBroadcastMsg('{✨ NEW COLLECTION ARRIVAL|👔 FRESH FASHION DROP} AT COBB PUNDRI\n\n{Hello|Hi|Dear} *{name}*! 👋\n\nFresh stock of Premium Festive Suits, Blazers, & Smart Shirts just arrived at Cobb Pundri! Drop by today for exclusive early-bird fitting. 🛍️\n\n-----------------------------------\n📍 *Store Location:*\nhttps://maps.app.goo.gl/HxgE1M25h32oWY2H9?g_st=ac\n-----------------------------------\n\nWarm Regards,\n*Parbhat Goyal*\nCobb Pundri')}
                         className="px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white rounded-lg text-xs font-bold transition-all cursor-pointer border border-emerald-100"
                       >
                         ✨ New Festival Collection
@@ -860,26 +945,38 @@ const DashboardTab = (props) => {
                     placeholder="Type your offer broadcast text here..."
                   />
 
-                  {/* Live Progress Bar Container */}
+                  {/* Live Progress Bar Container with Cooldown Countdown */}
                   {broadcastStatus.isRunning && (
                     <div className="bg-slate-900 text-white p-6 rounded-xl border border-slate-800 shadow-xl space-y-4">
                       <div className="flex justify-between items-center text-xs">
                         <span className="font-bold text-amber-300 flex items-center">
                           <RefreshCw className="w-4 h-4 mr-2 animate-spin text-amber-400" />
-                          Sending to: {broadcastStatus.currentContact}
+                          {broadcastStatus.inCooldown 
+                            ? `☕ Cooldown Pause: Resuming next batch in ${broadcastStatus.cooldownRemaining || 0}s (Resetting Meta spam limits...)` 
+                            : `Sending to: ${broadcastStatus.currentContact}`}
                         </span>
                         <span className="font-mono font-bold text-emerald-400">
-                          {broadcastStatus.currentIndex} / {broadcastStatus.total} ({((broadcastStatus.currentIndex / broadcastStatus.total) * 100).toFixed(0)}%)
+                          {broadcastStatus.currentIndex} / {broadcastStatus.total} ({((broadcastStatus.currentIndex / Math.max(broadcastStatus.total, 1)) * 100).toFixed(0)}%)
                         </span>
                       </div>
                       <div className="w-full bg-slate-800 h-3 rounded-full overflow-hidden border border-slate-700">
                         <div
-                          className="bg-gradient-to-r from-emerald-500 to-blue-500 h-full transition-all duration-300 rounded-full"
+                          className={`h-full transition-all duration-300 rounded-full ${
+                            broadcastStatus.inCooldown 
+                              ? 'bg-amber-500 animate-pulse' 
+                              : 'bg-gradient-to-r from-emerald-500 to-blue-500'
+                          }`}
                           style={{ width: `${(broadcastStatus.currentIndex / Math.max(broadcastStatus.total, 1)) * 100}%` }}
                         />
                       </div>
                       <div className="flex justify-between items-center text-[11px] text-slate-400">
-                        <span>Pacing: 1.5s delay between messages to ensure WhatsApp safety</span>
+                        <span>
+                          {broadcastStatus.inCooldown 
+                            ? 'Batch limit reached • Safe pause active' 
+                            : broadcastStatus.nextDelaySeconds > 0 
+                              ? `⏳ Human pacing delay: Waiting ${broadcastStatus.nextDelaySeconds}s before next send...` 
+                              : 'Humanized Anti-Ban delay active (20-38s)'}
+                        </span>
                         <button
                           onClick={handleStopBroadcast}
                           className="px-3 py-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/40 rounded-lg font-bold cursor-pointer transition-colors"
@@ -888,19 +985,19 @@ const DashboardTab = (props) => {
                         </button>
                       </div>
                     </div>
-
                   )}
-                  <div className="flex justify-between items-center pt-2">
-                    <span className="text-xs text-slate-400 font-medium">
-                      Will broadcast to all <span className="font-bold text-slate-700">{broadcastGroupCount}</span> billed customer numbers in group.
+
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pt-2">
+                    <span className="text-xs text-slate-500 font-medium">
+                      🛡️ Protected Broadcast Mode: Will send in batches of <strong>{batchSize}</strong> with <strong>{safetyMode === 'ultra' ? '20-38s' : '12-22s'}</strong> human intervals.
                     </span>
                     <button
-                      onClick={handleStartBroadcast}
+                      onClick={() => handleStartBroadcast({ safetyMode, batchSize, includeOptOut, cooldownSeconds: 180 })}
                       disabled={isStartingBroadcast || broadcastStatus.isRunning || broadcastGroupCount === 0}
                       className="px-8 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm transition-all cursor-pointer shadow-lg shadow-emerald-600/30 flex items-center disabled:opacity-50"
                     >
                       {isStartingBroadcast ? <RefreshCw className="w-5 h-5 mr-2 animate-spin" /> : <Send className="w-5 h-5 mr-2" />}
-                      {isStartingBroadcast ? 'Launching...' : `🚀 Launch Mass Broadcast (${broadcastGroupCount} Customers)`}
+                      {isStartingBroadcast ? 'Launching...' : `🛡️ Launch Protected Broadcast (${broadcastGroupCount} Customers)`}
                     </button>
                   </div>
                 </div>

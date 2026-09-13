@@ -930,18 +930,21 @@ export default function App() {
     }
   };
 
-  const handleStartBroadcast = async () => {
+  const handleStartBroadcast = async (customConfig = {}) => {
     if (!broadcastMsg.trim()) return alert("Please enter a broadcast offer message.");
     if (!isGatewayReady && !isGatewayRunning) {
       if (!confirm("WhatsApp Gateway seems offline. Proceeding will fail unless Gateway is started. Continue anyway?")) return;
     }
-    if (!confirm(`🚀 Are you sure you want to send this WhatsApp Offer Broadcast to ALL ${broadcastGroupCount} billed customers in your group?`)) return;
+    if (!confirm(`🛡️ Launch Anti-Ban WhatsApp Broadcast to ${broadcastGroupCount} customers?\n\n• Human-pacing delays (20-38s)\n• Batch limit (20 per batch) with 3-min cool-downs\n• Unsubscribe footer to prevent spam reports.`)) return;
 
     setIsStartingBroadcast(true);
     try {
       const res = await axios.post(`${API_BASE}/api/broadcast/start`, {
         message: broadcastMsg,
-        delayMs: 1500
+        safetyMode: customConfig.safetyMode || 'ultra',
+        batchSize: customConfig.batchSize || 20,
+        cooldownSeconds: customConfig.cooldownSeconds || 180,
+        includeOptOut: customConfig.includeOptOut !== false
       });
       alert(`✅ ${res.data.message}`);
     } catch (err) {
