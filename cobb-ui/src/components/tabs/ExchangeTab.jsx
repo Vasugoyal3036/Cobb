@@ -46,7 +46,7 @@ export default function ExchangeTab(props) {
   const [selectedItemToExchange, setSelectedItemToExchange] = useState(null);
   const [replacementItemName, setReplacementItemName] = useState('');
   const [replacementPrice, setReplacementPrice] = useState('');
-  const [exchangeReason, setExchangeReason] = useState('Size Mismatch');
+  const [exchangeReason, setExchangeReason] = useState('Size Mismatch (Too Small)');
   const [copiedSlip, setCopiedSlip] = useState(false);
 
   // Register filter state
@@ -130,7 +130,8 @@ export default function ExchangeTab(props) {
   const exchangeSlipText = useMemo(() => {
     if (!selectedBill || !selectedItemToExchange) return '';
     const custName = selectedBill.CustomerName?.trim() || 'Valued Customer';
-    const dateStr = selectedBill.BillTime ? new Date(selectedBill.BillTime).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Recent';
+    // Exchange is processed today, formatted cleanly e.g. "13 Sep 2026"
+    const dateStr = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
     
     let settlementLine = '';
     if (priceDifference > 0) {
@@ -147,7 +148,6 @@ export default function ExchangeTab(props) {
       `Dear *${custName}*,\n` +
       `Your product exchange has been processed successfully! ✨\n\n` +
       `📋 *EXCHANGE DETAILS:*\n` +
-      `• Invoice #: *${selectedBill.BillNumber.trim()}*\n` +
       `• Date: ${dateStr}\n` +
       `• Mobile: ${selectedBill.Phone?.trim() || 'N/A'}\n\n` +
       `↩️ *RETURNED ITEM:*\n` +
@@ -156,7 +156,7 @@ export default function ExchangeTab(props) {
       `• Value Credited: ₹${Math.abs(selectedItemToExchange.NetPrice).toLocaleString('en-IN')}\n` +
       `• Reason: ${exchangeReason}\n\n` +
       `✨ *NEW REPLACEMENT ITEM:*\n` +
-      `• Article: *${replacementItemName || 'Replacement Article'}*\n` +
+      `• Article: *${replacementItemName || 'Cobb Slim-Fit Shirt (Size 42)'}*\n` +
       `• Value: ₹${(newPriceNum > 0 ? newPriceNum : Math.abs(originalCredit)).toLocaleString('en-IN')}\n` +
       `━━━━━━━━━━━━━━━━━━━━━━━━\n` +
       `${settlementLine}\n` +
@@ -166,8 +166,7 @@ export default function ExchangeTab(props) {
       `${storeMapLink ? `🗺️ Store Map: ${storeMapLink}\n\n` : '\n'}` +
       `⭐ *Rate Your Experience & Leave Us a Google Review:*\n` +
       `${googleReviewLink}\n` +
-      `━━━━━━━━━━━━━━━━━━━━━━━━\n` +
-      `_⚠️ Note: Exchanged products cannot be exchanged again. Thank you for choosing Cobb Apparels!_`
+      `━━━━━━━━━━━━━━━━━━━━━━━━`
     );
   }, [selectedBill, selectedItemToExchange, replacementItemName, newPriceNum, priceDifference, exchangeReason, storeAddress, storeMapLink, googleReviewLink]);
 
