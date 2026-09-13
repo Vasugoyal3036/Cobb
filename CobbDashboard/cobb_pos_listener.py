@@ -4,6 +4,9 @@ import pyodbc
 import sys
 import os
 import socket
+import signal
+import atexit
+import datetime
 
 # Ensure UTF-8 output on Windows console
 if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
@@ -33,19 +36,30 @@ SENT_BILLS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sent
 SENT_EOD_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sent_eod_date.txt")
 EOD_RECIPIENTS = ['9138122820', '8708788707', '9034522000', '9466422821']
 
-def send_daily_closing_digest(cursor):
-    """Compiles and sends the 9:30 PM store owner closing digest to all configured numbers."""
+def send_daily_closing_digest(cursor, target_date=None, label_suffix=""):
+    """Compiles and sends the store owner closing digest to all configured numbers."""
     try:
+        if target_date:
+            date_filter = f"m.CM_TIME >= '{target_date}' AND m.CM_TIME < DATEADD(day, 1, '{target_date}')"
+            try:
+                t_dt = datetime.datetime.strptime(target_date, '%Y-%m-%d')
+                date_display = t_dt.strftime('%d %b %Y')
+            except Exception:
+                date_display = target_date
+        else:
+            date_filter = "m.CM_TIME >= CAST(GETDATE() AS DATE)"
+            date_display = time.strftime('%d %b %Y')
+
         # 1. Sales & Bills
-        cursor.execute("""
+        cursor.execute(f"""
             SELECT 
                 COUNT(CM_ID) as BillCount,
                 ISNULL(SUM(NET_AMOUNT), 0) as GrossSales,
                 ISNULL(SUM(DISCOUNT_AMOUNT), 0) as TotalDiscount,
                 ISNULL(SUM(TOTAL_GST_AMOUNT), 0) as TaxCollected,
                 ISNULL(SUM(NET_AMOUNT - TOTAL_GST_AMOUNT), 0) as NetSales
-            FROM CMM01106 WITH (NOLOCK)
-            WHERE CM_TIME >= CAST(GETDATE() AS DATE) AND CANCELLED = 0
+            FROM CMM01106 m WITH (NOLOCK)
+            WHERE {date_filter} AND m.CANCELLED = 0
         """)
         sales_row = cursor.fetchone()
         bill_count = int(sales_row[0] or 0)
@@ -54,7 +68,7 @@ def send_daily_closing_digest(cursor):
         tax_collected = int(round(float(sales_row[3] or 0)))
 
         # 2. Payment modes
-        cursor.execute("""
+        cursor.execute(f"""
             SELECT 
                 ISNULL(SUM(p.CASH_AMOUNT), 0) as Cash,
                 ISNULL(SUM(p.CC_AMOUNT), 0) as Card,
@@ -62,7 +76,7 @@ def send_daily_closing_digest(cursor):
             FROM CMM01106 m WITH (NOLOCK)
             LEFT JOIN VW_BILL_PAYMODE p WITH (NOLOCK) ON m.CM_ID = p.MEMO_ID AND p.XN_TYPE = 'SLS'
             LEFT JOIN VW_WL_CASHMEMOLIST w WITH (NOLOCK) ON m.CM_ID = w.MEMO_ID
-            WHERE m.CM_TIME >= CAST(GETDATE() AS DATE) AND m.CANCELLED = 0
+            WHERE {date_filter} AND m.CANCELLED = 0
         """)
         pay_row = cursor.fetchone()
         cash = int(round(float(pay_row[0] or 0)))
@@ -70,14 +84,14 @@ def send_daily_closing_digest(cursor):
         upi = int(round(float(pay_row[2] or 0)))
 
         # 3. Exchanges
-        cursor.execute("""
+        cursor.execute(f"""
             SELECT 
                 COUNT(DISTINCT m.CM_ID) as ExchangeBills,
                 ISNULL(SUM(ABS(d.NET)), 0) as ExchangeValue,
                 ISNULL(SUM(m.NET_AMOUNT), 0) as NetUpsellDiff
             FROM CMD01106 d WITH (NOLOCK)
             JOIN CMM01106 m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
-            WHERE d.QUANTITY < 0 AND m.CANCELLED = 0 AND m.CM_TIME >= CAST(GETDATE() AS DATE)
+            WHERE d.QUANTITY < 0 AND m.CANCELLED = 0 AND {date_filter}
         """)
         exch_row = cursor.fetchone()
         exch_bills = int(exch_row[0] or 0)
@@ -85,7 +99,7 @@ def send_daily_closing_digest(cursor):
         exch_upsell = int(round(float(exch_row[2] or 0)))
 
         # 4. Top Category
-        cursor.execute("""
+        cursor.execute(f"""
             SELECT TOP 1 
                 ISNULL(e.SUB_SECTION_NAME, 'Apparel') as TopCategory, 
                 SUM(d.QUANTITY) as UnitsSold,
@@ -95,7 +109,7 @@ def send_daily_closing_digest(cursor):
             JOIN SKU c WITH (NOLOCK) ON d.PRODUCT_CODE = c.PRODUCT_CODE
             JOIN ARTICLE a WITH (NOLOCK) ON c.ARTICLE_CODE = a.ARTICLE_CODE
             LEFT JOIN SECTIOND e WITH (NOLOCK) ON a.SUB_SECTION_CODE = e.SUB_SECTION_CODE
-            WHERE d.QUANTITY > 0 AND m.CANCELLED = 0 AND m.CM_TIME >= CAST(GETDATE() AS DATE)
+            WHERE d.QUANTITY > 0 AND m.CANCELLED = 0 AND {date_filter}
             GROUP BY e.SUB_SECTION_NAME
             ORDER BY UnitsSold DESC
         """)
@@ -103,13 +117,13 @@ def send_daily_closing_digest(cursor):
         top_cat_name = str(top_cat_row[0] or 'Apparel').strip() if top_cat_row else 'Apparel'
         top_cat_units = int(top_cat_row[1] or 0) if top_cat_row else 0
 
-        date_str = time.strftime('%d %b %Y')
         upsell_sign = '+' if exch_upsell >= 0 else ''
+        closing_tag = label_suffix if label_suffix else (" (9:30 PM Closing)" if not target_date else "")
 
         msg = (
             f"📊 *COBB PUNDRI — STORE CLOSING DIGEST*\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"📅 *Date:* {date_str} (9:30 PM Closing)\n"
+            f"📅 *Date:* {date_display}{closing_tag}\n"
             f"🏪 *Store:* Cobb Apparels, Fatehpur Road, Pundri\n\n"
             f"💰 *SALES PERFORMANCE:*\n"
             f"• Total Net Sales: *₹{gross_sales:,}*\n"
@@ -340,6 +354,50 @@ def run_listener():
     except Exception as e:
         print(f"[{time.strftime('%X')}] [INITIAL CONNECTION ERROR] {e}", flush=True)
         return
+
+    # 1. Power-On Recovery: If yesterday's closing digest was never dispatched (e.g. PC turned off early)
+    yesterday_date = datetime.date.today() - datetime.timedelta(days=1)
+    yesterday_str = yesterday_date.strftime('%Y-%m-%d')
+    today_str = datetime.date.today().strftime('%Y-%m-%d')
+
+    if last_eod_date != yesterday_str and last_eod_date != today_str:
+        print(f"[{time.strftime('%X')}] [POWER-ON RECOVERY] Verifying if yesterday ({yesterday_str}) closing digest was delivered...", flush=True)
+        try:
+            cursor.execute(f"SELECT COUNT(CM_ID) FROM CMM01106 WITH (NOLOCK) WHERE CM_TIME >= '{yesterday_str}' AND CM_TIME < CAST(GETDATE() AS DATE) AND CANCELLED = 0")
+            y_count = cursor.fetchone()[0] or 0
+            if y_count > 0:
+                print(f"[{time.strftime('%X')}] [POWER-ON RECOVERY] Found {y_count} bills from yesterday without EOD dispatch. Sending recovered digest now...", flush=True)
+                send_daily_closing_digest(cursor, target_date=yesterday_str, label_suffix=" (Recovered Night Closing)")
+                last_eod_date = yesterday_str
+                try:
+                    with open(SENT_EOD_FILE, 'w') as f:
+                        f.write(yesterday_str)
+                except Exception:
+                    pass
+        except Exception as rec_err:
+            print(f"[{time.strftime('%X')}] [RECOVERY ERROR] {rec_err}", flush=True)
+
+    # 2. Windows Shutdown / Logoff Hook (Graceful early close before 9:30 PM)
+    def on_exit(sig=None, frame=None):
+        now = time.localtime()
+        cur_today = time.strftime('%Y-%m-%d', now)
+        # If shutdown happens in evening (past 8:00 PM / 20:00) and today's digest wasn't sent yet
+        if now.tm_hour >= 20 and last_eod_date != cur_today:
+            print(f"[{time.strftime('%X')}] [SHUTDOWN DETECTED] Store closing shutdown intercepted after 8:00 PM. Sending final EOD digest now...", flush=True)
+            try:
+                send_daily_closing_digest(cursor, label_suffix=" (Store Closing Digest)")
+                with open(SENT_EOD_FILE, 'w') as f:
+                    f.write(cur_today)
+            except Exception as e:
+                print(f"[{time.strftime('%X')}] [SHUTDOWN EOD ERROR] {e}", flush=True)
+        sys.exit(0)
+
+    try:
+        signal.signal(signal.SIGINT, on_exit)
+        signal.signal(signal.SIGTERM, on_exit)
+    except Exception:
+        pass
+    atexit.register(on_exit)
 
     while True:
         try:
