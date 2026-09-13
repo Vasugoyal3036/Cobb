@@ -16,7 +16,9 @@ import ShelfTalkerStudioTab from './components/tabs/ShelfTalkerStudioTab';
 import HoldDeskTab from './components/tabs/HoldDeskTab';
 import SaveTheSaleTab from './components/tabs/SaveTheSaleTab';
 import LoungeRadioTab from './components/tabs/LoungeRadioTab';
+import ChatbotTab from './components/tabs/ChatbotTab';
 import { fetchWithOfflineFallback, subscribeToData } from './utils/offlineDb';
+
 import Layout from './components/Layout';
 import SetupScreen from './components/SetupScreen';
 import LoginScreen from './components/LoginScreen';
@@ -1877,6 +1879,12 @@ export default function App() {
             {activeTab === 'lounge_radio' && (
               <LoungeRadioTab darkMode={darkMode} />
             )}
+
+            {/* 15. COBB RETAIL AI COPILOT / CHATBOT */}
+            {activeTab === 'copilot' && (
+              <ChatbotTab API_BASE={API_BASE} darkMode={darkMode} />
+            )}
+
 
 
         <CustomerProfileModal {...appState} />

@@ -70,7 +70,14 @@ import {
   Music
 } from 'lucide-react';
 
+import FloatingCopilot from './FloatingCopilot';
+
 const navigationItems = [
+  {
+    category: "AI & Intelligence", items: [
+      { id: "copilot", label: "Cobb AI Copilot", icon: Sparkles, colorClass: "text-blue-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-blue-500/15 text-blue-400 font-bold border-l-2 border-blue-500" },
+    ]
+  },
   {
     category: "Overview & P&L", items: [
       { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -80,6 +87,7 @@ const navigationItems = [
       { id: "monthly", label: "Monthly Products", icon: Calendar },
     ]
   },
+
   {
     category: "Operations", items: [
       { id: "live", label: "Live Checkouts", icon: Receipt },
@@ -165,7 +173,8 @@ const Layout = ({
     'denomination',
     'loyalty',
     'vip',
-    'dormant'
+    'dormant',
+    'copilot'
   ];
 
   
@@ -400,6 +409,13 @@ const Layout = ({
           setShowSetupModal(false);
           window.location.reload();
         }}
+      />
+
+      {/* Global Floating AI Copilot Drawer */}
+      <FloatingCopilot
+        API_BASE={import.meta.env.VITE_API_BASE || 'http://localhost:5000'}
+        darkMode={darkMode}
+        onOpenFullTab={() => setActiveTab('copilot')}
       />
     </>
   );
