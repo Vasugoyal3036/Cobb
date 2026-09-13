@@ -817,6 +817,43 @@ app.get('/api/sales/live', async (req, res) => {
         `);
 
 
+        // Batch fetch items for all returned bills
+        const billIds = (result.recordset || []).map(b => b.BillId);
+        let itemsByBill = {};
+        if (billIds.length > 0) {
+            try {
+                const idList = billIds.map(id => `'${String(id).replace(/'/g, "''")}'`).join(',');
+                const itemsResult = await sql.query(`
+                    SELECT 
+                        d.CM_ID as BillId,
+                        d.ARTICLE_NO as ArticleNo,
+                        d.ARTICLE_NAME as ArticleName,
+                        d.QUANTITY as Quantity,
+                        d.NET as NetPrice,
+                        ISNULL(d.PARA1_NAME, 'Standard') as Color,
+                        ISNULL(d.PARA2_NAME, 'Standard') as Size,
+                        ISNULL(d.SECTION_NAME, 'Apparel') as Category
+                    FROM VW_CASHMEMO_PRINT_DET d WITH (NOLOCK)
+                    WHERE d.CM_ID IN (${idList})
+                    ORDER BY d.CM_ID, d.NET DESC
+                `);
+                for (const item of itemsResult.recordset) {
+                    if (!itemsByBill[item.BillId]) itemsByBill[item.BillId] = [];
+                    itemsByBill[item.BillId].push({
+                        ArticleNo: item.ArticleNo,
+                        ArticleName: item.ArticleName,
+                        Quantity: item.Quantity,
+                        NetPrice: item.NetPrice,
+                        Color: item.Color,
+                        Size: item.Size,
+                        Category: item.Category
+                    });
+                }
+            } catch (itemErr) {
+                console.error('Failed to batch-fetch bill items:', itemErr.message);
+            }
+        }
+
         const enriched = result.recordset.map(b => {
             const cash = b.CashAmount || 0;
             const card = b.CardAmount > 0 ? b.CardAmount : 0;
@@ -840,7 +877,7 @@ app.get('/api/sales/live', async (req, res) => {
             return {
                 ...b,
                 PaymentMode: paymentMode,
-                Items: [] // Items fetched on-demand via /api/sales/bill/:id/items when bill is expanded
+                Items: itemsByBill[b.BillId] || []
             };
         });
 
@@ -899,7 +936,10 @@ app.get('/api/inventory', async (req, res) => {
 async function startGatewayHelper() {
     try {
         const ping = await fetch('http://localhost:3000/status', { signal: AbortSignal.timeout(3000) });
-        if (ping.ok) return true;
+        if (ping.ok) {
+            const data = await ping.json();
+            if (data.isReady || data.qrCodeUrl) return true;
+        }
     } catch (e) { }
 
     // Terminate any zombie processes holding port 3000
@@ -923,7 +963,9 @@ async function startGatewayHelper() {
     } catch (e) { }
 
     if (gatewayProcess) return true;
-    const gatewayDir = 'C:\\CobbWhatsAppGateway';
+    const gatewayDir = fs.existsSync('C:\\CobbWhatsAppGateway\\server.js')
+        ? 'C:\\CobbWhatsAppGateway'
+        : path.resolve(__dirname, '..', 'whatsapp_gateway');
     const targetPath = path.join(gatewayDir, 'server.js');
     if (!fs.existsSync(targetPath)) return false;
 
@@ -1047,7 +1089,9 @@ app.post('/api/gateway/reset', async (req, res) => {
             }
         } catch (e) {}
 
-        const gatewayDir = 'C:\\CobbWhatsAppGateway';
+        const gatewayDir = fs.existsSync('C:\\CobbWhatsAppGateway\\server.js')
+            ? 'C:\\CobbWhatsAppGateway'
+            : path.resolve(__dirname, '..', 'whatsapp_gateway');
         const sessionDir = path.join(gatewayDir, '.wwebjs_auth');
         if (fs.existsSync(sessionDir)) {
             try { fs.rmSync(sessionDir, { recursive: true, force: true }); } catch (e) {}
@@ -2562,14 +2606,28 @@ app.listen(PORT, () => {
     startGatewayHelper();
     startCloudSyncHelper();
 
-    // Gateway health-check: auto-restart if it crashes (every 2 minutes)
+    // Gateway health-check: auto-restart if it crashes or gets stuck in unready state (every 2 minutes)
     setInterval(async () => {
         try {
             const ping = await fetch('http://localhost:3000/status', { signal: AbortSignal.timeout(3000) });
             if (!ping.ok) throw new Error('not ok');
+            const data = await ping.json();
+            if (!data.isReady && !data.qrCodeUrl) {
+                console.log('[HEALTH-CHECK] WhatsApp Gateway unresponsive/unready. Auto-restarting...');
+                gatewayLogs.push(`[${new Date().toLocaleTimeString()}] [HEALTH-CHECK] Gateway unready — auto-recovering...`);
+                if (gatewayProcess) {
+                    try { spawn('taskkill', ['/PID', gatewayProcess.pid.toString(), '/F', '/T'], { windowsHide: true }); } catch (e) {}
+                    gatewayProcess = null;
+                }
+                await startGatewayHelper();
+            }
         } catch (e) {
             console.log('[HEALTH-CHECK] WhatsApp Gateway is down. Auto-restarting...');
             gatewayLogs.push(`[${new Date().toLocaleTimeString()}] [HEALTH-CHECK] Gateway down — auto-restarting...`);
+            if (gatewayProcess) {
+                try { spawn('taskkill', ['/PID', gatewayProcess.pid.toString(), '/F', '/T'], { windowsHide: true }); } catch (e) {}
+                gatewayProcess = null;
+            }
             await startGatewayHelper();
         }
     }, 120000);

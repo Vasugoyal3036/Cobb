@@ -780,6 +780,16 @@ export default function App() {
 
           prevLiveBillsRef.current = newBills;
           setLiveBills(newBills);
+
+          const itemsCache = {};
+          (Array.isArray(newBills) ? newBills : []).forEach(bill => {
+            if (bill.Items && bill.Items.length > 0) {
+              itemsCache[bill.BillId] = bill.Items;
+            }
+          });
+          if (Object.keys(itemsCache).length > 0) {
+            setBillItemsCache(prev => ({ ...prev, ...itemsCache }));
+          }
         })
         .catch(console.error);
     };

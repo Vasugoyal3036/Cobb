@@ -129,14 +129,15 @@ const LiveBillsTab = (props) => {
                           {expandedBillId === bill.BillId && (
                             <tr className="bg-slate-50 border-b border-slate-100">
                               <td colSpan="6" className="p-0">
-                                <div className="px-6 py-4 animate-in slide-in-from-top-2 duration-200">
+                                <div className="px-6 py-4 animate-in slide-in-from-top-2 duration-200" onClick={(e) => e.stopPropagation()}>
                                   <div className="flex justify-between items-center mb-3">
                                     <h4 className="text-sm font-bold text-slate-700 flex items-center">
                                       <Package className="w-4 h-4 mr-2 text-indigo-500" />
                                       Purchased Items
                                     </h4>
                                     <button 
-                                      onClick={() => {
+                                      onClick={(e) => {
+                                        e.stopPropagation();
                                         if(!billItemsCache[bill.BillId]) return;
                                         setSmartCoordinate({ loading: true, data: null, itemText: '' });
                                         setShowCoordinateModal(true);

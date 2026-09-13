@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const cors = require('cors');
 const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const fs = require('fs');
@@ -9,7 +9,12 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-process.on('uncaughtException', (err) => console.error('[FATAL UNCAUGHT]:', err.message));
+process.on('uncaughtException', (err) => {
+    console.error('[FATAL UNCAUGHT]:', err.message);
+    if (err.code === 'EADDRINUSE') {
+        process.exit(1);
+    }
+});
 process.on('unhandledRejection', (reason) => console.error('[FATAL UNHANDLED]:', reason));
 
 const sessionPath = path.join(__dirname, '.wwebjs_auth');
@@ -128,7 +133,8 @@ function initWhatsApp(isFresh = false) {
                 '--disable-component-update'
             ],
             timeout: 60000
-        }
+        },
+        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'
     });
 
     startWatchdog();
@@ -146,10 +152,9 @@ function initWhatsApp(isFresh = false) {
     });
 
     client.on('authenticated', () => {
-        clearWatchdog();
-        consecutiveWatchdogFailures = 0;
         console.log('[WHATSAPP] Scanned successfully! Authenticating session...');
         reconnectAttempts = 0;
+        startWatchdog();
     });
 
     client.on('ready', () => {
@@ -226,7 +231,9 @@ process.on('SIGTERM', cleanExit);
 app.get('/status', (req, res) => {
     res.json({
         isReady: isClientReady,
-        qrCodeUrl: currentQrCodeUrl
+        qrCodeUrl: currentQrCodeUrl,
+        hasClient: !!client,
+        reconnectAttempts: reconnectAttempts
     });
 });
 
@@ -302,7 +309,17 @@ app.post('/send', async (req, res) => {
 });
 
 const PORT = 3000;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
     console.log(`WhatsApp Gateway Server running on http://localhost:${PORT}`);
     initWhatsApp(false);
+});
+
+server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+        console.error(`[FATAL] Port ${PORT} is already in use by another process. Exiting...`);
+        process.exit(1);
+    } else {
+        console.error('[FATAL SERVER ERROR]:', err);
+        process.exit(1);
+    }
 });
