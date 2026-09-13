@@ -10,6 +10,7 @@ import CampaignBuilderTab from './components/tabs/CampaignBuilderTab';
 import ReorderTab from './components/tabs/ReorderTab';
 import DenominationTab from './components/tabs/DenominationTab';
 import LoyaltyTab from './components/tabs/LoyaltyTab';
+import ExchangeTab from './components/tabs/ExchangeTab';
 import { fetchWithOfflineFallback, subscribeToData } from './utils/offlineDb';
 import Layout from './components/Layout';
 import SetupScreen from './components/SetupScreen';
@@ -1769,8 +1770,13 @@ export default function App() {
               <LiveBillsTab {...appState} />
             )}
 
+            {/* PRODUCT EXCHANGES & REPLACEMENTS */}
+            {['returns', 'exchanges'].includes(activeTab) && (
+              <ExchangeTab {...appState} />
+            )}
+
             {/* 9. VIP & DORMANT */}
-            {['customerinsights', 'vip', 'dormant', 'returns', 'trend_forecast', 'competitor_intel'].includes(activeTab) && (
+            {['customerinsights', 'vip', 'dormant', 'trend_forecast', 'competitor_intel'].includes(activeTab) && (
               <CustomerInsightsTab {...appState} />
             )}
 

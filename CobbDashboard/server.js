@@ -725,24 +725,27 @@ app.get('/api/sales/returns', async (req, res) => {
             FROM CMM01106 WITH (NOLOCK)
             WHERE CANCELLED = 0 AND CM_TIME >= '${startOfMonth}';
 
-            -- 2. Today Returns
-            SELECT COUNT(*) as ReturnCount, ISNULL(SUM(ABS(d.NET)), 0) as RefundAmount
+            -- 2. Today Exchanges (items with negative quantity)
+            SELECT COUNT(*) as ReturnCount, COUNT(*) as ExchangeCount, ISNULL(SUM(ABS(d.NET)), 0) as RefundAmount, ISNULL(SUM(ABS(d.NET)), 0) as ExchangeValue
             FROM CMD01106 d WITH (NOLOCK)
             JOIN CMM01106 m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
             WHERE d.QUANTITY < 0 AND m.CANCELLED = 0 AND m.CM_TIME >= '${startOfToday}';
 
-            -- 3. Monthly Returns
-            SELECT COUNT(*) as ReturnCount, ISNULL(SUM(ABS(d.NET)), 0) as RefundAmount
+            -- 3. Monthly Exchanges
+            SELECT COUNT(*) as ReturnCount, COUNT(*) as ExchangeCount, ISNULL(SUM(ABS(d.NET)), 0) as RefundAmount, ISNULL(SUM(ABS(d.NET)), 0) as ExchangeValue
             FROM CMD01106 d WITH (NOLOCK)
             JOIN CMM01106 m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
             WHERE d.QUANTITY < 0 AND m.CANCELLED = 0 AND m.CM_TIME >= '${startOfMonth}';
 
-            -- 4. Top Return Categories
-            SELECT TOP 5 
+            -- 4. Top Exchanged Categories
+            SELECT TOP 8 
                 ISNULL(e.SUB_SECTION_NAME, 'General') as Category, 
                 SUM(ABS(d.QUANTITY)) as ReturnedUnits, 
+                SUM(ABS(d.QUANTITY)) as ExchangedUnits, 
                 COUNT(DISTINCT m.CM_ID) as ReturnBills,
-                ISNULL(SUM(ABS(d.NET)), 0) as RefundValue
+                COUNT(DISTINCT m.CM_ID) as ExchangeBills,
+                ISNULL(SUM(ABS(d.NET)), 0) as RefundValue,
+                ISNULL(SUM(ABS(d.NET)), 0) as ExchangeValue
             FROM CMD01106 d WITH (NOLOCK)
             JOIN CMM01106 m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
             JOIN SKU c WITH (NOLOCK) ON d.PRODUCT_CODE = c.PRODUCT_CODE
@@ -752,43 +755,129 @@ app.get('/api/sales/returns', async (req, res) => {
             GROUP BY e.SUB_SECTION_NAME
             ORDER BY ReturnedUnits DESC;
 
-            -- 5. Recent Returns
-            SELECT TOP 10
+            -- 5. Recent Exchanges (Top 50)
+            SELECT TOP 50
                 m.CM_NO as BillNumber,
+                m.CM_ID as BillId,
                 ISNULL(cust.CUSTOMER_FNAME, '') + ' ' + ISNULL(cust.CUSTOMER_LNAME, '') as CustomerName,
                 cust.MOBILE as Phone,
                 ABS(d.QUANTITY) as ItemCount,
-                ISNULL(a.ARTICLE_NAME, 'Returned Item') as ArticleDetails,
+                ISNULL(a.ARTICLE_NAME, 'Exchanged Item') as ArticleDetails,
+                ISNULL(s.para1_name, 'Standard') as Color,
+                ISNULL(s.para2_name, 'Standard') as Size,
+                ISNULL(e.SUB_SECTION_NAME, 'Apparel') as Category,
                 ABS(d.NET) as RefundAmount,
-                CONVERT(varchar, m.CM_TIME, 126) as ReturnDate
+                ABS(d.NET) as ExchangeValue,
+                CONVERT(varchar, m.CM_TIME, 126) as ReturnDate,
+                CONVERT(varchar, m.CM_TIME, 126) as ExchangeDate
             FROM CMD01106 d WITH (NOLOCK)
             JOIN CMM01106 m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
             JOIN SKU c WITH (NOLOCK) ON d.PRODUCT_CODE = c.PRODUCT_CODE
             JOIN ARTICLE a WITH (NOLOCK) ON c.ARTICLE_CODE = a.ARTICLE_CODE
+            LEFT JOIN SKU_NAMES s WITH (NOLOCK) ON d.PRODUCT_CODE = s.product_Code
+            LEFT JOIN SECTIOND e WITH (NOLOCK) ON a.SUB_SECTION_CODE = e.SUB_SECTION_CODE
             LEFT JOIN CUSTDYM cust WITH (NOLOCK) ON m.CUSTOMER_CODE = cust.CUSTOMER_CODE
             WHERE d.QUANTITY < 0 AND m.CANCELLED = 0 AND m.CM_TIME >= '${startOfMonth}'
             ORDER BY m.CM_TIME DESC;
         `);
 
         const totalMonthlyBills = batch.recordsets[0]?.[0]?.BillCount || 0;
-        const todayResult = batch.recordsets[1]?.[0] || { ReturnCount: 0, RefundAmount: 0 };
-        const monthlyResult = batch.recordsets[2]?.[0] || { ReturnCount: 0, RefundAmount: 0 };
+        const todayResult = batch.recordsets[1]?.[0] || { ReturnCount: 0, ExchangeCount: 0, RefundAmount: 0, ExchangeValue: 0 };
+        const monthlyResult = batch.recordsets[2]?.[0] || { ReturnCount: 0, ExchangeCount: 0, RefundAmount: 0, ExchangeValue: 0 };
         const topCatResult = batch.recordsets[3] || [];
         const recentResult = batch.recordsets[4] || [];
 
-        const returnRatePct = totalMonthlyBills > 0 ? ((monthlyResult.ReturnCount / totalMonthlyBills) * 100).toFixed(1) : 0;
+        const exchangeRatePct = totalMonthlyBills > 0 ? ((monthlyResult.ExchangeCount / totalMonthlyBills) * 100).toFixed(1) : 0;
 
         const responseData = {
             today: todayResult,
             monthly: monthlyResult,
-            returnRatePct: parseFloat(returnRatePct),
+            returnRatePct: parseFloat(exchangeRatePct),
+            exchangeRatePct: parseFloat(exchangeRatePct),
             totalMonthlyBills: totalMonthlyBills,
             topReturnedCategories: topCatResult,
-            recentReturns: recentResult || []
+            topExchangedCategories: topCatResult,
+            recentReturns: recentResult || [],
+            recentExchanges: recentResult || []
         };
 
         res.json(responseData);
     } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Fast Bill Lookup & Exchange Eligibility Verification for Cashiers
+app.get('/api/sales/bill-lookup/:query', async (req, res) => {
+    const rawQuery = (req.params.query || '').trim();
+    if (!rawQuery || rawQuery.length < 3) {
+        return res.status(400).json({ error: 'Search query must be at least 3 characters' });
+    }
+    try {
+        const cleanQuery = rawQuery.replace(/'/g, "''");
+        const isNumeric = /^\d+$/.test(rawQuery);
+        
+        let whereClause = `m.CM_NO LIKE '%${cleanQuery}%'`;
+        if (isNumeric) {
+            whereClause = `(m.CUSTOMER_CODE LIKE '%${cleanQuery}%' OR m.CM_NO LIKE '%${cleanQuery}%')`;
+        }
+
+        const billsResult = await sql.query(`
+            SELECT TOP 10
+                m.CM_ID as BillId,
+                m.CM_NO as BillNumber,
+                m.CUSTOMER_CODE as Phone,
+                ISNULL(c.CUSTOMER_FNAME, '') + ' ' + ISNULL(c.CUSTOMER_LNAME, '') as CustomerName,
+                m.NET_AMOUNT as NetAmount,
+                CONVERT(varchar, m.CM_TIME, 126) as BillTime,
+                DATEDIFF(day, m.CM_TIME, GETDATE()) as DaysAgo
+            FROM CMM01106 m WITH (NOLOCK)
+            LEFT JOIN CUSTDYM c WITH (NOLOCK) ON m.CUSTOMER_CODE = c.CUSTOMER_CODE
+            WHERE ${whereClause} AND m.CANCELLED = 0
+            ORDER BY m.CM_TIME DESC
+        `);
+
+        const bills = billsResult.recordset || [];
+        if (bills.length === 0) {
+            return res.json({ bills: [] });
+        }
+
+        const billIds = bills.map(b => `'${String(b.BillId).replace(/'/g, "''")}'`).join(',');
+        const itemsResult = await sql.query(`
+            SELECT 
+                d.CM_ID as BillId,
+                d.ARTICLE_NO as ArticleNo,
+                d.ARTICLE_NAME as ArticleName,
+                d.QUANTITY as Quantity,
+                d.NET as NetPrice,
+                ISNULL(d.PARA1_NAME, 'Standard') as Color,
+                ISNULL(d.PARA2_NAME, 'Standard') as Size,
+                ISNULL(d.SECTION_NAME, 'Apparel') as Category
+            FROM VW_CASHMEMO_PRINT_DET d WITH (NOLOCK)
+            WHERE d.CM_ID IN (${billIds})
+            ORDER BY d.CM_ID, d.NET DESC
+        `);
+
+        const itemsByBill = {};
+        for (const item of itemsResult.recordset) {
+            if (!itemsByBill[item.BillId]) itemsByBill[item.BillId] = [];
+            itemsByBill[item.BillId].push(item);
+        }
+
+        const enrichedBills = bills.map(bill => {
+            const items = itemsByBill[bill.BillId] || [];
+            const isWithinExchangeWindow = bill.DaysAgo <= 14;
+            return {
+                ...bill,
+                items,
+                isWithinExchangeWindow,
+                policyStatus: bill.DaysAgo <= 7 ? 'Eligible (0-7 days)' : bill.DaysAgo <= 14 ? 'Standard Window (8-14 days)' : 'Expired (>14 days - Manager approval required)'
+            };
+        });
+
+        res.json({ bills: enrichedBills });
+    } catch (err) {
+        console.error('Bill lookup error:', err);
         res.status(500).json({ error: err.message });
     }
 });
