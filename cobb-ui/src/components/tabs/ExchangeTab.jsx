@@ -53,6 +53,27 @@ export default function ExchangeTab(props) {
   const [registerSearch, setRegisterSearch] = useState('');
   const [selectedTimeframe, setSelectedTimeframe] = useState('month'); // 'today' | 'month'
 
+  // Store Address & Google Review Link Configuration (Persisted in localStorage)
+  const [storeAddress, setStoreAddress] = useState(() => localStorage.getItem('cobb_store_address') || 'Cobb Apparels, Fatehpur Road, Pundri');
+  const [storeMapLink, setStoreMapLink] = useState(() => localStorage.getItem('cobb_store_map') || 'https://maps.app.goo.gl/HxgE1M25h32oWY2H9?g_st=ac');
+  const [googleReviewLink, setGoogleReviewLink] = useState(() => localStorage.getItem('cobb_store_review') || 'https://search.google.com/local/writereview?placeid=ChIJHfCBR58ZDjkRpBbB9EV-Zew');
+  const [showLinkSettings, setShowLinkSettings] = useState(false);
+
+  const handleUpdateStoreAddress = (val) => {
+    setStoreAddress(val);
+    localStorage.setItem('cobb_store_address', val);
+  };
+
+  const handleUpdateStoreMap = (val) => {
+    setStoreMapLink(val);
+    localStorage.setItem('cobb_store_map', val);
+  };
+
+  const handleUpdateReviewLink = (val) => {
+    setGoogleReviewLink(val);
+    localStorage.setItem('cobb_store_review', val);
+  };
+
   // Handle Bill Lookup
   const handleBillLookup = async (e) => {
     if (e) e.preventDefault();
@@ -105,31 +126,50 @@ export default function ExchangeTab(props) {
   const newPriceNum = parseFloat(replacementPrice) || 0;
   const priceDifference = newPriceNum - originalCredit;
 
-  // WhatsApp Slip Text
+  // WhatsApp Slip Text with Store Address & Google Review Link
   const exchangeSlipText = useMemo(() => {
     if (!selectedBill || !selectedItemToExchange) return '';
     const custName = selectedBill.CustomerName?.trim() || 'Valued Customer';
-    const dateStr = selectedBill.BillTime ? new Date(selectedBill.BillTime).toLocaleDateString('en-IN') : 'Recent';
+    const dateStr = selectedBill.BillTime ? new Date(selectedBill.BillTime).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Recent';
+    
+    let settlementLine = '';
+    if (priceDifference > 0) {
+      settlementLine = `💰 *DIFFERENCE COLLECTED:* +₹${priceDifference.toLocaleString('en-IN')}`;
+    } else if (priceDifference < 0) {
+      settlementLine = `🎟️ *STORE CREDIT ISSUED:* ₹${Math.abs(priceDifference).toLocaleString('en-IN')} (No Cash Refund)`;
+    } else {
+      settlementLine = `✅ *EVEN EXCHANGE:* ₹0 Difference`;
+    }
+
     return (
-      `*COBB APPARELS — EXCHANGE SLIP*\n` +
-      `━━━━━━━━━━━━━━━━━━━━━\n` +
-      `👤 Customer: ${custName}\n` +
-      `📱 Phone: ${selectedBill.Phone || 'N/A'}\n` +
-      `🧾 Original Bill: ${selectedBill.BillNumber} (${dateStr})\n` +
-      `━━━━━━━━━━━━━━━━━━━━━\n` +
-      `↩️ *EXCHANGED ITEM (RETURNED):*\n` +
-      `• ${selectedItemToExchange.ArticleName} (Size: ${selectedItemToExchange.Size || 'Standard'})\n` +
-      `• Original Value Credited: ₹${Math.abs(selectedItemToExchange.NetPrice)}\n` +
+      `🛍️ *COBB ITALY (PUNDRI) — OFFICIAL EXCHANGE SLIP*\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `Dear *${custName}*,\n` +
+      `Your product exchange has been processed successfully! ✨\n\n` +
+      `📋 *EXCHANGE DETAILS:*\n` +
+      `• Invoice #: *${selectedBill.BillNumber.trim()}*\n` +
+      `• Date: ${dateStr}\n` +
+      `• Mobile: ${selectedBill.Phone?.trim() || 'N/A'}\n\n` +
+      `↩️ *RETURNED ITEM:*\n` +
+      `• Article: *${selectedItemToExchange.ArticleName}*\n` +
+      `• Specs: Size ${selectedItemToExchange.Size || 'Standard'} | Color ${selectedItemToExchange.Color || 'Standard'}\n` +
+      `• Value Credited: ₹${Math.abs(selectedItemToExchange.NetPrice).toLocaleString('en-IN')}\n` +
       `• Reason: ${exchangeReason}\n\n` +
       `✨ *NEW REPLACEMENT ITEM:*\n` +
-      `• ${replacementItemName || 'New Exchange Article'}\n` +
-      `• Replacement Value: ₹${newPriceNum > 0 ? newPriceNum : 'Equal'}\n` +
-      `━━━━━━━━━━━━━━━━━━━━━\n` +
-      `${priceDifference > 0 ? `💰 *DIFFERENCE COLLECTED:* ₹${priceDifference.toLocaleString('en-IN')}` : priceDifference < 0 ? `🎟️ *STORE CREDIT ISSUED:* ₹${Math.abs(priceDifference).toLocaleString('en-IN')} (No Cash Refund)` : `✅ *EVEN EXCHANGE:* ₹0 Difference`}\n` +
-      `━━━━━━━━━━━━━━━━━━━━━\n` +
-      `_Thank you for shopping at Cobb Apparels! Exchanged items cannot be re-exchanged._`
+      `• Article: *${replacementItemName || 'Replacement Article'}*\n` +
+      `• Value: ₹${(newPriceNum > 0 ? newPriceNum : Math.abs(originalCredit)).toLocaleString('en-IN')}\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `${settlementLine}\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `📍 *Store Address:*\n` +
+      `${storeAddress}\n` +
+      `${storeMapLink ? `🗺️ Store Map: ${storeMapLink}\n\n` : '\n'}` +
+      `⭐ *Rate Your Experience & Leave Us a Google Review:*\n` +
+      `${googleReviewLink}\n` +
+      `━━━━━━━━━━━━━━━━━━━━━━━━\n` +
+      `_⚠️ Note: Exchanged products cannot be exchanged again. Thank you for choosing Cobb Apparels!_`
     );
-  }, [selectedBill, selectedItemToExchange, replacementItemName, newPriceNum, priceDifference, exchangeReason]);
+  }, [selectedBill, selectedItemToExchange, replacementItemName, newPriceNum, priceDifference, exchangeReason, storeAddress, storeMapLink, googleReviewLink]);
 
   const handleCopySlip = () => {
     if (!exchangeSlipText) return;
@@ -582,6 +622,65 @@ export default function ExchangeTab(props) {
                     <Send className="w-4 h-4" />
                     <span>Send Slip via WhatsApp to {selectedBill?.Phone || 'Customer'}</span>
                   </button>
+                </div>
+
+                {/* STORE ADDRESS & GOOGLE REVIEW SETTINGS ACCORDION */}
+                <div className="pt-2 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setShowLinkSettings(!showLinkSettings)}
+                    className="text-xs font-bold text-slate-500 hover:text-amber-600 flex items-center justify-between w-full py-1 cursor-pointer transition-colors"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <SlidersHorizontal className="w-3.5 h-3.5 text-amber-500" />
+                      Configure Store Address & Google Review Link
+                    </span>
+                    <span className="text-[10px] text-slate-400">{showLinkSettings ? '▲ Hide' : '▼ Edit'}</span>
+                  </button>
+
+                  {showLinkSettings && (
+                    <div className="mt-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-3 animate-in fade-in duration-200">
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                          Store Address (Included in WhatsApp slip)
+                        </label>
+                        <input
+                          type="text"
+                          value={storeAddress}
+                          onChange={(e) => handleUpdateStoreAddress(e.target.value)}
+                          placeholder="e.g. Cobb Apparels, Fatehpur Road, Pundri"
+                          className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-medium focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                          Google Maps Link
+                        </label>
+                        <input
+                          type="text"
+                          value={storeMapLink}
+                          onChange={(e) => handleUpdateStoreMap(e.target.value)}
+                          placeholder="https://maps.app.goo.gl/..."
+                          className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-medium focus:ring-1 focus:ring-amber-500 focus:outline-none font-mono text-[11px]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                          Direct Google Review Link
+                        </label>
+                        <input
+                          type="text"
+                          value={googleReviewLink}
+                          onChange={(e) => handleUpdateReviewLink(e.target.value)}
+                          placeholder="https://search.google.com/local/writereview?placeid=..."
+                          className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-medium focus:ring-1 focus:ring-amber-500 focus:outline-none font-mono text-[11px]"
+                        />
+                      </div>
+                      <p className="text-[10px] text-slate-400">Settings are saved locally on this device.</p>
+                    </div>
+                  )}
                 </div>
               </div>
 
