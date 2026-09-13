@@ -1119,25 +1119,21 @@ async function startGatewayHelper() {
 }
 
 function startAutomationHelper() {
-    if (pythonProcess) return true;
+    if (pythonProcess && pythonProcess.exitCode === null) return true;
 
     const { scriptPath, cwd } = getListenerScriptPath();
     pythonLogs.push(`[${new Date().toLocaleTimeString()}] Auto-spawning Automation Engine Listener silently...`);
-    // Use pythonw so Windows never allocates or pops up a black console window
+    // Use pythonw with stdio: 'ignore' so Windows never creates any console window or pipe EOF
     pythonProcess = spawn('pythonw', ['-u', scriptPath], { 
         shell: false, 
         windowsHide: true, 
         cwd: cwd,
-        stdio: ['pipe', 'pipe', 'pipe']
+        stdio: 'ignore'
     });
-    pythonProcess.stdout.on('data', (data) => pythonLogs.push(`[${new Date().toLocaleTimeString()}] ${data.toString().trim()}`));
-    pythonProcess.stderr.on('data', (data) => pythonLogs.push(`[ERROR ${new Date().toLocaleTimeString()}] ${data.toString().trim()}`));
-    pythonProcess.on('error', (err) => {
-        console.error('Python spawn error:', err);
-        pythonLogs.push(`[ERROR ${new Date().toLocaleTimeString()}] Python process failed to start: ${err.message}`);
+    pythonProcess.on('close', (code) => {
+        pythonLogs.push(`[${new Date().toLocaleTimeString()}] Listener closed with code ${code}`);
         pythonProcess = null;
     });
-    pythonProcess.on('close', () => pythonProcess = null);
     return true;
 }
 
@@ -2921,12 +2917,11 @@ app.listen(PORT, () => {
             await startGatewayHelper();
         }
 
-        // 2. POS Listener Automation Supervisor (Check mutex port 47200)
+        // 2. POS Listener Automation Supervisor
         try {
-            const check = await checkPort(47200, '127.0.0.1', 800);
-            if (!check.isOpen) {
-                console.log('[SUPERVISOR] cobb_pos_listener mutex is offline. Auto-reviving listener silently...');
-                pythonLogs.push(`[${new Date().toLocaleTimeString()}] [SUPERVISOR] Listener down — auto-respawning...`);
+            if (!pythonProcess || pythonProcess.exitCode !== null) {
+                console.log('[SUPERVISOR] cobb_pos_listener is offline. Auto-reviving listener silently...');
+                pythonLogs.push(`[${new Date().toLocaleTimeString()}] [SUPERVISOR] Listener down — auto-respawning silently...`);
                 pythonProcess = null;
                 startAutomationHelper();
             }
