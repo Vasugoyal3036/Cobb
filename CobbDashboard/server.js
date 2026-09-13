@@ -17,6 +17,9 @@ app.use('/api/auth', authRouter);
 const tunnelRouter = require('./routes/tunnel');
 app.use('/api/tunnel', tunnelRouter);
 
+const configRouter = require('./routes/config');
+app.use('/api/config', configRouter);
+
 const GlobalNodeCache = require('node-cache');
 const globalApiCache = new GlobalNodeCache({ stdTTL: 300 }); // 5 minutes cache for blazing fast tab switches
 

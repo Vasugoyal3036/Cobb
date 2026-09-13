@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import SetupWizardModal from './SetupWizardModal';
 import {
   LineChart,
   MessageCircle,
@@ -42,6 +43,7 @@ import {
   Shirt,
   Scissors,
   Calculator,
+  Database,
   FileText,
   Grid,
   DollarSign,
@@ -135,6 +137,7 @@ const Layout = ({
 }) => {
   const { role: contextRole, switchRole, activeStore, switchStore, user } = useAuth();
   const currentRole = contextRole || propUserRole || 'owner';
+  const [showSetupModal, setShowSetupModal] = useState(false);
 
   // Filter navigation items based on role (RBAC)
   // Store Manager only sees operational counter tools; hides P&L, GST, Automation, Broadcast, Competitor Intel
@@ -322,6 +325,16 @@ const Layout = ({
               <span className="hidden sm:inline">EOD Report</span>
             </button>
 
+            {/* Database & Store Setup Button */}
+            <button
+              onClick={() => setShowSetupModal(true)}
+              className="px-2.5 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-xl font-bold text-xs transition-all shadow-xs cursor-pointer flex items-center gap-1.5 shrink-0"
+              title="Configure Database, Retail Presets (Cobb/Busy/Marg) & Store Profile"
+            >
+              <Database className="w-3.5 h-3.5 text-blue-600" />
+              <span className="hidden sm:inline">POS Setup</span>
+            </button>
+
             {/* Dark Mode Toggle Button */}
             <button
               onClick={() => setDarkMode(!darkMode)}
@@ -348,6 +361,16 @@ const Layout = ({
           {children}
         </div>
       </div>
+
+      {/* Multi-Store & Database Setup Wizard */}
+      <SetupWizardModal
+        isOpen={showSetupModal}
+        onClose={() => setShowSetupModal(false)}
+        onConfigSaved={() => {
+          setShowSetupModal(false);
+          window.location.reload();
+        }}
+      />
     </>
   );
 };
