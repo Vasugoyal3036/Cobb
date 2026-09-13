@@ -101,7 +101,7 @@ const resolveApiBase = () => {
   if (import.meta.env.VITE_API_BASE) return import.meta.env.VITE_API_BASE;
   if (typeof window !== 'undefined') {
     const host = window.location.hostname;
-    if (host.includes('vercel.app')) {
+    if (host.includes('vercel.app') || host.includes('web.app') || host.includes('firebaseapp.com')) {
       return 'https://freckles-comfy-proving.ngrok-free.dev';
     }
     // If accessing from phone via local Wi-Fi IP (e.g. 192.168.x.x, 10.x.x.x, 172.x.x.x)
