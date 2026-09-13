@@ -99,7 +99,16 @@ axios.defaults.headers.common['ngrok-skip-browser-warning'] = '69420';
 import { db, authPromise } from './utils/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 
-const STORE_ID = import.meta.env.VITE_DEFAULT_STORE_ID || "DEMO_STORE_001";
+const getActiveStoreId = () => {
+  try {
+    const s = localStorage.getItem('cobb_active_store');
+    if (s === 'STORE_02') return 'STORE_002';
+    return import.meta.env.VITE_DEFAULT_STORE_ID || "DEMO_STORE_001";
+  } catch (e) {
+    return import.meta.env.VITE_DEFAULT_STORE_ID || "DEMO_STORE_001";
+  }
+};
+
 const originalAxiosGet = axios.get;
 
 axios.get = async (url, config) => {
@@ -110,7 +119,8 @@ axios.get = async (url, config) => {
          // Await anonymous authentication before hitting Firestore to satisfy security rules
          if (authPromise) await authPromise;
          
-         const docRef = doc(db, 'stores', STORE_ID, 'data', docName);
+         const targetStore = getActiveStoreId();
+         const docRef = doc(db, 'stores', targetStore, 'data', docName);
          const docSnap = await getDoc(docRef);
          if (docSnap.exists()) {
             let data = docSnap.data();
@@ -120,10 +130,7 @@ axios.get = async (url, config) => {
             }
             return { data, status: 200, statusText: 'OK' };
          } else {
-            // CRITICAL FIX: If the document doesn't exist (e.g. wasn't synced), return an error object.
-            // DO NOT fall through to originalAxiosGet, because Firebase Hosting will return index.html
-            // which causes a fatal React TypeError when components try to parse it as JSON.
-            console.warn(`[SaaS Interceptor] Missing Firestore document: ${docName}`);
+            console.warn(`[SaaS Interceptor] Missing Firestore document for ${targetStore}: ${docName}`);
             return { data: { error: 'Not synced to cloud yet', empty: true }, status: 404, statusText: 'Not Found' };
          }
        } catch (e) {
@@ -151,7 +158,8 @@ const setLocalCache = (key, val) => {
 };
 
 export default function App() {
-  const { user } = useAuth();
+  const { user, role, activeStore, switchStore, switchRole } = useAuth();
+  const currentRole = role || user?.role || 'owner';
   const [showSetup, setShowSetup] = useState(false);
 
   let [vips, setVips] = useState(() => getLocalCache('vips', [])); if (!Array.isArray(vips)) vips = [];
@@ -326,6 +334,16 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState('dashboard');
   
+  // RBAC Tab Protection Guard (Forces restricted tabs back to live checkouts if manager is active)
+  useEffect(() => {
+    if (currentRole === 'manager') {
+      const managerRestrictedTabs = ['pnl', 'gst', 'automation', 'automationengine', 'broadcast', 'competitor_intel'];
+      if (managerRestrictedTabs.includes(activeTab)) {
+        setActiveTab('live');
+      }
+    }
+  }, [currentRole, activeTab]);
+
   useEffect(() => {
     if (activeTab === 'smart_bundles') {
       fetchBundles();
@@ -1270,6 +1288,10 @@ export default function App() {
   };
 
     const appState = {
+    userRole: currentRole,
+    activeStore,
+    switchStore,
+    switchRole,
     totalMonthlyUnits: typeof totalMonthlyUnits !== 'undefined' ? totalMonthlyUnits : undefined,
     totalMonthlyRevenue: typeof totalMonthlyRevenue !== 'undefined' ? totalMonthlyRevenue : undefined,
     maxHourlyRevenue: typeof maxHourlyRevenue !== 'undefined' ? maxHourlyRevenue : undefined,
@@ -1730,7 +1752,7 @@ export default function App() {
 
       
       <Layout
-        userRole={user.role}
+        userRole={currentRole}
         isMobileMenuOpen={isMobileMenuOpen}
         setIsMobileMenuOpen={setIsMobileMenuOpen}
         activeTab={activeTab}

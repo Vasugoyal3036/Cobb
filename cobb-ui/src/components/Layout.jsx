@@ -108,6 +108,14 @@ const navigationItems = [
   }
 ];
 
+import { useAuth, AVAILABLE_STORES } from '../context/AuthContext';
+import {
+  Building2,
+  Store,
+  ShieldCheck,
+  ShieldAlert
+} from 'lucide-react';
+
 const Layout = ({
   children,
   isMobileMenuOpen,
@@ -123,17 +131,33 @@ const Layout = ({
   setDarkMode,
   isGatewayRunning,
   isListenerRunning,
-  userRole // <-- Added for RBAC
+  userRole: propUserRole
 }) => {
-  // Filter navigation items based on role
-  const staffAllowedItems = ['dashboard', 'live', 'returns', 'deadstock', 'reorder', 'denomination', 'loyalty', 'vip', 'dormant'];
+  const { role: contextRole, switchRole, activeStore, switchStore, user } = useAuth();
+  const currentRole = contextRole || propUserRole || 'owner';
+
+  // Filter navigation items based on role (RBAC)
+  // Store Manager only sees operational counter tools; hides P&L, GST, Automation, Broadcast, Competitor Intel
+  const managerAllowedItems = [
+    'dashboard',
+    'live',
+    'returns',
+    'topmovers',
+    'sizematrix',
+    'deadstock',
+    'reorder',
+    'denomination',
+    'loyalty',
+    'vip',
+    'dormant'
+  ];
   
   const filteredNavigation = navigationItems.map(cat => {
     return {
       ...cat,
       items: cat.items.filter(item => {
-        if (userRole === 'owner') return true;
-        return staffAllowedItems.includes(item.id);
+        if (currentRole === 'owner') return true;
+        return managerAllowedItems.includes(item.id);
       })
     };
   }).filter(cat => cat.items.length > 0);
@@ -158,7 +182,17 @@ const Layout = ({
               </div>
               <h1 className="text-xl font-bold tracking-wider text-white">COBB ITALY</h1>
             </div>
-            <p className="text-slate-500 text-xs font-medium ml-11">Smart CRM System</p>
+            <p className="text-slate-500 text-xs font-medium ml-11">Smart Retail ERP</p>
+            <div className="mt-2.5 ml-11 flex items-center gap-1.5 flex-wrap">
+              <span className="px-2 py-0.5 text-[9px] font-black rounded-md bg-blue-500/20 text-blue-300 border border-blue-500/30 uppercase tracking-wide">
+                {AVAILABLE_STORES.find(s => s.id === activeStore)?.shortName || 'Pundri'}
+              </span>
+              <span className={`px-2 py-0.5 text-[9px] font-black rounded-md border uppercase tracking-wide ${
+                currentRole === 'owner' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+              }`}>
+                {currentRole === 'owner' ? '👑 Owner' : '👔 Manager'}
+              </span>
+            </div>
           </div>
           <button
             onClick={() => setIsMobileMenuOpen(false)}
@@ -226,6 +260,48 @@ const Layout = ({
           </div>
 
           <div className="flex items-center justify-between md:justify-end gap-2 overflow-x-auto pb-1 md:pb-0">
+            {/* Multi-Store Switcher */}
+            <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl border border-slate-200 shrink-0">
+              <Store className="w-3.5 h-3.5 text-blue-600 ml-1.5 shrink-0" />
+              <select
+                value={activeStore}
+                onChange={(e) => switchStore(e.target.value)}
+                className="bg-transparent text-slate-800 text-xs font-bold rounded-lg py-0.5 pr-2 focus:outline-none cursor-pointer"
+                title="Switch Cobb Store Branch"
+              >
+                {AVAILABLE_STORES.map(store => (
+                  <option key={store.id} value={store.id} className="bg-white text-slate-800 py-1">
+                    {store.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Quick Role Switcher Pill */}
+            <button
+              onClick={() => {
+                const nextRole = currentRole === 'owner' ? 'manager' : 'owner';
+                switchRole(nextRole);
+              }}
+              className={`px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer border shrink-0 ${
+                currentRole === 'owner'
+                  ? 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
+                  : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+              }`}
+              title={currentRole === 'owner' ? 'Click to preview Manager View (Counter Mode)' : 'Click to return to Owner View (Full Access)'}
+            >
+              {currentRole === 'owner' ? (
+                <>
+                  <ShieldCheck className="w-3.5 h-3.5 text-amber-600" />
+                  <span>👑 Owner</span>
+                </>
+              ) : (
+                <>
+                  <ShieldAlert className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>👔 Manager</span>
+                </>
+              )}
+            </button>
             {/* EOD Cash Reconciliation Button */}
             <button
               onClick={() => setShowReconModal(true)}

@@ -65,10 +65,8 @@ import {
 } from 'lucide-react';
 
 const DashboardTab = (props) => {
-  const { totalMonthlyUnits, totalMonthlyRevenue, maxHourlyRevenue, averageOrderValue, DAILY_TARGET, targetProgress, API_BASE, vips, setVips, dormant, setDormant, darkMode, setDarkMode, overviewStats, setOverviewStats, returnsData, setReturnsData, smartCoordinate, setSmartCoordinate, showCoordinateModal, setShowCoordinateModal, vmImages, setVmImages, vmImageUrls, setVmImageUrls, vmAuditResult, setVmAuditResult, isAuditing, setIsAuditing, vmError, setVmError, bundles, setBundles, isLoadingBundles, setIsLoadingBundles, publishedBundles, setPublishedBundles, handleVmUpload, fetchTrendForecast, handleCompUpload, fetchBundles, globalCustomers, setGlobalCustomers, isSearchingCustomers, setIsSearchingCustomers, liveBills, setLiveBills, inventory, setInventory, deadStock, setDeadStock, hourlySales, setHourlySales, dailySales, setDailySales, monthlyProducts, setMonthlyProducts, gstSummary, setGstSummary, gstRateSlab, setGstRateSlab, gstCopied, setGstCopied, sizeMatrix, setSizeMatrix, wardrobeProfiles, setWardrobeProfiles, pnlData, setPnlData, retentionData, setRetentionData, reconData, setReconData, countedCashInput, setCountedCashInput, reconNotes, setReconNotes, showReconModal, setShowReconModal, showEodModal, setShowEodModal, eodSummaryText, setEodSummaryText, eodCopied, setEodCopied, isMobileMenuOpen, setIsMobileMenuOpen, matrixCategoryFilter, setMatrixCategoryFilter, isListenerRunning, setIsListenerRunning, isTogglingListener, setIsTogglingListener, listenerLogs, setListenerLogs, isGatewayRunning, setIsGatewayRunning, isTogglingGateway, setIsTogglingGateway, isGatewayReady, setIsGatewayReady, gatewayQr, setGatewayQr, gatewayLogs, setGatewayLogs, testPhone, setTestPhone, testMsg, setTestMsg, isSendingTestWa, setIsSendingTestWa, broadcastGroup, setBroadcastGroup, broadcastGroupCount, setBroadcastGroupCount, broadcastStatus, setBroadcastStatus, broadcastMsg, setBroadcastMsg, isStartingBroadcast, setIsStartingBroadcast, isSyncingGroup, setIsSyncingGroup, groupSearchQuery, setGroupSearchQuery, topMoversData, setTopMoversData, activeTab, setActiveTab, activeConsole, setActiveConsole, searchQuery, setSearchQuery, selectedCustomer, setSelectedCustomer, customerHistory, setCustomerHistory, loadingHistory, setLoadingHistory, customerPersona, setCustomerPersona, loadingPersona, setLoadingPersona, aiMessageType, setAiMessageType, generatedMsg, setGeneratedMsg, isGenerating, setIsGenerating, generateWhatsAppDraft, activeOutfitMatch, setActiveOutfitMatch, outfitPitch, setOutfitPitch, isGeneratingOutfit, setIsGeneratingOutfit, campaignEvent, setCampaignEvent, campaignAudience, setCampaignAudience, campaignDraft, setCampaignDraft, isGeneratingCampaign, setIsGeneratingCampaign, openProductType, setOpenProductType, openMonth, setOpenMonth, selectedCalendarDay, setSelectedCalendarDay, expandedBillId, setExpandedBillId, billItemsCache, setBillItemsCache, loadingBillItems, setLoadingBillItems, handleKeyDown, toggleBillExpansion, fetchAutomationStatus, toggleListener, toggleGateway, handleSendTestWhatsApp, handleSyncBroadcastGroup, handleStartBroadcast, handleStopBroadcast, handleExportGroupCsv, openCustomerCard, handleGenerateAI, handleGenerateOutfitMatch, handleGenerateCampaign, handleSaveReconciliation, handleGenerateEodReport, handleMasterRestock, formatCurrency, MASTER_CATEGORIES, classifySubCategory, handleGlobalSearch, renderLogLine, persona, handleGenerateSmartCoordinate, trendForecast, isForecasting, compImage, compImageUrl, compIntelResult, isAnalyzingComp, compError } = props;
+  const { userRole, activeStore, totalMonthlyUnits, totalMonthlyRevenue, maxHourlyRevenue, averageOrderValue, DAILY_TARGET, targetProgress, API_BASE, vips, setVips, dormant, setDormant, darkMode, setDarkMode, overviewStats, setOverviewStats, returnsData, setReturnsData, smartCoordinate, setSmartCoordinate, showCoordinateModal, setShowCoordinateModal, vmImages, setVmImages, vmImageUrls, setVmImageUrls, vmAuditResult, setVmAuditResult, isAuditing, setIsAuditing, vmError, setVmError, bundles, setBundles, isLoadingBundles, setIsLoadingBundles, publishedBundles, setPublishedBundles, handleVmUpload, fetchTrendForecast, handleCompUpload, fetchBundles, globalCustomers, setGlobalCustomers, isSearchingCustomers, setIsSearchingCustomers, liveBills, setLiveBills, inventory, setInventory, deadStock, setDeadStock, hourlySales, setHourlySales, dailySales, setDailySales, monthlyProducts, setMonthlyProducts, gstSummary, setGstSummary, gstRateSlab, setGstRateSlab, gstCopied, setGstCopied, sizeMatrix, setSizeMatrix, wardrobeProfiles, setWardrobeProfiles, pnlData, setPnlData, retentionData, setRetentionData, reconData, setReconData, countedCashInput, setCountedCashInput, reconNotes, setReconNotes, showReconModal, setShowReconModal, showEodModal, setShowEodModal, eodSummaryText, setEodSummaryText, eodCopied, setEodCopied, isMobileMenuOpen, setIsMobileMenuOpen, matrixCategoryFilter, setMatrixCategoryFilter, isListenerRunning, setIsListenerRunning, isTogglingListener, setIsTogglingListener, listenerLogs, setListenerLogs, isGatewayRunning, setIsGatewayRunning, isTogglingGateway, setIsTogglingGateway, isGatewayReady, setIsGatewayReady, gatewayQr, setGatewayQr, gatewayLogs, setGatewayLogs, testPhone, setTestPhone, testMsg, setTestMsg, isSendingTestWa, setIsSendingTestWa, broadcastGroup, setBroadcastGroup, broadcastGroupCount, setBroadcastGroupCount, broadcastStatus, setBroadcastStatus, broadcastMsg, setBroadcastMsg, isStartingBroadcast, setIsStartingBroadcast, isSyncingGroup, setIsSyncingGroup, groupSearchQuery, setGroupSearchQuery, topMoversData, setTopMoversData, activeTab, setActiveTab, activeConsole, setActiveConsole, searchQuery, setSearchQuery, selectedCustomer, setSelectedCustomer, customerHistory, setCustomerHistory, loadingHistory, setLoadingHistory, customerPersona, setCustomerPersona, loadingPersona, setLoadingPersona, aiMessageType, setAiMessageType, generatedMsg, setGeneratedMsg, isGenerating, setIsGenerating, generateWhatsAppDraft, activeOutfitMatch, setActiveOutfitMatch, outfitPitch, setOutfitPitch, isGeneratingOutfit, setIsGeneratingOutfit, campaignEvent, setCampaignEvent, campaignAudience, setCampaignAudience, campaignDraft, setCampaignDraft, isGeneratingCampaign, setIsGeneratingCampaign, openProductType, setOpenProductType, openMonth, setOpenMonth, selectedCalendarDay, setSelectedCalendarDay, expandedBillId, setExpandedBillId, billItemsCache, setBillItemsCache, loadingBillItems, setLoadingBillItems, handleKeyDown, toggleBillExpansion, fetchAutomationStatus, toggleListener, toggleGateway, handleSendTestWhatsApp, handleSyncBroadcastGroup, handleStartBroadcast, handleStopBroadcast, handleExportGroupCsv, openCustomerCard, handleGenerateAI, handleGenerateOutfitMatch, handleGenerateCampaign, handleSaveReconciliation, handleGenerateEodReport, handleMasterRestock, formatCurrency, MASTER_CATEGORIES, classifySubCategory, handleGlobalSearch, renderLogLine, persona, handleGenerateSmartCoordinate, trendForecast, isForecasting, compImage, compImageUrl, compIntelResult, isAnalyzingComp, compError } = props;
   const [calendarDate, setCalendarDate] = React.useState(new Date());
-
-  
 
   return (
     <>
@@ -78,8 +76,27 @@ const DashboardTab = (props) => {
                 {/* Header */}
                 <div className="flex justify-between items-end mb-2">
                   <div>
-                    <h2 className="text-2xl font-bold text-slate-800">Store Command Center</h2>
-                    <p className="text-sm text-slate-500 mt-1">Live operational metrics and AI insights for Cobb Pundri.</p>
+                    <div className="flex items-center gap-2 mb-1">
+                      <h2 className="text-2xl font-bold text-slate-800">
+                        {activeStore === 'ALL' 
+                          ? 'All Stores Network Command Center' 
+                          : activeStore === 'STORE_02' 
+                            ? 'Cobb Branch 2 Command Center' 
+                            : 'Store Command Center'}
+                      </h2>
+                      <span className={`px-2 py-0.5 text-xs font-black rounded-lg border ${
+                        userRole === 'owner' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      }`}>
+                        {userRole === 'owner' ? '👑 Owner Mode' : '👔 Manager Mode'}
+                      </span>
+                    </div>
+                    <p className="text-sm text-slate-500">
+                      {activeStore === 'ALL'
+                        ? 'Consolidated operational telemetry across all Cobb branches.'
+                        : activeStore === 'STORE_02'
+                          ? 'Live operational metrics & counter telemetry for Cobb Branch 2 (New Market).'
+                          : 'Live operational metrics and counter telemetry for Cobb Pundri.'}
+                    </p>
                   </div>
                 </div>
 
@@ -361,50 +378,89 @@ const DashboardTab = (props) => {
                         </div>
                       </div>
 
-                      {/* Discount & Margin Tracker */}
-                      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col justify-between">
-                        <div className="flex justify-between items-center mb-4">
-                          <h3 className="font-bold text-slate-800 flex items-center">
-                            <Tag className="w-4 h-4 mr-2 text-purple-500" /> Margin Tracker
-                          </h3>
+                      {/* Margin Tracker (Owner) vs Counter Settlement Desk (Manager) */}
+                      {userRole !== 'manager' ? (
+                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col justify-between">
+                          <div className="flex justify-between items-center mb-4">
+                            <h3 className="font-bold text-slate-800 flex items-center">
+                              <Tag className="w-4 h-4 mr-2 text-purple-500" /> Margin Tracker
+                            </h3>
+                            <span className="text-[10px] font-bold bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full border border-amber-200">Owner Only</span>
+                          </div>
+                          <div className="flex-1 flex flex-col justify-center">
+                            {(() => {
+                              const totalSales = overviewStats.today?.TotalSales || 0;
+                              const total = totalSales > 0 ? totalSales : 1;
+                              
+                              // 73% COGS, 10% Expense, 17% Net Margin
+                              const cogs = Math.round(totalSales * 0.73);
+                              const expense = Math.round(totalSales * 0.10);
+                              const netMargin = totalSales - cogs - expense;
+                              
+                              const cogsPct = ((cogs / total) * 100).toFixed(0);
+                              const expensePct = ((expense / total) * 100).toFixed(0);
+                              const marginPct = ((netMargin / total) * 100).toFixed(0);
+                              
+                              return (
+                                <>
+                                  <p className="text-xs text-slate-500 mb-4">Daily Revenue split: Cost, OpEx (10%), and Net Margin.</p>
+                                  <div className="flex justify-between text-[10px] font-bold mb-2">
+                                    <span className="text-slate-500 uppercase tracking-wide">Cost ({cogsPct}%)</span>
+                                    <span className="text-amber-500 uppercase tracking-wide">OpEx ({expensePct}%)</span>
+                                    <span className="text-emerald-500 uppercase tracking-wide">Net ({marginPct}%)</span>
+                                  </div>
+                                  <div className="w-full h-4 rounded-full flex overflow-hidden bg-slate-100 shadow-inner">
+                                    <div className="bg-slate-400 h-full transition-all duration-1000" style={{ width: `${cogsPct}%` }}></div>
+                                    <div className="bg-amber-400 h-full transition-all duration-1000" style={{ width: `${expensePct}%` }}></div>
+                                    <div className="bg-emerald-500 h-full transition-all duration-1000" style={{ width: `${marginPct}%` }}></div>
+                                  </div>
+                                  <div className="flex justify-between text-[10px] text-slate-500 mt-2 font-mono">
+                                    <span>{formatCurrency(cogs)}</span>
+                                    <span className="text-center flex-1">{formatCurrency(expense)}</span>
+                                    <span className="text-right">{formatCurrency(netMargin)}</span>
+                                  </div>
+                                </>
+                              );
+                            })()}
+                          </div>
                         </div>
-                        <div className="flex-1 flex flex-col justify-center">
-                          {(() => {
-                            const totalSales = overviewStats.today?.TotalSales || 0;
-                            const total = totalSales > 0 ? totalSales : 1;
-                            
-                            // 73% COGS, 10% Expense, 17% Net Margin
-                            const cogs = Math.round(totalSales * 0.73);
-                            const expense = Math.round(totalSales * 0.10);
-                            const netMargin = totalSales - cogs - expense;
-                            
-                            const cogsPct = ((cogs / total) * 100).toFixed(0);
-                            const expensePct = ((expense / total) * 100).toFixed(0);
-                            const marginPct = ((netMargin / total) * 100).toFixed(0);
-                            
-                            return (
-                              <>
-                                <p className="text-xs text-slate-500 mb-4">Daily Revenue split: Cost, OpEx (10%), and Net Margin.</p>
-                                <div className="flex justify-between text-[10px] font-bold mb-2">
-                                  <span className="text-slate-500 uppercase tracking-wide">Cost ({cogsPct}%)</span>
-                                  <span className="text-amber-500 uppercase tracking-wide">OpEx ({expensePct}%)</span>
-                                  <span className="text-emerald-500 uppercase tracking-wide">Net ({marginPct}%)</span>
-                                </div>
-                                <div className="w-full h-4 rounded-full flex overflow-hidden bg-slate-100 shadow-inner">
-                                  <div className="bg-slate-400 h-full transition-all duration-1000" style={{ width: `${cogsPct}%` }}></div>
-                                  <div className="bg-amber-400 h-full transition-all duration-1000" style={{ width: `${expensePct}%` }}></div>
-                                  <div className="bg-emerald-500 h-full transition-all duration-1000" style={{ width: `${marginPct}%` }}></div>
-                                </div>
-                                <div className="flex justify-between text-[10px] text-slate-500 mt-2 font-mono">
-                                  <span>{formatCurrency(cogs)}</span>
-                                  <span className="text-center flex-1">{formatCurrency(expense)}</span>
-                                  <span className="text-right">{formatCurrency(netMargin)}</span>
-                                </div>
-                              </>
-                            );
-                          })()}
+                      ) : (
+                        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col justify-between">
+                          <div className="flex justify-between items-center mb-3">
+                            <h3 className="font-bold text-slate-800 flex items-center">
+                              <Receipt className="w-4 h-4 mr-2 text-blue-500" /> Counter Settlement Desk
+                            </h3>
+                            <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full border border-emerald-200">Active Register</span>
+                          </div>
+                          <p className="text-xs text-slate-500 mb-3">Real-time payment mode distribution collected at this counter today.</p>
+                          <div className="space-y-3">
+                            {(() => {
+                              const cash = overviewStats?.today?.CashAmount || 0;
+                              const card = overviewStats?.today?.CardAmount || 0;
+                              const upi = overviewStats?.today?.UPIAmount || 0;
+                              const total = (cash + card + upi) || 1;
+                              const cashPct = Math.round((cash / total) * 100);
+                              const upiPct = Math.round((upi / total) * 100);
+                              const cardPct = Math.round((card / total) * 100);
+                              return (
+                                <>
+                                  <div className="flex justify-between text-xs font-bold">
+                                    <span className="text-emerald-600">Cash ({cashPct}%): {formatCurrency(cash)}</span>
+                                    <span className="text-purple-600">UPI ({upiPct}%): {formatCurrency(upi)}</span>
+                                    <span className="text-blue-600">Card ({cardPct}%): {formatCurrency(card)}</span>
+                                  </div>
+                                  <div className="w-full h-3 rounded-full flex overflow-hidden bg-slate-100 shadow-inner">
+                                    <div className="bg-emerald-500 h-full transition-all duration-500" style={{ width: `${cashPct}%` }}></div>
+                                    <div className="bg-purple-500 h-full transition-all duration-500" style={{ width: `${upiPct}%` }}></div>
+                                    <div className="bg-blue-500 h-full transition-all duration-500" style={{ width: `${cardPct}%` }}></div>
+                                  </div>
+                                  <p className="text-[11px] text-slate-400 text-center mt-1">Cash reconciliation must be performed at 8:30 PM before store closing.</p>
+                                </>
+                              );
+                            })()}
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
 
                     {/* Quick Action Grid */}
@@ -587,6 +643,20 @@ const DashboardTab = (props) => {
 
             {/* STORE P&L STATEMENT */}
             {activeTab === 'pnl' && (
+              userRole === 'manager' ? (
+                <div className="p-12 max-w-lg mx-auto text-center mt-12 bg-white rounded-3xl border border-slate-200 shadow-xl animate-in fade-in">
+                  <div className="w-16 h-16 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-rose-100 shadow-sm">
+                    <AlertTriangle className="w-8 h-8" />
+                  </div>
+                  <h3 className="text-xl font-black text-slate-800">Restricted Access (Owner Only)</h3>
+                  <p className="text-sm text-slate-500 mt-2">
+                    Store P&L statements, wholesale purchase costs, supplier margins, and financial bottom lines are strictly confidential and restricted to the Store Owner.
+                  </p>
+                  <p className="text-xs text-slate-400 mt-4">
+                    Switch to <strong>Owner Mode</strong> in the top navbar to view financial telemetry.
+                  </p>
+                </div>
+              ) : (
               <div className="p-4 sm:p-6 lg:p-8">
                 <div className="border-b border-slate-200 pb-5 mb-8 flex justify-between items-center">
                   <div>
@@ -689,7 +759,7 @@ const DashboardTab = (props) => {
                   </>
                 ) : <p className="text-slate-400">Loading P&L statement...</p>}
               </div>
-
+              )
             )}
             {/* MASS OFFER BROADCAST */}
             {activeTab === 'broadcast' && (
