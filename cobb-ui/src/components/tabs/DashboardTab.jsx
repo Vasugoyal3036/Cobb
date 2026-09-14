@@ -926,70 +926,59 @@ const DashboardTab = (props) => {
                   </div>
                 </div>
 
-                {/* TILE 2: DAILY STORE TARGET & SALES PACE */}
-                {(() => {
-                  const todaySales = overviewStats?.today?.TotalAmount || 0;
-                  const dailyGoal = 50000;
-                  const pctAchieved = Math.min(100, Math.round((todaySales / dailyGoal) * 100));
-                  const totalPcs = overviewStats?.today?.TotalPieces || 0;
-                  const totalBills = overviewStats?.today?.TotalBills || 0;
-                  const upt = totalBills > 0 ? (totalPcs / totalBills).toFixed(1) : '0.0';
-
-                  return (
-                    <div 
-                      className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow"
-                      style={{ height: topCardHeight ? `${topCardHeight}px` : undefined }}
-                    >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Target Pace</p>
-                          <h3 className="text-3xl font-black text-indigo-600 dark:text-indigo-400 mt-2">
-                            {pctAchieved}%
-                          </h3>
-                        </div>
-                        <div className="p-3 bg-indigo-500/10 text-indigo-500 rounded-xl border border-indigo-500/20">
-                          <Target className="w-5 h-5" />
-                        </div>
-                      </div>
-
-                      <div className="my-auto py-2 space-y-1.5 text-xs">
-                        <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
-                          <span>Today Goal:</span>
-                          <span className="font-bold font-mono text-slate-700 dark:text-slate-200">{formatCurrency(todaySales)} / {formatCurrency(dailyGoal)}</span>
-                        </div>
-                        <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-                          <div
-                            className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full rounded-full transition-all duration-500"
-                            style={{ width: `${pctAchieved}%` }}
-                          />
-                        </div>
-                        <div className="flex justify-between items-center text-slate-500 dark:text-slate-400 pt-0.5">
-                          <span>Basket UPT:</span>
-                          <span className="font-semibold text-indigo-600 dark:text-indigo-400">{upt} pcs/bill ({totalPcs} units)</span>
-                        </div>
-                      </div>
-
-                      <div className="mt-auto pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
-                        <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
-                          pctAchieved >= 80 
-                            ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
-                            : 'text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 border-indigo-500/20'
-                        }`}>
-                          {pctAchieved >= 100 ? 'Target Crushed' : `${pctAchieved}% On Pace`}
-                        </span>
-                        {typeof setActiveTab === 'function' && (
-                          <button
-                            onClick={() => setActiveTab('live')}
-                            className="font-bold text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 flex items-center gap-1 cursor-pointer transition-colors"
-                          >
-                            <span>Live Sales</span>
-                            <ArrowRight className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
+                {/* TILE 2: VIP LOOKBOOK & STYLIST STUDIO QUICK HUB */}
+                <div 
+                  className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow"
+                  style={{ height: topCardHeight ? `${topCardHeight}px` : undefined }}
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">VIP Lookbook</p>
+                      <h3 className="text-3xl font-black text-amber-500 dark:text-amber-400 mt-2">
+                        Stylist <span className="text-base font-bold text-slate-400">Hub</span>
+                      </h3>
                     </div>
-                  );
-                })()}
+                    <div className="p-3 bg-amber-500/10 text-amber-500 rounded-xl border border-amber-500/20">
+                      <Sparkles className="w-5 h-5" />
+                    </div>
+                  </div>
+
+                  <div className="my-auto py-2 space-y-1.5 text-xs">
+                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+                      <span>Curated Look:</span>
+                      <span className="font-bold text-slate-700 dark:text-slate-200 truncate max-w-[130px]">
+                        👔 Executive Boardroom
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+                      <span>Target VIP:</span>
+                      <span className="font-semibold text-amber-600 dark:text-amber-400 truncate max-w-[130px]">
+                        Parminder Singh
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+                      <span>Special Bundle:</span>
+                      <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                        Buy 3 @ 70% Off
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mt-auto pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
+                    <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20">
+                      WhatsApp Ready
+                    </span>
+                    {typeof setActiveTab === 'function' && (
+                      <button
+                        onClick={() => setActiveTab('lookbook_studio')}
+                        className="font-bold text-amber-600 hover:text-amber-500 dark:text-amber-400 flex items-center gap-1 cursor-pointer transition-colors"
+                      >
+                        <span>Open Studio</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
 
                 {/* TILE 3: HOLD DESK */}
                 <div 
