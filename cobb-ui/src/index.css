@@ -9,13 +9,6 @@
   animation: toastProgress linear forwards;
 }
 
-/* Enlarge everything on mobile globally */
-@media (max-width: 640px) {
-  html {
-    font-size: 112.5% !important; /* Scales all rem units (text, padding, margins) by 12.5% */
-  }
-}
-
 /* Global Dark Mode Base & Color Scheme */
 html.dark, .dark, .dark-mode {
   color-scheme: dark;

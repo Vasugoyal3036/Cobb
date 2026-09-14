@@ -213,7 +213,7 @@ const DashboardTab = (props) => {
           </div>
 
           {/* Top Row Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
 
             {/* Revenue Card with WoW/MoM Trends */}
             <div ref={topCardRef} className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
@@ -454,7 +454,7 @@ const DashboardTab = (props) => {
           </div>
 
           {/* BENTO ROW 1: Operations Pulse (Automation Dispatches | Margin Tracker | Live Store Pulse) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch mb-6 lg:h-[280px]">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 items-stretch mb-6">
                 {/* Automation Engine Dispatched Messages (Checkouts vs Exchanges vs Failed) */}
                 {(() => {
                   // 1. Telemetry from backend automation dispatch tracker
@@ -913,7 +913,7 @@ const DashboardTab = (props) => {
             const latestHold = activeHolds[0];
 
             return (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
                 {/* TILE 1: POCKET KHATA */}
                 <div 
                   className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow"
@@ -1369,7 +1369,7 @@ const DashboardTab = (props) => {
 
             {pnlData ? (
               <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-8">
                   <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Gross Monthly Sales (Inc. Tax)</p>
                     <h4 className="text-3xl font-black text-slate-800 mt-2">{formatCurrency(pnlData.grossSales)}</h4>
@@ -1491,7 +1491,7 @@ const DashboardTab = (props) => {
           </div>
 
           {/* Metric Summary Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Customers in Group</p>
               <h4 className="text-3xl font-black text-emerald-600 mt-2">{broadcastGroupCount} Billed Contacts</h4>
@@ -2033,7 +2033,7 @@ const DashboardTab = (props) => {
 
           {retentionData ? (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-8">
                 <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Repeat Customer Rate</p>
                   <h4 className="text-3xl font-black text-rose-600 mt-2">{retentionData.repeatRatePct}%</h4>
@@ -2244,7 +2244,7 @@ const DashboardTab = (props) => {
             </div>
 
             {/* Summary Metric Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-8">
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Today's GST Liability ({gstRateSlab}%)</p>
                 <h4 className="text-3xl font-black text-emerald-600 mt-2">{formatCurrency(todayComp.tax)}</h4>
@@ -2370,7 +2370,7 @@ const DashboardTab = (props) => {
             </div>
 
             {/* Summary Metric Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-8">
               <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">🔥 Bestselling Article & Size</p>
                 {topSellerItem ? (
