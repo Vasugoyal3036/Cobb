@@ -61,7 +61,10 @@ import {
   Camera,
   Percent,
   CheckCircle,
-  AlertTriangle
+  AlertTriangle,
+  ArrowUpRight,
+  ArrowDownRight,
+  History
 } from 'lucide-react';
 
 const DashboardTab = (props) => {
@@ -352,34 +355,83 @@ const DashboardTab = (props) => {
 
                     {/* Visual Sales Trend */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">
-                      {/* Visual Sales Trend */}
-                      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col">
-                        <div className="flex justify-between items-center mb-6">
-                          <h3 className="font-bold text-slate-800 flex items-center">
-                            <BarChart3 className="w-4 h-4 mr-2 text-blue-500" /> Hourly Footfall
-                          </h3>
-                          <button onClick={() => setActiveTab('analytics')} className="text-xs font-bold text-blue-600 hover:text-blue-800 cursor-pointer">Full &rarr;</button>
-                        </div>
-                        <div className="h-24 flex items-end justify-between gap-1 flex-1">
-                          {hourlySales.map((h, i) => {
-                            const heightPercent = Math.max((h.TotalRevenue / maxHourlyRevenue) * 100, 10);
-                            const isPeak = h.TotalRevenue === maxHourlyRevenue && maxHourlyRevenue > 0;
-                            return (
-                              <div key={i} className="flex-1 flex flex-col items-center group relative h-full justify-end">
-                                <div className="absolute -top-10 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] py-1 px-2 rounded shadow-lg whitespace-nowrap z-20 pointer-events-none">
-                                  {formatCurrency(h.TotalRevenue)}
-                                </div>
-                                <div
-                                  style={{ height: `${heightPercent}%` }}
-                                  className={`w-full max-w-[24px] rounded-t-md transition-all duration-500 ${isPeak ? 'bg-blue-500' : 'bg-slate-200 group-hover:bg-blue-300'}`}
-                                />
-                                <span className="text-[9px] text-slate-400 mt-2 font-medium">{h.SaleHour}:00</span>
+                      {/* Real-Time Pace vs Yesterday (Same-Time Benchmark) */}
+                      {(() => {
+                        const todaySales = overviewStats?.today?.TotalSales || 0;
+                        const todayBills = overviewStats?.today?.BillCount || 0;
+                        const yesterdaySales = overviewStats?.yesterday?.TotalSales || 0;
+                        const yesterdayBills = overviewStats?.yesterday?.BillCount || 0;
+
+                        const diff = todaySales - yesterdaySales;
+                        const isAhead = diff >= 0;
+                        const pctChange = yesterdaySales > 0 
+                          ? Math.abs((diff / yesterdaySales) * 100).toFixed(1)
+                          : (todaySales > 0 ? '100' : '0');
+
+                        const progressPercent = yesterdaySales > 0 
+                          ? Math.min(Math.round((todaySales / yesterdaySales) * 100), 100)
+                          : (todaySales > 0 ? 100 : 0);
+
+                        return (
+                          <div className={`rounded-2xl border shadow-sm p-6 flex flex-col justify-between transition-colors ${
+                            darkMode ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-800'
+                          }`}>
+                            <div className="flex justify-between items-center mb-4">
+                              <h3 className="font-bold flex items-center gap-2 text-slate-800 dark:text-slate-100">
+                                <History className="w-4 h-4 text-indigo-500" />
+                                <span>Pace vs Yesterday</span>
+                              </h3>
+                              <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-full border flex items-center gap-1 ${
+                                isAhead
+                                  ? darkMode ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  : darkMode ? 'bg-amber-950/60 text-amber-300 border-amber-800/60' : 'bg-amber-50 text-amber-700 border-amber-200'
+                              }`}>
+                                {isAhead ? <ArrowUpRight className="w-3 h-3 text-emerald-500" /> : <ArrowDownRight className="w-3 h-3 text-amber-500" />}
+                                <span>{isAhead ? `+${pctChange}% Ahead` : `-${pctChange}% Behind`}</span>
+                              </span>
+                            </div>
+
+                            {/* Comparison Columns */}
+                            <div className="grid grid-cols-2 gap-3 mb-4">
+                              <div className={`p-3 rounded-xl border ${
+                                darkMode ? 'bg-slate-800/60 border-slate-700/60' : 'bg-slate-50 border-slate-100'
+                              }`}>
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Today So Far</span>
+                                <div className="text-lg font-black mt-0.5 text-blue-600 dark:text-blue-400">{formatCurrency(todaySales)}</div>
+                                <span className="text-[11px] text-slate-500 font-medium">{todayBills} bills</span>
                               </div>
-                            );
-                          })}
-                          {hourlySales.length === 0 && <div className="w-full text-center text-sm text-slate-400 mb-8">Waiting for checkout data...</div>}
-                        </div>
-                      </div>
+
+                              <div className={`p-3 rounded-xl border ${
+                                darkMode ? 'bg-slate-800/60 border-slate-700/60' : 'bg-slate-50 border-slate-100'
+                              }`}>
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Yesterday Total</span>
+                                <div className="text-lg font-black mt-0.5 text-slate-700 dark:text-slate-300">{formatCurrency(yesterdaySales)}</div>
+                                <span className="text-[11px] text-slate-500 font-medium">{yesterdayBills} bills</span>
+                              </div>
+                            </div>
+
+                            {/* Benchmark Progress Bar */}
+                            <div className="space-y-1.5">
+                              <div className="flex justify-between items-center text-[11px]">
+                                <span className="text-slate-400 font-medium">Daily Target Pace</span>
+                                <span className={isAhead ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-slate-500 font-medium'}>
+                                  {isAhead ? `Surpassed by ${formatCurrency(diff)} 🎉` : `${progressPercent}% matched (${formatCurrency(Math.abs(diff))} to beat)`}
+                                </span>
+                              </div>
+                              <div className={`w-full h-2.5 rounded-full overflow-hidden ${darkMode ? 'bg-slate-800' : 'bg-slate-100'}`}>
+                                <div 
+                                  className={`h-full transition-all duration-700 rounded-full ${
+                                    isAhead 
+                                      ? 'bg-gradient-to-r from-emerald-500 to-teal-400' 
+                                      : 'bg-gradient-to-r from-blue-500 to-indigo-500'
+                                  }`} 
+                                  style={{ width: `${progressPercent}%` }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
 
                       {/* Margin Tracker (Owner) vs Counter Settlement Desk (Manager) */}
                       {userRole !== 'manager' ? (
