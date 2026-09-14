@@ -113,6 +113,27 @@ const DashboardTab = (props) => {
     };
   }, []);
 
+  // Ref and height state to match Live Store Pulse with Margin Tracker
+  const marginTrackerRef = React.useRef(null);
+  const [marginTrackerHeight, setMarginTrackerHeight] = React.useState(null);
+
+  React.useEffect(() => {
+    if (!marginTrackerRef.current) return;
+    const updateMarginHeight = () => {
+      if (marginTrackerRef.current) {
+        setMarginTrackerHeight(marginTrackerRef.current.offsetHeight);
+      }
+    };
+    updateMarginHeight();
+    const ro = new ResizeObserver(updateMarginHeight);
+    ro.observe(marginTrackerRef.current);
+    window.addEventListener('resize', updateMarginHeight);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', updateMarginHeight);
+    };
+  }, [userRole, darkMode]);
+
   const fetchKhataExpenses = React.useCallback(async () => {
     try {
       setKhataLoading(true);
@@ -704,7 +725,9 @@ const DashboardTab = (props) => {
 
                 {/* Margin Tracker (Owner) vs Counter Settlement Desk (Manager) */}
                 {userRole !== 'manager' ? (
-                  <div className={`rounded-2xl border shadow-sm p-6 flex flex-col justify-between transition-all ${
+                  <div 
+                    ref={marginTrackerRef}
+                    className={`rounded-2xl border shadow-sm p-6 flex flex-col justify-between transition-all ${
                     darkMode 
                       ? 'bg-slate-900/90 border-slate-800/80 text-slate-100 shadow-black/20' 
                       : 'bg-white border-slate-200 text-slate-800 shadow-slate-200/50'
@@ -785,7 +808,9 @@ const DashboardTab = (props) => {
                     </div>
                   </div>
                 ) : (
-                  <div className={`rounded-2xl border shadow-sm p-5 flex flex-col justify-between transition-all ${
+                  <div 
+                    ref={marginTrackerRef}
+                    className={`rounded-2xl border shadow-sm p-5 flex flex-col justify-between transition-all ${
                     darkMode 
                       ? 'bg-slate-900/90 border-slate-800/80 text-slate-100 shadow-black/20' 
                       : 'bg-white border-slate-200/90 text-slate-800 shadow-slate-200/50'
@@ -832,81 +857,69 @@ const DashboardTab = (props) => {
 
             </div>
 
-            {/* Right Column - Alerts & Pulse */}
-            <div className="flex flex-col gap-6">
-
-              {/* Action Required (Alerts) */}
-              <div className="bg-white rounded-2xl border border-red-100 shadow-sm overflow-hidden flex-shrink-0">
-                <div className="bg-red-50/50 border-b border-red-100 p-4 flex items-center justify-between">
-                  <div className="flex items-center">
-                    <AlertCircle className="w-4 h-4 text-red-500 mr-2" />
-                    <h3 className="text-sm font-bold text-red-900">Action Required</h3>
-                  </div>
-                  <div className="bg-red-100 text-red-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                    {((!isGatewayRunning ? 1 : 0) + (!isListenerRunning ? 1 : 0) + (deadStock.length > 0 ? 1 : 0))} Alerts
-                  </div>
-                </div>
-                <div className="divide-y divide-slate-50">
-                  {!isGatewayRunning && (
-                    <div className="p-4 text-sm flex justify-between items-center group cursor-pointer hover:bg-slate-50" onClick={() => setActiveTab('automation')}>
-                      <span className="text-slate-700 font-medium">WhatsApp Gateway offline.</span>
-                      <span className="text-blue-600 font-bold text-xs opacity-0 group-hover:opacity-100 transition-opacity">Fix &rarr;</span>
-                    </div>
-                  )}
-                  {!isListenerRunning && (
-                    <div className="p-4 text-sm flex justify-between items-center group cursor-pointer hover:bg-slate-50" onClick={() => setActiveTab('automation')}>
-                      <span className="text-slate-700 font-medium">POS Bill Listener stopped.</span>
-                      <span className="text-blue-600 font-bold text-xs opacity-0 group-hover:opacity-100 transition-opacity">Fix &rarr;</span>
-                    </div>
-                  )}
-                  {deadStock.length > 0 && (
-                    <div className="p-4 text-sm flex justify-between items-center group cursor-pointer hover:bg-slate-50" onClick={() => setActiveTab('deadstock')}>
-                      <span className="text-slate-700 font-medium"><span className="font-bold text-blue-600">{deadStock.length} items</span> in Inventory.</span>
-                      <span className="text-blue-600 font-bold text-xs opacity-0 group-hover:opacity-100 transition-opacity">Review &rarr;</span>
-                    </div>
-                  )}
-                  {isGatewayRunning && isListenerRunning && deadStock.length === 0 && (
-                    <div className="p-6 text-sm text-slate-400 text-center flex flex-col items-center">
-                      <span className="text-2xl mb-2">🎉</span> All caught up! No active alerts.
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Live Pulse Ticker */}
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex-1 flex flex-col">
-                <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-                  <h3 className="text-sm font-bold text-slate-800 flex items-center">
-                    <Activity className="w-4 h-4 mr-2 text-green-500" /> Live Store Pulse
+            {/* Right Column - Live Store Pulse (Moved Upwards, Sized to Match Margin Tracker) */}
+            <div className="flex flex-col">
+              <div 
+                style={{ height: marginTrackerHeight ? `${marginTrackerHeight}px` : undefined }}
+                className={`rounded-2xl border shadow-sm overflow-hidden flex flex-col transition-all ${
+                  darkMode 
+                    ? 'bg-slate-900/90 border-slate-800/80 text-slate-100 shadow-black/20' 
+                    : 'bg-white border-slate-200 text-slate-800 shadow-slate-200/50'
+                }`}
+              >
+                <div className={`p-4 border-b flex items-center justify-between transition-colors shrink-0 ${
+                  darkMode ? 'bg-slate-800/40 border-slate-800/80' : 'bg-slate-50/50 border-slate-100'
+                }`}>
+                  <h3 className="text-sm font-bold flex items-center text-slate-900 dark:text-white">
+                    <Activity className="w-4 h-4 mr-2 text-emerald-500" /> Live Store Pulse
                   </h3>
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Latest Checkouts</span>
                 </div>
-                <div className="divide-y divide-slate-100 flex-1 overflow-y-auto max-h-[220px]">
-                  {liveBills.slice(0, 5).map((bill, idx) => (
-                    <div key={idx} className="p-4 hover:bg-slate-50 transition-colors flex justify-between items-center cursor-pointer group" onClick={() => setActiveTab('live')}>
+                <div className={`divide-y flex-1 overflow-y-auto ${
+                  darkMode ? 'divide-slate-800/80' : 'divide-slate-100'
+                }`}>
+                  {liveBills.map((bill, idx) => (
+                    <div 
+                      key={idx} 
+                      className={`p-3.5 sm:p-4 transition-colors flex justify-between items-center cursor-pointer group ${
+                        darkMode ? 'hover:bg-slate-800/50' : 'hover:bg-slate-50'
+                      }`} 
+                      onClick={() => setActiveTab('live')}
+                    >
                       <div>
-                        <p className="text-sm font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{bill.CustomerName?.trim() || bill.FirstName?.trim() || 'Guest Customer'}</p>
-                        <p className="text-xs text-slate-500 mt-0.5">{new Date(bill.BillTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • #{bill.BillNumber}</p>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded mt-1.5 inline-block ${bill.PaymentMode === 'Cash' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
-                          bill.PaymentMode === 'UPI / Online' ? 'bg-purple-50 text-purple-700 border border-purple-200' :
-                            bill.PaymentMode === 'Debit / Credit Card' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
-                              'bg-amber-50 text-amber-700 border border-amber-200'
-                          }`}>
+                        <p className="text-sm font-bold text-slate-800 dark:text-slate-100 group-hover:text-blue-500 transition-colors">
+                          {bill.CustomerName?.trim() || bill.FirstName?.trim() || 'Guest Customer'}
+                        </p>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          {new Date(bill.BillTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • #{bill.BillNumber}
+                        </p>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded mt-1.5 inline-block ${
+                          bill.PaymentMode === 'Cash' 
+                            ? darkMode ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                            : bill.PaymentMode === 'UPI / Online' 
+                              ? darkMode ? 'bg-purple-950/60 text-purple-300 border border-purple-800/60' : 'bg-purple-50 text-purple-700 border border-purple-200'
+                              : bill.PaymentMode === 'Debit / Credit Card' 
+                                ? darkMode ? 'bg-blue-950/60 text-blue-300 border border-blue-800/60' : 'bg-blue-50 text-blue-700 border border-blue-200'
+                                : darkMode ? 'bg-amber-950/60 text-amber-300 border border-amber-800/60' : 'bg-amber-50 text-amber-700 border border-amber-200'
+                        }`}>
                           {bill.PaymentMode || 'Cash'}
                         </span>
                       </div>
-                      <span className="text-sm font-black text-green-600 bg-green-50 px-2.5 py-1 rounded-lg">{formatCurrency(bill.Amount)}</span>
+                      <span className={`text-sm font-black px-2.5 py-1 rounded-lg ${
+                        darkMode ? 'text-emerald-400 bg-emerald-950/40 border border-emerald-800/40' : 'text-green-600 bg-green-50'
+                      }`}>
+                        {formatCurrency(bill.Amount)}
+                      </span>
                     </div>
                   ))}
                   {liveBills.length === 0 && (
-                    <div className="p-4 sm:p-6 lg:p-8 text-center text-sm text-slate-400 flex flex-col items-center justify-center h-full">
-                      <RefreshCw className="w-6 h-6 mb-2 text-slate-300" />
+                    <div className="p-4 sm:p-6 text-center text-sm text-slate-400 flex flex-col items-center justify-center h-full">
+                      <RefreshCw className="w-6 h-6 mb-2 text-slate-400 animate-spin" style={{ animationDuration: '3s' }} />
                       Waiting for POS checkouts...
                     </div>
                   )}
                 </div>
               </div>
-
             </div>
           </div>
 
