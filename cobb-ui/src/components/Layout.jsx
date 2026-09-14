@@ -70,8 +70,6 @@ import {
   Music
 } from 'lucide-react';
 
-import FloatingCopilot from './FloatingCopilot';
-
 const navigationItems = [
   {
     category: "AI & Intelligence", items: [
@@ -285,20 +283,6 @@ const Layout = ({
 
             {/* Quick Actions on Mobile Top Bar */}
             <div className="flex items-center gap-1.5">
-              {/* Prominent Cobb AI button right in the top bar */}
-              <button
-                type="button"
-                onClick={() => { setActiveTab('copilot'); setIsMobileMenuOpen(false); }}
-                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-full text-[11px] font-black transition-all shadow-xs cursor-pointer border ${
-                  activeTab === 'copilot'
-                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-blue-500 shadow-blue-500/25'
-                    : 'bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/60 dark:to-indigo-950/60 text-blue-600 dark:text-blue-300 border-blue-200 dark:border-blue-800'
-                }`}
-                title="Open Cobb AI Assistant"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-blue-500 dark:text-blue-400 animate-pulse" />
-                <span>✨ Cobb AI</span>
-              </button>
 
               {/* Compact Store Switcher */}
               <div className={`flex items-center p-1 rounded-xl border shrink-0 ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-200'}`}>
@@ -350,22 +334,6 @@ const Layout = ({
             </div>
 
             <div className="flex items-center justify-end gap-2 shrink-0">
-              {/* Desktop Prominent AI Copilot Shortcut */}
-              <button
-                type="button"
-                onClick={() => setActiveTab('copilot')}
-                className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer border shrink-0 ${
-                  activeTab === 'copilot'
-                    ? 'bg-blue-600 text-white border-blue-500 shadow-blue-500/20'
-                    : darkMode
-                      ? 'bg-blue-950/60 text-blue-300 border-blue-800/60 hover:bg-blue-900/60'
-                      : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
-                }`}
-                title="Open Cobb AI Assistant"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-blue-400 animate-pulse" />
-                <span>Cobb AI</span>
-              </button>
 
               {/* Multi-Store Switcher */}
               <div className={`flex items-center gap-1.5 p-1 rounded-xl border shrink-0 ${darkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-100 border-slate-200'}`}>
@@ -500,13 +468,6 @@ const Layout = ({
         }}
       />
 
-      {/* Global Floating AI Copilot Drawer */}
-      <FloatingCopilot
-        API_BASE={API_BASE || 'http://localhost:5000'}
-        darkMode={darkMode}
-        activeTab={activeTab}
-        onOpenFullTab={() => setActiveTab('copilot')}
-      />
 
     </>
   );
