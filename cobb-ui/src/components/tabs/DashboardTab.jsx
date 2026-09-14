@@ -899,7 +899,7 @@ const DashboardTab = (props) => {
             </div>
           </div>
 
-          {/* 4-Tile Operations Deck (Identical sizing to the top 4 tiles) */}
+          {/* 4-Tile Operations Deck (Stretched downward to match exact height of top 4 KPI cards) */}
           {(() => {
             const grossCashSales = overviewStats?.today?.CashAmount || 0;
             const totalPettyCash = khataSummary?.totalSpent || 0;
@@ -912,7 +912,7 @@ const DashboardTab = (props) => {
             return (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {/* TILE 1: POCKET KHATA */}
-                <div className={`p-6 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow ${
+                <div className={`p-6 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow min-h-[320px] ${
                   darkMode 
                     ? 'bg-slate-900/90 border-slate-800/80 text-slate-100 shadow-black/20' 
                     : 'bg-white border-slate-200 text-slate-800 shadow-slate-200/50'
@@ -929,15 +929,27 @@ const DashboardTab = (props) => {
                     </div>
                   </div>
 
-                  <div className="mt-4 text-xs space-y-1.5">
-                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
-                      <span>Expected in Drawer:</span>
-                      <span className="font-bold font-mono text-emerald-600 dark:text-emerald-400">{formatCurrency(netExpectedDrawer)}</span>
+                  <div className="my-3 space-y-2.5 text-xs">
+                    <div className={`p-3 rounded-xl border ${
+                      darkMode ? 'bg-slate-800/50 border-slate-700/60' : 'bg-slate-50 border-slate-100'
+                    }`}>
+                      <div className="flex justify-between items-center text-slate-400 text-[11px] mb-1">
+                        <span>Expected in Cash Drawer:</span>
+                        <span className="font-bold text-emerald-600 dark:text-emerald-400">Net Safe</span>
+                      </div>
+                      <div className="text-lg font-black font-mono text-emerald-600 dark:text-emerald-400">
+                        {formatCurrency(netExpectedDrawer)}
+                      </div>
+                      <div className="flex justify-between text-[10px] text-slate-400 mt-1">
+                        <span>Gross In: {formatCurrency(grossCashSales)}</span>
+                        <span>Outflows: -{formatCurrency(totalPettyCash)}</span>
+                      </div>
                     </div>
-                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
-                      <span>Outflows Logged:</span>
-                      <span className="font-semibold text-slate-700 dark:text-slate-200">
-                        {latestExpense ? `${latestExpense.categoryIcon || '☕'} ${latestExpense.description || 'Outflow'}` : `${khataSummary.totalCount || 0} expenses`}
+
+                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400 px-1 text-[11px]">
+                      <span>Recent Outflow:</span>
+                      <span className="font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[140px]">
+                        {latestExpense ? `${latestExpense.categoryIcon || '☕'} ${latestExpense.description || 'Outflow'}` : 'No petty expenses'}
                       </span>
                     </div>
                   </div>
@@ -959,7 +971,7 @@ const DashboardTab = (props) => {
                 </div>
 
                 {/* TILE 2: LOUNGE RADIO & PA MIC */}
-                <div className={`p-6 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow ${
+                <div className={`p-6 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow min-h-[320px] ${
                   darkMode 
                     ? 'bg-slate-900/90 border-slate-800/80 text-slate-100 shadow-black/20' 
                     : 'bg-white border-slate-200 text-slate-800 shadow-slate-200/50'
@@ -980,20 +992,21 @@ const DashboardTab = (props) => {
                     </div>
                   </div>
 
-                  <div className="mt-4 text-xs space-y-2">
-                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
-                      <span>Status:</span>
-                      <span className="font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[140px]">
-                        {isSpeakingPa ? activePaLabel : 'Store mic ready'}
+                  <div className="my-3 space-y-2 text-xs">
+                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400 px-1 text-[11px]">
+                      <span>Store Audio:</span>
+                      <span className="font-semibold text-purple-600 dark:text-purple-400 truncate max-w-[140px]">
+                        {isSpeakingPa ? activePaLabel : 'Mic & Music Active'}
                       </span>
                     </div>
-                    <div className="grid grid-cols-4 gap-1">
+
+                    <div className="grid grid-cols-2 gap-1.5">
                       <button
                         type="button"
                         onClick={() => quickAnnounce('Welcome', 'Welcome to Cobb Italy. We are delighted to have you in our store today.')}
                         disabled={isSpeakingPa}
-                        className={`py-1 rounded text-[10px] font-bold text-center transition-all cursor-pointer truncate ${
-                          darkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                        className={`py-2 px-2 rounded-xl text-xs font-bold text-center transition-all cursor-pointer truncate border ${
+                          darkMode ? 'bg-slate-800/80 hover:bg-slate-700 text-slate-200 border-slate-700/60' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200/80'
                         }`}
                         title="Welcome Greeting"
                       >
@@ -1003,34 +1016,34 @@ const DashboardTab = (props) => {
                         type="button"
                         onClick={() => quickAnnounce('Offer', 'Dear valued customers, purchase any two shirts and receive one complimentary.')}
                         disabled={isSpeakingPa}
-                        className={`py-1 rounded text-[10px] font-bold text-center transition-all cursor-pointer truncate ${
-                          darkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                        className={`py-2 px-2 rounded-xl text-xs font-bold text-center transition-all cursor-pointer truncate border ${
+                          darkMode ? 'bg-slate-800/80 hover:bg-slate-700 text-slate-200 border-slate-700/60' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200/80'
                         }`}
                         title="Shirt Combo Offer"
                       >
-                        👔 Offer
+                        👔 Shirt Offer
                       </button>
                       <button
                         type="button"
                         onClick={() => quickAnnounce('Trial', 'Attention customers in trial rooms, please let staff know if you need another size.')}
                         disabled={isSpeakingPa}
-                        className={`py-1 rounded text-[10px] font-bold text-center transition-all cursor-pointer truncate ${
-                          darkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                        className={`py-2 px-2 rounded-xl text-xs font-bold text-center transition-all cursor-pointer truncate border ${
+                          darkMode ? 'bg-slate-800/80 hover:bg-slate-700 text-slate-200 border-slate-700/60' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200/80'
                         }`}
                         title="Trial Room Assist"
                       >
-                        🚪 Trial
+                        🚪 Trial Assist
                       </button>
                       <button
                         type="button"
                         onClick={() => quickAnnounce('Closing', 'Dear valued customers, our store will be closing shortly for the evening.')}
                         disabled={isSpeakingPa}
-                        className={`py-1 rounded text-[10px] font-bold text-center transition-all cursor-pointer truncate ${
-                          darkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                        className={`py-2 px-2 rounded-xl text-xs font-bold text-center transition-all cursor-pointer truncate border ${
+                          darkMode ? 'bg-slate-800/80 hover:bg-slate-700 text-slate-200 border-slate-700/60' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200/80'
                         }`}
                         title="Closing Reminder"
                       >
-                        ⏰ Close
+                        ⏰ Closing Call
                       </button>
                     </div>
                   </div>
@@ -1052,7 +1065,7 @@ const DashboardTab = (props) => {
                 </div>
 
                 {/* TILE 3: HOLD DESK */}
-                <div className={`p-6 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow ${
+                <div className={`p-6 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow min-h-[320px] ${
                   darkMode 
                     ? 'bg-slate-900/90 border-slate-800/80 text-slate-100 shadow-black/20' 
                     : 'bg-white border-slate-200 text-slate-800 shadow-slate-200/50'
@@ -1061,7 +1074,7 @@ const DashboardTab = (props) => {
                     <div>
                       <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Hold Desk</p>
                       <h3 className="text-3xl font-black text-slate-800 dark:text-white mt-2">
-                        {activeHolds.length}
+                        {activeHolds.length} <span className="text-base font-bold text-slate-400">Holds</span>
                       </h3>
                     </div>
                     <div className="p-3 bg-purple-500/10 text-purple-500 rounded-xl border border-purple-500/20">
@@ -1069,18 +1082,27 @@ const DashboardTab = (props) => {
                     </div>
                   </div>
 
-                  <div className="mt-4 text-xs space-y-1.5">
-                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
-                      <span>Carts on Hold:</span>
-                      <span className={`font-semibold ${activeHolds.length > 0 ? 'text-amber-500' : 'text-slate-700 dark:text-slate-200'}`}>
-                        {activeHolds.length > 0 ? `${activeHolds.length} Reserved` : 'Register clear'}
-                      </span>
+                  <div className="my-3 space-y-2.5 text-xs">
+                    <div className={`p-3 rounded-xl border ${
+                      darkMode ? 'bg-slate-800/50 border-slate-700/60' : 'bg-slate-50 border-slate-100'
+                    }`}>
+                      <div className="flex justify-between items-center text-slate-400 text-[11px] mb-1">
+                        <span>Checkout Lane:</span>
+                        <span className={`font-bold ${activeHolds.length > 0 ? 'text-amber-500' : 'text-emerald-500'}`}>
+                          {activeHolds.length > 0 ? `${activeHolds.length} Carts Reserved` : 'Register Clear'}
+                        </span>
+                      </div>
+                      <div className="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">
+                        {latestHold ? `Cart: ${latestHold.customerName || 'Customer'} • ₹${latestHold.totalAmount || 0}` : 'No customers on hold'}
+                      </div>
+                      <p className="text-[10px] text-slate-400 mt-1">
+                        Prevents POS queue stalling while shoppers browse.
+                      </p>
                     </div>
-                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
-                      <span>Latest Hold:</span>
-                      <span className="font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[130px]">
-                        {latestHold ? (latestHold.customerName || 'Customer Cart') : 'None pending'}
-                      </span>
+
+                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400 px-1 text-[11px]">
+                      <span>Hold Policy:</span>
+                      <span className="font-semibold text-slate-700 dark:text-slate-200">30 Min Auto-Expire</span>
                     </div>
                   </div>
 
@@ -1101,7 +1123,7 @@ const DashboardTab = (props) => {
                 </div>
 
                 {/* TILE 4: SAVE-THE-SALE NETWORK */}
-                <div className={`p-6 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow ${
+                <div className={`p-6 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow min-h-[320px] ${
                   darkMode 
                     ? 'bg-slate-900/90 border-slate-800/80 text-slate-100 shadow-black/20' 
                     : 'bg-white border-slate-200 text-slate-800 shadow-slate-200/50'
@@ -1118,14 +1140,25 @@ const DashboardTab = (props) => {
                     </div>
                   </div>
 
-                  <div className="mt-4 text-xs space-y-1.5">
-                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
-                      <span>Branch Network:</span>
-                      <span className="font-semibold text-slate-700 dark:text-slate-200">Connected</span>
+                  <div className="my-3 space-y-2.5 text-xs">
+                    <div className={`p-3 rounded-xl border ${
+                      darkMode ? 'bg-slate-800/50 border-slate-700/60' : 'bg-slate-50 border-slate-100'
+                    }`}>
+                      <div className="flex justify-between items-center text-slate-400 text-[11px] mb-1">
+                        <span>Cross-Store Radar:</span>
+                        <span className="font-bold text-emerald-600 dark:text-emerald-400">Online</span>
+                      </div>
+                      <p className="text-xs font-medium text-slate-700 dark:text-slate-200 leading-snug">
+                        Instant SKU search across partner branches when size or fit is out of stock.
+                      </p>
+                      <p className="text-[10px] text-slate-400 mt-1">
+                        Zero walk-away policy • 1-tap WhatsApp dispatch
+                      </p>
                     </div>
-                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
-                      <span>Out-of-Stock SOS:</span>
-                      <span className="font-semibold text-emerald-600 dark:text-emerald-400">Cross-Store Check</span>
+
+                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400 px-1 text-[11px]">
+                      <span>Network Reach:</span>
+                      <span className="font-semibold text-emerald-600 dark:text-emerald-400">All Cobb Outlets</span>
                     </div>
                   </div>
 
