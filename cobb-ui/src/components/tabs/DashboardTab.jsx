@@ -71,6 +71,7 @@ import {
   Network
 } from 'lucide-react';
 import CounterCrossSellAssistant from '../CounterCrossSellAssistant';
+import GoodsInTransitDesk from '../GoodsInTransitDesk';
 
 
 const DashboardTab = (props) => {
@@ -858,7 +859,7 @@ const DashboardTab = (props) => {
             </div>
 
             {/* Right Column - Live Store Pulse (Moved Upwards, Sized to Match Margin Tracker) */}
-            <div className="flex flex-col">
+            <div className="flex flex-col gap-6">
               <div 
                 style={{ height: marginTrackerHeight ? `${marginTrackerHeight}px` : undefined }}
                 className={`rounded-2xl border shadow-sm overflow-hidden flex flex-col transition-all ${
@@ -920,6 +921,9 @@ const DashboardTab = (props) => {
                   )}
                 </div>
               </div>
+
+              {/* Goods in Transit & Head Office Inward Velocity Desk */}
+              <GoodsInTransitDesk formatCurrency={formatCurrency} darkMode={darkMode} API_BASE={API_BASE} />
             </div>
           </div>
 

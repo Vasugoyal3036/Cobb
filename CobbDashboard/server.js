@@ -34,6 +34,9 @@ app.use('/api/holds', holdsRouter);
 const chatRouter = require('./routes/chat');
 app.use('/api/ai/chat', chatRouter);
 
+const parcelsRouter = require('./routes/parcels');
+app.use('/api/parcels', parcelsRouter);
+
 
 // Stores Network endpoint (Feature 2 — Save-The-Sale)
 const STORES_NETWORK_FILE = path.join(__dirname, 'stores_network.json');
