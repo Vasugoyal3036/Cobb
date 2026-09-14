@@ -2136,20 +2136,6 @@ export default function App() {
             <span className="text-[9px] font-bold tracking-wider">LIVE</span>
           </button>
 
-          {/* CENTER ELEVATED AI COPILOT BUTTON */}
-          <button onClick={() => { setActiveTab('copilot'); setIsMobileMenuOpen(false); }}
-            className="flex flex-col items-center justify-center w-full -mt-4 py-0.5 relative group cursor-pointer">
-            <div className={`w-11 h-11 rounded-full flex items-center justify-center shadow-lg transition-all active:scale-95 ${
-              activeTab === 'copilot'
-                ? 'bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 text-white shadow-indigo-500/40 ring-4 ring-blue-500/20'
-                : 'bg-gradient-to-tr from-slate-900 via-indigo-950 to-slate-900 dark:from-slate-800 dark:via-indigo-900 dark:to-slate-800 text-white shadow-slate-900/30 border border-indigo-400/30'
-            }`}>
-              <Sparkles className="w-5 h-5 animate-pulse text-indigo-200" />
-            </div>
-            <span className={`text-[9px] font-black tracking-wider mt-0.5 ${activeTab === 'copilot' ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-slate-400'}`}>
-              COPILOT
-            </span>
-          </button>
 
           <button onClick={() => { setActiveTab('inventory'); setIsMobileMenuOpen(false); }}
             className={`flex flex-col items-center justify-center w-full py-2 cursor-pointer ${activeTab === 'inventory' ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}>
