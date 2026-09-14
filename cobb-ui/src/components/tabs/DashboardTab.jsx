@@ -110,6 +110,40 @@ const DashboardTab = (props) => {
     }
   }, [API_BASE]);
 
+  // In-Store Lounge Radio & PA state
+  const [isSpeakingPa, setIsSpeakingPa] = React.useState(false);
+  const [activePaLabel, setActivePaLabel] = React.useState('');
+
+  const quickAnnounce = (presetLabel, text) => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    const synth = window.speechSynthesis;
+    synth.cancel();
+
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.rate = 0.9;
+    utt.pitch = 0.95;
+    utt.volume = 1;
+    utt.lang = 'en-IN';
+
+    const voices = synth.getVoices();
+    const prefVoice = voices.find(v => v.lang.startsWith('en') && (v.name.includes('India') || v.name.includes('Google') || v.name.includes('Natural')));
+    if (prefVoice) utt.voice = prefVoice;
+
+    utt.onstart = () => {
+      setIsSpeakingPa(true);
+      setActivePaLabel(presetLabel);
+    };
+    utt.onend = () => {
+      setIsSpeakingPa(false);
+      setActivePaLabel('');
+    };
+    utt.onerror = () => {
+      setIsSpeakingPa(false);
+      setActivePaLabel('');
+    };
+    synth.speak(utt);
+  };
+
   React.useEffect(() => {
     fetchKhataExpenses();
     fetchHolds();
@@ -955,7 +989,7 @@ const DashboardTab = (props) => {
                   </div>
                 </div>
 
-                {/* TILE 2: LIVE CHECKOUTS PULSE (1/4 space) */}
+                {/* TILE 2: IN-STORE LOUNGE RADIO & PA MIC (1/4 space) */}
                 <div className={`rounded-2xl border shadow-sm p-5 flex flex-col justify-between transition-all hover:shadow-md ${
                   darkMode 
                     ? 'bg-slate-900/90 border-slate-800/80 text-slate-100 shadow-black/20' 
@@ -965,73 +999,115 @@ const DashboardTab = (props) => {
                     {/* Header */}
                     <div className="flex justify-between items-center mb-3">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center justify-center shrink-0">
-                          <Receipt className="w-4 h-4" />
+                        <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-500 border border-purple-500/20 flex items-center justify-center shrink-0">
+                          <Radio className="w-4 h-4" />
                         </div>
                         <div>
-                          <h3 className="font-bold text-sm text-slate-900 dark:text-white leading-tight">Live Checkouts</h3>
-                          <p className="text-[10px] text-slate-400">Real-Time POS Stream</p>
+                          <h3 className="font-bold text-sm text-slate-900 dark:text-white leading-tight">Lounge Radio &amp; PA</h3>
+                          <p className="text-[10px] text-slate-400">Store Audio &amp; Mic</p>
                         </div>
                       </div>
-                      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800 uppercase tracking-wider flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-                        Live
+                      <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border uppercase tracking-wider flex items-center gap-1 ${
+                        isSpeakingPa 
+                          ? 'bg-purple-500/20 text-purple-400 border-purple-500/40 animate-pulse'
+                          : 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800'
+                      }`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${isSpeakingPa ? 'bg-purple-400 animate-ping' : 'bg-emerald-400'}`}></span>
+                        {isSpeakingPa ? 'On Air' : 'Ready'}
                       </span>
                     </div>
 
                     {/* Main KPI */}
                     <div className="my-2.5">
                       <div className="flex items-baseline justify-between">
-                        <span className="text-2xl font-black text-slate-900 dark:text-white">
-                          {billsList.length}
+                        <span className="text-xl font-black text-slate-900 dark:text-white truncate">
+                          {isSpeakingPa ? activePaLabel : 'In-Store PA'}
                         </span>
-                        <span className="text-[10px] font-bold text-blue-500">
-                          Bills Rung Up
+                        <span className="text-[10px] font-bold text-purple-500 shrink-0 ml-1">
+                          1-Click Broadcast
                         </span>
                       </div>
                       <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 flex items-center justify-between">
-                        <span>Latest Checkout:</span>
-                        <span className="font-bold font-mono text-slate-800 dark:text-slate-200">
-                          {latestBill ? formatCurrency(latestBill.NetAmount || latestBill.BillAmount) : '₹0'}
+                        <span>Status:</span>
+                        <span className="font-medium text-slate-700 dark:text-slate-300">
+                          {isSpeakingPa ? 'Broadcasting audio...' : 'Lounge music stream ready'}
                         </span>
                       </p>
                     </div>
 
-                    {/* Context Row */}
-                    <div className={`p-2.5 rounded-xl border text-[11px] my-2 ${
-                      darkMode ? 'bg-slate-800/40 border-slate-700/60' : 'bg-slate-50 border-slate-200/80'
-                    }`}>
-                      {latestBill ? (
-                        <div className="flex items-center justify-between min-w-0">
-                          <div className="min-w-0 truncate">
-                            <span className="font-semibold text-slate-800 dark:text-slate-200 truncate block">
-                              {latestBill.CustomerName?.trim() || latestBill.FirstName?.trim() || 'Counter Customer'}
-                            </span>
-                            <span className="text-[9px] text-slate-400 font-mono">
-                              #{latestBill.BillNumber || 'POS'} • {latestBill.ModeOfPayment || 'Paid'}
-                            </span>
-                          </div>
-                          <span className="font-mono font-bold text-emerald-500 shrink-0 ml-1">
-                            {formatCurrency(latestBill.NetAmount || latestBill.BillAmount)}
-                          </span>
-                        </div>
-                      ) : (
-                        <p className="text-slate-400 text-center text-[10px]">
-                          Listening for next counter checkout...
-                        </p>
-                      )}
+                    {/* Quick PA Announcement Buttons */}
+                    <div className="grid grid-cols-2 gap-1.5 my-2">
+                      <button
+                        type="button"
+                        onClick={() => quickAnnounce('Welcome', 'Welcome to Cobb Italy. We are delighted to have you in our store today. Our floor staff are here to assist you in finding your perfect look.')}
+                        disabled={isSpeakingPa}
+                        className={`p-1.5 rounded-lg border text-left text-[10px] font-semibold transition-all cursor-pointer truncate flex items-center gap-1.5 ${
+                          darkMode 
+                            ? 'bg-slate-800/70 hover:bg-slate-700 border-slate-700 text-slate-200' 
+                            : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                        }`}
+                        title="Broadcast Welcome Greeting"
+                      >
+                        <span>🙏</span>
+                        <span className="truncate">Welcome</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => quickAnnounce('Offer', 'Dear valued customers, purchase any two shirts from our premium Cobb Italy collection and receive one shirt absolutely complimentary.')}
+                        disabled={isSpeakingPa}
+                        className={`p-1.5 rounded-lg border text-left text-[10px] font-semibold transition-all cursor-pointer truncate flex items-center gap-1.5 ${
+                          darkMode 
+                            ? 'bg-slate-800/70 hover:bg-slate-700 border-slate-700 text-slate-200' 
+                            : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                        }`}
+                        title="Broadcast Shirt Combo Offer"
+                      >
+                        <span>👔</span>
+                        <span className="truncate">Shirt Offer</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => quickAnnounce('Trial Rooms', 'Attention customers in our trial rooms. If you require a different size, color, or style, please let our floor staff know.')}
+                        disabled={isSpeakingPa}
+                        className={`p-1.5 rounded-lg border text-left text-[10px] font-semibold transition-all cursor-pointer truncate flex items-center gap-1.5 ${
+                          darkMode 
+                            ? 'bg-slate-800/70 hover:bg-slate-700 border-slate-700 text-slate-200' 
+                            : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                        }`}
+                        title="Broadcast Trial Room Assistance"
+                      >
+                        <span>🚪</span>
+                        <span className="truncate">Trial Room</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => quickAnnounce('Closing', 'Dear valued customers, our store will be closing shortly for the evening. Please bring your selections to the billing counter.')}
+                        disabled={isSpeakingPa}
+                        className={`p-1.5 rounded-lg border text-left text-[10px] font-semibold transition-all cursor-pointer truncate flex items-center gap-1.5 ${
+                          darkMode 
+                            ? 'bg-slate-800/70 hover:bg-slate-700 border-slate-700 text-slate-200' 
+                            : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                        }`}
+                        title="Broadcast Closing Reminder"
+                      >
+                        <span>⏰</span>
+                        <span className="truncate">Closing</span>
+                      </button>
                     </div>
                   </div>
 
                   {/* Footer Action */}
                   <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between mt-1">
-                    <span className="text-[10px] text-slate-400">All Billed Receipts</span>
+                    <span className="text-[10px] text-slate-400">Music &amp; PA Mic</span>
                     {typeof setActiveTab === 'function' && (
                       <button
-                        onClick={() => setActiveTab('live')}
-                        className="text-xs font-bold text-blue-500 hover:text-blue-400 flex items-center gap-1 cursor-pointer transition-colors"
+                        onClick={() => setActiveTab('lounge_radio')}
+                        className="text-xs font-bold text-purple-500 hover:text-purple-400 flex items-center gap-1 cursor-pointer transition-colors"
                       >
-                        <span>Live Feed</span>
+                        <span>Open Radio</span>
                         <ArrowRight className="w-3 h-3" />
                       </button>
                     )}
