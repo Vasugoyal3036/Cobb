@@ -121,6 +121,46 @@ app.get('/api/music/search', async (req, res) => {
     }
 });
 
+// YouTube Music Query Suggestions Endpoint
+const ytSuggestCache = new Map();
+app.get('/api/music/suggestions', async (req, res) => {
+    const query = (req.query.q || '').trim();
+    if (!query) {
+        return res.json({ suggestions: [] });
+    }
+
+    const cacheKey = query.toLowerCase();
+    if (ytSuggestCache.has(cacheKey)) {
+        return res.json({ suggestions: ytSuggestCache.get(cacheKey) });
+    }
+
+    try {
+        const url = `https://suggestqueries.google.com/complete/search?client=firefox&ds=yt&q=${encodeURIComponent(query)}`;
+        const jsonStr = await new Promise((resolve, reject) => {
+            https.get(url, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                }
+            }, resp => {
+                let data = '';
+                resp.on('data', c => data += c);
+                resp.on('end', () => resolve(data));
+            }).on('error', reject);
+        });
+
+        const parsed = JSON.parse(jsonStr);
+        const suggestions = Array.isArray(parsed[1]) ? parsed[1].slice(0, 8) : [];
+        ytSuggestCache.set(cacheKey, suggestions);
+        if (ytSuggestCache.size > 500) {
+            const first = ytSuggestCache.keys().next().value;
+            ytSuggestCache.delete(first);
+        }
+        res.json({ suggestions });
+    } catch (e) {
+        res.json({ suggestions: [] });
+    }
+});
+
 const GlobalNodeCache = require('node-cache');
 const globalApiCache = new GlobalNodeCache({ stdTTL: 300 }); // 5 minutes cache for blazing fast tab switches
 

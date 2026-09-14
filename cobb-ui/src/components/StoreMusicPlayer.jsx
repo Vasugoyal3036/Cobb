@@ -14,22 +14,23 @@ import {
   Search,
   X,
   Loader2,
-  Music,
   Tv,
   ListMusic,
   Sparkles,
-  Flame,
-  Radio,
-  ExternalLink
+  ExternalLink,
+  Clock,
+  History,
+  TrendingUp,
+  CheckCircle2
 } from 'lucide-react';
 
 const QUICK_MIXES = [
-  { label: 'Bollywood Hits', query: 'Top Bollywood romantic songs 2026', icon: '🌸', color: 'from-rose-500 to-red-600' },
-  { label: 'Punjabi Energy', query: 'Top Punjabi party songs Diljit Karan Aujla', icon: '🔥', color: 'from-amber-500 to-orange-600' },
-  { label: 'Lo-Fi Store Chill', query: 'Lofi retail shopping ambient beats instrumental', icon: '🎧', color: 'from-indigo-500 to-blue-600' },
-  { label: 'Acoustic Boutique', query: 'Acoustic guitar cafe songs soft unplugged', icon: '☕', color: 'from-emerald-500 to-teal-600' },
-  { label: '90s Nostalgia', query: 'Best 90s bollywood songs kumar sanu udit', icon: '📻', color: 'from-purple-500 to-fuchsia-600' },
-  { label: 'Global Fashion Pop', query: 'Global commercial pop hits coldplay weeknd', icon: '✨', color: 'from-cyan-500 to-blue-600' }
+  { label: 'Bollywood Hits', query: 'Top Bollywood romantic songs 2026', icon: '🌸' },
+  { label: 'Punjabi Energy', query: 'Top Punjabi party songs Diljit Karan Aujla', icon: '🔥' },
+  { label: 'Lo-Fi Store Chill', query: 'Lofi retail shopping ambient beats instrumental', icon: '🎧' },
+  { label: 'Acoustic Boutique', query: 'Acoustic guitar cafe songs soft unplugged', icon: '☕' },
+  { label: '90s Nostalgia', query: 'Best 90s bollywood songs kumar sanu udit', icon: '📻' },
+  { label: 'Global Fashion Pop', query: 'Global commercial pop hits coldplay weeknd', icon: '✨' }
 ];
 
 export default function StoreMusicPlayer({ API_BASE = '' }) {
@@ -39,15 +40,28 @@ export default function StoreMusicPlayer({ API_BASE = '' }) {
       : ''
   );
 
-  // Search & Playlist State
+  // Search & Suggestions State
   const [searchQuery, setSearchQuery] = useState('');
+  const [suggestions, setSuggestions] = useState([]);
+  const [isSuggesting, setIsSuggesting] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [activeSuggestionIdx, setActiveSuggestionIdx] = useState(-1);
+  const [recentSearches, setRecentSearches] = useState(() => {
+    try {
+      const saved = localStorage.getItem('cobb_recent_music_searches');
+      return saved ? JSON.parse(saved) : ['Arijit Singh', 'Diljit Dosanjh', 'Lo-Fi Store Beats', 'Coldplay'];
+    } catch (e) {
+      return ['Arijit Singh', 'Diljit Dosanjh'];
+    }
+  });
+
+  // Track & Playback State
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
   const [showDrawer, setShowDrawer] = useState(false);
   const [showVideo, setShowVideo] = useState(false);
 
-  // Playback State
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [volume, setVolume] = useState(() => {
@@ -66,7 +80,9 @@ export default function StoreMusicPlayer({ API_BASE = '' }) {
   // Refs
   const playerRef = useRef(null);
   const progressTimerRef = useRef(null);
-  const playerReadyRef = useRef(false);
+  const searchInputRef = useRef(null);
+  const suggestTimerRef = useRef(null);
+  const containerRef = useRef(null);
 
   const currentTrack = searchResults[currentTrackIndex] || null;
 
@@ -107,11 +123,10 @@ export default function StoreMusicPlayer({ API_BASE = '' }) {
           },
           events: {
             onReady: (event) => {
-              playerReadyRef.current = true;
               event.target.setVolume(isMuted ? 0 : volume);
             },
             onStateChange: (event) => {
-              // YT.PlayerState: 1 = PLAYING, 2 = PAUSED, 3 = BUFFERING, 0 = ENDED
+              // 1 = PLAYING, 2 = PAUSED, 3 = BUFFERING, 0 = ENDED
               if (event.data === 1) {
                 setIsPlaying(true);
                 setIsLoading(false);
@@ -124,7 +139,6 @@ export default function StoreMusicPlayer({ API_BASE = '' }) {
               } else if (event.data === 3) {
                 setIsLoading(true);
               } else if (event.data === 0) {
-                // Song ended
                 handleTrackEnded();
               }
             },
@@ -142,11 +156,20 @@ export default function StoreMusicPlayer({ API_BASE = '' }) {
 
     loadYT();
 
-    // Default initial search to load top retail hits
+    // Default search on load
     executeSearch('Top Bollywood romantic hits official audio', false);
+
+    // Close suggestions on outside click
+    const handleClickOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
 
     return () => {
       clearInterval(progressTimerRef.current);
+      document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
 
@@ -174,16 +197,88 @@ export default function StoreMusicPlayer({ API_BASE = '' }) {
     }
   }, [volume, isMuted]);
 
+  // Handle live search input & autocomplete debouncing
+  const handleInputChange = (val) => {
+    setSearchQuery(val);
+    setActiveSuggestionIdx(-1);
+
+    if (!val.trim()) {
+      setSuggestions([]);
+      setShowSuggestions(true);
+      return;
+    }
+
+    setShowSuggestions(true);
+    clearTimeout(suggestTimerRef.current);
+    suggestTimerRef.current = setTimeout(async () => {
+      setIsSuggesting(true);
+      try {
+        const res = await axios.get(`${effectiveApiBase}/api/music/suggestions?q=${encodeURIComponent(val)}`);
+        if (res.data && Array.isArray(res.data.suggestions)) {
+          setSuggestions(res.data.suggestions);
+        }
+      } catch (e) {
+        console.warn('Suggestions error:', e);
+      } finally {
+        setIsSuggesting(false);
+      }
+    }, 180);
+  };
+
+  // Keyboard Navigation in suggestions
+  const handleKeyDown = (e) => {
+    if (!showSuggestions) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveSuggestionIdx(prev => (prev < suggestions.length - 1 ? prev + 1 : 0));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveSuggestionIdx(prev => (prev > 0 ? prev - 1 : suggestions.length - 1));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (activeSuggestionIdx >= 0 && suggestions[activeSuggestionIdx]) {
+        selectSuggestion(suggestions[activeSuggestionIdx]);
+      } else {
+        executeSearch(searchQuery, true);
+      }
+    } else if (e.key === 'Escape') {
+      setShowSuggestions(false);
+    }
+  };
+
+  // Select suggestion item
+  const selectSuggestion = (text) => {
+    setSearchQuery(text);
+    setShowSuggestions(false);
+    saveRecentSearch(text);
+    executeSearch(text, true);
+  };
+
+  const saveRecentSearch = (text) => {
+    if (!text || !text.trim()) return;
+    const clean = text.trim();
+    const updated = [clean, ...recentSearches.filter(s => s.toLowerCase() !== clean.toLowerCase())].slice(0, 6);
+    setRecentSearches(updated);
+    try {
+      localStorage.setItem('cobb_recent_music_searches', JSON.stringify(updated));
+    } catch (e) {}
+  };
+
   // Search Function
   const executeSearch = async (queryText, autoPlay = true) => {
     const q = (queryText || '').trim();
     if (!q) return;
+    setShowSuggestions(false);
     setIsSearching(true);
+    saveRecentSearch(q);
+
     try {
       const res = await axios.get(`${effectiveApiBase}/api/music/search?q=${encodeURIComponent(q)}`);
       if (res.data && res.data.results && res.data.results.length > 0) {
         setSearchResults(res.data.results);
         setCurrentTrackIndex(0);
+        setShowDrawer(true);
         if (autoPlay) {
           playTrack(res.data.results[0], 0);
         }
@@ -212,7 +307,7 @@ export default function StoreMusicPlayer({ API_BASE = '' }) {
           playerRef.current.loadVideoById(track.id);
           playerRef.current.playVideo();
         }
-      }, 800);
+      }, 700);
     }
   };
 
@@ -276,7 +371,6 @@ export default function StoreMusicPlayer({ API_BASE = '' }) {
     }
   };
 
-  // Volume Change
   const handleVolumeChange = (val) => {
     setVolume(val);
     localStorage.setItem('cobb_yt_music_vol', val);
@@ -293,26 +387,39 @@ export default function StoreMusicPlayer({ API_BASE = '' }) {
   const progressPct = duration ? (currentTime / duration) * 100 : 0;
 
   return (
-    <div className="bg-[#0f0f0f] text-white rounded-2xl border border-[#272727] shadow-2xl p-4 transition-all relative overflow-hidden select-none font-sans">
-      
-      {/* Hidden YouTube IFrame Container (or visible when Video Mode is ON) */}
+    <div
+      ref={containerRef}
+      className="bg-[#0c0c0e] text-white rounded-2xl border border-[#242429] shadow-2xl p-4 sm:p-5 transition-all relative overflow-hidden select-none font-sans"
+    >
+      {/* Dynamic Ambient Background Glow */}
+      <div
+        className={`absolute -top-24 -left-24 w-80 h-80 rounded-full blur-3xl pointer-events-none transition-opacity duration-1000 ${
+          isPlaying ? 'opacity-20 bg-red-600' : 'opacity-5 bg-slate-600'
+        }`}
+      />
+      <div
+        className={`absolute -bottom-24 -right-24 w-80 h-80 rounded-full blur-3xl pointer-events-none transition-opacity duration-1000 ${
+          isPlaying ? 'opacity-15 bg-amber-500' : 'opacity-0 bg-transparent'
+        }`}
+      />
+
+      {/* Embedded YouTube IFrame Container */}
       <div
         className={`${
           showVideo
-            ? 'w-full h-48 sm:h-64 mb-3 rounded-xl overflow-hidden border border-[#272727] bg-black relative'
+            ? 'w-full h-48 sm:h-64 mb-3 rounded-xl overflow-hidden border border-[#2a2a30] bg-black relative shadow-inner'
             : 'w-[1px] h-[1px] opacity-0 pointer-events-none absolute -left-[9999px]'
         }`}
       >
         <div id="cobb-yt-iframe-player" className="w-full h-full" />
       </div>
 
-      {/* Top Brand Bar & Search Form */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-3 mb-3 border-b border-[#272727]">
+      {/* Row 1: Header + Autocomplete Search Bar + Actions */}
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3 pb-3 mb-3 border-b border-[#212126] relative z-20">
         
-        {/* YT Music Brand Header */}
-        <div className="flex items-center gap-2.5">
-          {/* YouTube Music Red Emblem */}
-          <div className="w-7 h-7 rounded-full bg-red-600 flex items-center justify-center shadow-[0_0_12px_rgba(239,68,68,0.4)] flex-shrink-0">
+        {/* Brand Badge */}
+        <div className="flex items-center gap-2.5 flex-shrink-0">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-red-600 to-rose-600 flex items-center justify-center shadow-[0_0_15px_rgba(239,68,68,0.4)]">
             <svg className="w-4 h-4 fill-white" viewBox="0 0 24 24">
               <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 14.5c-2.49 0-4.5-2.01-4.5-4.5S9.51 7.5 12 7.5s4.5 2.01 4.5 4.5-2.01 4.5-4.5 4.5zm0-5.5c-.55 0-1 .45-1 1s.45 1 1 1 1-.45 1-1-.45-1-1-1z" />
               <path d="M10 9.5v5l4-2.5z" />
@@ -320,17 +427,19 @@ export default function StoreMusicPlayer({ API_BASE = '' }) {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-black tracking-wider uppercase text-white flex items-center gap-1.5">
+              <h3 className="text-xs font-black tracking-wider uppercase text-white">
                 YouTube Music
-                <span className="text-[10px] px-1.5 py-0.2 rounded bg-red-600/20 text-red-400 font-bold border border-red-600/30">STORE AUDIO</span>
+              </h3>
+              <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-red-500/15 text-red-400 border border-red-500/30">
+                PRO STORE
               </span>
               {isPlaying ? (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-red-500/20 text-red-400 border border-red-500/40">
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-red-500/20 text-red-400 border border-red-500/40">
                   <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
                   Playing
                 </span>
               ) : (
-                <span className="text-[10px] font-bold text-[#aaaaaa] px-2 py-0.5 rounded-full bg-[#272727]">
+                <span className="text-[10px] font-bold text-[#888891] px-2 py-0.5 rounded-full bg-[#1c1c22]">
                   Paused
                 </span>
               )}
@@ -338,75 +447,144 @@ export default function StoreMusicPlayer({ API_BASE = '' }) {
           </div>
         </div>
 
-        {/* Global Song Search Bar */}
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            executeSearch(searchQuery, true);
-          }}
-          className="flex-1 max-w-md relative flex items-center"
-        >
-          <Search className="w-3.5 h-3.5 absolute left-3 text-[#aaaaaa] pointer-events-none" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search any song, artist, or album on YouTube Music..."
-            className="w-full bg-[#212121] hover:bg-[#272727] focus:bg-[#2a2a2a] text-white text-xs font-medium pl-8 pr-16 py-1.5 rounded-full border border-transparent focus:border-red-500 focus:outline-none transition-all placeholder-[#717171]"
-          />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={() => setSearchQuery('')}
-              className="absolute right-10 text-[#aaaaaa] hover:text-white cursor-pointer p-1"
-            >
-              <X className="w-3 h-3" />
-            </button>
-          )}
-          <button
-            type="submit"
-            disabled={isSearching}
-            className="absolute right-1.5 px-2.5 py-1 rounded-full text-[10px] font-black bg-red-600 hover:bg-red-500 text-white cursor-pointer disabled:opacity-50 transition-colors"
+        {/* Global Autocomplete Search Input */}
+        <div className="flex-1 max-w-xl relative">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              executeSearch(searchQuery, true);
+            }}
+            className="relative flex items-center"
           >
-            {isSearching ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Search'}
-          </button>
-        </form>
+            <Search className="w-4 h-4 absolute left-3 text-[#777782] pointer-events-none" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={searchQuery}
+              onChange={(e) => handleInputChange(e.target.value)}
+              onFocus={() => setShowSuggestions(true)}
+              onKeyDown={handleKeyDown}
+              placeholder="Search any song, singer, album... (e.g. Arijit Singh, Diljit, Kesariya)"
+              className="w-full bg-[#18181d] hover:bg-[#1f1f26] focus:bg-[#23232c] text-white text-xs font-medium pl-9 pr-20 py-2 rounded-xl border border-[#2a2a33] focus:border-red-500/80 focus:ring-2 focus:ring-red-500/20 focus:outline-none transition-all placeholder-[#666672] shadow-inner"
+            />
 
-        {/* Tools (Queue / Video toggle) */}
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery('');
+                  setSuggestions([]);
+                  searchInputRef.current?.focus();
+                }}
+                className="absolute right-14 text-[#888894] hover:text-white cursor-pointer p-1"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+
+            <button
+              type="submit"
+              disabled={isSearching}
+              className="absolute right-1.5 px-3 py-1 rounded-lg text-xs font-black bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-500 hover:to-rose-500 text-white cursor-pointer disabled:opacity-50 transition-all shadow-md active:scale-95"
+            >
+              {isSearching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Search'}
+            </button>
+          </form>
+
+          {/* Autocomplete Dropdown Panel */}
+          {showSuggestions && (
+            <div className="absolute top-full left-0 right-0 mt-1.5 bg-[#141418] border border-[#2c2c36] rounded-xl shadow-2xl overflow-hidden z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+              
+              {/* If query has suggestions */}
+              {suggestions.length > 0 ? (
+                <div className="py-1">
+                  <div className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-[#737380] flex items-center justify-between border-b border-[#212128]">
+                    <span>Suggestions</span>
+                    {isSuggesting && <Loader2 className="w-3 h-3 animate-spin text-red-400" />}
+                  </div>
+                  {suggestions.map((item, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => selectSuggestion(item)}
+                      onMouseEnter={() => setActiveSuggestionIdx(idx)}
+                      className={`px-3 py-2 text-xs flex items-center justify-between cursor-pointer transition-colors ${
+                        activeSuggestionIdx === idx
+                          ? 'bg-red-600/15 text-red-300 font-bold border-l-2 border-red-500 pl-2.5'
+                          : 'text-slate-200 hover:bg-[#1e1e24]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 truncate">
+                        <Search className="w-3.5 h-3.5 text-[#888894] flex-shrink-0" />
+                        <span className="truncate">{item}</span>
+                      </div>
+                      <span className="text-[10px] text-[#636370] font-mono">Select ↵</span>
+                    </div>
+                  ))}
+                </div>
+              ) : recentSearches.length > 0 ? (
+                <div className="py-1">
+                  <div className="px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-[#737380] flex items-center gap-1 border-b border-[#212128]">
+                    <History className="w-3 h-3 text-[#888894]" />
+                    <span>Recent & Popular Store Searches</span>
+                  </div>
+                  {recentSearches.map((item, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => selectSuggestion(item)}
+                      className="px-3 py-2 text-xs flex items-center justify-between text-slate-300 hover:bg-[#1e1e24] cursor-pointer transition-colors"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <TrendingUp className="w-3.5 h-3.5 text-red-400" />
+                        <span>{item}</span>
+                      </div>
+                      <span className="text-[10px] text-red-400 font-bold">Play</span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          )}
+        </div>
+
+        {/* Right Tools (Video View & Queue) */}
         <div className="flex items-center gap-1.5 justify-end">
           <button
             type="button"
             onClick={() => setShowVideo(!showVideo)}
-            title={showVideo ? 'Hide Video (Audio Only)' : 'Show Music Video'}
-            className={`p-1.5 rounded-full transition-all cursor-pointer ${
+            title={showVideo ? 'Hide Video (Background Audio Mode)' : 'Show Music Video'}
+            className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border ${
               showVideo
-                ? 'bg-red-600 text-white shadow-md'
-                : 'bg-[#212121] text-[#aaaaaa] hover:text-white hover:bg-[#272727]'
+                ? 'bg-red-600/20 text-red-400 border-red-500/40 shadow-sm'
+                : 'bg-[#18181d] text-[#8e8e9c] border-[#25252e] hover:text-white hover:bg-[#202027]'
             }`}
           >
             <Tv className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">{showVideo ? 'Video ON' : 'Video OFF'}</span>
           </button>
 
           <button
             type="button"
             onClick={() => setShowDrawer(!showDrawer)}
-            title="Browse Results & Quick Mixes"
-            className={`px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+            title="Browse Results & Up Next"
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border ${
               showDrawer
-                ? 'bg-red-600 text-white'
-                : 'bg-[#212121] text-[#aaaaaa] hover:text-white hover:bg-[#272727]'
+                ? 'bg-red-600 text-white border-red-500 shadow-md'
+                : 'bg-[#18181d] text-[#8e8e9c] border-[#25252e] hover:text-white hover:bg-[#202027]'
             }`}
           >
             <ListMusic className="w-3.5 h-3.5" />
-            <span>Songs ({searchResults.length})</span>
+            <span>Playlist ({searchResults.length})</span>
           </button>
         </div>
 
       </div>
 
-      {/* Quick Mixes Shortcut Chips */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-2.5 mb-2 no-scrollbar">
-        <span className="text-[10px] font-black uppercase text-[#aaaaaa] flex-shrink-0 mr-1">Quick Mixes:</span>
+      {/* Row 2: Curated Quick Mix Pills */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-2.5 mb-3 no-scrollbar relative z-10">
+        <span className="text-[10px] font-black uppercase tracking-wider text-[#737380] flex-shrink-0 mr-1 flex items-center gap-1">
+          <Sparkles className="w-3 h-3 text-amber-400" />
+          Quick Vibes:
+        </span>
         {QUICK_MIXES.map((mix, idx) => (
           <button
             key={idx}
@@ -415,7 +593,7 @@ export default function StoreMusicPlayer({ API_BASE = '' }) {
               setSearchQuery(mix.label);
               executeSearch(mix.query, true);
             }}
-            className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#212121] hover:bg-[#2e2e2e] text-[#e1e1e1] hover:text-white border border-[#333333] hover:border-red-500/50 flex-shrink-0 transition-all flex items-center gap-1 cursor-pointer active:scale-95"
+            className="px-3 py-1 rounded-xl text-xs font-bold bg-[#18181d] hover:bg-[#22222a] text-[#d4d4dc] hover:text-white border border-[#272730] hover:border-red-500/50 flex-shrink-0 transition-all flex items-center gap-1.5 cursor-pointer active:scale-95 shadow-xs"
           >
             <span>{mix.icon}</span>
             <span>{mix.label}</span>
@@ -423,14 +601,17 @@ export default function StoreMusicPlayer({ API_BASE = '' }) {
         ))}
       </div>
 
-      {/* Main 3-Column Player Bar */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+      {/* Row 3: Modern Main Player Console */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-center bg-[#131317]/80 border border-[#202027] rounded-xl p-3 sm:p-4 backdrop-blur-sm relative z-10">
         
-        {/* Left: Track Information (cols 1-4) */}
-        <div className="md:col-span-4 flex items-center gap-3 min-w-0">
-          {/* Thumbnail / Album Art */}
-          <div className="relative flex-shrink-0 group cursor-pointer" onClick={() => setShowDrawer(!showDrawer)}>
-            <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-lg overflow-hidden bg-[#212121] shadow-md border border-[#272727]">
+        {/* Left: Track Information & Visuals (Cols 1-4) */}
+        <div className="lg:col-span-4 flex items-center gap-3.5 min-w-0">
+          {/* High-res Album Thumbnail with hover play/pause */}
+          <div
+            onClick={togglePlay}
+            className="relative flex-shrink-0 group cursor-pointer"
+          >
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-[#202027] shadow-xl border border-[#2f2f3a] relative">
               {currentTrack?.thumbnail ? (
                 <img
                   src={currentTrack.thumbnail}
@@ -438,48 +619,64 @@ export default function StoreMusicPlayer({ API_BASE = '' }) {
                   className="w-full h-full object-cover transition-transform group-hover:scale-105"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-xl bg-gradient-to-tr from-red-600 to-rose-700">
+                <div className="w-full h-full flex items-center justify-center text-2xl bg-gradient-to-tr from-red-600 to-rose-700">
                   🎵
                 </div>
               )}
+
+              {/* Quick Play/Pause Overlay */}
+              <div
+                className={`absolute inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center transition-opacity ${
+                  isPlaying ? 'opacity-0 group-hover:opacity-100' : 'opacity-100'
+                }`}
+              >
+                {isPlaying ? (
+                  <Pause className="w-5 h-5 fill-white text-white drop-shadow" />
+                ) : (
+                  <Play className="w-5 h-5 fill-white text-white ml-0.5 drop-shadow" />
+                )}
+              </div>
             </div>
 
-            {/* Glowing active ring when playing */}
+            {/* Glowing Active Ring when playing */}
             {isPlaying && (
               <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
               </span>
             )}
           </div>
 
-          {/* Titles */}
+          {/* Titles & Artist */}
           <div className="flex-1 min-w-0">
             <h4
               onClick={() => setShowDrawer(!showDrawer)}
-              className="text-xs sm:text-sm font-bold text-white hover:underline cursor-pointer truncate"
+              className="text-xs sm:text-sm font-black text-white hover:text-red-400 hover:underline cursor-pointer truncate transition-colors"
               title={currentTrack?.title || 'No Song Selected'}
             >
               {currentTrack?.title || 'Search any song above...'}
             </h4>
-            <p className="text-[11px] text-[#aaaaaa] hover:text-white cursor-pointer truncate mt-0.5">
-              {currentTrack?.artist || 'YouTube Music'}
+            
+            <p className="text-[11px] text-[#9a9aa8] hover:text-white cursor-pointer truncate mt-0.5 flex items-center gap-1.5">
+              <span>{currentTrack?.artist || 'YouTube Music Official'}</span>
+              <CheckCircle2 className="w-3 h-3 text-red-500 flex-shrink-0" />
             </p>
-            <div className="flex items-center gap-2 mt-0.5">
-              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-[#212121] text-red-400 border border-red-500/20">
-                YT Music Audio
+
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-[9px] font-black px-1.5 py-0.2 rounded bg-red-500/15 text-red-400 border border-red-500/30">
+                HQ Audio
               </span>
               {currentTrack?.duration && (
-                <span className="text-[10px] text-[#717171] font-mono">{currentTrack.duration}</span>
+                <span className="text-[10px] text-[#71717f] font-mono">{currentTrack.duration}</span>
               )}
             </div>
           </div>
 
-          {/* Heart Button */}
+          {/* Favorite Heart Button */}
           <button
             type="button"
             onClick={() => setIsLiked(!isLiked)}
-            className="text-[#aaaaaa] hover:text-white transition-colors cursor-pointer p-1"
+            className="text-[#777785] hover:text-white transition-colors cursor-pointer p-1.5"
             title={isLiked ? 'Liked' : 'Like Song'}
           >
             <Heart
@@ -489,39 +686,39 @@ export default function StoreMusicPlayer({ API_BASE = '' }) {
             />
           </button>
 
-          {/* Equalizer Soundwave Visualizer */}
-          <div className="hidden sm:flex items-end gap-[2px] h-5 px-1 flex-shrink-0">
-            {[65, 100, 45, 90, 75].map((h, i) => (
+          {/* Animated Equalizer Waveform */}
+          <div className="hidden sm:flex items-end gap-[2px] h-6 px-1 flex-shrink-0">
+            {[65, 100, 45, 90, 75, 85, 40].map((h, i) => (
               <div
                 key={i}
                 className={`w-[3px] rounded-full transition-all duration-200 ${
-                  isPlaying ? 'bg-red-500 animate-pulse' : 'bg-[#404040] h-[3px]'
+                  isPlaying ? 'bg-gradient-to-t from-red-600 to-rose-400 animate-pulse' : 'bg-[#33333d] h-[3px]'
                 }`}
                 style={{
-                  height: isPlaying ? `${Math.max(4, (h * (volume / 100)) * 0.2)}px` : '3px',
-                  animationDelay: `${i * 100}ms`,
-                  animationDuration: `${350 + (i % 3) * 120}ms`,
+                  height: isPlaying ? `${Math.max(4, (h * (volume / 100)) * 0.22)}px` : '3px',
+                  animationDelay: `${i * 90}ms`,
+                  animationDuration: `${340 + (i % 3) * 110}ms`,
                 }}
               />
             ))}
           </div>
         </div>
 
-        {/* Center: Controls & Scrubber (cols 5-8) */}
-        <div className="md:col-span-5 flex flex-col items-center justify-center gap-1.5 w-full">
-          {/* Buttons row */}
-          <div className="flex items-center gap-3 sm:gap-4">
+        {/* Center: Controls & Timeline Scrubber (Cols 5-8) */}
+        <div className="lg:col-span-5 flex flex-col items-center justify-center gap-2 w-full">
+          {/* Main Control Buttons */}
+          <div className="flex items-center gap-3 sm:gap-5">
             {/* Shuffle */}
             <button
               type="button"
               onClick={() => setShuffle(!shuffle)}
-              className={`p-1 transition-colors cursor-pointer relative ${
-                shuffle ? 'text-red-500' : 'text-[#aaaaaa] hover:text-white'
+              className={`p-1.5 transition-colors cursor-pointer relative ${
+                shuffle ? 'text-red-500' : 'text-[#888894] hover:text-white'
               }`}
-              title="Shuffle"
+              title="Shuffle Playlist"
             >
-              <Shuffle className="w-3.5 h-3.5" />
-              {shuffle && <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-red-500" />}
+              <Shuffle className="w-4 h-4" />
+              {shuffle && <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-red-500" />}
             </button>
 
             {/* Skip Back */}
@@ -529,26 +726,26 @@ export default function StoreMusicPlayer({ API_BASE = '' }) {
               type="button"
               onClick={handlePrev}
               disabled={searchResults.length === 0}
-              className="text-[#aaaaaa] hover:text-white transition-colors cursor-pointer active:scale-90 disabled:opacity-40"
-              title="Previous"
+              className="text-[#aaaaaa] hover:text-white transition-all cursor-pointer active:scale-90 disabled:opacity-40"
+              title="Previous Track"
             >
-              <SkipBack className="w-4 h-4 fill-current" />
+              <SkipBack className="w-5 h-5 fill-current" />
             </button>
 
-            {/* Play / Pause Button */}
+            {/* Primary Play / Pause Button */}
             <button
               type="button"
               onClick={togglePlay}
               disabled={isLoading || !currentTrack}
-              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white hover:bg-white/90 text-black flex items-center justify-center shadow-lg hover:scale-106 active:scale-95 transition-all cursor-pointer disabled:opacity-40"
+              className="w-11 h-11 rounded-full bg-gradient-to-tr from-red-600 to-rose-500 hover:from-red-500 hover:to-rose-400 text-white flex items-center justify-center shadow-[0_0_20px_rgba(239,68,68,0.4)] hover:shadow-[0_0_25px_rgba(239,68,68,0.6)] hover:scale-106 active:scale-95 transition-all cursor-pointer disabled:opacity-40"
               title={isPlaying ? 'Pause' : 'Play'}
             >
               {isLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin text-black" />
+                <Loader2 className="w-5 h-5 animate-spin text-white" />
               ) : isPlaying ? (
-                <Pause className="w-4 h-4 fill-black text-black" />
+                <Pause className="w-5 h-5 fill-white text-white" />
               ) : (
-                <Play className="w-4 h-4 fill-black text-black ml-0.5" />
+                <Play className="w-5 h-5 fill-white text-white ml-0.5" />
               )}
             </button>
 
@@ -557,56 +754,56 @@ export default function StoreMusicPlayer({ API_BASE = '' }) {
               type="button"
               onClick={handleNext}
               disabled={searchResults.length === 0}
-              className="text-[#aaaaaa] hover:text-white transition-colors cursor-pointer active:scale-90 disabled:opacity-40"
-              title="Next"
+              className="text-[#aaaaaa] hover:text-white transition-all cursor-pointer active:scale-90 disabled:opacity-40"
+              title="Next Track"
             >
-              <SkipForward className="w-4 h-4 fill-current" />
+              <SkipForward className="w-5 h-5 fill-current" />
             </button>
 
             {/* Repeat */}
             <button
               type="button"
               onClick={() => setRepeat(!repeat)}
-              className={`p-1 transition-colors cursor-pointer relative ${
-                repeat ? 'text-red-500' : 'text-[#aaaaaa] hover:text-white'
+              className={`p-1.5 transition-colors cursor-pointer relative ${
+                repeat ? 'text-red-500' : 'text-[#888894] hover:text-white'
               }`}
-              title="Repeat Current Song"
+              title="Repeat Current Track"
             >
-              <Repeat className="w-3.5 h-3.5" />
-              {repeat && <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-red-500" />}
+              <Repeat className="w-4 h-4" />
+              {repeat && <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-red-500" />}
             </button>
           </div>
 
           {/* Timeline Scrubber */}
-          <div className="flex items-center gap-2 w-full max-w-md group">
-            <span className="text-[10px] font-mono text-[#aaaaaa] w-8 text-right select-none">
+          <div className="flex items-center gap-2.5 w-full max-w-md group">
+            <span className="text-[10px] font-mono text-[#888894] w-8 text-right select-none">
               {formatTime(currentTime)}
             </span>
 
             <div
               onClick={handleSeek}
-              className="flex-1 h-1 group-hover:h-1.5 bg-[#404040] rounded-full relative cursor-pointer flex items-center transition-all overflow-hidden"
+              className="flex-1 h-1.5 group-hover:h-2 bg-[#2a2a33] rounded-full relative cursor-pointer flex items-center transition-all overflow-hidden"
             >
               <div
-                className="h-full bg-red-600 transition-all rounded-full relative"
+                className="h-full bg-gradient-to-r from-red-600 to-rose-500 transition-all rounded-full relative"
                 style={{ width: `${progressPct}%` }}
               >
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow-[0_0_8px_rgba(255,255,255,0.8)] opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
             </div>
 
-            <span className="text-[10px] font-mono text-[#aaaaaa] w-8 select-none">
+            <span className="text-[10px] font-mono text-[#888894] w-8 select-none">
               {formatTime(duration)}
             </span>
           </div>
         </div>
 
-        {/* Right: Volume & Link (cols 9-12) */}
-        <div className="md:col-span-3 flex items-center justify-end gap-2.5">
+        {/* Right: Volume & External Actions (Cols 9-12) */}
+        <div className="lg:col-span-3 flex items-center justify-end gap-3">
           <button
             type="button"
             onClick={() => setIsMuted(!isMuted)}
-            className="text-[#aaaaaa] hover:text-white transition-colors cursor-pointer"
+            className="text-[#888894] hover:text-white transition-colors cursor-pointer"
             title={isMuted ? 'Unmute' : 'Mute'}
           >
             {isMuted || volume === 0 ? (
@@ -618,10 +815,10 @@ export default function StoreMusicPlayer({ API_BASE = '' }) {
             )}
           </button>
 
-          {/* Volume Slider */}
+          {/* Volume Scrubber */}
           <div className="w-20 sm:w-24 group relative flex items-center">
             <div
-              className="w-full h-1 group-hover:h-1.5 bg-[#404040] rounded-full relative cursor-pointer flex items-center transition-all overflow-hidden"
+              className="w-full h-1.5 group-hover:h-2 bg-[#2a2a33] rounded-full relative cursor-pointer flex items-center transition-all overflow-hidden"
               onClick={(e) => {
                 const rect = e.currentTarget.getBoundingClientRect();
                 const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
@@ -629,13 +826,13 @@ export default function StoreMusicPlayer({ API_BASE = '' }) {
               }}
             >
               <div
-                className="h-full bg-white group-hover:bg-red-600 transition-colors rounded-full"
+                className="h-full bg-white group-hover:bg-red-500 transition-colors rounded-full"
                 style={{ width: `${isMuted ? 0 : volume}%` }}
               />
             </div>
           </div>
 
-          <span className="text-[10px] font-mono text-[#aaaaaa] w-7 text-right">
+          <span className="text-[10px] font-mono text-[#888894] w-7 text-right">
             {isMuted ? 0 : volume}%
           </span>
 
@@ -644,8 +841,8 @@ export default function StoreMusicPlayer({ API_BASE = '' }) {
               href={currentTrack.url}
               target="_blank"
               rel="noreferrer"
-              title="Open in YouTube"
-              className="text-[#717171] hover:text-white p-1"
+              title="Open Track in YouTube"
+              className="text-[#666672] hover:text-white p-1 transition-colors"
             >
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
@@ -654,28 +851,31 @@ export default function StoreMusicPlayer({ API_BASE = '' }) {
 
       </div>
 
-      {/* Drawer: Search Results & Queue Grid */}
+      {/* Row 4: Expandable Up Next / Search Results Drawer */}
       {showDrawer && (
-        <div className="mt-4 pt-3.5 border-t border-[#272727] animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="mt-4 pt-3.5 border-t border-[#212126] animate-in fade-in slide-in-from-top-2 duration-200 relative z-10">
           <div className="flex items-center justify-between mb-3">
             <div>
-              <h5 className="text-xs font-bold text-white uppercase tracking-wider">
-                Up Next & Search Results ({searchResults.length} Songs)
+              <h5 className="text-xs font-black text-white uppercase tracking-wider flex items-center gap-2">
+                <span>Playlist & Search Queue</span>
+                <span className="text-[10px] font-mono text-red-400 bg-red-500/15 px-2 py-0.2 rounded-full border border-red-500/30">
+                  {searchResults.length} Songs
+                </span>
               </h5>
-              <p className="text-[10px] text-[#aaaaaa]">
-                Click any song to play instantly or click quick mixes above
+              <p className="text-[10px] text-[#888894]">
+                Click any song to play immediately or pick a quick mix
               </p>
             </div>
             <button
               type="button"
               onClick={() => setShowDrawer(false)}
-              className="text-[10px] text-[#aaaaaa] hover:text-white font-bold cursor-pointer"
+              className="text-[10px] text-[#888894] hover:text-white font-bold cursor-pointer bg-[#18181d] px-2 py-1 rounded-lg border border-[#272730]"
             >
-              Close ✕
+              Hide ✕
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-64 overflow-y-auto pr-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 max-h-64 overflow-y-auto pr-1">
             {searchResults.map((track, idx) => {
               const isSelected = currentTrackIndex === idx;
               return (
@@ -684,17 +884,18 @@ export default function StoreMusicPlayer({ API_BASE = '' }) {
                   onClick={() => playTrack(track, idx)}
                   className={`p-2 rounded-xl cursor-pointer transition-all flex items-center justify-between gap-2.5 border group/card ${
                     isSelected
-                      ? 'bg-[#212121] border-red-500 shadow-[0_0_12px_rgba(239,68,68,0.2)]'
-                      : 'bg-[#181818] hover:bg-[#212121] border-transparent hover:border-[#333333]'
+                      ? 'bg-red-600/10 border-red-500/80 shadow-[0_0_15px_rgba(239,68,68,0.15)]'
+                      : 'bg-[#15151a] hover:bg-[#1c1c23] border-[#22222a] hover:border-[#2f2f3a]'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-[#272727] flex-shrink-0">
+                    <div className="relative w-11 h-11 rounded-lg overflow-hidden bg-[#24242d] flex-shrink-0 shadow-sm">
                       {track.thumbnail ? (
                         <img src={track.thumbnail} alt={track.title} className="w-full h-full object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-xs">🎵</div>
                       )}
+                      
                       <div
                         className={`absolute inset-0 bg-black/50 flex items-center justify-center transition-opacity ${
                           isSelected && isPlaying ? 'opacity-100' : 'opacity-0 group-hover/card:opacity-100'
@@ -711,16 +912,16 @@ export default function StoreMusicPlayer({ API_BASE = '' }) {
                     <div className="min-w-0">
                       <p
                         className={`text-xs font-bold truncate ${
-                          isSelected ? 'text-red-400' : 'text-white'
+                          isSelected ? 'text-red-400' : 'text-white group-hover/card:text-red-300'
                         }`}
                       >
                         {track.title}
                       </p>
-                      <p className="text-[10px] text-[#aaaaaa] truncate">{track.artist}</p>
+                      <p className="text-[10px] text-[#888894] truncate">{track.artist}</p>
                     </div>
                   </div>
 
-                  <span className="text-[10px] font-mono text-[#717171] flex-shrink-0">{track.duration}</span>
+                  <span className="text-[10px] font-mono text-[#666672] flex-shrink-0">{track.duration}</span>
                 </div>
               );
             })}
