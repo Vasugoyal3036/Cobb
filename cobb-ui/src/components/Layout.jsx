@@ -106,6 +106,7 @@ const navigationItems = [
   },
   {
     category: "Marketing & CRM", items: [
+      { id: "lookbook_studio", label: "VIP Lookbook Studio", icon: Sparkles, colorClass: "text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-400 font-bold border-l-2 border-amber-500" },
       { id: "shelf_talkers", label: "Shelf Talker Studio", icon: Tag, colorClass: "text-purple-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-purple-500/15 text-purple-400 font-bold border-l-2 border-purple-500" },
       { id: "loyalty", label: "Loyalty & Points", icon: Crown, colorClass: "text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-400 font-bold border-l-2 border-amber-500" },
       { id: "broadcast", label: "Mass Offer Broadcast", icon: Send, colorClass: "text-emerald-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-emerald-500/15 text-emerald-400 font-bold border-l-2 border-emerald-500" },
@@ -162,6 +163,7 @@ const Layout = ({
     'pocket_khata',
     'hold_desk',
     'save_the_sale',
+    'lookbook_studio',
     'shelf_talkers',
     'returns',
     'topmovers',
