@@ -1141,10 +1141,10 @@ const DashboardTab = (props) => {
                     finalPrice = Math.round(numMrp * 0.4);
                     savings = numMrp - finalPrice;
                     offerTitle = '60% Off';
-                  } else if (calcOffer === 'b2g1') {
-                    finalPrice = Math.round((numMrp * 2) / 3);
+                  } else if (calcOffer === 'b1g3') {
+                    finalPrice = Math.round(numMrp / 4);
                     savings = numMrp - finalPrice;
-                    offerTitle = 'B2G1 (/pc)';
+                    offerTitle = 'B1G3 (/pc)';
                   }
 
                   return (
@@ -1199,7 +1199,7 @@ const DashboardTab = (props) => {
                               { id: '50', label: '50%' },
                               { id: '40', label: '40%' },
                               { id: '60', label: '60%' },
-                              { id: 'b2g1', label: 'B2G1' },
+                              { id: 'b1g3', label: 'B1G3' },
                             ].map(opt => (
                               <button
                                 key={opt.id}
