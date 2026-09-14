@@ -314,6 +314,85 @@ app.get('/api/analytics/monthly-products', async (req, res) => {
 });
 
 
+app.get('/api/inventory/quick-scan', async (req, res) => {
+    try {
+        const query = (req.query.q || '').trim();
+        if (!query) {
+            return res.json({ success: false, message: 'Query is required' });
+        }
+
+        const findReq = new sql.Request();
+        findReq.input('q', sql.NVarChar, query);
+        
+        const matchRes = await findReq.query(`
+            SELECT TOP 1 s.article_no, ISNULL(s.article_name, s.section_name) as itemName, s.section_name as sectionName
+            FROM SKU_NAMES s WITH (NOLOCK)
+            WHERE s.product_Code = @q 
+               OR s.article_no = @q 
+               OR s.VENDOR_EAN_NO = @q
+               OR s.article_no LIKE @q + '%'
+        `);
+
+        if (!matchRes.recordset || matchRes.recordset.length === 0) {
+            return res.json({ success: false, message: `No item found matching "${query}"` });
+        }
+
+        const matchedArticle = matchRes.recordset[0].article_no;
+        const matchedItemName = matchRes.recordset[0].itemName;
+        const matchedSection = matchRes.recordset[0].sectionName;
+
+        const variantReq = new sql.Request();
+        variantReq.input('art', sql.NVarChar, matchedArticle);
+
+        const variantsRes = await variantReq.query(`
+            SELECT 
+                s.product_Code as barcode,
+                s.article_no as articleNo,
+                ISNULL(s.article_name, s.section_name) as itemName,
+                ISNULL(s.para1_name, 'Standard') as color,
+                ISNULL(s.para2_name, 'Standard') as size,
+                ISNULL(s.para2_order, 99) as sizeOrder,
+                ISNULL(s.mrp, 0) as mrp,
+                ISNULL(p.quantity_in_stock, 0) as stock
+            FROM SKU_NAMES s WITH (NOLOCK)
+            LEFT JOIN PMT01106 p WITH (NOLOCK) ON s.product_Code = p.product_code
+            WHERE s.article_no = @art
+            ORDER BY s.para2_order, s.para2_name
+        `);
+
+        const rows = variantsRes.recordset || [];
+        const totalStock = rows.reduce((sum, r) => sum + Math.max(0, r.stock || 0), 0);
+        const mrp = rows[0]?.mrp || 0;
+        const color = rows[0]?.color || '';
+
+        const sizeMap = {};
+        rows.forEach(r => {
+            const sz = r.size;
+            if (!sizeMap[sz]) {
+                sizeMap[sz] = { size: sz, stock: 0, barcode: r.barcode };
+            }
+            sizeMap[sz].stock += Math.max(0, r.stock || 0);
+        });
+
+        const sizes = Object.values(sizeMap);
+
+        return res.json({
+            success: true,
+            articleNo: matchedArticle,
+            itemName: matchedItemName,
+            sectionName: matchedSection,
+            color,
+            mrp,
+            totalStock,
+            sizes,
+            variants: rows
+        });
+    } catch (err) {
+        console.error('[QuickScan API Error]', err);
+        return res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 app.get('/api/inventory/dead-stock', async (req, res) => {
     try {
         const result = await sql.query(`

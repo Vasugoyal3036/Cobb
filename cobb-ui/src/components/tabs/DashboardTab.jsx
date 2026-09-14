@@ -142,6 +142,36 @@ const DashboardTab = (props) => {
   }, [API_BASE]);
 
 
+  // Quick Barcode & Article Stock Checker Tile state (Barcode Scanner Ready)
+  const [quickScanQuery, setQuickScanQuery] = React.useState('');
+  const [quickScanLoading, setQuickScanLoading] = React.useState(false);
+  const [quickScanResult, setQuickScanResult] = React.useState(null);
+  const [quickScanError, setQuickScanError] = React.useState(null);
+  const [isScannerFocused, setIsScannerFocused] = React.useState(false);
+  const quickScanInputRef = React.useRef(null);
+
+  const handleQuickScan = async (queryToUse = null) => {
+    const q = (queryToUse !== null ? queryToUse : quickScanQuery).trim();
+    if (!q) return;
+    setQuickScanLoading(true);
+    setQuickScanError(null);
+    try {
+      const res = await axios.get(`${API_BASE}/api/inventory/quick-scan?q=${encodeURIComponent(q)}`);
+      if (res.data && res.data.success) {
+        setQuickScanResult(res.data);
+        setQuickScanError(null);
+      } else {
+        setQuickScanError(res.data?.message || 'Article / Barcode not found');
+        setQuickScanResult(null);
+      }
+    } catch (e) {
+      setQuickScanError('Lookup failed');
+      setQuickScanResult(null);
+    } finally {
+      setQuickScanLoading(false);
+    }
+  };
+
   React.useEffect(() => {
     fetchKhataExpenses();
     fetchHolds();
@@ -926,54 +956,165 @@ const DashboardTab = (props) => {
                   </div>
                 </div>
 
-                {/* TILE 2: VIP LOOKBOOK & STYLIST STUDIO QUICK HUB */}
+                {/* TILE 2: FAST BARCODE & SIZE CHECKER (BARCODE SCANNER READY) */}
                 <div 
-                  className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow"
+                  className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow cursor-default group"
                   style={{ height: topCardHeight ? `${topCardHeight}px` : undefined }}
+                  onClick={() => quickScanInputRef.current?.focus()}
                 >
                   <div className="flex justify-between items-start">
                     <div>
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">VIP Lookbook</p>
-                      <h3 className="text-3xl font-black text-amber-500 dark:text-amber-400 mt-2">
-                        Stylist <span className="text-base font-bold text-slate-400">Hub</span>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Fast Barcode &amp; Size</p>
+                      <h3 className="text-2xl sm:text-3xl font-black text-slate-800 dark:text-white mt-1 flex items-center gap-1.5">
+                        {quickScanResult ? (
+                          <span className="font-mono text-xl sm:text-2xl text-blue-600 dark:text-blue-400 truncate max-w-[170px]">
+                            {quickScanResult.articleNo}
+                          </span>
+                        ) : (
+                          <span>Live <span className="text-base font-bold text-slate-400">Scanner</span></span>
+                        )}
                       </h3>
                     </div>
-                    <div className="p-3 bg-amber-500/10 text-amber-500 rounded-xl border border-amber-500/20">
-                      <Sparkles className="w-5 h-5" />
+                    <div className={`p-3 rounded-xl border transition-all ${
+                      isScannerFocused 
+                        ? 'bg-blue-500/20 text-blue-500 border-blue-500/40 animate-pulse' 
+                        : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
+                    }`}>
+                      <Barcode className="w-5 h-5" />
                     </div>
                   </div>
 
-                  <div className="my-auto py-2 space-y-1.5 text-xs">
-                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
-                      <span>Curated Look:</span>
-                      <span className="font-bold text-slate-700 dark:text-slate-200 truncate max-w-[130px]">
-                        👔 Executive Boardroom
-                      </span>
+                  {/* Body Content */}
+                  <div className="my-auto py-1.5 space-y-2 text-xs">
+                    {/* Barcode Search / Scan Input Field */}
+                    <div className="relative flex items-center">
+                      <input
+                        ref={quickScanInputRef}
+                        type="text"
+                        value={quickScanQuery}
+                        onChange={(e) => setQuickScanQuery(e.target.value)}
+                        onFocus={() => setIsScannerFocused(true)}
+                        onBlur={() => setIsScannerFocused(false)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleQuickScan();
+                          }
+                        }}
+                        placeholder="Scan barcode or type article..."
+                        className={`w-full py-1.5 pl-2.5 pr-8 rounded-lg text-xs font-mono font-semibold border outline-none transition-all ${
+                          isScannerFocused
+                            ? 'ring-2 ring-blue-500 border-blue-500 bg-white dark:bg-slate-900 text-slate-800 dark:text-white'
+                            : 'bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
+                        }`}
+                      />
+                      {quickScanQuery ? (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setQuickScanQuery('');
+                            setQuickScanResult(null);
+                            setQuickScanError(null);
+                            quickScanInputRef.current?.focus();
+                          }}
+                          className="absolute right-1.5 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleQuickScan();
+                          }}
+                          className="absolute right-1.5 p-1 text-blue-500 hover:text-blue-600 cursor-pointer"
+                          title="Search or press Enter"
+                        >
+                          <Search className="w-3.5 h-3.5" />
+                        </button>
+                      )}
                     </div>
-                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
-                      <span>Target VIP:</span>
-                      <span className="font-semibold text-amber-600 dark:text-amber-400 truncate max-w-[130px]">
-                        Parminder Singh
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
-                      <span>Special Bundle:</span>
-                      <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                        Buy 3 @ 70% Off
-                      </span>
-                    </div>
+
+                    {/* Result Display: Sizes Matrix */}
+                    {quickScanResult ? (
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between items-center text-[11px]">
+                          <span className="text-slate-500 dark:text-slate-400 truncate max-w-[130px] font-medium">
+                            {quickScanResult.itemName} • {quickScanResult.color}
+                          </span>
+                          <span className="font-mono font-bold text-slate-700 dark:text-slate-200">
+                            MRP ₹{quickScanResult.mrp?.toLocaleString('en-IN')}
+                          </span>
+                        </div>
+                        {/* Size stock pills */}
+                        <div className="flex flex-wrap gap-1 max-h-16 overflow-y-auto pr-0.5">
+                          {quickScanResult.sizes.map((s, sIdx) => (
+                            <span
+                              key={sIdx}
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-bold border flex items-center gap-1 ${
+                                s.stock > 3
+                                  ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
+                                  : s.stock > 0
+                                    ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800'
+                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700 opacity-50'
+                              }`}
+                            >
+                              <span>{s.size.split(' ')[0]}</span>
+                              <span className="font-mono">({s.stock})</span>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ) : quickScanError ? (
+                      <div className="text-[11px] text-rose-500 font-semibold py-1">
+                        ⚠️ {quickScanError}
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        <div className="text-[11px] text-slate-400 flex items-center justify-between">
+                          <span>Scanner Gun Ready</span>
+                          <span className="text-[10px] text-emerald-500 font-bold flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            Active
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 pt-0.5">
+                          <span className="text-[10px] text-slate-400">Quick:</span>
+                          {['FSRE', 'TSBW', 'CFAJ'].map(sample => (
+                            <button
+                              key={sample}
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setQuickScanQuery(sample);
+                                handleQuickScan(sample);
+                              }}
+                              className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 text-[10px] font-mono text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 cursor-pointer"
+                            >
+                              {sample}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
 
+                  {/* Footer Row */}
                   <div className="mt-auto pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
-                    <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20">
-                      WhatsApp Ready
+                    <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2.5 py-0.5 rounded-full border border-blue-500/20">
+                      {quickScanResult ? `${quickScanResult.totalStock} pcs in Stock` : 'Barcode Ready'}
                     </span>
                     {typeof setActiveTab === 'function' && (
                       <button
-                        onClick={() => setActiveTab('lookbook_studio')}
-                        className="font-bold text-amber-600 hover:text-amber-500 dark:text-amber-400 flex items-center gap-1 cursor-pointer transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveTab('sizematrix');
+                        }}
+                        className="font-bold text-blue-600 hover:text-blue-500 dark:text-blue-400 flex items-center gap-1 cursor-pointer transition-colors"
                       >
-                        <span>Open Studio</span>
+                        <span>Size Matrix</span>
                         <ArrowRight className="w-3.5 h-3.5" />
                       </button>
                     )}
