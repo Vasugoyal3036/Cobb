@@ -1125,7 +1125,10 @@ const DashboardTab = (props) => {
 
                 {/* TILE 4: SMART COUNTER DISCOUNT & OFFER CALC */}
                 {(() => {
-                  const isMultiItem = calcOffer === 'b1g3' || calcOffer === 'b3_70';
+                  const isB1G3 = calcOffer === 'b1g3';
+                  const isB3_70 = calcOffer === 'b3_70';
+                  const numMrp = Math.max(0, Number(calcMrp) || 0);
+
                   const p1 = Number(b1g3Items[0]) || 0;
                   const p2 = Number(b1g3Items[1]) || 0;
                   const p3 = Number(b1g3Items[2]) || 0;
@@ -1138,14 +1141,14 @@ const DashboardTab = (props) => {
                   let effPerPc = 0;
                   let offerTitle = 'Buy 3 @ 70% Off';
 
-                  if (calcOffer === 'b3_70') {
-                    // Buy 3 & get 70% off on total bill (Customer pays 30%)
-                    displayOriginal = sumMrp;
-                    displayFinal = Math.round(sumMrp * 0.3);
-                    displaySavings = Math.max(0, sumMrp - displayFinal);
+                  if (isB3_70) {
+                    // Buy 3 & get 70% off on total bill using single MRP (Customer buys 3 of this MRP, pays 30%)
+                    displayOriginal = numMrp * 3;
+                    displayFinal = Math.round((numMrp * 3) * 0.3);
+                    displaySavings = Math.max(0, displayOriginal - displayFinal);
                     effPerPc = Math.round(displayFinal / 3);
                     offerTitle = `B3 @ 70% (Bill ₹${displayFinal.toLocaleString('en-IN')})`;
-                  } else if (calcOffer === 'b1g3') {
+                  } else if (isB1G3) {
                     // Buy 1 Get 3: Customer pays highest MRP among the 3 items
                     displayOriginal = sumMrp;
                     displayFinal = highestMrp;
@@ -1153,7 +1156,6 @@ const DashboardTab = (props) => {
                     effPerPc = Math.round(highestMrp / 3);
                     offerTitle = `B1G3 (Bill ₹${highestMrp.toLocaleString('en-IN')})`;
                   } else {
-                    const numMrp = Math.max(0, Number(calcMrp) || 0);
                     displayOriginal = numMrp;
                     if (calcOffer === '40') {
                       displayFinal = Math.round(numMrp * 0.6);
@@ -1181,7 +1183,7 @@ const DashboardTab = (props) => {
                             <span className="text-[11px] font-bold text-slate-400 line-through">
                               ₹{displayOriginal.toLocaleString('en-IN')}
                             </span>
-                            {isMultiItem && (
+                            {(isB3_70 || isB1G3) && (
                               <span className="text-[10px] font-bold text-blue-500 dark:text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/20">
                                 ₹{effPerPc}/pc
                               </span>
@@ -1194,8 +1196,8 @@ const DashboardTab = (props) => {
                       </div>
 
                       <div className="my-auto py-1 space-y-1.5 text-xs">
-                        {/* Price Inputs: Multi-item for B3@70% & B1G3, or preset chips for % discounts */}
-                        {isMultiItem ? (
+                        {/* Price Inputs: Multi-item only for B1G3; Single MRP preset chips for B3@70%, 40%, 60% */}
+                        {isB1G3 ? (
                           <div className="flex items-center gap-1">
                             <span className="text-[10px] font-bold text-slate-400 w-8">3 Pcs:</span>
                             <div className="flex-1 grid grid-cols-3 gap-1">
@@ -1276,14 +1278,14 @@ const DashboardTab = (props) => {
 
                       <div className="mt-auto pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
                         <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20 truncate max-w-[170px]">
-                          {calcOffer === 'b3_70'
+                          {isB3_70
                             ? `70% Off Total • Save ₹${displaySavings.toLocaleString('en-IN')}`
-                            : calcOffer === 'b1g3'
+                            : isB1G3
                               ? `Highest MRP • Save ₹${displaySavings.toLocaleString('en-IN')}`
                               : `${offerTitle} • Save ₹${displaySavings.toLocaleString('en-IN')}`}
                         </span>
                         <span className="text-[10px] font-semibold text-slate-400">
-                          {isMultiItem ? '3 Pcs Total' : 'Instant Quote'}
+                          {isB3_70 ? '3 Pcs Deal' : isB1G3 ? '3 Pcs Total' : 'Instant Quote'}
                         </span>
                       </div>
                     </div>
