@@ -66,7 +66,9 @@ import {
   Coffee,
   Plus,
   Trash2,
-  ArrowRight
+  ArrowRight,
+  AlarmClock,
+  Network
 } from 'lucide-react';
 
 const DashboardTab = (props) => {
@@ -79,10 +81,9 @@ const DashboardTab = (props) => {
   // Pocket Khata state for Dashboard Desk
   const [khataSummary, setKhataSummary] = React.useState({ totalSpent: 0, totalCount: 0, items: [] });
   const [khataLoading, setKhataLoading] = React.useState(false);
-  const [quickAmount, setQuickAmount] = React.useState('');
-  const [quickCat, setQuickCat] = React.useState('chai');
-  const [quickDesc, setQuickDesc] = React.useState('');
-  const [isSubmittingKhata, setIsSubmittingKhata] = React.useState(false);
+
+  // Active holds state for Hold Desk tile
+  const [holds, setHolds] = React.useState([]);
 
   const fetchKhataExpenses = React.useCallback(async () => {
     try {
@@ -98,45 +99,21 @@ const DashboardTab = (props) => {
     }
   }, [API_BASE, activeStore]);
 
+  const fetchHolds = React.useCallback(async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/api/holds`);
+      if (res.data?.success && Array.isArray(res.data.holds)) {
+        setHolds(res.data.holds);
+      }
+    } catch (e) {
+      // non-blocking
+    }
+  }, [API_BASE]);
+
   React.useEffect(() => {
     fetchKhataExpenses();
-  }, [fetchKhataExpenses]);
-
-  const handleQuickAddExpense = async (categoryKey, amountVal, descVal) => {
-    const amt = parseFloat(amountVal);
-    if (!amt || amt <= 0) return;
-    try {
-      setIsSubmittingKhata(true);
-      const res = await axios.post(`${API_BASE}/api/expenses/add`, {
-        category: categoryKey || quickCat,
-        amount: amt,
-        description: descVal || (categoryKey === 'chai' ? 'Chai & refreshments' : categoryKey === 'tailor' ? 'Alteration tailor' : categoryKey === 'cleaning' ? 'Store cleaning' : categoryKey === 'courier' ? 'Courier / Tempo' : 'Counter expense'),
-        loggedBy: userRole === 'owner' ? 'Store Owner' : 'Counter Cashier',
-        storeId: activeStore
-      });
-      if (res.data?.success) {
-        setKhataSummary(res.data.summary);
-        setQuickAmount('');
-        setQuickDesc('');
-      }
-    } catch (err) {
-      console.error('Failed to log expense:', err);
-    } finally {
-      setIsSubmittingKhata(false);
-    }
-  };
-
-  const handleQuickDeleteExpense = async (id) => {
-    if (!id) return;
-    try {
-      const res = await axios.delete(`${API_BASE}/api/expenses/${id}`);
-      if (res.data?.success) {
-        fetchKhataExpenses();
-      }
-    } catch (err) {
-      console.error('Failed to void expense:', err);
-    }
-  };
+    fetchHolds();
+  }, [fetchKhataExpenses, fetchHolds]);
 
   return (
     <>
@@ -888,308 +865,322 @@ const DashboardTab = (props) => {
             </div>
           </div>
 
-          {/* Pocket Khata & Cash Drawer Balance Desk */}
+          {/* 4-Tile Operations Deck (1/4 space each) */}
           {(() => {
             const grossCashSales = overviewStats?.today?.CashAmount || 0;
             const totalPettyCash = khataSummary?.totalSpent || 0;
             const netExpectedDrawer = Math.max(0, grossCashSales - totalPettyCash);
-            const khataItems = Array.isArray(khataSummary?.items) ? khataSummary.items : [];
+            const latestExpense = khataSummary?.items?.[0];
+
+            const billsList = Array.isArray(liveBills) ? liveBills : [];
+            const latestBill = billsList[0];
+
+            const activeHolds = Array.isArray(holds) ? holds.filter(h => h.status !== 'released' && h.status !== 'expired') : [];
+            const latestHold = activeHolds[0];
 
             return (
-              <div className={`rounded-2xl border shadow-sm p-6 transition-all ${
-                darkMode 
-                  ? 'bg-slate-900/90 border-slate-800/80 text-slate-100 shadow-black/20' 
-                  : 'bg-white border-slate-200 text-slate-800 shadow-slate-200/50'
-              }`}>
-                {/* Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 dark:border-slate-800/80 gap-3 mb-5">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center justify-center shrink-0">
-                      <Wallet className="w-5 h-5" />
-                    </div>
-                    <div>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+                {/* TILE 1: POCKET KHATA (1/4 space) */}
+                <div className={`rounded-2xl border shadow-sm p-5 flex flex-col justify-between transition-all hover:shadow-md ${
+                  darkMode 
+                    ? 'bg-slate-900/90 border-slate-800/80 text-slate-100 shadow-black/20' 
+                    : 'bg-white border-slate-200 text-slate-800 shadow-slate-200/50'
+                }`}>
+                  <div>
+                    {/* Header */}
+                    <div className="flex justify-between items-center mb-3">
                       <div className="flex items-center gap-2">
-                        <h3 className="font-bold text-base text-slate-900 dark:text-white tracking-tight">
-                          Pocket Khata &amp; Register Cash Desk
-                        </h3>
-                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800 uppercase tracking-wider">
-                          Live Drawer Audit
+                        <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center justify-center shrink-0">
+                          <Wallet className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-sm text-slate-900 dark:text-white leading-tight">Pocket Khata</h3>
+                          <p className="text-[10px] text-slate-400">Cash Drawer Outflow</p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800 uppercase tracking-wider">
+                        EOD Safe
+                      </span>
+                    </div>
+
+                    {/* Main KPI */}
+                    <div className="my-2.5">
+                      <div className="flex items-baseline justify-between">
+                        <span className="text-2xl font-black text-rose-500 dark:text-rose-400">
+                          {totalPettyCash > 0 ? `- ${formatCurrency(totalPettyCash)}` : '₹0'}
+                        </span>
+                        <span className="text-[10px] font-bold text-slate-400">
+                          {khataSummary.totalCount || 0} Outflows
                         </span>
                       </div>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                        Real-time operational cash outflow journal. Auto-deducted from register cash to ensure 100% evening cash reconciliation.
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 flex items-center justify-between">
+                        <span>Expected Drawer:</span>
+                        <span className="font-bold font-mono text-emerald-500 dark:text-emerald-400">{formatCurrency(netExpectedDrawer)}</span>
                       </p>
+                    </div>
+
+                    {/* Context Row */}
+                    <div className={`p-2.5 rounded-xl border text-[11px] my-2 ${
+                      darkMode ? 'bg-slate-800/40 border-slate-700/60' : 'bg-slate-50 border-slate-200/80'
+                    }`}>
+                      {latestExpense ? (
+                        <div className="flex items-center justify-between min-w-0">
+                          <span className="truncate text-slate-700 dark:text-slate-300 font-medium">
+                            {latestExpense.categoryIcon || '☕'} {latestExpense.description || 'Store Outflow'}
+                          </span>
+                          <span className="font-mono font-bold text-rose-500 ml-1 shrink-0">
+                            -{formatCurrency(latestExpense.amount)}
+                          </span>
+                        </div>
+                      ) : (
+                        <p className="text-slate-500 dark:text-slate-400 text-center text-[10px]">
+                          100% of cash collected is intact in drawer
+                        </p>
+                      )}
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2.5 shrink-0 self-end sm:self-auto">
-                    <button
-                      onClick={fetchKhataExpenses}
-                      disabled={khataLoading}
-                      className={`p-2 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
-                        darkMode 
-                          ? 'bg-slate-800/80 hover:bg-slate-700 text-slate-300 border-slate-700' 
-                          : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
-                      }`}
-                      title="Refresh Pocket Khata"
-                    >
-                      <RotateCcw className={`w-3.5 h-3.5 ${khataLoading ? 'animate-spin' : ''}`} />
-                      <span className="hidden sm:inline">Refresh</span>
-                    </button>
+                  {/* Footer Action */}
+                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between mt-1">
+                    <span className="text-[10px] text-slate-400">Night Audit Ready</span>
                     {typeof setActiveTab === 'function' && (
                       <button
                         onClick={() => setActiveTab('pocket_khata')}
-                        className="px-3 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white text-xs font-bold shadow-sm shadow-amber-500/20 flex items-center gap-1.5 cursor-pointer transition-all"
+                        className="text-xs font-bold text-amber-500 hover:text-amber-400 flex items-center gap-1 cursor-pointer transition-colors"
                       >
-                        <span>Full Ledger</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
+                        <span>Ledger</span>
+                        <ArrowRight className="w-3 h-3" />
                       </button>
                     )}
                   </div>
                 </div>
 
-                {/* 4 Stat KPIs Strip */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-                  {/* 1. Gross Cash Billed */}
-                  <div className={`p-3.5 rounded-xl border ${
-                    darkMode ? 'bg-slate-800/40 border-slate-700/60' : 'bg-slate-50/70 border-slate-200/80'
-                  }`}>
-                    <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      Gross Cash Billed
-                    </p>
-                    <p className="text-xl font-black text-slate-900 dark:text-white mt-1">
-                      {formatCurrency(grossCashSales)}
-                    </p>
-                    <p className="text-[10px] text-slate-400 mt-1 font-medium">POS Register Intake</p>
-                  </div>
-
-                  {/* 2. Petty Cash Spent */}
-                  <div className={`p-3.5 rounded-xl border ${
-                    darkMode ? 'bg-rose-950/15 border-rose-900/30' : 'bg-rose-50/60 border-rose-200/70'
-                  }`}>
-                    <div className="flex items-center justify-between">
-                      <p className="text-[10px] font-extrabold uppercase tracking-wider text-rose-500">
-                        Petty Cash Spent
-                      </p>
-                      <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
-                        darkMode ? 'bg-rose-950/80 text-rose-300 border border-rose-800/50' : 'bg-rose-100 text-rose-700'
-                      }`}>
-                        {khataSummary.totalCount || 0} Entries
+                {/* TILE 2: LIVE CHECKOUTS PULSE (1/4 space) */}
+                <div className={`rounded-2xl border shadow-sm p-5 flex flex-col justify-between transition-all hover:shadow-md ${
+                  darkMode 
+                    ? 'bg-slate-900/90 border-slate-800/80 text-slate-100 shadow-black/20' 
+                    : 'bg-white border-slate-200 text-slate-800 shadow-slate-200/50'
+                }`}>
+                  <div>
+                    {/* Header */}
+                    <div className="flex justify-between items-center mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-xl bg-blue-500/10 text-blue-500 border border-blue-500/20 flex items-center justify-center shrink-0">
+                          <Receipt className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-sm text-slate-900 dark:text-white leading-tight">Live Checkouts</h3>
+                          <p className="text-[10px] text-slate-400">Real-Time POS Stream</p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800 uppercase tracking-wider flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                        Live
                       </span>
                     </div>
-                    <p className="text-xl font-black text-rose-500 dark:text-rose-400 mt-1">
-                      - {formatCurrency(totalPettyCash)}
-                    </p>
-                    <p className="text-[10px] text-slate-400 mt-1 font-medium">Drawer Cash Disbursed</p>
+
+                    {/* Main KPI */}
+                    <div className="my-2.5">
+                      <div className="flex items-baseline justify-between">
+                        <span className="text-2xl font-black text-slate-900 dark:text-white">
+                          {billsList.length}
+                        </span>
+                        <span className="text-[10px] font-bold text-blue-500">
+                          Bills Rung Up
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 flex items-center justify-between">
+                        <span>Latest Checkout:</span>
+                        <span className="font-bold font-mono text-slate-800 dark:text-slate-200">
+                          {latestBill ? formatCurrency(latestBill.NetAmount || latestBill.BillAmount) : '₹0'}
+                        </span>
+                      </p>
+                    </div>
+
+                    {/* Context Row */}
+                    <div className={`p-2.5 rounded-xl border text-[11px] my-2 ${
+                      darkMode ? 'bg-slate-800/40 border-slate-700/60' : 'bg-slate-50 border-slate-200/80'
+                    }`}>
+                      {latestBill ? (
+                        <div className="flex items-center justify-between min-w-0">
+                          <div className="min-w-0 truncate">
+                            <span className="font-semibold text-slate-800 dark:text-slate-200 truncate block">
+                              {latestBill.CustomerName?.trim() || latestBill.FirstName?.trim() || 'Counter Customer'}
+                            </span>
+                            <span className="text-[9px] text-slate-400 font-mono">
+                              #{latestBill.BillNumber || 'POS'} • {latestBill.ModeOfPayment || 'Paid'}
+                            </span>
+                          </div>
+                          <span className="font-mono font-bold text-emerald-500 shrink-0 ml-1">
+                            {formatCurrency(latestBill.NetAmount || latestBill.BillAmount)}
+                          </span>
+                        </div>
+                      ) : (
+                        <p className="text-slate-400 text-center text-[10px]">
+                          Listening for next counter checkout...
+                        </p>
+                      )}
+                    </div>
                   </div>
 
-                  {/* 3. Net Expected Drawer */}
-                  <div className={`p-3.5 rounded-xl border ${
-                    darkMode ? 'bg-emerald-950/20 border-emerald-900/40' : 'bg-emerald-50/60 border-emerald-200/80'
-                  }`}>
-                    <p className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-500">
-                      Expected in Drawer
-                    </p>
-                    <p className="text-xl font-black text-emerald-500 dark:text-emerald-400 mt-1">
-                      {formatCurrency(netExpectedDrawer)}
-                    </p>
-                    <p className="text-[10px] text-emerald-600/80 dark:text-emerald-400/80 mt-1 font-medium flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3 shrink-0" /> Target Physical Cash
-                    </p>
-                  </div>
-
-                  {/* 4. Reconciliation Status */}
-                  <div className={`p-3.5 rounded-xl border ${
-                    darkMode ? 'bg-slate-800/40 border-slate-700/60' : 'bg-slate-50/70 border-slate-200/80'
-                  }`}>
-                    <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                      Reconciliation Sync
-                    </p>
-                    <p className="text-base font-black text-slate-800 dark:text-slate-200 mt-1.5 flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                      Active Audit
-                    </p>
-                    <p className="text-[10px] text-slate-400 mt-1 font-medium">Auto-deducted in 8:30 PM EOD</p>
+                  {/* Footer Action */}
+                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between mt-1">
+                    <span className="text-[10px] text-slate-400">All Billed Receipts</span>
+                    {typeof setActiveTab === 'function' && (
+                      <button
+                        onClick={() => setActiveTab('live')}
+                        className="text-xs font-bold text-blue-500 hover:text-blue-400 flex items-center gap-1 cursor-pointer transition-colors"
+                      >
+                        <span>Live Feed</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </button>
+                    )}
                   </div>
                 </div>
 
-                {/* Split: Recent Expenses (Left) vs One-Tap Quick Log (Right) */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-                  {/* Left Column: Recent Outflow Stream (7 cols) */}
-                  <div className="lg:col-span-7 flex flex-col justify-between">
-                    <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
-                          <FileText className="w-3.5 h-3.5 text-amber-500" />
-                          Today's Outflows ({khataItems.length})
-                        </h4>
-                        {khataItems.length > 0 && (
-                          <span className="text-[11px] font-mono font-bold text-rose-500">
-                            Total: -{formatCurrency(totalPettyCash)}
-                          </span>
-                        )}
+                {/* TILE 3: HOLD DESK (1/4 space) */}
+                <div className={`rounded-2xl border shadow-sm p-5 flex flex-col justify-between transition-all hover:shadow-md ${
+                  darkMode 
+                    ? 'bg-slate-900/90 border-slate-800/80 text-slate-100 shadow-black/20' 
+                    : 'bg-white border-slate-200 text-slate-800 shadow-slate-200/50'
+                }`}>
+                  <div>
+                    {/* Header */}
+                    <div className="flex justify-between items-center mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-500 border border-purple-500/20 flex items-center justify-center shrink-0">
+                          <AlarmClock className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-sm text-slate-900 dark:text-white leading-tight">Hold Desk</h3>
+                          <p className="text-[10px] text-slate-400">Saved Customer Carts</p>
+                        </div>
                       </div>
-
-                      {khataItems.length === 0 ? (
-                        <div className={`p-6 rounded-xl border border-dashed text-center flex flex-col items-center justify-center ${
-                          darkMode ? 'border-slate-800 bg-slate-950/20' : 'border-slate-200 bg-slate-50/50'
-                        }`}>
-                          <div className="w-9 h-9 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-2">
-                            <CheckCircle2 className="w-5 h-5" />
-                          </div>
-                          <p className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                            No petty cash disbursed today
-                          </p>
-                          <p className="text-[11px] text-slate-400 mt-0.5 max-w-xs">
-                            100% of cash collected ({formatCurrency(grossCashSales)}) remains intact in the physical drawer.
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="space-y-2 max-h-[220px] overflow-y-auto custom-scrollbar pr-1">
-                          {khataItems.slice(0, 8).map((item, idx) => (
-                            <div
-                              key={item.id || idx}
-                              className={`flex items-center justify-between p-2.5 rounded-xl border transition-all ${
-                                darkMode 
-                                  ? 'bg-slate-800/30 border-slate-700/40 hover:bg-slate-800/60' 
-                                  : 'bg-slate-50/60 border-slate-200/60 hover:bg-slate-100/60'
-                              }`}
-                            >
-                              <div className="flex items-center gap-2.5 min-w-0">
-                                <span className="text-lg shrink-0">{item.categoryIcon || '💸'}</span>
-                                <div className="min-w-0">
-                                  <p className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">
-                                    {item.description || item.categoryLabel || 'Store Expense'}
-                                  </p>
-                                  <p className="text-[10px] text-slate-400 flex items-center gap-1.5">
-                                    <span>{item.time || 'Today'}</span>
-                                    <span>•</span>
-                                    <span className="truncate">{item.loggedBy || 'Cashier'}</span>
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-2 shrink-0">
-                                <span className="text-xs font-black font-mono text-rose-500 dark:text-rose-400">
-                                  - {formatCurrency(item.amount)}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() => handleQuickDeleteExpense(item.id)}
-                                  className="p-1 rounded-md text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
-                                  title="Void entry"
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
+                      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800 uppercase tracking-wider">
+                        {activeHolds.length} Active
+                      </span>
                     </div>
 
-                    <div className={`mt-3 p-2.5 rounded-lg border text-[11px] flex items-center justify-between ${
-                      darkMode ? 'bg-slate-800/40 border-slate-700/50 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-600'
+                    {/* Main KPI */}
+                    <div className="my-2.5">
+                      <div className="flex items-baseline justify-between">
+                        <span className="text-2xl font-black text-slate-900 dark:text-white">
+                          {activeHolds.length}
+                        </span>
+                        <span className="text-[10px] font-bold text-purple-500">
+                          Carts On Hold
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 flex items-center justify-between">
+                        <span>Cart Status:</span>
+                        <span className={`font-bold ${activeHolds.length > 0 ? 'text-amber-500' : 'text-emerald-500'}`}>
+                          {activeHolds.length > 0 ? 'Items Reserved' : 'No Pending Holds'}
+                        </span>
+                      </p>
+                    </div>
+
+                    {/* Context Row */}
+                    <div className={`p-2.5 rounded-xl border text-[11px] my-2 ${
+                      darkMode ? 'bg-slate-800/40 border-slate-700/60' : 'bg-slate-50 border-slate-200/80'
                     }`}>
-                      <span className="flex items-center gap-1.5">
-                        <span>💡</span>
-                        <span>All logged items automatically reduce cash drawer expected balance.</span>
-                      </span>
-                      <span className="font-mono font-bold text-amber-500 shrink-0">EOD Safe</span>
+                      {latestHold ? (
+                        <div className="flex items-center justify-between min-w-0">
+                          <div className="min-w-0 truncate">
+                            <span className="font-semibold text-slate-800 dark:text-slate-200 truncate block">
+                              {latestHold.customerName || 'Customer Hold'}
+                            </span>
+                            <span className="text-[9px] text-slate-400 truncate block">
+                              {latestHold.articleName || 'Articles reserved'}
+                            </span>
+                          </div>
+                          <span className="text-[10px] font-bold text-amber-500 shrink-0 ml-1">
+                            Reserved
+                          </span>
+                        </div>
+                      ) : (
+                        <p className="text-slate-500 dark:text-slate-400 text-center text-[10px]">
+                          No carts on hold. Register counter is clear.
+                        </p>
+                      )}
                     </div>
                   </div>
 
-                  {/* Right Column: One-Tap Quick Log Desk (5 cols) */}
-                  <div className={`lg:col-span-5 p-4 rounded-xl border flex flex-col justify-between ${
-                    darkMode ? 'bg-slate-800/30 border-slate-700/60' : 'bg-slate-50/70 border-slate-200/80'
-                  }`}>
-                    <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                          <Plus className="w-3.5 h-3.5 text-amber-500" />
-                          One-Tap Quick Entry
-                        </h4>
-                        <span className="text-[10px] font-semibold text-slate-400">Cash Outflow</span>
-                      </div>
+                  {/* Footer Action */}
+                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between mt-1">
+                    <span className="text-[10px] text-slate-400">Save Customer Carts</span>
+                    {typeof setActiveTab === 'function' && (
+                      <button
+                        onClick={() => setActiveTab('hold_desk')}
+                        className="text-xs font-bold text-purple-500 hover:text-purple-400 flex items-center gap-1 cursor-pointer transition-colors"
+                      >
+                        <span>Hold Desk</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                </div>
 
-                      {/* One-Tap Quick Category + Amount Chips */}
-                      <div className="grid grid-cols-2 gap-2 mb-3">
-                        {[
-                          { cat: 'chai', label: '☕ Chai & Snacks', amt: 30 },
-                          { cat: 'chai', label: '☕ Staff Tea', amt: 50 },
-                          { cat: 'tailor', label: '✂️ Tailor Fitting', amt: 100 },
-                          { cat: 'cleaning', label: '🧹 Cleaning', amt: 50 },
-                          { cat: 'courier', label: '📦 Bags / Courier', amt: 100 },
-                          { cat: 'misc', label: '⚡ Incidental / Misc', amt: 50 }
-                        ].map((preset, pIdx) => (
-                          <button
-                            key={pIdx}
-                            type="button"
-                            onClick={() => handleQuickAddExpense(preset.cat, preset.amt, preset.label)}
-                            disabled={isSubmittingKhata}
-                            className={`p-2 rounded-lg border text-left transition-all cursor-pointer flex items-center justify-between text-[11px] font-semibold ${
-                              darkMode 
-                                ? 'bg-slate-800/80 hover:bg-slate-700 border-slate-700/80 text-slate-200' 
-                                : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700 shadow-2xs'
-                            }`}
-                          >
-                            <span className="truncate">{preset.label}</span>
-                            <span className="font-mono font-bold text-amber-500 shrink-0 ml-1">₹{preset.amt}</span>
-                          </button>
-                        ))}
-                      </div>
-
-                      {/* Custom Amount Form */}
-                      <div className="space-y-2">
-                        <div className="flex gap-2">
-                          <select
-                            value={quickCat}
-                            onChange={(e) => setQuickCat(e.target.value)}
-                            className={`px-2.5 py-1.5 rounded-lg border text-xs font-medium shrink-0 outline-none ${
-                              darkMode ? 'bg-slate-800 border-slate-700 text-slate-200' : 'bg-white border-slate-300 text-slate-800'
-                            }`}
-                          >
-                            <option value="chai">☕ Chai</option>
-                            <option value="tailor">✂️ Tailor</option>
-                            <option value="cleaning">🧹 Cleaning</option>
-                            <option value="courier">📦 Courier</option>
-                            <option value="repairs">🔧 Repairs</option>
-                            <option value="misc">📄 Misc</option>
-                          </select>
-                          <div className="relative flex-1">
-                            <span className="absolute left-2.5 top-1.5 text-xs text-slate-400 font-bold">₹</span>
-                            <input
-                              type="number"
-                              placeholder="Amount"
-                              value={quickAmount}
-                              onChange={(e) => setQuickAmount(e.target.value)}
-                              className={`w-full pl-6 pr-2.5 py-1.5 rounded-lg border text-xs font-bold outline-none ${
-                                darkMode ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500' : 'bg-white border-slate-300 text-slate-800 placeholder-slate-400'
-                              }`}
-                            />
-                          </div>
+                {/* TILE 4: SAVE-THE-SALE NETWORK (1/4 space) */}
+                <div className={`rounded-2xl border shadow-sm p-5 flex flex-col justify-between transition-all hover:shadow-md ${
+                  darkMode 
+                    ? 'bg-slate-900/90 border-slate-800/80 text-slate-100 shadow-black/20' 
+                    : 'bg-white border-slate-200 text-slate-800 shadow-slate-200/50'
+                }`}>
+                  <div>
+                    {/* Header */}
+                    <div className="flex justify-between items-center mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                          <Network className="w-4 h-4" />
                         </div>
-
-                        <input
-                          type="text"
-                          placeholder="Note / Description (Optional)"
-                          value={quickDesc}
-                          onChange={(e) => setQuickDesc(e.target.value)}
-                          className={`w-full px-2.5 py-1.5 rounded-lg border text-xs outline-none ${
-                            darkMode ? 'bg-slate-800 border-slate-700 text-white placeholder-slate-500' : 'bg-white border-slate-300 text-slate-800 placeholder-slate-400'
-                          }`}
-                        />
+                        <div>
+                          <h3 className="font-bold text-sm text-slate-900 dark:text-white leading-tight">Save-The-Sale</h3>
+                          <p className="text-[10px] text-slate-400">Branch Stock Radar</p>
+                        </div>
                       </div>
+                      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800 uppercase tracking-wider">
+                        SOS Network
+                      </span>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => handleQuickAddExpense(quickCat, quickAmount, quickDesc)}
-                      disabled={isSubmittingKhata || !quickAmount || parseFloat(quickAmount) <= 0}
-                      className="w-full mt-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-                    >
-                      <Plus className="w-3.5 h-3.5" />
-                      <span>Log Expense to Register</span>
-                    </button>
+                    {/* Main KPI */}
+                    <div className="my-2.5">
+                      <div className="flex items-baseline justify-between">
+                        <span className="text-2xl font-black text-emerald-500 dark:text-emerald-400">
+                          Connected
+                        </span>
+                        <span className="text-[10px] font-bold text-emerald-500">
+                          Store Network
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 flex items-center justify-between">
+                        <span>Lost Sales Prevention:</span>
+                        <span className="font-bold text-slate-800 dark:text-slate-200">Cross-Store SOS</span>
+                      </p>
+                    </div>
+
+                    {/* Context Row */}
+                    <div className={`p-2.5 rounded-xl border text-[11px] my-2 ${
+                      darkMode ? 'bg-slate-800/40 border-slate-700/60' : 'bg-slate-50 border-slate-200/80'
+                    }`}>
+                      <p className="text-slate-600 dark:text-slate-300 text-[10px] leading-relaxed">
+                        Instant inter-branch check when size/color is out of stock. Dispatch WhatsApp reservation in 1 tap.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Footer Action */}
+                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between mt-1">
+                    <span className="text-[10px] text-slate-400">Never Lose a Customer</span>
+                    {typeof setActiveTab === 'function' && (
+                      <button
+                        onClick={() => setActiveTab('save_the_sale')}
+                        className="text-xs font-bold text-emerald-500 hover:text-emerald-400 flex items-center gap-1 cursor-pointer transition-colors"
+                      >
+                        <span>Check Stock</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
