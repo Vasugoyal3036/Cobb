@@ -85,6 +85,27 @@ const DashboardTab = (props) => {
   // Active holds state for Hold Desk tile
   const [holds, setHolds] = React.useState([]);
 
+  // Ref and height state to guarantee operational tiles match the exact pixel height of top KPI cards
+  const topCardRef = React.useRef(null);
+  const [topCardHeight, setTopCardHeight] = React.useState(null);
+
+  React.useEffect(() => {
+    if (!topCardRef.current) return;
+    const updateHeight = () => {
+      if (topCardRef.current) {
+        setTopCardHeight(topCardRef.current.offsetHeight);
+      }
+    };
+    updateHeight();
+    const ro = new ResizeObserver(updateHeight);
+    ro.observe(topCardRef.current);
+    window.addEventListener('resize', updateHeight);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', updateHeight);
+    };
+  }, []);
+
   const fetchKhataExpenses = React.useCallback(async () => {
     try {
       setKhataLoading(true);
@@ -184,7 +205,7 @@ const DashboardTab = (props) => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
 
             {/* Revenue Card with WoW/MoM Trends */}
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+            <div ref={topCardRef} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
               <div className="flex justify-between items-start">
                 <div>
                   <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Today's Revenue</p>
@@ -912,11 +933,10 @@ const DashboardTab = (props) => {
             return (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 {/* TILE 1: POCKET KHATA */}
-                <div className={`p-6 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow min-h-[320px] ${
-                  darkMode 
-                    ? 'bg-slate-900/90 border-slate-800/80 text-slate-100 shadow-black/20' 
-                    : 'bg-white border-slate-200 text-slate-800 shadow-slate-200/50'
-                }`}>
+                <div 
+                  className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow"
+                  style={{ height: topCardHeight ? `${topCardHeight}px` : undefined }}
+                >
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Pocket Khata</p>
@@ -929,32 +949,20 @@ const DashboardTab = (props) => {
                     </div>
                   </div>
 
-                  <div className="my-3 space-y-2.5 text-xs">
-                    <div className={`p-3 rounded-xl border ${
-                      darkMode ? 'bg-slate-800/50 border-slate-700/60' : 'bg-slate-50 border-slate-100'
-                    }`}>
-                      <div className="flex justify-between items-center text-slate-400 text-[11px] mb-1">
-                        <span>Expected in Cash Drawer:</span>
-                        <span className="font-bold text-emerald-600 dark:text-emerald-400">Net Safe</span>
-                      </div>
-                      <div className="text-lg font-black font-mono text-emerald-600 dark:text-emerald-400">
-                        {formatCurrency(netExpectedDrawer)}
-                      </div>
-                      <div className="flex justify-between text-[10px] text-slate-400 mt-1">
-                        <span>Gross In: {formatCurrency(grossCashSales)}</span>
-                        <span>Outflows: -{formatCurrency(totalPettyCash)}</span>
-                      </div>
+                  <div className="my-auto py-2 space-y-1.5 text-xs">
+                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+                      <span>Expected in Drawer:</span>
+                      <span className="font-bold font-mono text-emerald-600 dark:text-emerald-400">{formatCurrency(netExpectedDrawer)}</span>
                     </div>
-
-                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400 px-1 text-[11px]">
+                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
                       <span>Recent Outflow:</span>
-                      <span className="font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[140px]">
-                        {latestExpense ? `${latestExpense.categoryIcon || '☕'} ${latestExpense.description || 'Outflow'}` : 'No petty expenses'}
+                      <span className="font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[130px]">
+                        {latestExpense ? `${latestExpense.categoryIcon || '☕'} ${latestExpense.description || 'Expense'}` : 'No outflows today'}
                       </span>
                     </div>
                   </div>
 
-                  <div className="mt-auto pt-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
+                  <div className="mt-auto pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
                     <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20">
                       EOD Safe
                     </span>
@@ -971,11 +979,10 @@ const DashboardTab = (props) => {
                 </div>
 
                 {/* TILE 2: LOUNGE RADIO & PA MIC */}
-                <div className={`p-6 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow min-h-[320px] ${
-                  darkMode 
-                    ? 'bg-slate-900/90 border-slate-800/80 text-slate-100 shadow-black/20' 
-                    : 'bg-white border-slate-200 text-slate-800 shadow-slate-200/50'
-                }`}>
+                <div 
+                  className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow"
+                  style={{ height: topCardHeight ? `${topCardHeight}px` : undefined }}
+                >
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Lounge Radio &amp; PA</p>
@@ -992,20 +999,19 @@ const DashboardTab = (props) => {
                     </div>
                   </div>
 
-                  <div className="my-3 space-y-2 text-xs">
-                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400 px-1 text-[11px]">
+                  <div className="my-auto py-2 space-y-1.5 text-xs">
+                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
                       <span>Store Audio:</span>
-                      <span className="font-semibold text-purple-600 dark:text-purple-400 truncate max-w-[140px]">
+                      <span className="font-semibold text-purple-600 dark:text-purple-400 truncate max-w-[130px]">
                         {isSpeakingPa ? activePaLabel : 'Mic & Music Active'}
                       </span>
                     </div>
-
-                    <div className="grid grid-cols-2 gap-1.5">
+                    <div className="grid grid-cols-4 gap-1">
                       <button
                         type="button"
                         onClick={() => quickAnnounce('Welcome', 'Welcome to Cobb Italy. We are delighted to have you in our store today.')}
                         disabled={isSpeakingPa}
-                        className={`py-2 px-2 rounded-xl text-xs font-bold text-center transition-all cursor-pointer truncate border ${
+                        className={`py-1 rounded text-[10px] font-bold text-center transition-all cursor-pointer truncate border ${
                           darkMode ? 'bg-slate-800/80 hover:bg-slate-700 text-slate-200 border-slate-700/60' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200/80'
                         }`}
                         title="Welcome Greeting"
@@ -1016,39 +1022,39 @@ const DashboardTab = (props) => {
                         type="button"
                         onClick={() => quickAnnounce('Offer', 'Dear valued customers, purchase any two shirts and receive one complimentary.')}
                         disabled={isSpeakingPa}
-                        className={`py-2 px-2 rounded-xl text-xs font-bold text-center transition-all cursor-pointer truncate border ${
+                        className={`py-1 rounded text-[10px] font-bold text-center transition-all cursor-pointer truncate border ${
                           darkMode ? 'bg-slate-800/80 hover:bg-slate-700 text-slate-200 border-slate-700/60' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200/80'
                         }`}
                         title="Shirt Combo Offer"
                       >
-                        👔 Shirt Offer
+                        👔 Offer
                       </button>
                       <button
                         type="button"
                         onClick={() => quickAnnounce('Trial', 'Attention customers in trial rooms, please let staff know if you need another size.')}
                         disabled={isSpeakingPa}
-                        className={`py-2 px-2 rounded-xl text-xs font-bold text-center transition-all cursor-pointer truncate border ${
+                        className={`py-1 rounded text-[10px] font-bold text-center transition-all cursor-pointer truncate border ${
                           darkMode ? 'bg-slate-800/80 hover:bg-slate-700 text-slate-200 border-slate-700/60' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200/80'
                         }`}
                         title="Trial Room Assist"
                       >
-                        🚪 Trial Assist
+                        🚪 Trial
                       </button>
                       <button
                         type="button"
                         onClick={() => quickAnnounce('Closing', 'Dear valued customers, our store will be closing shortly for the evening.')}
                         disabled={isSpeakingPa}
-                        className={`py-2 px-2 rounded-xl text-xs font-bold text-center transition-all cursor-pointer truncate border ${
+                        className={`py-1 rounded text-[10px] font-bold text-center transition-all cursor-pointer truncate border ${
                           darkMode ? 'bg-slate-800/80 hover:bg-slate-700 text-slate-200 border-slate-700/60' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200/80'
                         }`}
                         title="Closing Reminder"
                       >
-                        ⏰ Closing Call
+                        ⏰ Close
                       </button>
                     </div>
                   </div>
 
-                  <div className="mt-auto pt-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
+                  <div className="mt-auto pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
                     <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 bg-purple-500/10 px-2.5 py-0.5 rounded-full border border-purple-500/20">
                       PA &amp; Music
                     </span>
@@ -1065,11 +1071,10 @@ const DashboardTab = (props) => {
                 </div>
 
                 {/* TILE 3: HOLD DESK */}
-                <div className={`p-6 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow min-h-[320px] ${
-                  darkMode 
-                    ? 'bg-slate-900/90 border-slate-800/80 text-slate-100 shadow-black/20' 
-                    : 'bg-white border-slate-200 text-slate-800 shadow-slate-200/50'
-                }`}>
+                <div 
+                  className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow"
+                  style={{ height: topCardHeight ? `${topCardHeight}px` : undefined }}
+                >
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Hold Desk</p>
@@ -1082,31 +1087,22 @@ const DashboardTab = (props) => {
                     </div>
                   </div>
 
-                  <div className="my-3 space-y-2.5 text-xs">
-                    <div className={`p-3 rounded-xl border ${
-                      darkMode ? 'bg-slate-800/50 border-slate-700/60' : 'bg-slate-50 border-slate-100'
-                    }`}>
-                      <div className="flex justify-between items-center text-slate-400 text-[11px] mb-1">
-                        <span>Checkout Lane:</span>
-                        <span className={`font-bold ${activeHolds.length > 0 ? 'text-amber-500' : 'text-emerald-500'}`}>
-                          {activeHolds.length > 0 ? `${activeHolds.length} Carts Reserved` : 'Register Clear'}
-                        </span>
-                      </div>
-                      <div className="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate">
-                        {latestHold ? `Cart: ${latestHold.customerName || 'Customer'} • ₹${latestHold.totalAmount || 0}` : 'No customers on hold'}
-                      </div>
-                      <p className="text-[10px] text-slate-400 mt-1">
-                        Prevents POS queue stalling while shoppers browse.
-                      </p>
+                  <div className="my-auto py-2 space-y-1.5 text-xs">
+                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+                      <span>Checkout Lane:</span>
+                      <span className={`font-semibold ${activeHolds.length > 0 ? 'text-amber-500' : 'text-slate-700 dark:text-slate-200'}`}>
+                        {activeHolds.length > 0 ? `${activeHolds.length} Reserved` : 'Register Clear'}
+                      </span>
                     </div>
-
-                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400 px-1 text-[11px]">
+                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
                       <span>Hold Policy:</span>
-                      <span className="font-semibold text-slate-700 dark:text-slate-200">30 Min Auto-Expire</span>
+                      <span className="font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[130px]">
+                        30 Min Auto-Expire
+                      </span>
                     </div>
                   </div>
 
-                  <div className="mt-auto pt-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
+                  <div className="mt-auto pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
                     <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 bg-purple-500/10 px-2.5 py-0.5 rounded-full border border-purple-500/20">
                       {activeHolds.length} Active
                     </span>
@@ -1123,11 +1119,10 @@ const DashboardTab = (props) => {
                 </div>
 
                 {/* TILE 4: SAVE-THE-SALE NETWORK */}
-                <div className={`p-6 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow min-h-[320px] ${
-                  darkMode 
-                    ? 'bg-slate-900/90 border-slate-800/80 text-slate-100 shadow-black/20' 
-                    : 'bg-white border-slate-200 text-slate-800 shadow-slate-200/50'
-                }`}>
+                <div 
+                  className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow"
+                  style={{ height: topCardHeight ? `${topCardHeight}px` : undefined }}
+                >
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Save-The-Sale</p>
@@ -1140,29 +1135,20 @@ const DashboardTab = (props) => {
                     </div>
                   </div>
 
-                  <div className="my-3 space-y-2.5 text-xs">
-                    <div className={`p-3 rounded-xl border ${
-                      darkMode ? 'bg-slate-800/50 border-slate-700/60' : 'bg-slate-50 border-slate-100'
-                    }`}>
-                      <div className="flex justify-between items-center text-slate-400 text-[11px] mb-1">
-                        <span>Cross-Store Radar:</span>
-                        <span className="font-bold text-emerald-600 dark:text-emerald-400">Online</span>
-                      </div>
-                      <p className="text-xs font-medium text-slate-700 dark:text-slate-200 leading-snug">
-                        Instant SKU search across partner branches when size or fit is out of stock.
-                      </p>
-                      <p className="text-[10px] text-slate-400 mt-1">
-                        Zero walk-away policy • 1-tap WhatsApp dispatch
-                      </p>
+                  <div className="my-auto py-2 space-y-1.5 text-xs">
+                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+                      <span>Branch Radar:</span>
+                      <span className="font-semibold text-emerald-600 dark:text-emerald-400">Online</span>
                     </div>
-
-                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400 px-1 text-[11px]">
-                      <span>Network Reach:</span>
-                      <span className="font-semibold text-emerald-600 dark:text-emerald-400">All Cobb Outlets</span>
+                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+                      <span>Store Network:</span>
+                      <span className="font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[130px]">
+                        All Cobb Outlets
+                      </span>
                     </div>
                   </div>
 
-                  <div className="mt-auto pt-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
+                  <div className="mt-auto pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
                     <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
                       Inter-Branch
                     </span>
