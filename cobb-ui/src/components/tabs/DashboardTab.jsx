@@ -88,6 +88,7 @@ const DashboardTab = (props) => {
   // Fast Counter Offer & Discount Calc state
   const [calcMrp, setCalcMrp] = React.useState(1999);
   const [calcOffer, setCalcOffer] = React.useState('50');
+  const [b1g3Items, setB1g3Items] = React.useState([1700, 1800, 1900]);
 
   // Ref and height state to guarantee operational tiles match the exact pixel height of top KPI cards
   const topCardRef = React.useRef(null);
@@ -1124,27 +1125,40 @@ const DashboardTab = (props) => {
 
                 {/* TILE 4: SMART COUNTER DISCOUNT & OFFER CALC */}
                 {(() => {
-                  const numMrp = Math.max(0, Number(calcMrp) || 0);
-                  let finalPrice = 0;
-                  let savings = 0;
+                  const isB1G3 = calcOffer === 'b1g3';
+                  const p1 = Number(b1g3Items[0]) || 0;
+                  const p2 = Number(b1g3Items[1]) || 0;
+                  const p3 = Number(b1g3Items[2]) || 0;
+                  const highestMrp = Math.max(p1, p2, p3);
+                  const sumMrp = p1 + p2 + p3;
+                  const effPerPc = Math.round(highestMrp / 3);
+
+                  let displayFinal = 0;
+                  let displayOriginal = 0;
+                  let displaySavings = 0;
                   let offerTitle = '50% Off';
 
-                  if (calcOffer === '50') {
-                    finalPrice = Math.round(numMrp * 0.5);
-                    savings = numMrp - finalPrice;
-                    offerTitle = '50% Off';
-                  } else if (calcOffer === '40') {
-                    finalPrice = Math.round(numMrp * 0.6);
-                    savings = numMrp - finalPrice;
-                    offerTitle = '40% Off';
-                  } else if (calcOffer === '60') {
-                    finalPrice = Math.round(numMrp * 0.4);
-                    savings = numMrp - finalPrice;
-                    offerTitle = '60% Off';
-                  } else if (calcOffer === 'b1g3') {
-                    finalPrice = Math.round(numMrp / 4);
-                    savings = numMrp - finalPrice;
-                    offerTitle = 'B1G3 (/pc)';
+                  if (isB1G3) {
+                    displayFinal = highestMrp;
+                    displayOriginal = sumMrp;
+                    displaySavings = Math.max(0, sumMrp - highestMrp);
+                    offerTitle = `B1G3 (Bill ₹${highestMrp.toLocaleString('en-IN')})`;
+                  } else {
+                    const numMrp = Math.max(0, Number(calcMrp) || 0);
+                    displayOriginal = numMrp;
+                    if (calcOffer === '50') {
+                      displayFinal = Math.round(numMrp * 0.5);
+                      displaySavings = numMrp - displayFinal;
+                      offerTitle = '50% Off';
+                    } else if (calcOffer === '40') {
+                      displayFinal = Math.round(numMrp * 0.6);
+                      displaySavings = numMrp - displayFinal;
+                      offerTitle = '40% Off';
+                    } else if (calcOffer === '60') {
+                      displayFinal = Math.round(numMrp * 0.4);
+                      displaySavings = numMrp - displayFinal;
+                      offerTitle = '60% Off';
+                    }
                   }
 
                   return (
@@ -1157,11 +1171,16 @@ const DashboardTab = (props) => {
                           <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Fast Offer Quote</p>
                           <div className="flex items-baseline gap-2 mt-2">
                             <h3 className="text-3xl font-black text-emerald-600 dark:text-emerald-400">
-                              ₹{finalPrice.toLocaleString('en-IN')}
+                              ₹{displayFinal.toLocaleString('en-IN')}
                             </h3>
                             <span className="text-[11px] font-bold text-slate-400 line-through">
-                              ₹{numMrp.toLocaleString('en-IN')}
+                              ₹{displayOriginal.toLocaleString('en-IN')}
                             </span>
+                            {isB1G3 && (
+                              <span className="text-[10px] font-bold text-blue-500 dark:text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/20">
+                                ₹{effPerPc}/pc
+                              </span>
+                            )}
                           </div>
                         </div>
                         <div className="p-3 bg-emerald-500/10 text-emerald-500 rounded-xl border border-emerald-500/20">
@@ -1170,26 +1189,58 @@ const DashboardTab = (props) => {
                       </div>
 
                       <div className="my-auto py-1 space-y-1.5 text-xs">
-                        {/* MRP Preset Chips */}
-                        <div className="flex items-center gap-1">
-                          <span className="text-[10px] font-bold text-slate-400 w-8">MRP:</span>
-                          <div className="flex-1 grid grid-cols-4 gap-1">
-                            {[999, 1499, 1999, 2499].map(preset => (
-                              <button
-                                key={preset}
-                                type="button"
-                                onClick={() => setCalcMrp(preset)}
-                                className={`py-1 rounded-md text-[10px] font-bold border transition-all cursor-pointer truncate ${
-                                  calcMrp === preset 
-                                    ? 'bg-blue-600 text-white border-blue-600 shadow-xs' 
-                                    : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200/80 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
-                                }`}
-                              >
-                                ₹{preset}
-                              </button>
-                            ))}
+                        {/* Price Inputs: Multi-item for B1G3, or preset chips for % discounts */}
+                        {isB1G3 ? (
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] font-bold text-slate-400 w-8">3 Pcs:</span>
+                            <div className="flex-1 grid grid-cols-3 gap-1">
+                              <input
+                                type="number"
+                                value={b1g3Items[0] === 0 ? '' : b1g3Items[0]}
+                                onChange={(e) => setB1g3Items([parseInt(e.target.value) || 0, b1g3Items[1], b1g3Items[2]])}
+                                className="w-full py-1 px-1 text-center font-bold text-[10px] rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                placeholder="P1"
+                                title="Piece 1 MRP"
+                              />
+                              <input
+                                type="number"
+                                value={b1g3Items[1] === 0 ? '' : b1g3Items[1]}
+                                onChange={(e) => setB1g3Items([b1g3Items[0], parseInt(e.target.value) || 0, b1g3Items[2]])}
+                                className="w-full py-1 px-1 text-center font-bold text-[10px] rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                placeholder="P2"
+                                title="Piece 2 MRP"
+                              />
+                              <input
+                                type="number"
+                                value={b1g3Items[2] === 0 ? '' : b1g3Items[2]}
+                                onChange={(e) => setB1g3Items([b1g3Items[0], b1g3Items[1], parseInt(e.target.value) || 0])}
+                                className="w-full py-1 px-1 text-center font-bold text-[10px] rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                placeholder="P3"
+                                title="Piece 3 MRP"
+                              />
+                            </div>
                           </div>
-                        </div>
+                        ) : (
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] font-bold text-slate-400 w-8">MRP:</span>
+                            <div className="flex-1 grid grid-cols-4 gap-1">
+                              {[999, 1499, 1999, 2499].map(preset => (
+                                <button
+                                  key={preset}
+                                  type="button"
+                                  onClick={() => setCalcMrp(preset)}
+                                  className={`py-1 rounded-md text-[10px] font-bold border transition-all cursor-pointer truncate ${
+                                    calcMrp === preset 
+                                      ? 'bg-blue-600 text-white border-blue-600 shadow-xs' 
+                                      : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200/80 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+                                  }`}
+                                >
+                                  ₹{preset}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
 
                         {/* Offer Preset Buttons */}
                         <div className="flex items-center gap-1">
@@ -1219,11 +1270,11 @@ const DashboardTab = (props) => {
                       </div>
 
                       <div className="mt-auto pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
-                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
-                          {offerTitle} • Save ₹{savings.toLocaleString('en-IN')}
+                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20 truncate max-w-[170px]">
+                          {isB1G3 ? `Highest MRP • Save ₹${displaySavings.toLocaleString('en-IN')}` : `${offerTitle} • Save ₹${displaySavings.toLocaleString('en-IN')}`}
                         </span>
                         <span className="text-[10px] font-semibold text-slate-400">
-                          Instant Counter Quote
+                          {isB1G3 ? '3 Pcs Total' : 'Instant Quote'}
                         </span>
                       </div>
                     </div>
