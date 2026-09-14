@@ -351,95 +351,157 @@ const DashboardTab = (props) => {
 
               {/* Visual Sales Trend */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">
-                {/* Dispatched Messages Progress & Telemetry */}
+                {/* Automation Engine Dispatched Messages (Checkouts vs Exchanges) */}
                 {(() => {
-                  const sent = broadcastStatus?.sentCount || 0;
-                  const total = broadcastStatus?.total || broadcastGroupCount || 0;
-                  const failed = broadcastStatus?.failedCount || 0;
-                  const isRunning = broadcastStatus?.isRunning;
-                  const pct = total > 0 ? Math.min(Math.round((sent / total) * 100), 100) : 0;
+                  // 1. Analyze listener logs for real-time dispatches
+                  const logs = Array.isArray(listenerLogs) ? listenerLogs : [];
+                  const checkoutLogs = logs.filter(l => typeof l === 'string' && (l.includes('[SUCCESS] Regular Bill') || l.includes('Regular Bill sent')));
+                  const exchangeLogs = logs.filter(l => typeof l === 'string' && (l.includes('[EXCHANGE SUCCESS]') || l.includes('Sent slip') || l.includes('Exchange')));
+
+                  // 2. Count metrics (combining logs and daily operational totals)
+                  const checkoutsCount = Math.max(checkoutLogs.length, overviewStats?.today?.BillCount || 0);
+                  const exchangesCount = Math.max(exchangeLogs.length, returnsData?.today?.ExchangeCount || returnsData?.today?.ReturnCount || 0);
+                  const totalDispatches = checkoutsCount + exchangesCount;
+                  
+                  const checkoutPct = totalDispatches > 0 ? Math.round((checkoutsCount / totalDispatches) * 100) : 0;
+                  const exchangePct = totalDispatches > 0 ? (100 - checkoutPct) : 0;
+
+                  // 3. Extract latest dispatch reason
+                  const latestLog = logs.slice().reverse().find(l => typeof l === 'string' && (l.includes('[SUCCESS]') || l.includes('[EXCHANGE SUCCESS]')));
+                  let latestReason = 'Monitoring counter checkouts & exchanges...';
+                  if (latestLog) {
+                    if (latestLog.includes('[EXCHANGE SUCCESS]')) {
+                      latestReason = 'Latest: 🔄 Exchange Slip sent to customer';
+                    } else if (latestLog.includes('[SUCCESS] Regular Bill')) {
+                      latestReason = 'Latest: 🧾 Checkout Receipt sent to customer';
+                    }
+                  } else if (checkoutsCount > 0 || exchangesCount > 0) {
+                    latestReason = `${checkoutsCount} checkouts & ${exchangesCount} exchanges dispatched today`;
+                  }
 
                   return (
                     <div className={`rounded-2xl border shadow-sm p-6 flex flex-col justify-between transition-colors ${
                       darkMode ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-800'
                     }`}>
                       <div className="flex justify-between items-center mb-4">
-                        <h3 className="font-bold flex items-center gap-2 text-slate-800 dark:text-slate-100">
-                          <Send className="w-4 h-4 text-emerald-500" />
-                          <span>Dispatched Messages</span>
-                        </h3>
                         <div className="flex items-center gap-2">
-                          <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border flex items-center gap-1 ${
-                            isRunning
-                              ? 'bg-amber-500/10 text-amber-500 border-amber-500/30 animate-pulse'
-                              : isGatewayReady
-                                ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30'
-                                : 'bg-slate-500/10 text-slate-400 border-slate-500/20'
+                          <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                            <Zap className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                              <span>Automation Dispatches</span>
+                            </h3>
+                            <p className="text-[10px] text-slate-400 font-medium">Automatic WhatsApp Slip Delivery</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border flex items-center gap-1.5 ${
+                            isListenerRunning
+                              ? darkMode ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : darkMode ? 'bg-amber-950/60 text-amber-300 border-amber-800/60' : 'bg-amber-50 text-amber-700 border-amber-200'
                           }`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${isRunning ? 'bg-amber-500 animate-ping' : isGatewayReady ? 'bg-emerald-500' : 'bg-slate-400'}`}></span>
-                            <span>{isRunning ? 'Broadcasting' : isGatewayReady ? 'Gateway Active' : 'Gateway Standby'}</span>
+                            <span className={`w-1.5 h-1.5 rounded-full ${isListenerRunning ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`}></span>
+                            <span>{isListenerRunning ? 'Engine Active' : 'Engine Idle'}</span>
                           </span>
                           <button 
-                            onClick={() => setActiveTab('broadcast')} 
-                            className="text-xs font-bold text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 cursor-pointer"
+                            onClick={() => setActiveTab('automation')} 
+                            className="text-xs font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 cursor-pointer"
+                            title="View POS Listener and WhatsApp Gateway Logs"
                           >
-                            Manage &rarr;
+                            Logs &rarr;
                           </button>
                         </div>
                       </div>
 
-                      {/* Stat Counters */}
-                      <div className="grid grid-cols-3 gap-2.5 mb-4">
-                        <div className={`p-2.5 rounded-xl border text-center ${
-                          darkMode ? 'bg-slate-800/60 border-slate-700/60' : 'bg-emerald-50/50 border-emerald-100'
+                      {/* Dispatched Reasons: New Checkout vs Exchange Cards */}
+                      <div className="grid grid-cols-2 gap-3 mb-3.5">
+                        {/* New Checkouts */}
+                        <div className={`p-3 rounded-xl border flex flex-col justify-between ${
+                          darkMode ? 'bg-slate-800/60 border-slate-700/60' : 'bg-blue-50/60 border-blue-100'
                         }`}>
-                          <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">Dispatched</span>
-                          <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">{sent}</span>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                              <Receipt className="w-3 h-3" /> New Checkouts
+                            </span>
+                            <span className="text-[10px] font-bold text-slate-400">{checkoutPct}%</span>
+                          </div>
+                          <div className="mt-1 flex items-baseline justify-between">
+                            <span className="text-xl font-black text-slate-800 dark:text-slate-100">{checkoutsCount}</span>
+                            <span className="text-[10px] text-slate-400 font-medium">Digital Bills</span>
+                          </div>
+                          <p className="text-[10px] text-slate-500 mt-0.5 truncate">Auto PDF & Review Link</p>
                         </div>
 
-                        <div className={`p-2.5 rounded-xl border text-center ${
-                          darkMode ? 'bg-slate-800/60 border-slate-700/60' : 'bg-blue-50/50 border-blue-100'
+                        {/* Product Exchanges */}
+                        <div className={`p-3 rounded-xl border flex flex-col justify-between ${
+                          darkMode ? 'bg-slate-800/60 border-slate-700/60' : 'bg-amber-50/60 border-amber-100'
                         }`}>
-                          <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">Audience Pool</span>
-                          <span className="text-lg font-black text-blue-600 dark:text-blue-400">{total}</span>
-                        </div>
-
-                        <div className={`p-2.5 rounded-xl border text-center ${
-                          darkMode ? 'bg-slate-800/60 border-slate-700/60' : 'bg-slate-50 border-slate-100'
-                        }`}>
-                          <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block">Failed / Skip</span>
-                          <span className="text-lg font-black text-slate-600 dark:text-slate-300">{failed}</span>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                              <RotateCcw className="w-3 h-3" /> Exchanges
+                            </span>
+                            <span className="text-[10px] font-bold text-slate-400">{exchangePct}%</span>
+                          </div>
+                          <div className="mt-1 flex items-baseline justify-between">
+                            <span className="text-xl font-black text-slate-800 dark:text-slate-100">{exchangesCount}</span>
+                            <span className="text-[10px] text-slate-400 font-medium">Slip Sent</span>
+                          </div>
+                          <p className="text-[10px] text-slate-500 mt-0.5 truncate">Replacement & Credit Note</p>
                         </div>
                       </div>
 
-                      {/* Progress Bar for Dispatched Messages */}
+                      {/* Split Dispatched Progress Bar */}
                       <div className="space-y-1.5">
                         <div className="flex justify-between items-center text-[11px]">
-                          <span className="text-slate-500 dark:text-slate-400 font-medium">
-                            {isRunning 
-                              ? `Broadcasting: ${sent} of ${total} delivered`
-                              : sent > 0 
-                                ? `${sent} messages delivered to customer group`
-                                : 'Ready to dispatch WhatsApp campaign'}
+                          <span className="text-slate-500 dark:text-slate-400 font-medium truncate max-w-[210px] sm:max-w-xs">
+                            {latestReason}
                           </span>
-                          <span className="font-extrabold text-emerald-600 dark:text-emerald-400">
-                            {pct}%
+                          <span className="font-extrabold text-slate-700 dark:text-slate-300 shrink-0">
+                            {totalDispatches} Dispatched Today
                           </span>
                         </div>
-                        <div className={`w-full h-3 rounded-full overflow-hidden ${darkMode ? 'bg-slate-800' : 'bg-slate-100'} p-0.5`}>
-                          <div
-                            className={`h-full rounded-full transition-all duration-500 ${
-                              isRunning
-                                ? 'bg-gradient-to-r from-amber-500 via-emerald-500 to-teal-400 animate-pulse'
-                                : 'bg-gradient-to-r from-emerald-500 to-teal-500'
-                            }`}
-                            style={{ width: `${Math.max(pct, total > 0 && sent === 0 ? 0 : 4)}%` }}
-                          />
+
+                        {/* Dual-Color Segmented Bar (Checkouts vs Exchanges) */}
+                        <div className={`w-full h-3 rounded-full overflow-hidden ${darkMode ? 'bg-slate-800' : 'bg-slate-100'} flex p-0.5 gap-0.5`}>
+                          {totalDispatches === 0 ? (
+                            <div className="w-full h-full rounded-full bg-slate-200 dark:bg-slate-700"></div>
+                          ) : (
+                            <>
+                              {checkoutsCount > 0 && (
+                                <div 
+                                  className="h-full rounded-l-full bg-gradient-to-r from-blue-600 to-indigo-500 transition-all duration-500"
+                                  style={{ width: `${checkoutPct}%` }}
+                                  title={`${checkoutsCount} New Checkouts (${checkoutPct}%)`}
+                                />
+                              )}
+                              {exchangesCount > 0 && (
+                                <div 
+                                  className={`h-full ${checkoutsCount > 0 ? 'rounded-r-full' : 'rounded-full'} bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-500`}
+                                  style={{ width: `${exchangePct}%` }}
+                                  title={`${exchangesCount} Product Exchanges (${exchangePct}%)`}
+                                />
+                              )}
+                            </>
+                          )}
                         </div>
-                        <p className="text-[10px] text-slate-400 flex justify-between pt-0.5">
-                          <span>WhatsApp Business Bridge</span>
-                          <span>Anti-Ban Safeguard Active</span>
-                        </p>
+
+                        {/* Legend */}
+                        <div className="flex items-center justify-between text-[10px] text-slate-400 pt-0.5">
+                          <div className="flex items-center gap-3">
+                            <span className="flex items-center gap-1">
+                              <span className="w-2 h-2 rounded-xs bg-blue-600 inline-block"></span>
+                              <span>Checkouts ({checkoutsCount})</span>
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <span className="w-2 h-2 rounded-xs bg-amber-500 inline-block"></span>
+                              <span>Exchanges ({exchangesCount})</span>
+                            </span>
+                          </div>
+                          <span className="font-semibold text-emerald-600 dark:text-emerald-400">
+                            WhatsApp POS Listener
+                          </span>
+                        </div>
                       </div>
                     </div>
                   );
