@@ -826,21 +826,37 @@ const DashboardTab = (props) => {
                   </div>
                 )}
 
-              {/* Child 3 of Row 1: Live Store Pulse */}
+              {/* Child 3 of Row 1: Live Store Pulse (Live Checkout Tile) */}
               <div 
-                className={`rounded-2xl border shadow-sm overflow-hidden flex flex-col transition-all h-full ${
+                className={`rounded-2xl border shadow-sm overflow-hidden flex flex-col transition-all h-[300px] lg:h-full md:col-span-2 lg:col-span-1 ${
                   darkMode 
                     ? 'bg-slate-900/90 border-slate-800/80 text-slate-100 shadow-black/20' 
                     : 'bg-white border-slate-200 text-slate-800 shadow-slate-200/50'
                 }`}
               >
-                <div className={`p-3.5 sm:p-4 border-b flex items-center justify-between transition-colors shrink-0 ${
+                <div className={`p-3 sm:p-4 border-b flex items-center justify-between transition-colors shrink-0 ${
                   darkMode ? 'bg-slate-800/40 border-slate-800/80' : 'bg-slate-50/50 border-slate-100'
                 }`}>
-                  <h3 className="text-sm font-bold flex items-center text-slate-900 dark:text-white">
-                    <Activity className="w-4 h-4 mr-2 text-emerald-500" /> Live Store Pulse
-                  </h3>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Latest Checkouts</span>
+                  <div className="flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-emerald-500" />
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                      <span>Live Store Pulse</span>
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    </h3>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider hidden sm:inline">Latest Checkouts</span>
+                    {typeof setActiveTab === 'function' && (
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('live')}
+                        className="text-[11px] font-bold text-blue-600 hover:text-blue-500 dark:text-blue-400 flex items-center gap-1 cursor-pointer transition-colors"
+                      >
+                        <span>View All ({liveBills.length})</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
                 <div className={`divide-y flex-1 min-h-0 overflow-y-auto custom-scrollbar ${
                   darkMode ? 'divide-slate-800/80' : 'divide-slate-100'
@@ -848,31 +864,34 @@ const DashboardTab = (props) => {
                   {liveBills.map((bill, idx) => (
                     <div 
                       key={idx} 
-                      className={`p-3 sm:p-3.5 transition-colors flex justify-between items-center cursor-pointer group ${
+                      className={`p-2.5 sm:p-3.5 transition-colors flex justify-between items-center cursor-pointer group ${
                         darkMode ? 'hover:bg-slate-800/50' : 'hover:bg-slate-50'
                       }`} 
                       onClick={() => setActiveTab('live')}
                     >
-                      <div>
-                        <p className="text-sm font-bold text-slate-800 dark:text-slate-100 group-hover:text-blue-500 transition-colors">
+                      <div className="min-w-0 flex-1 pr-2">
+                        <p className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100 truncate group-hover:text-blue-500 transition-colors">
                           {bill.CustomerName?.trim() || bill.FirstName?.trim() || 'Guest Customer'}
                         </p>
-                        <p className="text-xs text-slate-400 mt-0.5">
-                          {new Date(bill.BillTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • #{bill.BillNumber}
-                        </p>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded mt-1.5 inline-block ${
-                          bill.PaymentMode === 'Cash' 
-                            ? darkMode ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            : bill.PaymentMode === 'UPI / Online' 
-                              ? darkMode ? 'bg-purple-950/60 text-purple-300 border border-purple-800/60' : 'bg-purple-50 text-purple-700 border border-purple-200'
-                              : bill.PaymentMode === 'Debit / Credit Card' 
-                                ? darkMode ? 'bg-blue-950/60 text-blue-300 border border-blue-800/60' : 'bg-blue-50 text-blue-700 border border-blue-200'
-                                : darkMode ? 'bg-amber-950/60 text-amber-300 border border-amber-800/60' : 'bg-amber-50 text-amber-700 border border-amber-200'
-                        }`}>
-                          {bill.PaymentMode || 'Cash'}
-                        </span>
+                        <div className="flex items-center gap-1.5 mt-0.5 text-[10.5px] text-slate-400">
+                          <span>{new Date(bill.BillTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span>•</span>
+                          <span className="font-mono">#{bill.BillNumber}</span>
+                          <span>•</span>
+                          <span className={`font-bold px-1.5 py-0.5 rounded text-[9.5px] ${
+                            bill.PaymentMode === 'Cash' 
+                              ? darkMode ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              : bill.PaymentMode === 'UPI / Online' 
+                                ? darkMode ? 'bg-purple-950/60 text-purple-300 border border-purple-800/60' : 'bg-purple-50 text-purple-700 border border-purple-200'
+                                : bill.PaymentMode === 'Debit / Credit Card' 
+                                  ? darkMode ? 'bg-blue-950/60 text-blue-300 border border-blue-800/60' : 'bg-blue-50 text-blue-700 border border-blue-200'
+                                  : darkMode ? 'bg-amber-950/60 text-amber-300 border border-amber-800/60' : 'bg-amber-50 text-amber-700 border border-amber-200'
+                          }`}>
+                            {bill.PaymentMode || 'Cash'}
+                          </span>
+                        </div>
                       </div>
-                      <span className={`text-sm font-black px-2.5 py-1 rounded-lg ${
+                      <span className={`text-xs sm:text-sm font-black px-2 py-1 rounded-lg shrink-0 ${
                         darkMode ? 'text-emerald-400 bg-emerald-950/40 border border-emerald-800/40' : 'text-green-600 bg-green-50'
                       }`}>
                         {formatCurrency(bill.Amount)}
