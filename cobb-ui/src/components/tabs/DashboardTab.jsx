@@ -87,7 +87,7 @@ const DashboardTab = (props) => {
 
   // Fast Counter Offer & Discount Calc state
   const [calcMrp, setCalcMrp] = React.useState(1999);
-  const [calcOffer, setCalcOffer] = React.useState('50');
+  const [calcOffer, setCalcOffer] = React.useState('b3_70');
   const [b1g3Items, setB1g3Items] = React.useState([1700, 1800, 1900]);
 
   // Ref and height state to guarantee operational tiles match the exact pixel height of top KPI cards
@@ -1125,32 +1125,37 @@ const DashboardTab = (props) => {
 
                 {/* TILE 4: SMART COUNTER DISCOUNT & OFFER CALC */}
                 {(() => {
-                  const isB1G3 = calcOffer === 'b1g3';
+                  const isMultiItem = calcOffer === 'b1g3' || calcOffer === 'b3_70';
                   const p1 = Number(b1g3Items[0]) || 0;
                   const p2 = Number(b1g3Items[1]) || 0;
                   const p3 = Number(b1g3Items[2]) || 0;
                   const highestMrp = Math.max(p1, p2, p3);
                   const sumMrp = p1 + p2 + p3;
-                  const effPerPc = Math.round(highestMrp / 3);
 
                   let displayFinal = 0;
                   let displayOriginal = 0;
                   let displaySavings = 0;
-                  let offerTitle = '50% Off';
+                  let effPerPc = 0;
+                  let offerTitle = 'Buy 3 @ 70% Off';
 
-                  if (isB1G3) {
-                    displayFinal = highestMrp;
+                  if (calcOffer === 'b3_70') {
+                    // Buy 3 & get 70% off on total bill (Customer pays 30%)
                     displayOriginal = sumMrp;
+                    displayFinal = Math.round(sumMrp * 0.3);
+                    displaySavings = Math.max(0, sumMrp - displayFinal);
+                    effPerPc = Math.round(displayFinal / 3);
+                    offerTitle = `B3 @ 70% (Bill ₹${displayFinal.toLocaleString('en-IN')})`;
+                  } else if (calcOffer === 'b1g3') {
+                    // Buy 1 Get 3: Customer pays highest MRP among the 3 items
+                    displayOriginal = sumMrp;
+                    displayFinal = highestMrp;
                     displaySavings = Math.max(0, sumMrp - highestMrp);
+                    effPerPc = Math.round(highestMrp / 3);
                     offerTitle = `B1G3 (Bill ₹${highestMrp.toLocaleString('en-IN')})`;
                   } else {
                     const numMrp = Math.max(0, Number(calcMrp) || 0);
                     displayOriginal = numMrp;
-                    if (calcOffer === '50') {
-                      displayFinal = Math.round(numMrp * 0.5);
-                      displaySavings = numMrp - displayFinal;
-                      offerTitle = '50% Off';
-                    } else if (calcOffer === '40') {
+                    if (calcOffer === '40') {
                       displayFinal = Math.round(numMrp * 0.6);
                       displaySavings = numMrp - displayFinal;
                       offerTitle = '40% Off';
@@ -1176,7 +1181,7 @@ const DashboardTab = (props) => {
                             <span className="text-[11px] font-bold text-slate-400 line-through">
                               ₹{displayOriginal.toLocaleString('en-IN')}
                             </span>
-                            {isB1G3 && (
+                            {isMultiItem && (
                               <span className="text-[10px] font-bold text-blue-500 dark:text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/20">
                                 ₹{effPerPc}/pc
                               </span>
@@ -1189,8 +1194,8 @@ const DashboardTab = (props) => {
                       </div>
 
                       <div className="my-auto py-1 space-y-1.5 text-xs">
-                        {/* Price Inputs: Multi-item for B1G3, or preset chips for % discounts */}
-                        {isB1G3 ? (
+                        {/* Price Inputs: Multi-item for B3@70% & B1G3, or preset chips for % discounts */}
+                        {isMultiItem ? (
                           <div className="flex items-center gap-1">
                             <span className="text-[10px] font-bold text-slate-400 w-8">3 Pcs:</span>
                             <div className="flex-1 grid grid-cols-3 gap-1">
@@ -1247,10 +1252,10 @@ const DashboardTab = (props) => {
                           <span className="text-[10px] font-bold text-slate-400 w-8">Deal:</span>
                           <div className="flex-1 grid grid-cols-4 gap-1">
                             {[
-                              { id: '50', label: '50%' },
+                              { id: 'b3_70', label: 'B3@70%' },
+                              { id: 'b1g3', label: 'B1G3' },
                               { id: '40', label: '40%' },
                               { id: '60', label: '60%' },
-                              { id: 'b1g3', label: 'B1G3' },
                             ].map(opt => (
                               <button
                                 key={opt.id}
@@ -1271,10 +1276,14 @@ const DashboardTab = (props) => {
 
                       <div className="mt-auto pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
                         <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20 truncate max-w-[170px]">
-                          {isB1G3 ? `Highest MRP • Save ₹${displaySavings.toLocaleString('en-IN')}` : `${offerTitle} • Save ₹${displaySavings.toLocaleString('en-IN')}`}
+                          {calcOffer === 'b3_70'
+                            ? `70% Off Total • Save ₹${displaySavings.toLocaleString('en-IN')}`
+                            : calcOffer === 'b1g3'
+                              ? `Highest MRP • Save ₹${displaySavings.toLocaleString('en-IN')}`
+                              : `${offerTitle} • Save ₹${displaySavings.toLocaleString('en-IN')}`}
                         </span>
                         <span className="text-[10px] font-semibold text-slate-400">
-                          {isB1G3 ? '3 Pcs Total' : 'Instant Quote'}
+                          {isMultiItem ? '3 Pcs Total' : 'Instant Quote'}
                         </span>
                       </div>
                     </div>
