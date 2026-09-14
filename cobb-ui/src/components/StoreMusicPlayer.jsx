@@ -1,122 +1,153 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  Music,
   Play,
   Pause,
   SkipBack,
   SkipForward,
   Volume2,
   VolumeX,
+  Volume1,
+  Shuffle,
+  Repeat,
+  Heart,
+  ListMusic,
   Radio,
   Upload,
-  Disc,
-  ListMusic,
   Sparkles,
+  SlidersHorizontal,
+  FolderPlus,
   Loader2,
-  Headphones,
-  Sliders,
-  Trash2,
-  X
+  Check,
+  Disc3,
+  Music,
+  Wifi,
+  Trash2
 } from 'lucide-react';
 
 const STATIONS = [
   {
     id: 'groovesalad',
-    name: 'Groove Salad',
-    genre: 'Chill Lounge & Downtempo',
-    vibe: 'Relaxed Retail Vibe',
+    name: 'Chill Retail Lounge',
+    artist: 'SomaFM • Groove Salad',
+    genre: 'Downtempo Ambient Beats',
+    vibe: 'Relaxed Shopping Atmosphere',
     url: 'https://ice1.somafm.com/groovesalad-128-mp3',
-    tag: 'Ambient Lounge',
-    gradient: 'from-emerald-500 to-teal-600',
-    color: 'emerald',
+    gradient: 'from-[#10b981] via-[#059669] to-[#047857]',
+    accentColor: '#10b981',
+    coverIcon: '🌿',
   },
   {
     id: 'poptron',
-    name: 'PopTron',
-    genre: 'Electropop & Retail Hits',
-    vibe: 'Upbeat Fashion Energy',
+    name: 'Store Energy & Hits',
+    artist: 'SomaFM • PopTron',
+    genre: 'Electropop & Indie Commercial',
+    vibe: 'Youth Fashion & Peak Hours',
     url: 'https://ice1.somafm.com/poptron-128-mp3',
-    tag: 'Commercial Pop',
-    gradient: 'from-indigo-500 to-blue-600',
-    color: 'indigo',
+    gradient: 'from-[#6366f1] via-[#4f46e5] to-[#4338ca]',
+    accentColor: '#6366f1',
+    coverIcon: '⚡',
   },
   {
     id: 'suburbsofgoa',
-    name: 'Suburbs of Goa',
-    genre: 'Desi Fusion & Asian Lounge',
-    vibe: 'Indian Ambient Beats',
+    name: 'Desi Fusion & Lounge',
+    artist: 'SomaFM • Suburbs of Goa',
+    genre: 'Asian Lounge & Indian Chill',
+    vibe: 'Festive & Ethnic Ambient',
     url: 'https://ice1.somafm.com/suburbsofgoa-128-mp3',
-    tag: 'Desi Chill',
-    gradient: 'from-amber-500 to-orange-600',
-    color: 'amber',
+    gradient: 'from-[#f59e0b] via-[#d97706] to-[#b45309]',
+    accentColor: '#f59e0b',
+    coverIcon: '🪕',
   },
   {
     id: 'lush',
-    name: 'Lush Mellow',
-    genre: 'Warm Acoustic & Vocals',
-    vibe: 'Cozy Boutique Style',
+    name: 'Acoustic Boutique Cafe',
+    artist: 'SomaFM • Lush',
+    genre: 'Warm Vocals & Gentle Guitar',
+    vibe: 'Cozy Luxury Fitting Experience',
     url: 'https://ice1.somafm.com/lush-128-mp3',
-    tag: 'Acoustic',
-    gradient: 'from-rose-500 to-pink-600',
-    color: 'rose',
+    gradient: 'from-[#ec4899] via-[#db2777] to-[#be185d]',
+    accentColor: '#ec4899',
+    coverIcon: '☕',
   },
   {
     id: 'secretagent',
-    name: 'Secret Agent',
-    genre: 'Retro Spy & Jazz Lounge',
-    vibe: 'Classy Menswear Feel',
+    name: 'Classy Menswear Jazz',
+    artist: 'SomaFM • Secret Agent',
+    genre: 'Retro Spy Lounge & Smooth Jazz',
+    vibe: 'Sophisticated Suiting & Formal',
     url: 'https://ice1.somafm.com/secretagent-128-mp3',
-    tag: 'Jazz & Retro',
-    gradient: 'from-cyan-500 to-blue-600',
-    color: 'cyan',
+    gradient: 'from-[#06b6d4] via-[#0891b2] to-[#0e7490]',
+    accentColor: '#06b6d4',
+    coverIcon: '🍸',
   },
   {
     id: 'indiepop',
-    name: 'Indie Pop',
-    genre: 'Modern Indie & Youth Hits',
-    vibe: 'Fresh Trend Vibe',
+    name: 'Casual Streetwear Beats',
+    artist: 'SomaFM • Indie Pop',
+    genre: 'Modern Indie & Guitar Pop',
+    vibe: 'Denim & Trendy Casuals',
     url: 'https://ice1.somafm.com/indiepop-128-mp3',
-    tag: 'Youth Hits',
-    gradient: 'from-purple-500 to-fuchsia-600',
-    color: 'purple',
+    gradient: 'from-[#8b5cf6] via-[#7c3aed] to-[#6d28d9]',
+    accentColor: '#8b5cf6',
+    coverIcon: '🎧',
   },
 ];
 
 export default function StoreMusicPlayer() {
   const [mode, setMode] = useState('radio'); // 'radio' | 'local'
-  const [currentStationIdx, setCurrentStationIdx] = useState(0);
+  const [stationIdx, setStationIdx] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [volume, setVolume] = useState(() => {
-    const saved = localStorage.getItem('cobb_bgm_vol');
+    const saved = localStorage.getItem('cobb_spotify_vol');
     return saved !== null ? parseFloat(saved) : 0.75;
   });
   const [isMuted, setIsMuted] = useState(false);
-  const [showStations, setShowStations] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
+  const [shuffle, setShuffle] = useState(false);
+  const [repeat, setRepeat] = useState(false);
+  const [showQueue, setShowQueue] = useState(false);
 
-  // Local playlist state
+  // Streaming uptime simulation
+  const [streamElapsed, setStreamElapsed] = useState(0);
+
+  // Local files
   const [localTracks, setLocalTracks] = useState([]);
-  const [currentLocalIdx, setCurrentLocalIdx] = useState(0);
+  const [localIdx, setLocalIdx] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
 
   const audioRef = useRef(null);
   const fileInputRef = useRef(null);
+  const streamTimerRef = useRef(null);
 
-  // Sync volume with audio element
+  // Sync volume
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.volume = isMuted ? 0 : volume;
     }
   }, [volume, isMuted]);
 
-  // Handle station change
-  const selectStation = (index, autoPlay = true) => {
-    setCurrentStationIdx(index);
+  // Stream elapsed timer when playing live radio
+  useEffect(() => {
+    if (isPlaying && mode === 'radio') {
+      streamTimerRef.current = setInterval(() => {
+        setStreamElapsed(prev => prev + 1);
+      }, 1000);
+    } else {
+      clearInterval(streamTimerRef.current);
+      if (!isPlaying) setStreamElapsed(0);
+    }
+    return () => clearInterval(streamTimerRef.current);
+  }, [isPlaying, mode]);
+
+  const selectStation = (idx, autoPlay = true) => {
+    setStationIdx(idx);
     setMode('radio');
+    setStreamElapsed(0);
     if (audioRef.current) {
       audioRef.current.pause();
-      audioRef.current.src = STATIONS[index].url;
+      audioRef.current.src = STATIONS[idx].url;
       audioRef.current.load();
       if (autoPlay) {
         setIsLoading(true);
@@ -135,14 +166,13 @@ export default function StoreMusicPlayer() {
     }
   };
 
-  // Handle local track selection
-  const selectLocalTrack = (index, autoPlay = true) => {
-    if (localTracks.length === 0 || !localTracks[index]) return;
-    setCurrentLocalIdx(index);
+  const selectLocalTrack = (idx, autoPlay = true) => {
+    if (!localTracks[idx]) return;
+    setLocalIdx(idx);
     setMode('local');
     if (audioRef.current) {
       audioRef.current.pause();
-      audioRef.current.src = localTracks[index].url;
+      audioRef.current.src = localTracks[idx].url;
       audioRef.current.load();
       if (autoPlay) {
         setIsLoading(true);
@@ -158,94 +188,86 @@ export default function StoreMusicPlayer() {
     }
   };
 
-  // Toggle play / pause
   const togglePlay = () => {
     if (!audioRef.current) return;
-
     if (isPlaying) {
       audioRef.current.pause();
       setIsPlaying(false);
       setIsLoading(false);
     } else {
       setIsLoading(true);
-      // Ensure source is loaded
       if (!audioRef.current.src) {
         if (mode === 'radio') {
-          audioRef.current.src = STATIONS[currentStationIdx].url;
+          audioRef.current.src = STATIONS[stationIdx].url;
         } else if (localTracks.length > 0) {
-          audioRef.current.src = localTracks[currentLocalIdx].url;
+          audioRef.current.src = localTracks[localIdx].url;
         }
       }
       audioRef.current.play().then(() => {
         setIsPlaying(true);
         setIsLoading(false);
       }).catch(err => {
-        console.warn('Audio play failure:', err);
+        console.warn('Play failed:', err);
         setIsPlaying(false);
         setIsLoading(false);
       });
     }
   };
 
-  // Next track / station
   const handleNext = () => {
     if (mode === 'radio') {
-      const nextIdx = (currentStationIdx + 1) % STATIONS.length;
+      let nextIdx;
+      if (shuffle) {
+        nextIdx = Math.floor(Math.random() * STATIONS.length);
+      } else {
+        nextIdx = (stationIdx + 1) % STATIONS.length;
+      }
       selectStation(nextIdx, isPlaying);
     } else if (localTracks.length > 0) {
-      const nextIdx = (currentLocalIdx + 1) % localTracks.length;
+      let nextIdx;
+      if (shuffle) {
+        nextIdx = Math.floor(Math.random() * localTracks.length);
+      } else {
+        nextIdx = (localIdx + 1) % localTracks.length;
+      }
       selectLocalTrack(nextIdx, isPlaying);
     }
   };
 
-  // Prev track / station
   const handlePrev = () => {
     if (mode === 'radio') {
-      const prevIdx = (currentStationIdx - 1 + STATIONS.length) % STATIONS.length;
+      const prevIdx = (stationIdx - 1 + STATIONS.length) % STATIONS.length;
       selectStation(prevIdx, isPlaying);
     } else if (localTracks.length > 0) {
-      const prevIdx = (currentLocalIdx - 1 + localTracks.length) % localTracks.length;
+      const prevIdx = (localIdx - 1 + localTracks.length) % localTracks.length;
       selectLocalTrack(prevIdx, isPlaying);
     }
   };
 
-  // Handle local file upload
   const handleFileUpload = (e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
-    const newTracks = files.map(file => ({
+    const newItems = files.map(file => ({
       name: file.name.replace(/\.[^/.]+$/, ''),
       url: URL.createObjectURL(file),
-      size: (file.size / (1024 * 1024)).toFixed(1) + ' MB'
+      size: (file.size / (1024 * 1024)).toFixed(1) + ' MB',
+      file
     }));
 
-    setLocalTracks(prev => [...prev, ...newTracks]);
+    setLocalTracks(prev => [...prev, ...newItems]);
     setMode('local');
-    setCurrentLocalIdx(localTracks.length); // point to first new track
+    setLocalIdx(localTracks.length);
     setTimeout(() => {
       selectLocalTrack(localTracks.length, true);
     }, 50);
-
-    // Reset input
     e.target.value = '';
   };
 
-  const clearLocalPlaylist = () => {
-    if (mode === 'local') {
-      if (audioRef.current) audioRef.current.pause();
-      setIsPlaying(false);
-      setMode('radio');
-      selectStation(currentStationIdx, false);
-    }
-    setLocalTracks([]);
-  };
-
-  // Volume changes
-  const handleVolumeChange = (newVol) => {
-    setVolume(newVol);
-    localStorage.setItem('cobb_bgm_vol', newVol);
-    if (isMuted && newVol > 0) setIsMuted(false);
+  const handleVolume = (val) => {
+    setVolume(val);
+    localStorage.setItem('cobb_spotify_vol', val);
+    if (isMuted && val > 0) setIsMuted(false);
   };
 
   const formatTime = (secs) => {
@@ -255,12 +277,17 @@ export default function StoreMusicPlayer() {
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
-  const currentStation = STATIONS[currentStationIdx];
-  const currentLocalTrack = localTracks[currentLocalIdx];
+  const currentStation = STATIONS[stationIdx];
+  const currentTrack = localTracks[localIdx];
+
+  // Scrub bar percentage calculation
+  const progressPct = mode === 'local' 
+    ? (duration ? (currentTime / duration) * 100 : 0)
+    : 100; // live stream shows full active bar
 
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl shadow-xs p-4 sm:p-5 transition-all overflow-hidden relative group">
-      {/* Background audio element */}
+    <div className="bg-[#121212] text-white rounded-2xl border border-[#282828] shadow-2xl p-4 transition-all relative overflow-hidden select-none font-sans">
+      {/* Hidden Audio Element */}
       <audio
         ref={audioRef}
         onTimeUpdate={() => {
@@ -270,7 +297,16 @@ export default function StoreMusicPlayer() {
           }
         }}
         onEnded={() => {
-          if (mode === 'local') handleNext();
+          if (mode === 'local') {
+            if (repeat) {
+              if (audioRef.current) {
+                audioRef.current.currentTime = 0;
+                audioRef.current.play();
+              }
+            } else {
+              handleNext();
+            }
+          }
         }}
         onWaiting={() => setIsLoading(true)}
         onPlaying={() => {
@@ -283,50 +319,50 @@ export default function StoreMusicPlayer() {
         }}
       />
 
-      {/* Header bar */}
-      <div className="flex items-center justify-between gap-3 mb-3.5 pb-3 border-b border-slate-100 dark:border-slate-800">
+      {/* Top Brand & Mode Header */}
+      <div className="flex items-center justify-between pb-3 mb-3 border-b border-[#282828]">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-xs">
-            <Headphones className="w-4 h-4" />
+          {/* Spotify Green Icon */}
+          <div className="w-6 h-6 rounded-full bg-[#1db954] flex items-center justify-center shadow-[0_0_12px_rgba(29,185,84,0.4)]">
+            <svg className="w-3.5 h-3.5 fill-black" viewBox="0 0 24 24">
+              <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.498 17.306c-.216.353-.674.467-1.027.25-2.813-1.718-6.354-2.107-10.526-1.155-.403.093-.804-.158-.897-.561-.093-.404.158-.804.561-.897 4.571-1.045 8.492-.596 11.638 1.336.354.217.468.674.251 1.027zm1.467-3.26c-.272.441-.849.582-1.29.31-3.22-1.978-8.128-2.55-11.936-1.393-.497.151-1.025-.133-1.176-.63-.151-.497.133-1.025.63-1.176 4.354-1.321 9.775-.68 13.462 1.587.441.272.582.85.31 1.302zm.126-3.395C15.234 8.358 8.878 8.147 5.17 9.273c-.604.184-1.24-.165-1.424-.769-.184-.604.165-1.24.769-1.424 4.258-1.293 11.282-1.043 15.727 1.597.544.323.722 1.028.399 1.572-.323.543-1.028.721-1.55.473z"/>
+            </svg>
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-xs font-bold text-slate-800 dark:text-slate-100 tracking-tight">
-                In-Store Music Player
-              </h3>
+              <span className="text-xs font-black tracking-wider uppercase text-white">
+                Spotify Store Audio
+              </span>
               {isPlaying ? (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800 animate-pulse">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-                  On Air
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-[#1db954]/20 text-[#1ed760] border border-[#1db954]/40">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#1ed760] animate-ping" />
+                  Playing
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800">
+                <span className="text-[10px] font-bold text-[#b3b3b3] px-2 py-0.5 rounded-full bg-[#282828]">
                   Paused
                 </span>
               )}
             </div>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
-              Curated retail background music & store vibes
-            </p>
           </div>
         </div>
 
-        {/* Mode selector pills & upload button */}
+        {/* Source Mode Switcher */}
         <div className="flex items-center gap-1.5">
           <button
             type="button"
             onClick={() => {
               setMode('radio');
-              if (isPlaying && mode !== 'radio') selectStation(currentStationIdx, true);
+              if (isPlaying && mode !== 'radio') selectStation(stationIdx, true);
             }}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`px-3 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
               mode === 'radio'
-                ? 'bg-blue-600 text-white shadow-xs'
-                : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                ? 'bg-white text-black font-extrabold shadow-sm'
+                : 'bg-[#282828] text-[#b3b3b3] hover:text-white hover:bg-[#333333]'
             }`}
           >
-            <Radio className="w-3.5 h-3.5" />
-            <span>Store Radio</span>
+            <Radio className="w-3 h-3" />
+            <span>Curated Radio</span>
           </button>
 
           <button
@@ -336,17 +372,17 @@ export default function StoreMusicPlayer() {
                 fileInputRef.current?.click();
               } else {
                 setMode('local');
-                if (isPlaying && mode !== 'local') selectLocalTrack(currentLocalIdx, true);
+                if (isPlaying && mode !== 'local') selectLocalTrack(localIdx, true);
               }
             }}
-            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`px-3 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
               mode === 'local'
-                ? 'bg-indigo-600 text-white shadow-xs'
-                : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                ? 'bg-white text-black font-extrabold shadow-sm'
+                : 'bg-[#282828] text-[#b3b3b3] hover:text-white hover:bg-[#333333]'
             }`}
           >
-            <ListMusic className="w-3.5 h-3.5" />
-            <span>Custom MP3s {localTracks.length > 0 && `(${localTracks.length})`}</span>
+            <FolderPlus className="w-3 h-3" />
+            <span>Local Files {localTracks.length > 0 && `(${localTracks.length})`}</span>
           </button>
 
           <input
@@ -360,250 +396,333 @@ export default function StoreMusicPlayer() {
 
           <button
             type="button"
-            onClick={() => fileInputRef.current?.click()}
-            title="Upload MP3s from device or USB"
-            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer"
-          >
-            <Upload className="w-3.5 h-3.5" />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setShowStations(!showStations)}
-            title="View channels & playlist"
-            className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
-              showStations
-                ? 'bg-blue-50 border-blue-300 text-blue-600 dark:bg-blue-950/50 dark:border-blue-700 dark:text-blue-300'
-                : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+            onClick={() => setShowQueue(!showQueue)}
+            title="Browse Playlists & Channels"
+            className={`p-1.5 rounded-full transition-all cursor-pointer ${
+              showQueue ? 'bg-[#1ed760] text-black font-bold' : 'bg-[#282828] text-[#b3b3b3] hover:text-white hover:bg-[#333333]'
             }`}
           >
-            <Sliders className="w-3.5 h-3.5" />
+            <ListMusic className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      {/* Main player controls & now playing panel */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-        {/* Left: Now playing track display & animated equalizer */}
-        <div className="flex items-center gap-3.5 w-full md:w-auto">
-          {/* Album art / spinning vinyl disc */}
-          <div className="relative flex-shrink-0">
+      {/* Spotify Signature 3-Section Player Bar */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
+        
+        {/* Section 1: Now Playing Track Info (cols 1-4) */}
+        <div className="md:col-span-4 flex items-center gap-3 min-w-0">
+          {/* Album Artwork with Spotify styling */}
+          <div className="relative flex-shrink-0 group cursor-pointer">
             <div
-              className={`w-13 h-13 rounded-2xl bg-gradient-to-tr ${
-                mode === 'radio' ? currentStation.gradient : 'from-purple-500 to-indigo-600'
-              } flex items-center justify-center text-white shadow-md transition-all ${
-                isPlaying ? 'ring-2 ring-blue-500/40 ring-offset-2 dark:ring-offset-slate-900' : 'opacity-90'
-              }`}
+              className={`w-14 h-14 rounded-lg bg-gradient-to-br ${
+                mode === 'radio' ? currentStation.gradient : 'from-[#6366f1] to-[#a855f7]'
+              } flex items-center justify-center text-2xl shadow-lg transition-transform group-hover:scale-102`}
             >
-              <Disc className={`w-7 h-7 ${isPlaying ? 'animate-spin' : ''}`} style={{ animationDuration: '4s' }} />
+              {mode === 'radio' ? currentStation.coverIcon : '🎵'}
             </div>
 
-            {/* Pulsing indicator badge */}
+            {/* Vinyl spin indicator on play */}
             {isPlaying && (
-              <span className="absolute -bottom-1 -right-1 flex h-3.5 w-3.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 border-2 border-white dark:border-slate-900"></span>
-              </span>
+              <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-[#121212] flex items-center justify-center border border-[#282828]">
+                <Disc3 className="w-3 h-3 text-[#1ed760] animate-spin" style={{ animationDuration: '3s' }} />
+              </div>
             )}
           </div>
 
-          {/* Title & Info */}
+          {/* Track Titles */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <h4 className="text-sm font-black text-slate-900 dark:text-slate-100 truncate">
+              <h4 className="text-xs sm:text-sm font-bold text-white hover:underline cursor-pointer truncate">
                 {mode === 'radio'
                   ? currentStation.name
-                  : (currentLocalTrack ? currentLocalTrack.name : 'No MP3s Loaded')}
+                  : (currentTrack ? currentTrack.name : 'No Songs Selected')}
               </h4>
-              <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 flex-shrink-0">
-                {mode === 'radio' ? currentStation.tag : `Track ${currentLocalIdx + 1}/${localTracks.length}`}
-              </span>
             </div>
-            <p className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate">
-              {mode === 'radio' ? currentStation.genre : (currentLocalTrack ? currentLocalTrack.size : 'Tap "Upload" to add files')}
+            <p className="text-[11px] text-[#b3b3b3] hover:underline hover:text-white cursor-pointer truncate">
+              {mode === 'radio'
+                ? currentStation.artist
+                : (currentTrack ? currentTrack.size : 'Click "Local Files" to add')}
             </p>
-            <div className="flex items-center gap-2 mt-0.5">
-              <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400">
-                {mode === 'radio' ? `Vibe: ${currentStation.vibe}` : 'Local In-Store Audio'}
-              </span>
-            </div>
+            <p className="text-[10px] text-[#1ed760] font-medium truncate mt-0.5">
+              {mode === 'radio' ? currentStation.vibe : 'In-Store Local MP3 Audio'}
+            </p>
           </div>
 
-          {/* Equalizer soundwave visualizer */}
-          <div className="flex items-end gap-0.5 h-6 px-2 flex-shrink-0">
-            {[40, 80, 50, 95, 60, 85, 45, 75].map((h, i) => (
+          {/* Heart / Like button */}
+          <button
+            type="button"
+            onClick={() => setIsLiked(!isLiked)}
+            className="text-[#b3b3b3] hover:text-white transition-colors cursor-pointer p-1"
+            title={isLiked ? 'Remove from Your Library' : 'Save to Your Library'}
+          >
+            <Heart
+              className={`w-4 h-4 transition-transform active:scale-125 ${
+                isLiked ? 'fill-[#1ed760] text-[#1ed760]' : ''
+              }`}
+            />
+          </button>
+
+          {/* Equalizer Waveform bars */}
+          <div className="hidden sm:flex items-end gap-[2px] h-5 px-1 flex-shrink-0">
+            {[60, 100, 45, 90, 70].map((h, i) => (
               <div
                 key={i}
-                className={`w-1 rounded-full transition-all duration-300 ${
-                  isPlaying
-                    ? 'bg-blue-500 dark:bg-blue-400 animate-pulse'
-                    : 'bg-slate-300 dark:bg-slate-700 h-1.5'
+                className={`w-[3px] rounded-full transition-all duration-200 ${
+                  isPlaying ? 'bg-[#1ed760] animate-pulse' : 'bg-[#404040] h-[3px]'
                 }`}
                 style={{
-                  height: isPlaying ? `${Math.max(15, (h * (volume || 0.5))) * 0.25}px` : '4px',
-                  animationDelay: `${i * 120}ms`,
-                  animationDuration: `${400 + (i % 3) * 150}ms`,
+                  height: isPlaying ? `${Math.max(4, (h * (volume || 0.5)) * 0.2)}px` : '3px',
+                  animationDelay: `${i * 100}ms`,
+                  animationDuration: `${350 + (i % 3) * 120}ms`,
                 }}
               />
             ))}
           </div>
         </div>
 
-        {/* Center: Playback buttons */}
-        <div className="flex items-center gap-2.5">
-          <button
-            type="button"
-            onClick={handlePrev}
-            title="Previous Station/Track"
-            className="w-8 h-8 rounded-full flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-transform active:scale-90"
-          >
-            <SkipBack className="w-4 h-4 fill-current" />
-          </button>
+        {/* Section 2: Player Controls & Timeline Scrubber (cols 5-8) */}
+        <div className="md:col-span-5 flex flex-col items-center justify-center gap-1.5 w-full">
+          {/* Controls row */}
+          <div className="flex items-center gap-3 sm:gap-4">
+            {/* Shuffle */}
+            <button
+              type="button"
+              onClick={() => setShuffle(!shuffle)}
+              className={`p-1 transition-colors cursor-pointer relative ${
+                shuffle ? 'text-[#1ed760]' : 'text-[#b3b3b3] hover:text-white'
+              }`}
+              title="Enable Shuffle"
+            >
+              <Shuffle className="w-3.5 h-3.5" />
+              {shuffle && <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#1ed760]" />}
+            </button>
 
-          <button
-            type="button"
-            onClick={togglePlay}
-            disabled={isLoading || (mode === 'local' && localTracks.length === 0)}
-            className="w-11 h-11 rounded-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white flex items-center justify-center shadow-md hover:shadow-lg transition-all transform hover:scale-105 active:scale-95 cursor-pointer disabled:opacity-50"
-            title={isPlaying ? 'Pause Music' : 'Play Music'}
-          >
-            {isLoading ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : isPlaying ? (
-              <Pause className="w-5 h-5 fill-current" />
-            ) : (
-              <Play className="w-5 h-5 fill-current ml-0.5" />
-            )}
-          </button>
+            {/* Skip Back */}
+            <button
+              type="button"
+              onClick={handlePrev}
+              className="text-[#b3b3b3] hover:text-white transition-colors cursor-pointer active:scale-90"
+              title="Previous"
+            >
+              <SkipBack className="w-4 h-4 fill-current" />
+            </button>
 
-          <button
-            type="button"
-            onClick={handleNext}
-            title="Next Station/Track"
-            className="w-8 h-8 rounded-full flex items-center justify-center text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-transform active:scale-90"
-          >
-            <SkipForward className="w-4 h-4 fill-current" />
-          </button>
+            {/* Main Play / Pause Circle */}
+            <button
+              type="button"
+              onClick={togglePlay}
+              disabled={isLoading || (mode === 'local' && localTracks.length === 0)}
+              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white hover:bg-white/90 text-black flex items-center justify-center shadow-md hover:scale-106 active:scale-95 transition-all cursor-pointer disabled:opacity-40"
+              title={isPlaying ? 'Pause' : 'Play'}
+            >
+              {isLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin text-black" />
+              ) : isPlaying ? (
+                <Pause className="w-4 h-4 fill-black text-black" />
+              ) : (
+                <Play className="w-4 h-4 fill-black text-black ml-0.5" />
+              )}
+            </button>
+
+            {/* Skip Forward */}
+            <button
+              type="button"
+              onClick={handleNext}
+              className="text-[#b3b3b3] hover:text-white transition-colors cursor-pointer active:scale-90"
+              title="Next"
+            >
+              <SkipForward className="w-4 h-4 fill-current" />
+            </button>
+
+            {/* Repeat */}
+            <button
+              type="button"
+              onClick={() => setRepeat(!repeat)}
+              className={`p-1 transition-colors cursor-pointer relative ${
+                repeat ? 'text-[#1ed760]' : 'text-[#b3b3b3] hover:text-white'
+              }`}
+              title="Enable Repeat"
+            >
+              <Repeat className="w-3.5 h-3.5" />
+              {repeat && <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#1ed760]" />}
+            </button>
+          </div>
+
+          {/* Scrub Bar row */}
+          <div className="flex items-center gap-2 w-full max-w-md group">
+            <span className="text-[10px] font-mono text-[#b3b3b3] w-8 text-right select-none">
+              {mode === 'local' ? formatTime(currentTime) : formatTime(streamElapsed)}
+            </span>
+
+            {/* Spotify Progress Bar */}
+            <div
+              className="flex-1 h-1 group-hover:h-1.5 bg-[#4d4d4d] rounded-full relative cursor-pointer flex items-center transition-all overflow-hidden"
+              onClick={(e) => {
+                if (mode === 'local' && duration && audioRef.current) {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const clickX = e.clientX - rect.left;
+                  const ratio = Math.max(0, Math.min(1, clickX / rect.width));
+                  audioRef.current.currentTime = ratio * duration;
+                  setCurrentTime(ratio * duration);
+                }
+              }}
+            >
+              <div
+                className="h-full bg-white group-hover:bg-[#1db954] transition-colors rounded-full relative"
+                style={{ width: `${progressPct}%` }}
+              >
+                {/* Thumb circle on hover */}
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity" />
+              </div>
+            </div>
+
+            <span className="text-[10px] font-mono text-[#b3b3b3] w-10 select-none">
+              {mode === 'local' ? (
+                formatTime(duration)
+              ) : (
+                <span className="text-[#1ed760] font-black text-[9px] flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#1ed760] animate-pulse inline-block" />
+                  LIVE
+                </span>
+              )}
+            </span>
+          </div>
         </div>
 
-        {/* Right: Volume control & scrubber */}
-        <div className="flex items-center gap-2.5 w-full md:w-56 justify-end">
+        {/* Section 3: Volume & Queue Tools (cols 9-12) */}
+        <div className="md:col-span-3 flex items-center justify-end gap-2.5">
+          {/* Mute Button */}
           <button
             type="button"
             onClick={() => setIsMuted(!isMuted)}
-            className="text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer"
+            className="text-[#b3b3b3] hover:text-white transition-colors cursor-pointer"
             title={isMuted ? 'Unmute' : 'Mute'}
           >
             {isMuted || volume === 0 ? (
               <VolumeX className="w-4 h-4 text-rose-500" />
+            ) : volume < 0.5 ? (
+              <Volume1 className="w-4 h-4" />
             ) : (
               <Volume2 className="w-4 h-4" />
             )}
           </button>
 
-          <div className="flex-1 relative flex items-center">
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.02"
-              value={isMuted ? 0 : volume}
-              onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
-              className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600 focus:outline-none"
-              title={`Volume: ${Math.round((isMuted ? 0 : volume) * 100)}%`}
-            />
+          {/* Spotify Volume Slider */}
+          <div className="w-20 sm:w-24 group relative flex items-center">
+            <div
+              className="w-full h-1 group-hover:h-1.5 bg-[#4d4d4d] rounded-full relative cursor-pointer flex items-center transition-all overflow-hidden"
+              onClick={(e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                handleVolume(ratio);
+              }}
+            >
+              <div
+                className="h-full bg-white group-hover:bg-[#1db954] transition-colors rounded-full"
+                style={{ width: `${(isMuted ? 0 : volume) * 100}%` }}
+              />
+            </div>
           </div>
 
-          <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 w-8 text-right">
+          <span className="text-[10px] font-mono text-[#b3b3b3] w-7 text-right">
             {Math.round((isMuted ? 0 : volume) * 100)}%
           </span>
         </div>
+
       </div>
 
-      {/* Local playback timeline scrubber (only visible for local mp3s) */}
-      {mode === 'local' && localTracks.length > 0 && (
-        <div className="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center gap-2">
-          <span className="text-[10px] font-mono font-bold text-slate-400">{formatTime(currentTime)}</span>
-          <input
-            type="range"
-            min="0"
-            max={duration || 100}
-            value={currentTime}
-            onChange={(e) => {
-              const val = parseFloat(e.target.value);
-              setCurrentTime(val);
-              if (audioRef.current) audioRef.current.currentTime = val;
-            }}
-            className="flex-1 h-1 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-600 focus:outline-none"
-          />
-          <span className="text-[10px] font-mono font-bold text-slate-400">{formatTime(duration)}</span>
-        </div>
-      )}
-
-      {/* Expandable Station Selector / Local Playlist Panel */}
-      {showStations && (
-        <div className="mt-4 pt-3.5 border-t border-slate-100 dark:border-slate-800 animate-in fade-in duration-200">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-              {mode === 'radio' ? 'Select Store Atmosphere Channel' : `Store MP3 Playlist (${localTracks.length} tracks)`}
-            </span>
+      {/* Spotify Playlist & Channels Drawer */}
+      {showQueue && (
+        <div className="mt-4 pt-3.5 border-t border-[#282828] animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h5 className="text-xs font-bold text-white uppercase tracking-wider">
+                {mode === 'radio' ? 'Curated In-Store Playlists & Stations' : `Local Store MP3 Tracks (${localTracks.length})`}
+              </h5>
+              <p className="text-[10px] text-[#b3b3b3]">
+                {mode === 'radio' ? 'Commercial-free 24/7 high-fidelity streams' : 'Audio files loaded from this device'}
+              </p>
+            </div>
             {mode === 'local' && localTracks.length > 0 && (
               <button
                 type="button"
-                onClick={clearLocalPlaylist}
-                className="text-[10px] text-rose-500 hover:text-rose-600 font-bold flex items-center gap-1 cursor-pointer"
+                onClick={() => {
+                  if (audioRef.current) audioRef.current.pause();
+                  setIsPlaying(false);
+                  setLocalTracks([]);
+                  setMode('radio');
+                }}
+                className="text-[10px] text-rose-400 hover:text-rose-300 font-bold flex items-center gap-1 cursor-pointer"
               >
-                <Trash2 className="w-3 h-3" /> Clear Playlist
+                <Trash2 className="w-3 h-3" /> Clear Tracks
               </button>
             )}
           </div>
 
           {mode === 'radio' ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
               {STATIONS.map((station, idx) => {
-                const isActive = currentStationIdx === idx && mode === 'radio';
+                const isSelected = stationIdx === idx && mode === 'radio';
                 return (
-                  <button
+                  <div
                     key={station.id}
-                    type="button"
                     onClick={() => selectStation(idx, true)}
-                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between gap-1 group ${
-                      isActive
-                        ? 'bg-blue-50/80 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700 shadow-xs'
-                        : 'bg-slate-50/70 dark:bg-slate-800/60 hover:bg-slate-100 dark:hover:bg-slate-800 border-slate-200/70 dark:border-slate-700/80'
+                    className={`group/card p-2.5 rounded-xl transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between gap-2 border ${
+                      isSelected
+                        ? 'bg-[#282828] border-[#1ed760] shadow-[0_0_15px_rgba(30,215,96,0.15)]'
+                        : 'bg-[#181818] hover:bg-[#282828] border-transparent'
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.2 rounded bg-slate-200/80 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
-                        {station.tag}
-                      </span>
-                      {isActive && isPlaying && (
-                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                      )}
+                    {/* Card Cover Art with floating play button */}
+                    <div className="relative w-full aspect-square rounded-lg overflow-hidden flex items-center justify-center text-3xl shadow-md"
+                         style={{ background: `linear-gradient(135deg, ${station.accentColor}, #000000)` }}>
+                      <span>{station.coverIcon}</span>
+
+                      {/* Spotify Hover Play Button */}
+                      <div
+                        className={`absolute right-1.5 bottom-1.5 w-8 h-8 rounded-full bg-[#1ed760] hover:bg-[#1fdf64] hover:scale-105 text-black flex items-center justify-center shadow-xl transition-all duration-200 ${
+                          isSelected && isPlaying
+                            ? 'opacity-100 translate-y-0'
+                            : 'opacity-0 translate-y-2 group-hover/card:opacity-100 group-hover/card:translate-y-0'
+                        }`}
+                      >
+                        {isSelected && isPlaying ? (
+                          <Pause className="w-4 h-4 fill-black" />
+                        ) : (
+                          <Play className="w-4 h-4 fill-black ml-0.5" />
+                        )}
+                      </div>
                     </div>
+
+                    {/* Metadata */}
                     <div>
-                      <div className="text-xs font-bold text-slate-800 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
+                      <h6
+                        className={`text-xs font-bold truncate transition-colors ${
+                          isSelected ? 'text-[#1ed760]' : 'text-white group-hover/card:text-white'
+                        }`}
+                      >
                         {station.name}
-                      </div>
-                      <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                        {station.vibe}
-                      </div>
+                      </h6>
+                      <p className="text-[10px] text-[#b3b3b3] line-clamp-1 truncate mt-0.5">
+                        {station.genre}
+                      </p>
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </div>
           ) : (
-            <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
+            <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
               {localTracks.length === 0 ? (
-                <div className="p-4 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-center">
-                  <p className="text-xs text-slate-500 font-medium">No custom music files loaded.</p>
+                <div className="p-5 rounded-xl border border-dashed border-[#282828] text-center bg-[#181818]">
+                  <p className="text-xs text-[#b3b3b3]">No custom MP3 files loaded yet.</p>
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-bold bg-blue-600 text-white cursor-pointer"
+                    className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-[#1ed760] hover:bg-[#1fdf64] text-black cursor-pointer shadow-md"
                   >
-                    <Upload className="w-3.5 h-3.5" /> Choose MP3 Files
+                    <Upload className="w-3.5 h-3.5" /> Select MP3s from PC
                   </button>
                 </div>
               ) : (
@@ -612,17 +731,17 @@ export default function StoreMusicPlayer() {
                     key={idx}
                     onClick={() => selectLocalTrack(idx, true)}
                     className={`p-2 rounded-lg text-xs flex items-center justify-between cursor-pointer transition-colors ${
-                      currentLocalIdx === idx
-                        ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 font-bold'
-                        : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300'
+                      localIdx === idx
+                        ? 'bg-[#282828] text-[#1ed760] font-bold'
+                        : 'hover:bg-[#1f1f1f] text-white'
                     }`}
                   >
-                    <div className="flex items-center gap-2 truncate">
-                      <span className="text-[10px] text-slate-400 w-4">{idx + 1}.</span>
-                      <Music className="w-3.5 h-3.5 flex-shrink-0" />
+                    <div className="flex items-center gap-2.5 truncate">
+                      <span className="text-[10px] text-[#b3b3b3] w-4">{idx + 1}.</span>
+                      <Music className="w-3.5 h-3.5 flex-shrink-0 text-[#b3b3b3]" />
                       <span className="truncate">{track.name}</span>
                     </div>
-                    <span className="text-[10px] text-slate-400 ml-2">{track.size}</span>
+                    <span className="text-[10px] text-[#b3b3b3] ml-2">{track.size}</span>
                   </div>
                 ))
               )}
@@ -630,6 +749,7 @@ export default function StoreMusicPlayer() {
           )}
         </div>
       )}
+
     </div>
   );
 }
