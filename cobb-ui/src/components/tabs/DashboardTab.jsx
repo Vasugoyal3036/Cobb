@@ -657,16 +657,20 @@ const DashboardTab = (props) => {
                                 <div className="bg-rose-400/70 h-full transition-all duration-1000" style={{ width: `${Math.max(2, deficitBarPct)}%` }}></div>
                               )}
                             </div>
-                            <div className="flex justify-between text-[10px] text-slate-500 dark:text-slate-400 mt-2 font-mono">
+                            <div className="flex justify-between text-xs text-slate-700 dark:text-slate-200 mt-2 font-mono font-medium">
                               <span>{formatCurrency(cogs)}</span>
-                              <span className="text-center flex-1">{formatCurrency(DAILY_EXPENSE)}</span>
+                              <span className="text-center flex-1 font-semibold text-amber-600 dark:text-amber-400">{formatCurrency(DAILY_EXPENSE)}</span>
                               <span className={`text-right ${isProfitable ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-rose-500 dark:text-rose-400 font-bold'}`}>
                                 {isProfitable ? `+${formatCurrency(netMargin)}` : `-${formatCurrency(Math.abs(netMargin))}`}
                               </span>
                             </div>
-                            {!isProfitable && (
-                              <p className="text-[10px] text-slate-400 text-center mt-2.5 font-sans">
-                                Breakeven at ₹12,964 ({formatCurrency(Math.max(0, 12964 - totalSales))} needed to clear overhead)
+                            {!isProfitable ? (
+                              <p className="text-[11px] text-slate-600 dark:text-slate-200 font-medium text-center mt-2.5 font-sans">
+                                Breakeven at <span className="font-bold text-slate-900 dark:text-white">₹12,964</span> ({formatCurrency(Math.max(0, 12964 - totalSales))} needed to clear overhead)
+                              </p>
+                            ) : (
+                              <p className="text-[11px] text-emerald-600 dark:text-emerald-300 font-medium text-center mt-2.5 font-sans">
+                                🎉 Overhead cleared! Generating net profit today.
                               </p>
                             )}
                           </>
