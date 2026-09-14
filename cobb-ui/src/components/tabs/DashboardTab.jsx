@@ -1228,23 +1228,17 @@ const DashboardTab = (props) => {
                             </div>
                           </div>
                         ) : (
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1.5">
                             <span className="text-[10px] font-bold text-slate-400 w-8">MRP:</span>
-                            <div className="flex-1 grid grid-cols-4 gap-1">
-                              {[999, 1499, 1999, 2499].map(preset => (
-                                <button
-                                  key={preset}
-                                  type="button"
-                                  onClick={() => setCalcMrp(preset)}
-                                  className={`py-1 rounded-md text-[10px] font-bold border transition-all cursor-pointer truncate ${
-                                    calcMrp === preset 
-                                      ? 'bg-blue-600 text-white border-blue-600 shadow-xs' 
-                                      : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200/80 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
-                                  }`}
-                                >
-                                  ₹{preset}
-                                </button>
-                              ))}
+                            <div className="relative flex-1">
+                              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">₹</span>
+                              <input
+                                type="number"
+                                value={calcMrp === 0 ? '' : calcMrp}
+                                onChange={(e) => setCalcMrp(parseInt(e.target.value) || 0)}
+                                className="w-full py-1 pl-6 pr-2.5 font-bold text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1.5 focus:ring-blue-500"
+                                placeholder="Type MRP (e.g. 1999)"
+                              />
                             </div>
                           </div>
                         )}
