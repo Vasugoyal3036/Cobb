@@ -198,6 +198,11 @@ export default function App() {
 
   useEffect(() => {
     localStorage.setItem('theme', darkMode ? 'dark' : 'light');
+    if (darkMode) {
+      document.documentElement.classList.add('dark', 'dark-mode');
+    } else {
+      document.documentElement.classList.remove('dark', 'dark-mode');
+    }
   }, [darkMode]);
 
   const [overviewStats, setOverviewStats] = useState(() => getLocalCache('overviewStats', {
