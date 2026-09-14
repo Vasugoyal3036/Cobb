@@ -85,6 +85,10 @@ const DashboardTab = (props) => {
   // Active holds state for Hold Desk tile
   const [holds, setHolds] = React.useState([]);
 
+  // Fast Counter Offer & Discount Calc state
+  const [calcMrp, setCalcMrp] = React.useState(1999);
+  const [calcOffer, setCalcOffer] = React.useState('50');
+
   // Ref and height state to guarantee operational tiles match the exact pixel height of top KPI cards
   const topCardRef = React.useRef(null);
   const [topCardHeight, setTopCardHeight] = React.useState(null);
@@ -1118,51 +1122,113 @@ const DashboardTab = (props) => {
                   </div>
                 </div>
 
-                {/* TILE 4: SAVE-THE-SALE NETWORK */}
-                <div 
-                  className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow"
-                  style={{ height: topCardHeight ? `${topCardHeight}px` : undefined }}
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Save-The-Sale</p>
-                      <h3 className="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-2">
-                        Active
-                      </h3>
-                    </div>
-                    <div className="p-3 bg-emerald-500/10 text-emerald-500 rounded-xl border border-emerald-500/20">
-                      <Network className="w-5 h-5" />
-                    </div>
-                  </div>
+                {/* TILE 4: SMART COUNTER DISCOUNT & OFFER CALC */}
+                {(() => {
+                  const numMrp = Math.max(0, Number(calcMrp) || 0);
+                  let finalPrice = 0;
+                  let savings = 0;
+                  let offerTitle = '50% Off';
 
-                  <div className="my-auto py-2 space-y-1.5 text-xs">
-                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
-                      <span>Branch Radar:</span>
-                      <span className="font-semibold text-emerald-600 dark:text-emerald-400">Online</span>
-                    </div>
-                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
-                      <span>Store Network:</span>
-                      <span className="font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[130px]">
-                        All Cobb Outlets
-                      </span>
-                    </div>
-                  </div>
+                  if (calcOffer === '50') {
+                    finalPrice = Math.round(numMrp * 0.5);
+                    savings = numMrp - finalPrice;
+                    offerTitle = '50% Off';
+                  } else if (calcOffer === '40') {
+                    finalPrice = Math.round(numMrp * 0.6);
+                    savings = numMrp - finalPrice;
+                    offerTitle = '40% Off';
+                  } else if (calcOffer === '60') {
+                    finalPrice = Math.round(numMrp * 0.4);
+                    savings = numMrp - finalPrice;
+                    offerTitle = '60% Off';
+                  } else if (calcOffer === 'b2g1') {
+                    finalPrice = Math.round((numMrp * 2) / 3);
+                    savings = numMrp - finalPrice;
+                    offerTitle = 'B2G1 (/pc)';
+                  }
 
-                  <div className="mt-auto pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
-                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
-                      Inter-Branch
-                    </span>
-                    {typeof setActiveTab === 'function' && (
-                      <button
-                        onClick={() => setActiveTab('save_the_sale')}
-                        className="font-bold text-emerald-600 hover:text-emerald-500 dark:text-emerald-400 flex items-center gap-1 cursor-pointer transition-colors"
-                      >
-                        <span>Check Stock</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                </div>
+                  return (
+                    <div 
+                      className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow"
+                      style={{ height: topCardHeight ? `${topCardHeight}px` : undefined }}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Fast Offer Quote</p>
+                          <div className="flex items-baseline gap-2 mt-2">
+                            <h3 className="text-3xl font-black text-emerald-600 dark:text-emerald-400">
+                              ₹{finalPrice.toLocaleString('en-IN')}
+                            </h3>
+                            <span className="text-[11px] font-bold text-slate-400 line-through">
+                              ₹{numMrp.toLocaleString('en-IN')}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="p-3 bg-emerald-500/10 text-emerald-500 rounded-xl border border-emerald-500/20">
+                          <Calculator className="w-5 h-5" />
+                        </div>
+                      </div>
+
+                      <div className="my-auto py-1 space-y-1.5 text-xs">
+                        {/* MRP Preset Chips */}
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] font-bold text-slate-400 w-8">MRP:</span>
+                          <div className="flex-1 grid grid-cols-4 gap-1">
+                            {[999, 1499, 1999, 2499].map(preset => (
+                              <button
+                                key={preset}
+                                type="button"
+                                onClick={() => setCalcMrp(preset)}
+                                className={`py-1 rounded-md text-[10px] font-bold border transition-all cursor-pointer truncate ${
+                                  calcMrp === preset 
+                                    ? 'bg-blue-600 text-white border-blue-600 shadow-xs' 
+                                    : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200/80 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+                                }`}
+                              >
+                                ₹{preset}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Offer Preset Buttons */}
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] font-bold text-slate-400 w-8">Deal:</span>
+                          <div className="flex-1 grid grid-cols-4 gap-1">
+                            {[
+                              { id: '50', label: '50%' },
+                              { id: '40', label: '40%' },
+                              { id: '60', label: '60%' },
+                              { id: 'b2g1', label: 'B2G1' },
+                            ].map(opt => (
+                              <button
+                                key={opt.id}
+                                type="button"
+                                onClick={() => setCalcOffer(opt.id)}
+                                className={`py-1 rounded-md text-[10px] font-bold border transition-all cursor-pointer truncate ${
+                                  calcOffer === opt.id 
+                                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs' 
+                                    : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200/80 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+                                }`}
+                              >
+                                {opt.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mt-auto pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
+                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+                          {offerTitle} • Save ₹{savings.toLocaleString('en-IN')}
+                        </span>
+                        <span className="text-[10px] font-semibold text-slate-400">
+                          Instant Counter Quote
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             );
           })()}
