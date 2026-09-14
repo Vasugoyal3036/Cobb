@@ -122,7 +122,16 @@ const DashboardTab = (props) => {
     if (!marginTrackerRef.current) return;
     const updateMarginHeight = () => {
       if (marginTrackerRef.current) {
-        setMarginTrackerHeight(marginTrackerRef.current.offsetHeight);
+        const rawH = marginTrackerRef.current.offsetHeight;
+        if (rawH > 0) {
+          const boundedH = Math.min(380, Math.max(260, rawH));
+          setMarginTrackerHeight(prev => {
+            if (!prev || Math.abs(prev - boundedH) > 4) {
+              return boundedH;
+            }
+            return prev;
+          });
+        }
       }
     };
     updateMarginHeight();
@@ -472,13 +481,13 @@ const DashboardTab = (props) => {
           </div>
 
           {/* BENTO GRID: Middle Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
 
             {/* Left Column (Spans 2) */}
             <div className="lg:col-span-2 flex flex-col gap-6">
 
               {/* Visual Sales Trend */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* Automation Engine Dispatched Messages (Checkouts vs Exchanges vs Failed) */}
                 {(() => {
                   // 1. Telemetry from backend automation dispatch tracker
@@ -861,8 +870,8 @@ const DashboardTab = (props) => {
             {/* Right Column - Live Store Pulse (Moved Upwards, Sized to Match Margin Tracker) */}
             <div className="flex flex-col gap-6">
               <div 
-                style={{ height: marginTrackerHeight ? `${marginTrackerHeight}px` : undefined }}
-                className={`rounded-2xl border shadow-sm overflow-hidden flex flex-col transition-all ${
+                style={{ height: marginTrackerHeight ? `${marginTrackerHeight}px` : '340px' }}
+                className={`rounded-2xl border shadow-sm overflow-hidden flex flex-col transition-all shrink-0 ${
                   darkMode 
                     ? 'bg-slate-900/90 border-slate-800/80 text-slate-100 shadow-black/20' 
                     : 'bg-white border-slate-200 text-slate-800 shadow-slate-200/50'
@@ -876,7 +885,7 @@ const DashboardTab = (props) => {
                   </h3>
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Latest Checkouts</span>
                 </div>
-                <div className={`divide-y flex-1 overflow-y-auto ${
+                <div className={`divide-y flex-1 min-h-0 overflow-y-auto ${
                   darkMode ? 'divide-slate-800/80' : 'divide-slate-100'
                 }`}>
                   {liveBills.map((bill, idx) => (
