@@ -15,7 +15,6 @@ import PocketKhataTab from './components/tabs/PocketKhataTab';
 import ShelfTalkerStudioTab from './components/tabs/ShelfTalkerStudioTab';
 import HoldDeskTab from './components/tabs/HoldDeskTab';
 import SaveTheSaleTab from './components/tabs/SaveTheSaleTab';
-import LoungeRadioTab from './components/tabs/LoungeRadioTab';
 import ChatbotTab from './components/tabs/ChatbotTab';
 import FloatingCopilot from './components/FloatingCopilot';
 import { fetchWithOfflineFallback, subscribeToData } from './utils/offlineDb';
@@ -1919,11 +1918,6 @@ export default function App() {
             {/* 13. MULTI-STORE SAVE-THE-SALE NETWORK */}
             {activeTab === 'save_the_sale' && (
               <SaveTheSaleTab darkMode={darkMode} />
-            )}
-
-            {/* 14. COBB LOUNGE RADIO & FLOOR ANNOUNCEMENTS */}
-            {activeTab === 'lounge_radio' && (
-              <LoungeRadioTab darkMode={darkMode} />
             )}
 
             {/* 15. COBB RETAIL AI COPILOT / CHATBOT */}

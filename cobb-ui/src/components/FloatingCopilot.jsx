@@ -292,15 +292,6 @@ export default function FloatingCopilot({
         window.dispatchEvent(new CustomEvent('switchTab', { detail: action.tab }));
       }
       setIsOpen(false);
-    } else if (action.type === 'PA_ANNOUNCE' && action.text) {
-      if (typeof window !== 'undefined' && window.speechSynthesis) {
-        window.speechSynthesis.cancel();
-        const utt = new SpeechSynthesisUtterance(action.text);
-        utt.rate = 0.9;
-        utt.pitch = 0.95;
-        utt.lang = 'en-IN';
-        window.speechSynthesis.speak(utt);
-      }
     }
   };
 

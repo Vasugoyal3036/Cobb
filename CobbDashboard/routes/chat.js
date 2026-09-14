@@ -684,7 +684,7 @@ async function handleRetailIntent(queryText) {
                         ],
                         actions: [
                             { type: 'NAVIGATE', tab: 'live', label: '⚡ View Live Checkouts' },
-                            { type: 'PA_ANNOUNCE', text: `Customer ${cust.CustomerName}, please report to the billing counter.`, label: '📢 Announce on PA' }
+                            { type: 'NAVIGATE', tab: 'vip', label: '👑 View VIP Profile' }
                         ],
                         chips: [
                             { label: "💰 Today's sales summary", query: "what is today's total sales and UPI split" },
@@ -771,7 +771,7 @@ async function handleRetailIntent(queryText) {
                 ],
                 actions: [
                     { type: 'NAVIGATE', tab: 'dashboard', label: '🚚 View Transit Desk' },
-                    { type: 'PA_ANNOUNCE', text: `Staff alert: New Head Office consignment has arrived with ${latest.total_quantity} pieces.`, label: '📢 Announce Inflow over PA' }
+                    { type: 'NAVIGATE', tab: 'reorder', label: '📦 Open Warehouse Reorder' }
                 ],
                 chips: [
                     { label: "👔 Check full sleeve shirts", query: "how many full sleeves shirt are present" },

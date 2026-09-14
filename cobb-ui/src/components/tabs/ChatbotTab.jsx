@@ -266,18 +266,7 @@ export default function ChatbotTab({ API_BASE = 'http://localhost:5000', darkMod
   const executeAction = (action) => {
     if (!action) return;
     if (action.type === 'NAVIGATE' && onNavigateTab) {
-      onNavigateTab(action.target);
-    } else if (action.type === 'PA_ANNOUNCE') {
-      try {
-        fetch(`${API_BASE}/api/lounge-radio/tts-announce`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: action.announcement || "Attention store team, new shipment has arrived." })
-        });
-        alert(`📢 PA Announcement Triggered: "${action.announcement || 'New shipment arrived'}"`);
-      } catch (e) {
-        alert("Failed to trigger PA announcement.");
-      }
+      onNavigateTab(action.target || action.tab);
     } else if (action.type === 'QUERY') {
       handleSend(action.query);
     }

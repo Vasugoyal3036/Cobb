@@ -141,39 +141,6 @@ const DashboardTab = (props) => {
     }
   }, [API_BASE]);
 
-  // In-Store Lounge Radio & PA state
-  const [isSpeakingPa, setIsSpeakingPa] = React.useState(false);
-  const [activePaLabel, setActivePaLabel] = React.useState('');
-
-  const quickAnnounce = (presetLabel, text) => {
-    if (typeof window === 'undefined' || !window.speechSynthesis) return;
-    const synth = window.speechSynthesis;
-    synth.cancel();
-
-    const utt = new SpeechSynthesisUtterance(text);
-    utt.rate = 0.9;
-    utt.pitch = 0.95;
-    utt.volume = 1;
-    utt.lang = 'en-IN';
-
-    const voices = synth.getVoices();
-    const prefVoice = voices.find(v => v.lang.startsWith('en') && (v.name.includes('India') || v.name.includes('Google') || v.name.includes('Natural')));
-    if (prefVoice) utt.voice = prefVoice;
-
-    utt.onstart = () => {
-      setIsSpeakingPa(true);
-      setActivePaLabel(presetLabel);
-    };
-    utt.onend = () => {
-      setIsSpeakingPa(false);
-      setActivePaLabel('');
-    };
-    utt.onerror = () => {
-      setIsSpeakingPa(false);
-      setActivePaLabel('');
-    };
-    synth.speak(utt);
-  };
 
   React.useEffect(() => {
     fetchKhataExpenses();
@@ -959,97 +926,70 @@ const DashboardTab = (props) => {
                   </div>
                 </div>
 
-                {/* TILE 2: LOUNGE RADIO & PA MIC */}
-                <div 
-                  className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow"
-                  style={{ height: topCardHeight ? `${topCardHeight}px` : undefined }}
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Lounge Radio &amp; PA</p>
-                      <h3 className="text-3xl font-black text-slate-800 dark:text-white mt-2">
-                        {isSpeakingPa ? 'On Air' : 'Ready'}
-                      </h3>
-                    </div>
-                    <div className={`p-3 rounded-xl border transition-all ${
-                      isSpeakingPa 
-                        ? 'bg-purple-500/20 text-purple-400 border-purple-500/40 animate-pulse' 
-                        : 'bg-purple-500/10 text-purple-500 border border-purple-500/20'
-                    }`}>
-                      <Radio className="w-5 h-5" />
-                    </div>
-                  </div>
+                {/* TILE 2: DAILY STORE TARGET & SALES PACE */}
+                {(() => {
+                  const todaySales = overviewStats?.today?.TotalAmount || 0;
+                  const dailyGoal = 50000;
+                  const pctAchieved = Math.min(100, Math.round((todaySales / dailyGoal) * 100));
+                  const totalPcs = overviewStats?.today?.TotalPieces || 0;
+                  const totalBills = overviewStats?.today?.TotalBills || 0;
+                  const upt = totalBills > 0 ? (totalPcs / totalBills).toFixed(1) : '0.0';
 
-                  <div className="my-auto py-2 space-y-1.5 text-xs">
-                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
-                      <span>Store Audio:</span>
-                      <span className="font-semibold text-purple-600 dark:text-purple-400 truncate max-w-[130px]">
-                        {isSpeakingPa ? activePaLabel : 'Mic & Music Active'}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-4 gap-1">
-                      <button
-                        type="button"
-                        onClick={() => quickAnnounce('Welcome', 'Welcome to Cobb Italy. We are delighted to have you in our store today.')}
-                        disabled={isSpeakingPa}
-                        className={`py-1 rounded text-[10px] font-bold text-center transition-all cursor-pointer truncate border ${
-                          darkMode ? 'bg-slate-800/80 hover:bg-slate-700 text-slate-200 border-slate-700/60' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200/80'
-                        }`}
-                        title="Welcome Greeting"
-                      >
-                        🙏 Welcome
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => quickAnnounce('Offer', 'Dear valued customers, purchase any two shirts and receive one complimentary.')}
-                        disabled={isSpeakingPa}
-                        className={`py-1 rounded text-[10px] font-bold text-center transition-all cursor-pointer truncate border ${
-                          darkMode ? 'bg-slate-800/80 hover:bg-slate-700 text-slate-200 border-slate-700/60' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200/80'
-                        }`}
-                        title="Shirt Combo Offer"
-                      >
-                        👔 Offer
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => quickAnnounce('Trial', 'Attention customers in trial rooms, please let staff know if you need another size.')}
-                        disabled={isSpeakingPa}
-                        className={`py-1 rounded text-[10px] font-bold text-center transition-all cursor-pointer truncate border ${
-                          darkMode ? 'bg-slate-800/80 hover:bg-slate-700 text-slate-200 border-slate-700/60' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200/80'
-                        }`}
-                        title="Trial Room Assist"
-                      >
-                        🚪 Trial
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => quickAnnounce('Closing', 'Dear valued customers, our store will be closing shortly for the evening.')}
-                        disabled={isSpeakingPa}
-                        className={`py-1 rounded text-[10px] font-bold text-center transition-all cursor-pointer truncate border ${
-                          darkMode ? 'bg-slate-800/80 hover:bg-slate-700 text-slate-200 border-slate-700/60' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200/80'
-                        }`}
-                        title="Closing Reminder"
-                      >
-                        ⏰ Close
-                      </button>
-                    </div>
-                  </div>
+                  return (
+                    <div 
+                      className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow"
+                      style={{ height: topCardHeight ? `${topCardHeight}px` : undefined }}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Target Pace</p>
+                          <h3 className="text-3xl font-black text-indigo-600 dark:text-indigo-400 mt-2">
+                            {pctAchieved}%
+                          </h3>
+                        </div>
+                        <div className="p-3 bg-indigo-500/10 text-indigo-500 rounded-xl border border-indigo-500/20">
+                          <Target className="w-5 h-5" />
+                        </div>
+                      </div>
 
-                  <div className="mt-auto pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
-                    <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 bg-purple-500/10 px-2.5 py-0.5 rounded-full border border-purple-500/20">
-                      PA &amp; Music
-                    </span>
-                    {typeof setActiveTab === 'function' && (
-                      <button
-                        onClick={() => setActiveTab('lounge_radio')}
-                        className="font-bold text-purple-600 hover:text-purple-500 dark:text-purple-400 flex items-center gap-1 cursor-pointer transition-colors"
-                      >
-                        <span>Open Radio</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                </div>
+                      <div className="my-auto py-2 space-y-1.5 text-xs">
+                        <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+                          <span>Today Goal:</span>
+                          <span className="font-bold font-mono text-slate-700 dark:text-slate-200">{formatCurrency(todaySales)} / {formatCurrency(dailyGoal)}</span>
+                        </div>
+                        <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                          <div
+                            className="bg-gradient-to-r from-indigo-500 to-purple-500 h-full rounded-full transition-all duration-500"
+                            style={{ width: `${pctAchieved}%` }}
+                          />
+                        </div>
+                        <div className="flex justify-between items-center text-slate-500 dark:text-slate-400 pt-0.5">
+                          <span>Basket UPT:</span>
+                          <span className="font-semibold text-indigo-600 dark:text-indigo-400">{upt} pcs/bill ({totalPcs} units)</span>
+                        </div>
+                      </div>
+
+                      <div className="mt-auto pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
+                        <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+                          pctAchieved >= 80 
+                            ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
+                            : 'text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 border-indigo-500/20'
+                        }`}>
+                          {pctAchieved >= 100 ? 'Target Crushed' : `${pctAchieved}% On Pace`}
+                        </span>
+                        {typeof setActiveTab === 'function' && (
+                          <button
+                            onClick={() => setActiveTab('live')}
+                            className="font-bold text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 flex items-center gap-1 cursor-pointer transition-colors"
+                          >
+                            <span>Live Sales</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* TILE 3: HOLD DESK */}
                 <div 
