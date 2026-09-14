@@ -899,362 +899,247 @@ const DashboardTab = (props) => {
             </div>
           </div>
 
-          {/* 4-Tile Operations Deck (1/4 space each) */}
+          {/* 4-Tile Operations Deck (Identical sizing to the top 4 tiles) */}
           {(() => {
             const grossCashSales = overviewStats?.today?.CashAmount || 0;
             const totalPettyCash = khataSummary?.totalSpent || 0;
             const netExpectedDrawer = Math.max(0, grossCashSales - totalPettyCash);
             const latestExpense = khataSummary?.items?.[0];
 
-            const billsList = Array.isArray(liveBills) ? liveBills : [];
-            const latestBill = billsList[0];
-
             const activeHolds = Array.isArray(holds) ? holds.filter(h => h.status !== 'released' && h.status !== 'expired') : [];
             const latestHold = activeHolds[0];
 
             return (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
-                {/* TILE 1: POCKET KHATA (1/4 space) */}
-                <div className={`rounded-2xl border shadow-sm p-5 flex flex-col justify-between transition-all hover:shadow-md ${
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                {/* TILE 1: POCKET KHATA */}
+                <div className={`p-6 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow ${
                   darkMode 
                     ? 'bg-slate-900/90 border-slate-800/80 text-slate-100 shadow-black/20' 
                     : 'bg-white border-slate-200 text-slate-800 shadow-slate-200/50'
                 }`}>
-                  <div>
-                    {/* Header */}
-                    <div className="flex justify-between items-center mb-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center justify-center shrink-0">
-                          <Wallet className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-sm text-slate-900 dark:text-white leading-tight">Pocket Khata</h3>
-                          <p className="text-[10px] text-slate-400">Cash Drawer Outflow</p>
-                        </div>
-                      </div>
-                      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800 uppercase tracking-wider">
-                        EOD Safe
-                      </span>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Pocket Khata</p>
+                      <h3 className="text-3xl font-black text-rose-500 dark:text-rose-400 mt-2">
+                        {totalPettyCash > 0 ? `- ${formatCurrency(totalPettyCash)}` : '₹0'}
+                      </h3>
                     </div>
-
-                    {/* Main KPI */}
-                    <div className="my-2.5">
-                      <div className="flex items-baseline justify-between">
-                        <span className="text-2xl font-black text-rose-500 dark:text-rose-400">
-                          {totalPettyCash > 0 ? `- ${formatCurrency(totalPettyCash)}` : '₹0'}
-                        </span>
-                        <span className="text-[10px] font-bold text-slate-400">
-                          {khataSummary.totalCount || 0} Outflows
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 flex items-center justify-between">
-                        <span>Expected Drawer:</span>
-                        <span className="font-bold font-mono text-emerald-500 dark:text-emerald-400">{formatCurrency(netExpectedDrawer)}</span>
-                      </p>
-                    </div>
-
-                    {/* Context Row */}
-                    <div className={`p-2.5 rounded-xl border text-[11px] my-2 ${
-                      darkMode ? 'bg-slate-800/40 border-slate-700/60' : 'bg-slate-50 border-slate-200/80'
-                    }`}>
-                      {latestExpense ? (
-                        <div className="flex items-center justify-between min-w-0">
-                          <span className="truncate text-slate-700 dark:text-slate-300 font-medium">
-                            {latestExpense.categoryIcon || '☕'} {latestExpense.description || 'Store Outflow'}
-                          </span>
-                          <span className="font-mono font-bold text-rose-500 ml-1 shrink-0">
-                            -{formatCurrency(latestExpense.amount)}
-                          </span>
-                        </div>
-                      ) : (
-                        <p className="text-slate-500 dark:text-slate-400 text-center text-[10px]">
-                          100% of cash collected is intact in drawer
-                        </p>
-                      )}
+                    <div className="p-3 bg-amber-500/10 text-amber-500 rounded-xl border border-amber-500/20">
+                      <Wallet className="w-5 h-5" />
                     </div>
                   </div>
 
-                  {/* Footer Action */}
-                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between mt-1">
-                    <span className="text-[10px] text-slate-400">Night Audit Ready</span>
+                  <div className="mt-4 text-xs space-y-1.5">
+                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+                      <span>Expected in Drawer:</span>
+                      <span className="font-bold font-mono text-emerald-600 dark:text-emerald-400">{formatCurrency(netExpectedDrawer)}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+                      <span>Outflows Logged:</span>
+                      <span className="font-semibold text-slate-700 dark:text-slate-200">
+                        {latestExpense ? `${latestExpense.categoryIcon || '☕'} ${latestExpense.description || 'Outflow'}` : `${khataSummary.totalCount || 0} expenses`}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mt-auto pt-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
+                    <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20">
+                      EOD Safe
+                    </span>
                     {typeof setActiveTab === 'function' && (
                       <button
                         onClick={() => setActiveTab('pocket_khata')}
-                        className="text-xs font-bold text-amber-500 hover:text-amber-400 flex items-center gap-1 cursor-pointer transition-colors"
+                        className="font-bold text-amber-600 hover:text-amber-500 dark:text-amber-400 flex items-center gap-1 cursor-pointer transition-colors"
                       >
-                        <span>Ledger</span>
-                        <ArrowRight className="w-3 h-3" />
+                        <span>Open Ledger</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
                       </button>
                     )}
                   </div>
                 </div>
 
-                {/* TILE 2: IN-STORE LOUNGE RADIO & PA MIC (1/4 space) */}
-                <div className={`rounded-2xl border shadow-sm p-5 flex flex-col justify-between transition-all hover:shadow-md ${
+                {/* TILE 2: LOUNGE RADIO & PA MIC */}
+                <div className={`p-6 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow ${
                   darkMode 
                     ? 'bg-slate-900/90 border-slate-800/80 text-slate-100 shadow-black/20' 
                     : 'bg-white border-slate-200 text-slate-800 shadow-slate-200/50'
                 }`}>
-                  <div>
-                    {/* Header */}
-                    <div className="flex justify-between items-center mb-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-500 border border-purple-500/20 flex items-center justify-center shrink-0">
-                          <Radio className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-sm text-slate-900 dark:text-white leading-tight">Lounge Radio &amp; PA</h3>
-                          <p className="text-[10px] text-slate-400">Store Audio &amp; Mic</p>
-                        </div>
-                      </div>
-                      <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border uppercase tracking-wider flex items-center gap-1 ${
-                        isSpeakingPa 
-                          ? 'bg-purple-500/20 text-purple-400 border-purple-500/40 animate-pulse'
-                          : 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800'
-                      }`}>
-                        <span className={`w-1.5 h-1.5 rounded-full ${isSpeakingPa ? 'bg-purple-400 animate-ping' : 'bg-emerald-400'}`}></span>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Lounge Radio &amp; PA</p>
+                      <h3 className="text-3xl font-black text-slate-800 dark:text-white mt-2">
                         {isSpeakingPa ? 'On Air' : 'Ready'}
+                      </h3>
+                    </div>
+                    <div className={`p-3 rounded-xl border transition-all ${
+                      isSpeakingPa 
+                        ? 'bg-purple-500/20 text-purple-400 border-purple-500/40 animate-pulse' 
+                        : 'bg-purple-500/10 text-purple-500 border border-purple-500/20'
+                    }`}>
+                      <Radio className="w-5 h-5" />
+                    </div>
+                  </div>
+
+                  <div className="mt-4 text-xs space-y-2">
+                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+                      <span>Status:</span>
+                      <span className="font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[140px]">
+                        {isSpeakingPa ? activePaLabel : 'Store mic ready'}
                       </span>
                     </div>
-
-                    {/* Main KPI */}
-                    <div className="my-2.5">
-                      <div className="flex items-baseline justify-between">
-                        <span className="text-xl font-black text-slate-900 dark:text-white truncate">
-                          {isSpeakingPa ? activePaLabel : 'In-Store PA'}
-                        </span>
-                        <span className="text-[10px] font-bold text-purple-500 shrink-0 ml-1">
-                          1-Click Broadcast
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 flex items-center justify-between">
-                        <span>Status:</span>
-                        <span className="font-medium text-slate-700 dark:text-slate-300">
-                          {isSpeakingPa ? 'Broadcasting audio...' : 'Lounge music stream ready'}
-                        </span>
-                      </p>
-                    </div>
-
-                    {/* Quick PA Announcement Buttons */}
-                    <div className="grid grid-cols-2 gap-1.5 my-2">
+                    <div className="grid grid-cols-4 gap-1">
                       <button
                         type="button"
-                        onClick={() => quickAnnounce('Welcome', 'Welcome to Cobb Italy. We are delighted to have you in our store today. Our floor staff are here to assist you in finding your perfect look.')}
+                        onClick={() => quickAnnounce('Welcome', 'Welcome to Cobb Italy. We are delighted to have you in our store today.')}
                         disabled={isSpeakingPa}
-                        className={`p-1.5 rounded-lg border text-left text-[10px] font-semibold transition-all cursor-pointer truncate flex items-center gap-1.5 ${
-                          darkMode 
-                            ? 'bg-slate-800/70 hover:bg-slate-700 border-slate-700 text-slate-200' 
-                            : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                        className={`py-1 rounded text-[10px] font-bold text-center transition-all cursor-pointer truncate ${
+                          darkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                         }`}
-                        title="Broadcast Welcome Greeting"
+                        title="Welcome Greeting"
                       >
-                        <span>🙏</span>
-                        <span className="truncate">Welcome</span>
+                        🙏 Welcome
                       </button>
-
                       <button
                         type="button"
-                        onClick={() => quickAnnounce('Offer', 'Dear valued customers, purchase any two shirts from our premium Cobb Italy collection and receive one shirt absolutely complimentary.')}
+                        onClick={() => quickAnnounce('Offer', 'Dear valued customers, purchase any two shirts and receive one complimentary.')}
                         disabled={isSpeakingPa}
-                        className={`p-1.5 rounded-lg border text-left text-[10px] font-semibold transition-all cursor-pointer truncate flex items-center gap-1.5 ${
-                          darkMode 
-                            ? 'bg-slate-800/70 hover:bg-slate-700 border-slate-700 text-slate-200' 
-                            : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                        className={`py-1 rounded text-[10px] font-bold text-center transition-all cursor-pointer truncate ${
+                          darkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                         }`}
-                        title="Broadcast Shirt Combo Offer"
+                        title="Shirt Combo Offer"
                       >
-                        <span>👔</span>
-                        <span className="truncate">Shirt Offer</span>
+                        👔 Offer
                       </button>
-
                       <button
                         type="button"
-                        onClick={() => quickAnnounce('Trial Rooms', 'Attention customers in our trial rooms. If you require a different size, color, or style, please let our floor staff know.')}
+                        onClick={() => quickAnnounce('Trial', 'Attention customers in trial rooms, please let staff know if you need another size.')}
                         disabled={isSpeakingPa}
-                        className={`p-1.5 rounded-lg border text-left text-[10px] font-semibold transition-all cursor-pointer truncate flex items-center gap-1.5 ${
-                          darkMode 
-                            ? 'bg-slate-800/70 hover:bg-slate-700 border-slate-700 text-slate-200' 
-                            : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                        className={`py-1 rounded text-[10px] font-bold text-center transition-all cursor-pointer truncate ${
+                          darkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                         }`}
-                        title="Broadcast Trial Room Assistance"
+                        title="Trial Room Assist"
                       >
-                        <span>🚪</span>
-                        <span className="truncate">Trial Room</span>
+                        🚪 Trial
                       </button>
-
                       <button
                         type="button"
-                        onClick={() => quickAnnounce('Closing', 'Dear valued customers, our store will be closing shortly for the evening. Please bring your selections to the billing counter.')}
+                        onClick={() => quickAnnounce('Closing', 'Dear valued customers, our store will be closing shortly for the evening.')}
                         disabled={isSpeakingPa}
-                        className={`p-1.5 rounded-lg border text-left text-[10px] font-semibold transition-all cursor-pointer truncate flex items-center gap-1.5 ${
-                          darkMode 
-                            ? 'bg-slate-800/70 hover:bg-slate-700 border-slate-700 text-slate-200' 
-                            : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                        className={`py-1 rounded text-[10px] font-bold text-center transition-all cursor-pointer truncate ${
+                          darkMode ? 'bg-slate-800 hover:bg-slate-700 text-slate-200' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
                         }`}
-                        title="Broadcast Closing Reminder"
+                        title="Closing Reminder"
                       >
-                        <span>⏰</span>
-                        <span className="truncate">Closing</span>
+                        ⏰ Close
                       </button>
                     </div>
                   </div>
 
-                  {/* Footer Action */}
-                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between mt-1">
-                    <span className="text-[10px] text-slate-400">Music &amp; PA Mic</span>
+                  <div className="mt-auto pt-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
+                    <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 bg-purple-500/10 px-2.5 py-0.5 rounded-full border border-purple-500/20">
+                      PA &amp; Music
+                    </span>
                     {typeof setActiveTab === 'function' && (
                       <button
                         onClick={() => setActiveTab('lounge_radio')}
-                        className="text-xs font-bold text-purple-500 hover:text-purple-400 flex items-center gap-1 cursor-pointer transition-colors"
+                        className="font-bold text-purple-600 hover:text-purple-500 dark:text-purple-400 flex items-center gap-1 cursor-pointer transition-colors"
                       >
                         <span>Open Radio</span>
-                        <ArrowRight className="w-3 h-3" />
+                        <ArrowRight className="w-3.5 h-3.5" />
                       </button>
                     )}
                   </div>
                 </div>
 
-                {/* TILE 3: HOLD DESK (1/4 space) */}
-                <div className={`rounded-2xl border shadow-sm p-5 flex flex-col justify-between transition-all hover:shadow-md ${
+                {/* TILE 3: HOLD DESK */}
+                <div className={`p-6 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow ${
                   darkMode 
                     ? 'bg-slate-900/90 border-slate-800/80 text-slate-100 shadow-black/20' 
                     : 'bg-white border-slate-200 text-slate-800 shadow-slate-200/50'
                 }`}>
-                  <div>
-                    {/* Header */}
-                    <div className="flex justify-between items-center mb-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-xl bg-purple-500/10 text-purple-500 border border-purple-500/20 flex items-center justify-center shrink-0">
-                          <AlarmClock className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-sm text-slate-900 dark:text-white leading-tight">Hold Desk</h3>
-                          <p className="text-[10px] text-slate-400">Saved Customer Carts</p>
-                        </div>
-                      </div>
-                      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200 dark:bg-purple-950/60 dark:text-purple-300 dark:border-purple-800 uppercase tracking-wider">
-                        {activeHolds.length} Active
-                      </span>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Hold Desk</p>
+                      <h3 className="text-3xl font-black text-slate-800 dark:text-white mt-2">
+                        {activeHolds.length}
+                      </h3>
                     </div>
-
-                    {/* Main KPI */}
-                    <div className="my-2.5">
-                      <div className="flex items-baseline justify-between">
-                        <span className="text-2xl font-black text-slate-900 dark:text-white">
-                          {activeHolds.length}
-                        </span>
-                        <span className="text-[10px] font-bold text-purple-500">
-                          Carts On Hold
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 flex items-center justify-between">
-                        <span>Cart Status:</span>
-                        <span className={`font-bold ${activeHolds.length > 0 ? 'text-amber-500' : 'text-emerald-500'}`}>
-                          {activeHolds.length > 0 ? 'Items Reserved' : 'No Pending Holds'}
-                        </span>
-                      </p>
-                    </div>
-
-                    {/* Context Row */}
-                    <div className={`p-2.5 rounded-xl border text-[11px] my-2 ${
-                      darkMode ? 'bg-slate-800/40 border-slate-700/60' : 'bg-slate-50 border-slate-200/80'
-                    }`}>
-                      {latestHold ? (
-                        <div className="flex items-center justify-between min-w-0">
-                          <div className="min-w-0 truncate">
-                            <span className="font-semibold text-slate-800 dark:text-slate-200 truncate block">
-                              {latestHold.customerName || 'Customer Hold'}
-                            </span>
-                            <span className="text-[9px] text-slate-400 truncate block">
-                              {latestHold.articleName || 'Articles reserved'}
-                            </span>
-                          </div>
-                          <span className="text-[10px] font-bold text-amber-500 shrink-0 ml-1">
-                            Reserved
-                          </span>
-                        </div>
-                      ) : (
-                        <p className="text-slate-500 dark:text-slate-400 text-center text-[10px]">
-                          No carts on hold. Register counter is clear.
-                        </p>
-                      )}
+                    <div className="p-3 bg-purple-500/10 text-purple-500 rounded-xl border border-purple-500/20">
+                      <AlarmClock className="w-5 h-5" />
                     </div>
                   </div>
 
-                  {/* Footer Action */}
-                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between mt-1">
-                    <span className="text-[10px] text-slate-400">Save Customer Carts</span>
+                  <div className="mt-4 text-xs space-y-1.5">
+                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+                      <span>Carts on Hold:</span>
+                      <span className={`font-semibold ${activeHolds.length > 0 ? 'text-amber-500' : 'text-slate-700 dark:text-slate-200'}`}>
+                        {activeHolds.length > 0 ? `${activeHolds.length} Reserved` : 'Register clear'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+                      <span>Latest Hold:</span>
+                      <span className="font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[130px]">
+                        {latestHold ? (latestHold.customerName || 'Customer Cart') : 'None pending'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mt-auto pt-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
+                    <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 bg-purple-500/10 px-2.5 py-0.5 rounded-full border border-purple-500/20">
+                      {activeHolds.length} Active
+                    </span>
                     {typeof setActiveTab === 'function' && (
                       <button
                         onClick={() => setActiveTab('hold_desk')}
-                        className="text-xs font-bold text-purple-500 hover:text-purple-400 flex items-center gap-1 cursor-pointer transition-colors"
+                        className="font-bold text-purple-600 hover:text-purple-500 dark:text-purple-400 flex items-center gap-1 cursor-pointer transition-colors"
                       >
-                        <span>Hold Desk</span>
-                        <ArrowRight className="w-3 h-3" />
+                        <span>Open Desk</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
                       </button>
                     )}
                   </div>
                 </div>
 
-                {/* TILE 4: SAVE-THE-SALE NETWORK (1/4 space) */}
-                <div className={`rounded-2xl border shadow-sm p-5 flex flex-col justify-between transition-all hover:shadow-md ${
+                {/* TILE 4: SAVE-THE-SALE NETWORK */}
+                <div className={`p-6 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow ${
                   darkMode 
                     ? 'bg-slate-900/90 border-slate-800/80 text-slate-100 shadow-black/20' 
                     : 'bg-white border-slate-200 text-slate-800 shadow-slate-200/50'
                 }`}>
-                  <div>
-                    {/* Header */}
-                    <div className="flex justify-between items-center mb-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 flex items-center justify-center shrink-0">
-                          <Network className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-sm text-slate-900 dark:text-white leading-tight">Save-The-Sale</h3>
-                          <p className="text-[10px] text-slate-400">Branch Stock Radar</p>
-                        </div>
-                      </div>
-                      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800 uppercase tracking-wider">
-                        SOS Network
-                      </span>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Save-The-Sale</p>
+                      <h3 className="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-2">
+                        Active
+                      </h3>
                     </div>
-
-                    {/* Main KPI */}
-                    <div className="my-2.5">
-                      <div className="flex items-baseline justify-between">
-                        <span className="text-2xl font-black text-emerald-500 dark:text-emerald-400">
-                          Connected
-                        </span>
-                        <span className="text-[10px] font-bold text-emerald-500">
-                          Store Network
-                        </span>
-                      </div>
-                      <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 flex items-center justify-between">
-                        <span>Lost Sales Prevention:</span>
-                        <span className="font-bold text-slate-800 dark:text-slate-200">Cross-Store SOS</span>
-                      </p>
-                    </div>
-
-                    {/* Context Row */}
-                    <div className={`p-2.5 rounded-xl border text-[11px] my-2 ${
-                      darkMode ? 'bg-slate-800/40 border-slate-700/60' : 'bg-slate-50 border-slate-200/80'
-                    }`}>
-                      <p className="text-slate-600 dark:text-slate-300 text-[10px] leading-relaxed">
-                        Instant inter-branch check when size/color is out of stock. Dispatch WhatsApp reservation in 1 tap.
-                      </p>
+                    <div className="p-3 bg-emerald-500/10 text-emerald-500 rounded-xl border border-emerald-500/20">
+                      <Network className="w-5 h-5" />
                     </div>
                   </div>
 
-                  {/* Footer Action */}
-                  <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between mt-1">
-                    <span className="text-[10px] text-slate-400">Never Lose a Customer</span>
+                  <div className="mt-4 text-xs space-y-1.5">
+                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+                      <span>Branch Network:</span>
+                      <span className="font-semibold text-slate-700 dark:text-slate-200">Connected</span>
+                    </div>
+                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+                      <span>Out-of-Stock SOS:</span>
+                      <span className="font-semibold text-emerald-600 dark:text-emerald-400">Cross-Store Check</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-auto pt-4 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
+                    <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20">
+                      Inter-Branch
+                    </span>
                     {typeof setActiveTab === 'function' && (
                       <button
                         onClick={() => setActiveTab('save_the_sale')}
-                        className="text-xs font-bold text-emerald-500 hover:text-emerald-400 flex items-center gap-1 cursor-pointer transition-colors"
+                        className="font-bold text-emerald-600 hover:text-emerald-500 dark:text-emerald-400 flex items-center gap-1 cursor-pointer transition-colors"
                       >
                         <span>Check Stock</span>
-                        <ArrowRight className="w-3 h-3" />
+                        <ArrowRight className="w-3.5 h-3.5" />
                       </button>
                     )}
                   </div>
