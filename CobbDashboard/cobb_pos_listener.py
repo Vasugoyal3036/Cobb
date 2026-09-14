@@ -190,17 +190,22 @@ def send_daily_closing_digest(cursor, target_date=None, label_suffix=""):
             f"✨ Automated EOD Store Intelligence System"
         )
 
+        delivered_count = 0
         for num in EOD_RECIPIENTS:
             clean_phone = ''.join(filter(str.isdigit, str(num)))
             if len(clean_phone) == 10:
                 clean_phone = f"91{clean_phone}"
             try:
-                requests.post(WHATSAPP_SERVER_URL, json={'number': clean_phone, 'message': msg}, headers={'Content-Type': 'application/json'}, timeout=15)
-                print(f"[{time.strftime('%X')}] [EOD DIGEST SENT] Delivered to {clean_phone}", flush=True)
+                r = requests.post(WHATSAPP_SERVER_URL, json={'number': clean_phone, 'message': msg}, headers={'Content-Type': 'application/json'}, timeout=15)
+                if r.status_code == 200:
+                    delivered_count += 1
+                    print(f"[{time.strftime('%X')}] [EOD DIGEST SENT] Delivered to {clean_phone}", flush=True)
+                else:
+                    print(f"[{time.strftime('%X')}] [EOD SEND WARNING] Server returned status {r.status_code} for {clean_phone}", flush=True)
             except Exception as send_err:
                 print(f"[{time.strftime('%X')}] [EOD SEND ERROR] Failed for {clean_phone}: {send_err}", flush=True)
 
-        return True
+        return delivered_count > 0
     except Exception as e:
         print(f"[{time.strftime('%X')}] [EOD REPORT GENERATION ERROR] {e}", flush=True)
         return False
@@ -413,27 +418,27 @@ def run_listener():
             y_count = cursor.fetchone()[0] or 0
             if y_count > 0:
                 print(f"[{time.strftime('%X')}] [POWER-ON RECOVERY] Found {y_count} bills from yesterday without EOD dispatch. Sending recovered digest now...", flush=True)
-                send_daily_closing_digest(cursor, target_date=yesterday_str, label_suffix=" (Recovered Night Closing)")
-                last_eod_date = yesterday_str
-                try:
-                    with open(SENT_EOD_FILE, 'w') as f:
-                        f.write(yesterday_str)
-                except Exception:
-                    pass
+                if send_daily_closing_digest(cursor, target_date=yesterday_str, label_suffix=" (Recovered Night Closing)"):
+                    last_eod_date = yesterday_str
+                    try:
+                        with open(SENT_EOD_FILE, 'w') as f:
+                            f.write(yesterday_str)
+                    except Exception:
+                        pass
         except Exception as rec_err:
             print(f"[{time.strftime('%X')}] [RECOVERY ERROR] {rec_err}", flush=True)
 
-    # 2. Windows Shutdown / Logoff Hook (Graceful early close before 9:30 PM)
+    # 2. Windows Shutdown / Logoff Hook (Detects shutdown near 8:00 PM or store closing)
     def on_exit(sig=None, frame=None):
         now = time.localtime()
         cur_today = time.strftime('%Y-%m-%d', now)
-        # If shutdown happens in evening (past 8:00 PM / 20:00) and today's digest wasn't sent yet
-        if now.tm_hour >= 20 and last_eod_date != cur_today:
-            print(f"[{time.strftime('%X')}] [SHUTDOWN DETECTED] Store closing shutdown intercepted after 8:00 PM. Sending final EOD digest now...", flush=True)
+        # If shutdown happens near 8:00 PM (anytime from 7:30 PM onwards) and today's digest wasn't sent yet
+        if (now.tm_hour > 19 or (now.tm_hour == 19 and now.tm_min >= 30)) and last_eod_date != cur_today:
+            print(f"[{time.strftime('%X')}] [SHUTDOWN DETECTED] Counter PC shutdown detected at {now.tm_hour}:{now.tm_min:02d}. Dispatching EOD digest now...", flush=True)
             try:
-                send_daily_closing_digest(cursor, label_suffix=" (Store Closing Digest)")
-                with open(SENT_EOD_FILE, 'w') as f:
-                    f.write(cur_today)
+                if send_daily_closing_digest(cursor, label_suffix=" (Store Closing Digest)"):
+                    with open(SENT_EOD_FILE, 'w') as f:
+                        f.write(cur_today)
             except Exception as e:
                 print(f"[{time.strftime('%X')}] [SHUTDOWN EOD ERROR] {e}", flush=True)
         sys.exit(0)
@@ -447,12 +452,12 @@ def run_listener():
 
     while True:
         try:
-            # 1. Check for 9:30 PM (21:30) Automated Store Closing Digest
+            # 1. Check for Scheduled 9:00 PM Store Closing Digest (if PC is on)
             now = time.localtime()
             today_str = time.strftime('%Y-%m-%d', now)
-            if (now.tm_hour > 21 or (now.tm_hour == 21 and now.tm_min >= 30)) and last_eod_date != today_str:
-                print(f"[{time.strftime('%X')}] [9:30 PM CLOSING] Clock is 9:30 PM. Generating and sending automated EOD digest to owners...", flush=True)
-                if send_daily_closing_digest(cursor):
+            if now.tm_hour >= 21 and last_eod_date != today_str:
+                print(f"[{time.strftime('%X')}] [9:00 PM CLOSING] Clock reached 9:00 PM. Generating and sending automated EOD digest to owners...", flush=True)
+                if send_daily_closing_digest(cursor, label_suffix=" (Store Closing Digest)"):
                     last_eod_date = today_str
                     try:
                         with open(SENT_EOD_FILE, 'w') as f:

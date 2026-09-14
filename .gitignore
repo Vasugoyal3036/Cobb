@@ -3,6 +3,8 @@ dist/
 dist-electron/
 .DS_Store
 *.log
+__pycache__/
+*.pyc
 mingit/
 mingit.zip
 test*.js

@@ -1,1 +1,28 @@
-[]
+[
+  {
+    "id": "exp_1789392170701_mzhc",
+    "date": "2026-09-14",
+    "time": "18:52:50",
+    "category": "misc",
+    "categoryLabel": "Miscellaneous Petty Cash",
+    "categoryIcon": "📝",
+    "amount": 50,
+    "description": "Discount",
+    "loggedBy": "Counter Cashier",
+    "storeId": "STORE_01",
+    "createdAt": "2026-09-14T13:22:50.701Z"
+  },
+  {
+    "id": "exp_1789381226021_v8eh",
+    "date": "2026-09-14",
+    "time": "15:50:26",
+    "category": "chai",
+    "categoryLabel": "Chai & Refreshments",
+    "categoryIcon": "☕",
+    "amount": 30,
+    "description": "Tea & refreshments for staff/client",
+    "loggedBy": "Counter Cashier",
+    "storeId": "STORE_01",
+    "createdAt": "2026-09-14T10:20:26.021Z"
+  }
+]
