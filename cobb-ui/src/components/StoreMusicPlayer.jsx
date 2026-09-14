@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import axios from 'axios';
 import {
   Play,
   Pause,
@@ -10,263 +11,275 @@ import {
   Shuffle,
   Repeat,
   Heart,
-  ListMusic,
-  Radio,
-  Upload,
-  Sparkles,
-  SlidersHorizontal,
-  FolderPlus,
+  Search,
+  X,
   Loader2,
-  Check,
-  Disc3,
   Music,
-  Wifi,
-  Trash2
+  Tv,
+  ListMusic,
+  Sparkles,
+  Flame,
+  Radio,
+  ExternalLink
 } from 'lucide-react';
 
-const STATIONS = [
-  {
-    id: 'groovesalad',
-    name: 'Chill Retail Lounge',
-    artist: 'SomaFM • Groove Salad',
-    genre: 'Downtempo Ambient Beats',
-    vibe: 'Relaxed Shopping Atmosphere',
-    url: 'https://ice1.somafm.com/groovesalad-128-mp3',
-    gradient: 'from-[#10b981] via-[#059669] to-[#047857]',
-    accentColor: '#10b981',
-    coverIcon: '🌿',
-  },
-  {
-    id: 'poptron',
-    name: 'Store Energy & Hits',
-    artist: 'SomaFM • PopTron',
-    genre: 'Electropop & Indie Commercial',
-    vibe: 'Youth Fashion & Peak Hours',
-    url: 'https://ice1.somafm.com/poptron-128-mp3',
-    gradient: 'from-[#6366f1] via-[#4f46e5] to-[#4338ca]',
-    accentColor: '#6366f1',
-    coverIcon: '⚡',
-  },
-  {
-    id: 'suburbsofgoa',
-    name: 'Desi Fusion & Lounge',
-    artist: 'SomaFM • Suburbs of Goa',
-    genre: 'Asian Lounge & Indian Chill',
-    vibe: 'Festive & Ethnic Ambient',
-    url: 'https://ice1.somafm.com/suburbsofgoa-128-mp3',
-    gradient: 'from-[#f59e0b] via-[#d97706] to-[#b45309]',
-    accentColor: '#f59e0b',
-    coverIcon: '🪕',
-  },
-  {
-    id: 'lush',
-    name: 'Acoustic Boutique Cafe',
-    artist: 'SomaFM • Lush',
-    genre: 'Warm Vocals & Gentle Guitar',
-    vibe: 'Cozy Luxury Fitting Experience',
-    url: 'https://ice1.somafm.com/lush-128-mp3',
-    gradient: 'from-[#ec4899] via-[#db2777] to-[#be185d]',
-    accentColor: '#ec4899',
-    coverIcon: '☕',
-  },
-  {
-    id: 'secretagent',
-    name: 'Classy Menswear Jazz',
-    artist: 'SomaFM • Secret Agent',
-    genre: 'Retro Spy Lounge & Smooth Jazz',
-    vibe: 'Sophisticated Suiting & Formal',
-    url: 'https://ice1.somafm.com/secretagent-128-mp3',
-    gradient: 'from-[#06b6d4] via-[#0891b2] to-[#0e7490]',
-    accentColor: '#06b6d4',
-    coverIcon: '🍸',
-  },
-  {
-    id: 'indiepop',
-    name: 'Casual Streetwear Beats',
-    artist: 'SomaFM • Indie Pop',
-    genre: 'Modern Indie & Guitar Pop',
-    vibe: 'Denim & Trendy Casuals',
-    url: 'https://ice1.somafm.com/indiepop-128-mp3',
-    gradient: 'from-[#8b5cf6] via-[#7c3aed] to-[#6d28d9]',
-    accentColor: '#8b5cf6',
-    coverIcon: '🎧',
-  },
+const QUICK_MIXES = [
+  { label: 'Bollywood Hits', query: 'Top Bollywood romantic songs 2026', icon: '🌸', color: 'from-rose-500 to-red-600' },
+  { label: 'Punjabi Energy', query: 'Top Punjabi party songs Diljit Karan Aujla', icon: '🔥', color: 'from-amber-500 to-orange-600' },
+  { label: 'Lo-Fi Store Chill', query: 'Lofi retail shopping ambient beats instrumental', icon: '🎧', color: 'from-indigo-500 to-blue-600' },
+  { label: 'Acoustic Boutique', query: 'Acoustic guitar cafe songs soft unplugged', icon: '☕', color: 'from-emerald-500 to-teal-600' },
+  { label: '90s Nostalgia', query: 'Best 90s bollywood songs kumar sanu udit', icon: '📻', color: 'from-purple-500 to-fuchsia-600' },
+  { label: 'Global Fashion Pop', query: 'Global commercial pop hits coldplay weeknd', icon: '✨', color: 'from-cyan-500 to-blue-600' }
 ];
 
-export default function StoreMusicPlayer() {
-  const [mode, setMode] = useState('radio'); // 'radio' | 'local'
-  const [stationIdx, setStationIdx] = useState(0);
+export default function StoreMusicPlayer({ API_BASE = '' }) {
+  const effectiveApiBase = API_BASE || (
+    typeof window !== 'undefined' && (window.location.protocol === 'app:' || window.location.hostname === 'localhost')
+      ? 'http://localhost:5000'
+      : ''
+  );
+
+  // Search & Playlist State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState([]);
+  const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
+  const [showDrawer, setShowDrawer] = useState(false);
+  const [showVideo, setShowVideo] = useState(false);
+
+  // Playback State
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [volume, setVolume] = useState(() => {
-    const saved = localStorage.getItem('cobb_spotify_vol');
-    return saved !== null ? parseFloat(saved) : 0.75;
+    const saved = localStorage.getItem('cobb_yt_music_vol');
+    return saved !== null ? parseInt(saved) : 80;
   });
   const [isMuted, setIsMuted] = useState(false);
   const [isLiked, setIsLiked] = useState(false);
   const [shuffle, setShuffle] = useState(false);
   const [repeat, setRepeat] = useState(false);
-  const [showQueue, setShowQueue] = useState(false);
 
-  // Streaming uptime simulation
-  const [streamElapsed, setStreamElapsed] = useState(0);
-
-  // Local files
-  const [localTracks, setLocalTracks] = useState([]);
-  const [localIdx, setLocalIdx] = useState(0);
+  // Timeline
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
 
-  const audioRef = useRef(null);
-  const fileInputRef = useRef(null);
-  const streamTimerRef = useRef(null);
+  // Refs
+  const playerRef = useRef(null);
+  const progressTimerRef = useRef(null);
+  const playerReadyRef = useRef(false);
 
-  // Sync volume
+  const currentTrack = searchResults[currentTrackIndex] || null;
+
+  // Initialize YouTube IFrame API
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = isMuted ? 0 : volume;
+    const loadYT = () => {
+      if (!window.YT) {
+        const tag = document.createElement('script');
+        tag.src = 'https://www.youtube.com/iframe_api';
+        const firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+      }
+
+      window.onYouTubeIframeAPIReady = () => {
+        initPlayer();
+      };
+
+      if (window.YT && window.YT.Player) {
+        initPlayer();
+      }
+    };
+
+    const initPlayer = () => {
+      if (playerRef.current) return;
+      try {
+        playerRef.current = new window.YT.Player('cobb-yt-iframe-player', {
+          height: '100%',
+          width: '100%',
+          playerVars: {
+            autoplay: 1,
+            controls: 0,
+            disablekb: 1,
+            fs: 0,
+            modestbranding: 1,
+            playsinline: 1,
+            rel: 0,
+            origin: window.location.origin
+          },
+          events: {
+            onReady: (event) => {
+              playerReadyRef.current = true;
+              event.target.setVolume(isMuted ? 0 : volume);
+            },
+            onStateChange: (event) => {
+              // YT.PlayerState: 1 = PLAYING, 2 = PAUSED, 3 = BUFFERING, 0 = ENDED
+              if (event.data === 1) {
+                setIsPlaying(true);
+                setIsLoading(false);
+                if (playerRef.current && playerRef.current.getDuration) {
+                  setDuration(playerRef.current.getDuration() || 0);
+                }
+              } else if (event.data === 2) {
+                setIsPlaying(false);
+                setIsLoading(false);
+              } else if (event.data === 3) {
+                setIsLoading(true);
+              } else if (event.data === 0) {
+                // Song ended
+                handleTrackEnded();
+              }
+            },
+            onError: (err) => {
+              console.warn('YouTube Player error:', err);
+              setIsLoading(false);
+              setIsPlaying(false);
+            }
+          }
+        });
+      } catch (e) {
+        console.error('Error instantiating YT Player:', e);
+      }
+    };
+
+    loadYT();
+
+    // Default initial search to load top retail hits
+    executeSearch('Top Bollywood romantic hits official audio', false);
+
+    return () => {
+      clearInterval(progressTimerRef.current);
+    };
+  }, []);
+
+  // Poll current playback time
+  useEffect(() => {
+    if (isPlaying) {
+      progressTimerRef.current = setInterval(() => {
+        if (playerRef.current && playerRef.current.getCurrentTime) {
+          const t = playerRef.current.getCurrentTime();
+          setCurrentTime(t || 0);
+          const d = playerRef.current.getDuration();
+          if (d && d > 0) setDuration(d);
+        }
+      }, 500);
+    } else {
+      clearInterval(progressTimerRef.current);
+    }
+    return () => clearInterval(progressTimerRef.current);
+  }, [isPlaying]);
+
+  // Sync Volume
+  useEffect(() => {
+    if (playerRef.current && playerRef.current.setVolume) {
+      playerRef.current.setVolume(isMuted ? 0 : volume);
     }
   }, [volume, isMuted]);
 
-  // Stream elapsed timer when playing live radio
-  useEffect(() => {
-    if (isPlaying && mode === 'radio') {
-      streamTimerRef.current = setInterval(() => {
-        setStreamElapsed(prev => prev + 1);
-      }, 1000);
-    } else {
-      clearInterval(streamTimerRef.current);
-      if (!isPlaying) setStreamElapsed(0);
-    }
-    return () => clearInterval(streamTimerRef.current);
-  }, [isPlaying, mode]);
-
-  const selectStation = (idx, autoPlay = true) => {
-    setStationIdx(idx);
-    setMode('radio');
-    setStreamElapsed(0);
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.src = STATIONS[idx].url;
-      audioRef.current.load();
-      if (autoPlay) {
-        setIsLoading(true);
-        audioRef.current.play().then(() => {
-          setIsPlaying(true);
-          setIsLoading(false);
-        }).catch(err => {
-          console.warn('Playback error:', err);
-          setIsPlaying(false);
-          setIsLoading(false);
-        });
-      } else {
-        setIsPlaying(false);
-        setIsLoading(false);
-      }
-    }
-  };
-
-  const selectLocalTrack = (idx, autoPlay = true) => {
-    if (!localTracks[idx]) return;
-    setLocalIdx(idx);
-    setMode('local');
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.src = localTracks[idx].url;
-      audioRef.current.load();
-      if (autoPlay) {
-        setIsLoading(true);
-        audioRef.current.play().then(() => {
-          setIsPlaying(true);
-          setIsLoading(false);
-        }).catch(err => {
-          console.warn('Local playback error:', err);
-          setIsPlaying(false);
-          setIsLoading(false);
-        });
-      }
-    }
-  };
-
-  const togglePlay = () => {
-    if (!audioRef.current) return;
-    if (isPlaying) {
-      audioRef.current.pause();
-      setIsPlaying(false);
-      setIsLoading(false);
-    } else {
-      setIsLoading(true);
-      if (!audioRef.current.src) {
-        if (mode === 'radio') {
-          audioRef.current.src = STATIONS[stationIdx].url;
-        } else if (localTracks.length > 0) {
-          audioRef.current.src = localTracks[localIdx].url;
+  // Search Function
+  const executeSearch = async (queryText, autoPlay = true) => {
+    const q = (queryText || '').trim();
+    if (!q) return;
+    setIsSearching(true);
+    try {
+      const res = await axios.get(`${effectiveApiBase}/api/music/search?q=${encodeURIComponent(q)}`);
+      if (res.data && res.data.results && res.data.results.length > 0) {
+        setSearchResults(res.data.results);
+        setCurrentTrackIndex(0);
+        if (autoPlay) {
+          playTrack(res.data.results[0], 0);
         }
       }
-      audioRef.current.play().then(() => {
+    } catch (err) {
+      console.error('Search failed:', err);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Play Specific Track
+  const playTrack = (track, index) => {
+    if (!track || !track.id) return;
+    setCurrentTrackIndex(index);
+    setIsLoading(true);
+    setCurrentTime(0);
+    setDuration(0);
+
+    if (playerRef.current && playerRef.current.loadVideoById) {
+      playerRef.current.loadVideoById(track.id);
+      playerRef.current.playVideo();
+    } else {
+      setTimeout(() => {
+        if (playerRef.current && playerRef.current.loadVideoById) {
+          playerRef.current.loadVideoById(track.id);
+          playerRef.current.playVideo();
+        }
+      }, 800);
+    }
+  };
+
+  // Play / Pause Toggle
+  const togglePlay = () => {
+    if (!playerRef.current) return;
+    if (isPlaying) {
+      if (playerRef.current.pauseVideo) playerRef.current.pauseVideo();
+      setIsPlaying(false);
+    } else {
+      if (playerRef.current.playVideo) {
+        playerRef.current.playVideo();
         setIsPlaying(true);
-        setIsLoading(false);
-      }).catch(err => {
-        console.warn('Play failed:', err);
-        setIsPlaying(false);
-        setIsLoading(false);
-      });
+      } else if (currentTrack) {
+        playTrack(currentTrack, currentTrackIndex);
+      }
     }
   };
 
+  // Next Track
   const handleNext = () => {
-    if (mode === 'radio') {
-      let nextIdx;
-      if (shuffle) {
-        nextIdx = Math.floor(Math.random() * STATIONS.length);
-      } else {
-        nextIdx = (stationIdx + 1) % STATIONS.length;
-      }
-      selectStation(nextIdx, isPlaying);
-    } else if (localTracks.length > 0) {
-      let nextIdx;
-      if (shuffle) {
-        nextIdx = Math.floor(Math.random() * localTracks.length);
-      } else {
-        nextIdx = (localIdx + 1) % localTracks.length;
-      }
-      selectLocalTrack(nextIdx, isPlaying);
+    if (searchResults.length === 0) return;
+    let nextIdx;
+    if (shuffle) {
+      nextIdx = Math.floor(Math.random() * searchResults.length);
+    } else {
+      nextIdx = (currentTrackIndex + 1) % searchResults.length;
     }
+    playTrack(searchResults[nextIdx], nextIdx);
   };
 
+  // Prev Track
   const handlePrev = () => {
-    if (mode === 'radio') {
-      const prevIdx = (stationIdx - 1 + STATIONS.length) % STATIONS.length;
-      selectStation(prevIdx, isPlaying);
-    } else if (localTracks.length > 0) {
-      const prevIdx = (localIdx - 1 + localTracks.length) % localTracks.length;
-      selectLocalTrack(prevIdx, isPlaying);
+    if (searchResults.length === 0) return;
+    const prevIdx = (currentTrackIndex - 1 + searchResults.length) % searchResults.length;
+    playTrack(searchResults[prevIdx], prevIdx);
+  };
+
+  // Track Ended Handler
+  const handleTrackEnded = () => {
+    if (repeat) {
+      if (playerRef.current && playerRef.current.seekTo) {
+        playerRef.current.seekTo(0);
+        playerRef.current.playVideo();
+      }
+    } else {
+      handleNext();
     }
   };
 
-  const handleFileUpload = (e) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
-
-    const newItems = files.map(file => ({
-      name: file.name.replace(/\.[^/.]+$/, ''),
-      url: URL.createObjectURL(file),
-      size: (file.size / (1024 * 1024)).toFixed(1) + ' MB',
-      file
-    }));
-
-    setLocalTracks(prev => [...prev, ...newItems]);
-    setMode('local');
-    setLocalIdx(localTracks.length);
-    setTimeout(() => {
-      selectLocalTrack(localTracks.length, true);
-    }, 50);
-    e.target.value = '';
+  // Seek
+  const handleSeek = (e) => {
+    if (!duration || !playerRef.current) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const ratio = Math.max(0, Math.min(1, clickX / rect.width));
+    const seekSeconds = ratio * duration;
+    setCurrentTime(seekSeconds);
+    if (playerRef.current.seekTo) {
+      playerRef.current.seekTo(seekSeconds, true);
+    }
   };
 
-  const handleVolume = (val) => {
+  // Volume Change
+  const handleVolumeChange = (val) => {
     setVolume(val);
-    localStorage.setItem('cobb_spotify_vol', val);
+    localStorage.setItem('cobb_yt_music_vol', val);
     if (isMuted && val > 0) setIsMuted(false);
   };
 
@@ -277,69 +290,47 @@ export default function StoreMusicPlayer() {
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
-  const currentStation = STATIONS[stationIdx];
-  const currentTrack = localTracks[localIdx];
-
-  // Scrub bar percentage calculation
-  const progressPct = mode === 'local' 
-    ? (duration ? (currentTime / duration) * 100 : 0)
-    : 100; // live stream shows full active bar
+  const progressPct = duration ? (currentTime / duration) * 100 : 0;
 
   return (
-    <div className="bg-[#121212] text-white rounded-2xl border border-[#282828] shadow-2xl p-4 transition-all relative overflow-hidden select-none font-sans">
-      {/* Hidden Audio Element */}
-      <audio
-        ref={audioRef}
-        onTimeUpdate={() => {
-          if (audioRef.current && mode === 'local') {
-            setCurrentTime(audioRef.current.currentTime);
-            setDuration(audioRef.current.duration || 0);
-          }
-        }}
-        onEnded={() => {
-          if (mode === 'local') {
-            if (repeat) {
-              if (audioRef.current) {
-                audioRef.current.currentTime = 0;
-                audioRef.current.play();
-              }
-            } else {
-              handleNext();
-            }
-          }
-        }}
-        onWaiting={() => setIsLoading(true)}
-        onPlaying={() => {
-          setIsLoading(false);
-          setIsPlaying(true);
-        }}
-        onError={() => {
-          setIsLoading(false);
-          setIsPlaying(false);
-        }}
-      />
+    <div className="bg-[#0f0f0f] text-white rounded-2xl border border-[#272727] shadow-2xl p-4 transition-all relative overflow-hidden select-none font-sans">
+      
+      {/* Hidden YouTube IFrame Container (or visible when Video Mode is ON) */}
+      <div
+        className={`${
+          showVideo
+            ? 'w-full h-48 sm:h-64 mb-3 rounded-xl overflow-hidden border border-[#272727] bg-black relative'
+            : 'w-[1px] h-[1px] opacity-0 pointer-events-none absolute -left-[9999px]'
+        }`}
+      >
+        <div id="cobb-yt-iframe-player" className="w-full h-full" />
+      </div>
 
-      {/* Top Brand & Mode Header */}
-      <div className="flex items-center justify-between pb-3 mb-3 border-b border-[#282828]">
+      {/* Top Brand Bar & Search Form */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-3 mb-3 border-b border-[#272727]">
+        
+        {/* YT Music Brand Header */}
         <div className="flex items-center gap-2.5">
-          {/* Spotify Green Icon */}
-          <div className="w-6 h-6 rounded-full bg-[#1db954] flex items-center justify-center shadow-[0_0_12px_rgba(29,185,84,0.4)]">
-            <svg className="w-3.5 h-3.5 fill-black" viewBox="0 0 24 24">
-              <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.498 17.306c-.216.353-.674.467-1.027.25-2.813-1.718-6.354-2.107-10.526-1.155-.403.093-.804-.158-.897-.561-.093-.404.158-.804.561-.897 4.571-1.045 8.492-.596 11.638 1.336.354.217.468.674.251 1.027zm1.467-3.26c-.272.441-.849.582-1.29.31-3.22-1.978-8.128-2.55-11.936-1.393-.497.151-1.025-.133-1.176-.63-.151-.497.133-1.025.63-1.176 4.354-1.321 9.775-.68 13.462 1.587.441.272.582.85.31 1.302zm.126-3.395C15.234 8.358 8.878 8.147 5.17 9.273c-.604.184-1.24-.165-1.424-.769-.184-.604.165-1.24.769-1.424 4.258-1.293 11.282-1.043 15.727 1.597.544.323.722 1.028.399 1.572-.323.543-1.028.721-1.55.473z"/>
+          {/* YouTube Music Red Emblem */}
+          <div className="w-7 h-7 rounded-full bg-red-600 flex items-center justify-center shadow-[0_0_12px_rgba(239,68,68,0.4)] flex-shrink-0">
+            <svg className="w-4 h-4 fill-white" viewBox="0 0 24 24">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 14.5c-2.49 0-4.5-2.01-4.5-4.5S9.51 7.5 12 7.5s4.5 2.01 4.5 4.5-2.01 4.5-4.5 4.5zm0-5.5c-.55 0-1 .45-1 1s.45 1 1 1 1-.45 1-1-.45-1-1-1z" />
+              <path d="M10 9.5v5l4-2.5z" />
             </svg>
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs font-black tracking-wider uppercase text-white">
-                Spotify Store Audio
+              <span className="text-xs font-black tracking-wider uppercase text-white flex items-center gap-1.5">
+                YouTube Music
+                <span className="text-[10px] px-1.5 py-0.2 rounded bg-red-600/20 text-red-400 font-bold border border-red-600/30">STORE AUDIO</span>
               </span>
               {isPlaying ? (
-                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-[#1db954]/20 text-[#1ed760] border border-[#1db954]/40">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#1ed760] animate-ping" />
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-red-500/20 text-red-400 border border-red-500/40">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
                   Playing
                 </span>
               ) : (
-                <span className="text-[10px] font-bold text-[#b3b3b3] px-2 py-0.5 rounded-full bg-[#282828]">
+                <span className="text-[10px] font-bold text-[#aaaaaa] px-2 py-0.5 rounded-full bg-[#272727]">
                   Paused
                 </span>
               )}
@@ -347,132 +338,167 @@ export default function StoreMusicPlayer() {
           </div>
         </div>
 
-        {/* Source Mode Switcher */}
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => {
-              setMode('radio');
-              if (isPlaying && mode !== 'radio') selectStation(stationIdx, true);
-            }}
-            className={`px-3 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-              mode === 'radio'
-                ? 'bg-white text-black font-extrabold shadow-sm'
-                : 'bg-[#282828] text-[#b3b3b3] hover:text-white hover:bg-[#333333]'
-            }`}
-          >
-            <Radio className="w-3 h-3" />
-            <span>Curated Radio</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => {
-              if (localTracks.length === 0) {
-                fileInputRef.current?.click();
-              } else {
-                setMode('local');
-                if (isPlaying && mode !== 'local') selectLocalTrack(localIdx, true);
-              }
-            }}
-            className={`px-3 py-1 rounded-full text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-              mode === 'local'
-                ? 'bg-white text-black font-extrabold shadow-sm'
-                : 'bg-[#282828] text-[#b3b3b3] hover:text-white hover:bg-[#333333]'
-            }`}
-          >
-            <FolderPlus className="w-3 h-3" />
-            <span>Local Files {localTracks.length > 0 && `(${localTracks.length})`}</span>
-          </button>
-
+        {/* Global Song Search Bar */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            executeSearch(searchQuery, true);
+          }}
+          className="flex-1 max-w-md relative flex items-center"
+        >
+          <Search className="w-3.5 h-3.5 absolute left-3 text-[#aaaaaa] pointer-events-none" />
           <input
-            ref={fileInputRef}
-            type="file"
-            accept="audio/*"
-            multiple
-            onChange={handleFileUpload}
-            className="hidden"
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search any song, artist, or album on YouTube Music..."
+            className="w-full bg-[#212121] hover:bg-[#272727] focus:bg-[#2a2a2a] text-white text-xs font-medium pl-8 pr-16 py-1.5 rounded-full border border-transparent focus:border-red-500 focus:outline-none transition-all placeholder-[#717171]"
           />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="absolute right-10 text-[#aaaaaa] hover:text-white cursor-pointer p-1"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          )}
+          <button
+            type="submit"
+            disabled={isSearching}
+            className="absolute right-1.5 px-2.5 py-1 rounded-full text-[10px] font-black bg-red-600 hover:bg-red-500 text-white cursor-pointer disabled:opacity-50 transition-colors"
+          >
+            {isSearching ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Search'}
+          </button>
+        </form>
+
+        {/* Tools (Queue / Video toggle) */}
+        <div className="flex items-center gap-1.5 justify-end">
+          <button
+            type="button"
+            onClick={() => setShowVideo(!showVideo)}
+            title={showVideo ? 'Hide Video (Audio Only)' : 'Show Music Video'}
+            className={`p-1.5 rounded-full transition-all cursor-pointer ${
+              showVideo
+                ? 'bg-red-600 text-white shadow-md'
+                : 'bg-[#212121] text-[#aaaaaa] hover:text-white hover:bg-[#272727]'
+            }`}
+          >
+            <Tv className="w-3.5 h-3.5" />
+          </button>
 
           <button
             type="button"
-            onClick={() => setShowQueue(!showQueue)}
-            title="Browse Playlists & Channels"
-            className={`p-1.5 rounded-full transition-all cursor-pointer ${
-              showQueue ? 'bg-[#1ed760] text-black font-bold' : 'bg-[#282828] text-[#b3b3b3] hover:text-white hover:bg-[#333333]'
+            onClick={() => setShowDrawer(!showDrawer)}
+            title="Browse Results & Quick Mixes"
+            className={`px-2.5 py-1 rounded-full text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+              showDrawer
+                ? 'bg-red-600 text-white'
+                : 'bg-[#212121] text-[#aaaaaa] hover:text-white hover:bg-[#272727]'
             }`}
           >
-            <ListMusic className="w-4 h-4" />
+            <ListMusic className="w-3.5 h-3.5" />
+            <span>Songs ({searchResults.length})</span>
           </button>
         </div>
+
       </div>
 
-      {/* Spotify Signature 3-Section Player Bar */}
+      {/* Quick Mixes Shortcut Chips */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-2.5 mb-2 no-scrollbar">
+        <span className="text-[10px] font-black uppercase text-[#aaaaaa] flex-shrink-0 mr-1">Quick Mixes:</span>
+        {QUICK_MIXES.map((mix, idx) => (
+          <button
+            key={idx}
+            type="button"
+            onClick={() => {
+              setSearchQuery(mix.label);
+              executeSearch(mix.query, true);
+            }}
+            className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#212121] hover:bg-[#2e2e2e] text-[#e1e1e1] hover:text-white border border-[#333333] hover:border-red-500/50 flex-shrink-0 transition-all flex items-center gap-1 cursor-pointer active:scale-95"
+          >
+            <span>{mix.icon}</span>
+            <span>{mix.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* Main 3-Column Player Bar */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
         
-        {/* Section 1: Now Playing Track Info (cols 1-4) */}
+        {/* Left: Track Information (cols 1-4) */}
         <div className="md:col-span-4 flex items-center gap-3 min-w-0">
-          {/* Album Artwork with Spotify styling */}
-          <div className="relative flex-shrink-0 group cursor-pointer">
-            <div
-              className={`w-14 h-14 rounded-lg bg-gradient-to-br ${
-                mode === 'radio' ? currentStation.gradient : 'from-[#6366f1] to-[#a855f7]'
-              } flex items-center justify-center text-2xl shadow-lg transition-transform group-hover:scale-102`}
-            >
-              {mode === 'radio' ? currentStation.coverIcon : '🎵'}
+          {/* Thumbnail / Album Art */}
+          <div className="relative flex-shrink-0 group cursor-pointer" onClick={() => setShowDrawer(!showDrawer)}>
+            <div className="w-13 h-13 sm:w-14 sm:h-14 rounded-lg overflow-hidden bg-[#212121] shadow-md border border-[#272727]">
+              {currentTrack?.thumbnail ? (
+                <img
+                  src={currentTrack.thumbnail}
+                  alt={currentTrack.title}
+                  className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-xl bg-gradient-to-tr from-red-600 to-rose-700">
+                  🎵
+                </div>
+              )}
             </div>
 
-            {/* Vinyl spin indicator on play */}
+            {/* Glowing active ring when playing */}
             {isPlaying && (
-              <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-[#121212] flex items-center justify-center border border-[#282828]">
-                <Disc3 className="w-3 h-3 text-[#1ed760] animate-spin" style={{ animationDuration: '3s' }} />
-              </div>
+              <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+              </span>
             )}
           </div>
 
-          {/* Track Titles */}
+          {/* Titles */}
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <h4 className="text-xs sm:text-sm font-bold text-white hover:underline cursor-pointer truncate">
-                {mode === 'radio'
-                  ? currentStation.name
-                  : (currentTrack ? currentTrack.name : 'No Songs Selected')}
-              </h4>
+            <h4
+              onClick={() => setShowDrawer(!showDrawer)}
+              className="text-xs sm:text-sm font-bold text-white hover:underline cursor-pointer truncate"
+              title={currentTrack?.title || 'No Song Selected'}
+            >
+              {currentTrack?.title || 'Search any song above...'}
+            </h4>
+            <p className="text-[11px] text-[#aaaaaa] hover:text-white cursor-pointer truncate mt-0.5">
+              {currentTrack?.artist || 'YouTube Music'}
+            </p>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-[#212121] text-red-400 border border-red-500/20">
+                YT Music Audio
+              </span>
+              {currentTrack?.duration && (
+                <span className="text-[10px] text-[#717171] font-mono">{currentTrack.duration}</span>
+              )}
             </div>
-            <p className="text-[11px] text-[#b3b3b3] hover:underline hover:text-white cursor-pointer truncate">
-              {mode === 'radio'
-                ? currentStation.artist
-                : (currentTrack ? currentTrack.size : 'Click "Local Files" to add')}
-            </p>
-            <p className="text-[10px] text-[#1ed760] font-medium truncate mt-0.5">
-              {mode === 'radio' ? currentStation.vibe : 'In-Store Local MP3 Audio'}
-            </p>
           </div>
 
-          {/* Heart / Like button */}
+          {/* Heart Button */}
           <button
             type="button"
             onClick={() => setIsLiked(!isLiked)}
-            className="text-[#b3b3b3] hover:text-white transition-colors cursor-pointer p-1"
-            title={isLiked ? 'Remove from Your Library' : 'Save to Your Library'}
+            className="text-[#aaaaaa] hover:text-white transition-colors cursor-pointer p-1"
+            title={isLiked ? 'Liked' : 'Like Song'}
           >
             <Heart
               className={`w-4 h-4 transition-transform active:scale-125 ${
-                isLiked ? 'fill-[#1ed760] text-[#1ed760]' : ''
+                isLiked ? 'fill-red-500 text-red-500' : ''
               }`}
             />
           </button>
 
-          {/* Equalizer Waveform bars */}
+          {/* Equalizer Soundwave Visualizer */}
           <div className="hidden sm:flex items-end gap-[2px] h-5 px-1 flex-shrink-0">
-            {[60, 100, 45, 90, 70].map((h, i) => (
+            {[65, 100, 45, 90, 75].map((h, i) => (
               <div
                 key={i}
                 className={`w-[3px] rounded-full transition-all duration-200 ${
-                  isPlaying ? 'bg-[#1ed760] animate-pulse' : 'bg-[#404040] h-[3px]'
+                  isPlaying ? 'bg-red-500 animate-pulse' : 'bg-[#404040] h-[3px]'
                 }`}
                 style={{
-                  height: isPlaying ? `${Math.max(4, (h * (volume || 0.5)) * 0.2)}px` : '3px',
+                  height: isPlaying ? `${Math.max(4, (h * (volume / 100)) * 0.2)}px` : '3px',
                   animationDelay: `${i * 100}ms`,
                   animationDuration: `${350 + (i % 3) * 120}ms`,
                 }}
@@ -481,39 +507,40 @@ export default function StoreMusicPlayer() {
           </div>
         </div>
 
-        {/* Section 2: Player Controls & Timeline Scrubber (cols 5-8) */}
+        {/* Center: Controls & Scrubber (cols 5-8) */}
         <div className="md:col-span-5 flex flex-col items-center justify-center gap-1.5 w-full">
-          {/* Controls row */}
+          {/* Buttons row */}
           <div className="flex items-center gap-3 sm:gap-4">
             {/* Shuffle */}
             <button
               type="button"
               onClick={() => setShuffle(!shuffle)}
               className={`p-1 transition-colors cursor-pointer relative ${
-                shuffle ? 'text-[#1ed760]' : 'text-[#b3b3b3] hover:text-white'
+                shuffle ? 'text-red-500' : 'text-[#aaaaaa] hover:text-white'
               }`}
-              title="Enable Shuffle"
+              title="Shuffle"
             >
               <Shuffle className="w-3.5 h-3.5" />
-              {shuffle && <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#1ed760]" />}
+              {shuffle && <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-red-500" />}
             </button>
 
             {/* Skip Back */}
             <button
               type="button"
               onClick={handlePrev}
-              className="text-[#b3b3b3] hover:text-white transition-colors cursor-pointer active:scale-90"
+              disabled={searchResults.length === 0}
+              className="text-[#aaaaaa] hover:text-white transition-colors cursor-pointer active:scale-90 disabled:opacity-40"
               title="Previous"
             >
               <SkipBack className="w-4 h-4 fill-current" />
             </button>
 
-            {/* Main Play / Pause Circle */}
+            {/* Play / Pause Button */}
             <button
               type="button"
               onClick={togglePlay}
-              disabled={isLoading || (mode === 'local' && localTracks.length === 0)}
-              className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white hover:bg-white/90 text-black flex items-center justify-center shadow-md hover:scale-106 active:scale-95 transition-all cursor-pointer disabled:opacity-40"
+              disabled={isLoading || !currentTrack}
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white hover:bg-white/90 text-black flex items-center justify-center shadow-lg hover:scale-106 active:scale-95 transition-all cursor-pointer disabled:opacity-40"
               title={isPlaying ? 'Pause' : 'Play'}
             >
               {isLoading ? (
@@ -529,7 +556,8 @@ export default function StoreMusicPlayer() {
             <button
               type="button"
               onClick={handleNext}
-              className="text-[#b3b3b3] hover:text-white transition-colors cursor-pointer active:scale-90"
+              disabled={searchResults.length === 0}
+              className="text-[#aaaaaa] hover:text-white transition-colors cursor-pointer active:scale-90 disabled:opacity-40"
               title="Next"
             >
               <SkipForward className="w-4 h-4 fill-current" />
@@ -540,213 +568,163 @@ export default function StoreMusicPlayer() {
               type="button"
               onClick={() => setRepeat(!repeat)}
               className={`p-1 transition-colors cursor-pointer relative ${
-                repeat ? 'text-[#1ed760]' : 'text-[#b3b3b3] hover:text-white'
+                repeat ? 'text-red-500' : 'text-[#aaaaaa] hover:text-white'
               }`}
-              title="Enable Repeat"
+              title="Repeat Current Song"
             >
               <Repeat className="w-3.5 h-3.5" />
-              {repeat && <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#1ed760]" />}
+              {repeat && <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-red-500" />}
             </button>
           </div>
 
-          {/* Scrub Bar row */}
+          {/* Timeline Scrubber */}
           <div className="flex items-center gap-2 w-full max-w-md group">
-            <span className="text-[10px] font-mono text-[#b3b3b3] w-8 text-right select-none">
-              {mode === 'local' ? formatTime(currentTime) : formatTime(streamElapsed)}
+            <span className="text-[10px] font-mono text-[#aaaaaa] w-8 text-right select-none">
+              {formatTime(currentTime)}
             </span>
 
-            {/* Spotify Progress Bar */}
             <div
-              className="flex-1 h-1 group-hover:h-1.5 bg-[#4d4d4d] rounded-full relative cursor-pointer flex items-center transition-all overflow-hidden"
-              onClick={(e) => {
-                if (mode === 'local' && duration && audioRef.current) {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const clickX = e.clientX - rect.left;
-                  const ratio = Math.max(0, Math.min(1, clickX / rect.width));
-                  audioRef.current.currentTime = ratio * duration;
-                  setCurrentTime(ratio * duration);
-                }
-              }}
+              onClick={handleSeek}
+              className="flex-1 h-1 group-hover:h-1.5 bg-[#404040] rounded-full relative cursor-pointer flex items-center transition-all overflow-hidden"
             >
               <div
-                className="h-full bg-white group-hover:bg-[#1db954] transition-colors rounded-full relative"
+                className="h-full bg-red-600 transition-all rounded-full relative"
                 style={{ width: `${progressPct}%` }}
               >
-                {/* Thumb circle on hover */}
                 <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity" />
               </div>
             </div>
 
-            <span className="text-[10px] font-mono text-[#b3b3b3] w-10 select-none">
-              {mode === 'local' ? (
-                formatTime(duration)
-              ) : (
-                <span className="text-[#1ed760] font-black text-[9px] flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#1ed760] animate-pulse inline-block" />
-                  LIVE
-                </span>
-              )}
+            <span className="text-[10px] font-mono text-[#aaaaaa] w-8 select-none">
+              {formatTime(duration)}
             </span>
           </div>
         </div>
 
-        {/* Section 3: Volume & Queue Tools (cols 9-12) */}
+        {/* Right: Volume & Link (cols 9-12) */}
         <div className="md:col-span-3 flex items-center justify-end gap-2.5">
-          {/* Mute Button */}
           <button
             type="button"
             onClick={() => setIsMuted(!isMuted)}
-            className="text-[#b3b3b3] hover:text-white transition-colors cursor-pointer"
+            className="text-[#aaaaaa] hover:text-white transition-colors cursor-pointer"
             title={isMuted ? 'Unmute' : 'Mute'}
           >
             {isMuted || volume === 0 ? (
-              <VolumeX className="w-4 h-4 text-rose-500" />
-            ) : volume < 0.5 ? (
+              <VolumeX className="w-4 h-4 text-red-500" />
+            ) : volume < 50 ? (
               <Volume1 className="w-4 h-4" />
             ) : (
               <Volume2 className="w-4 h-4" />
             )}
           </button>
 
-          {/* Spotify Volume Slider */}
+          {/* Volume Slider */}
           <div className="w-20 sm:w-24 group relative flex items-center">
             <div
-              className="w-full h-1 group-hover:h-1.5 bg-[#4d4d4d] rounded-full relative cursor-pointer flex items-center transition-all overflow-hidden"
+              className="w-full h-1 group-hover:h-1.5 bg-[#404040] rounded-full relative cursor-pointer flex items-center transition-all overflow-hidden"
               onClick={(e) => {
                 const rect = e.currentTarget.getBoundingClientRect();
                 const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-                handleVolume(ratio);
+                handleVolumeChange(Math.round(ratio * 100));
               }}
             >
               <div
-                className="h-full bg-white group-hover:bg-[#1db954] transition-colors rounded-full"
-                style={{ width: `${(isMuted ? 0 : volume) * 100}%` }}
+                className="h-full bg-white group-hover:bg-red-600 transition-colors rounded-full"
+                style={{ width: `${isMuted ? 0 : volume}%` }}
               />
             </div>
           </div>
 
-          <span className="text-[10px] font-mono text-[#b3b3b3] w-7 text-right">
-            {Math.round((isMuted ? 0 : volume) * 100)}%
+          <span className="text-[10px] font-mono text-[#aaaaaa] w-7 text-right">
+            {isMuted ? 0 : volume}%
           </span>
+
+          {currentTrack?.url && (
+            <a
+              href={currentTrack.url}
+              target="_blank"
+              rel="noreferrer"
+              title="Open in YouTube"
+              className="text-[#717171] hover:text-white p-1"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+            </a>
+          )}
         </div>
 
       </div>
 
-      {/* Spotify Playlist & Channels Drawer */}
-      {showQueue && (
-        <div className="mt-4 pt-3.5 border-t border-[#282828] animate-in fade-in slide-in-from-top-2 duration-200">
+      {/* Drawer: Search Results & Queue Grid */}
+      {showDrawer && (
+        <div className="mt-4 pt-3.5 border-t border-[#272727] animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="flex items-center justify-between mb-3">
             <div>
               <h5 className="text-xs font-bold text-white uppercase tracking-wider">
-                {mode === 'radio' ? 'Curated In-Store Playlists & Stations' : `Local Store MP3 Tracks (${localTracks.length})`}
+                Up Next & Search Results ({searchResults.length} Songs)
               </h5>
-              <p className="text-[10px] text-[#b3b3b3]">
-                {mode === 'radio' ? 'Commercial-free 24/7 high-fidelity streams' : 'Audio files loaded from this device'}
+              <p className="text-[10px] text-[#aaaaaa]">
+                Click any song to play instantly or click quick mixes above
               </p>
             </div>
-            {mode === 'local' && localTracks.length > 0 && (
-              <button
-                type="button"
-                onClick={() => {
-                  if (audioRef.current) audioRef.current.pause();
-                  setIsPlaying(false);
-                  setLocalTracks([]);
-                  setMode('radio');
-                }}
-                className="text-[10px] text-rose-400 hover:text-rose-300 font-bold flex items-center gap-1 cursor-pointer"
-              >
-                <Trash2 className="w-3 h-3" /> Clear Tracks
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setShowDrawer(false)}
+              className="text-[10px] text-[#aaaaaa] hover:text-white font-bold cursor-pointer"
+            >
+              Close ✕
+            </button>
           </div>
 
-          {mode === 'radio' ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
-              {STATIONS.map((station, idx) => {
-                const isSelected = stationIdx === idx && mode === 'radio';
-                return (
-                  <div
-                    key={station.id}
-                    onClick={() => selectStation(idx, true)}
-                    className={`group/card p-2.5 rounded-xl transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between gap-2 border ${
-                      isSelected
-                        ? 'bg-[#282828] border-[#1ed760] shadow-[0_0_15px_rgba(30,215,96,0.15)]'
-                        : 'bg-[#181818] hover:bg-[#282828] border-transparent'
-                    }`}
-                  >
-                    {/* Card Cover Art with floating play button */}
-                    <div className="relative w-full aspect-square rounded-lg overflow-hidden flex items-center justify-center text-3xl shadow-md"
-                         style={{ background: `linear-gradient(135deg, ${station.accentColor}, #000000)` }}>
-                      <span>{station.coverIcon}</span>
-
-                      {/* Spotify Hover Play Button */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-64 overflow-y-auto pr-1">
+            {searchResults.map((track, idx) => {
+              const isSelected = currentTrackIndex === idx;
+              return (
+                <div
+                  key={track.id || idx}
+                  onClick={() => playTrack(track, idx)}
+                  className={`p-2 rounded-xl cursor-pointer transition-all flex items-center justify-between gap-2.5 border group/card ${
+                    isSelected
+                      ? 'bg-[#212121] border-red-500 shadow-[0_0_12px_rgba(239,68,68,0.2)]'
+                      : 'bg-[#181818] hover:bg-[#212121] border-transparent hover:border-[#333333]'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-[#272727] flex-shrink-0">
+                      {track.thumbnail ? (
+                        <img src={track.thumbnail} alt={track.title} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-xs">🎵</div>
+                      )}
                       <div
-                        className={`absolute right-1.5 bottom-1.5 w-8 h-8 rounded-full bg-[#1ed760] hover:bg-[#1fdf64] hover:scale-105 text-black flex items-center justify-center shadow-xl transition-all duration-200 ${
-                          isSelected && isPlaying
-                            ? 'opacity-100 translate-y-0'
-                            : 'opacity-0 translate-y-2 group-hover/card:opacity-100 group-hover/card:translate-y-0'
+                        className={`absolute inset-0 bg-black/50 flex items-center justify-center transition-opacity ${
+                          isSelected && isPlaying ? 'opacity-100' : 'opacity-0 group-hover/card:opacity-100'
                         }`}
                       >
                         {isSelected && isPlaying ? (
-                          <Pause className="w-4 h-4 fill-black" />
+                          <Pause className="w-3.5 h-3.5 fill-white text-white" />
                         ) : (
-                          <Play className="w-4 h-4 fill-black ml-0.5" />
+                          <Play className="w-3.5 h-3.5 fill-white text-white ml-0.5" />
                         )}
                       </div>
                     </div>
 
-                    {/* Metadata */}
-                    <div>
-                      <h6
-                        className={`text-xs font-bold truncate transition-colors ${
-                          isSelected ? 'text-[#1ed760]' : 'text-white group-hover/card:text-white'
+                    <div className="min-w-0">
+                      <p
+                        className={`text-xs font-bold truncate ${
+                          isSelected ? 'text-red-400' : 'text-white'
                         }`}
                       >
-                        {station.name}
-                      </h6>
-                      <p className="text-[10px] text-[#b3b3b3] line-clamp-1 truncate mt-0.5">
-                        {station.genre}
+                        {track.title}
                       </p>
+                      <p className="text-[10px] text-[#aaaaaa] truncate">{track.artist}</p>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
-              {localTracks.length === 0 ? (
-                <div className="p-5 rounded-xl border border-dashed border-[#282828] text-center bg-[#181818]">
-                  <p className="text-xs text-[#b3b3b3]">No custom MP3 files loaded yet.</p>
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="mt-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-[#1ed760] hover:bg-[#1fdf64] text-black cursor-pointer shadow-md"
-                  >
-                    <Upload className="w-3.5 h-3.5" /> Select MP3s from PC
-                  </button>
+
+                  <span className="text-[10px] font-mono text-[#717171] flex-shrink-0">{track.duration}</span>
                 </div>
-              ) : (
-                localTracks.map((track, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => selectLocalTrack(idx, true)}
-                    className={`p-2 rounded-lg text-xs flex items-center justify-between cursor-pointer transition-colors ${
-                      localIdx === idx
-                        ? 'bg-[#282828] text-[#1ed760] font-bold'
-                        : 'hover:bg-[#1f1f1f] text-white'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 truncate">
-                      <span className="text-[10px] text-[#b3b3b3] w-4">{idx + 1}.</span>
-                      <Music className="w-3.5 h-3.5 flex-shrink-0 text-[#b3b3b3]" />
-                      <span className="truncate">{track.name}</span>
-                    </div>
-                    <span className="text-[10px] text-[#b3b3b3] ml-2">{track.size}</span>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
+              );
+            })}
+          </div>
         </div>
       )}
 

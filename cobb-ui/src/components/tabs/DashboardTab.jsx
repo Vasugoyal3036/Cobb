@@ -828,7 +828,7 @@ const DashboardTab = (props) => {
               </div>
 
               {/* In-Store Music Player */}
-              <StoreMusicPlayer />
+              <StoreMusicPlayer API_BASE={API_BASE} />
 
             </div>
 
