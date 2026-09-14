@@ -144,6 +144,33 @@ const DashboardTab = (props) => {
     };
   }, [userRole, darkMode]);
 
+  // Ref and height state to match Goods in Transit with Counter Cross-Sell
+  const counterAssistantRef = React.useRef(null);
+  const [counterAssistantHeight, setCounterAssistantHeight] = React.useState(null);
+
+  React.useEffect(() => {
+    if (!counterAssistantRef.current) return;
+    const updateCounterHeight = () => {
+      if (counterAssistantRef.current) {
+        const h = counterAssistantRef.current.offsetHeight;
+        if (h > 0) {
+          setCounterAssistantHeight(prev => {
+            if (!prev || Math.abs(prev - h) > 4) return h;
+            return prev;
+          });
+        }
+      }
+    };
+    updateCounterHeight();
+    const ro = new ResizeObserver(updateCounterHeight);
+    ro.observe(counterAssistantRef.current);
+    window.addEventListener('resize', updateCounterHeight);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', updateCounterHeight);
+    };
+  }, [darkMode]);
+
   const fetchKhataExpenses = React.useCallback(async () => {
     try {
       setKhataLoading(true);
@@ -863,7 +890,9 @@ const DashboardTab = (props) => {
               </div>
 
               {/* Counter Cross-Sell & Upsell Assistant */}
-              <CounterCrossSellAssistant formatCurrency={formatCurrency} darkMode={darkMode} />
+              <div ref={counterAssistantRef}>
+                <CounterCrossSellAssistant formatCurrency={formatCurrency} darkMode={darkMode} />
+              </div>
 
             </div>
 
@@ -932,7 +961,12 @@ const DashboardTab = (props) => {
               </div>
 
               {/* Goods in Transit & Head Office Inward Velocity Desk */}
-              <GoodsInTransitDesk formatCurrency={formatCurrency} darkMode={darkMode} API_BASE={API_BASE} />
+              <GoodsInTransitDesk 
+                formatCurrency={formatCurrency} 
+                darkMode={darkMode} 
+                API_BASE={API_BASE} 
+                targetHeight={counterAssistantHeight} 
+              />
             </div>
           </div>
 
