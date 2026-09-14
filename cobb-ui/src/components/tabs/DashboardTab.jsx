@@ -101,7 +101,11 @@ const DashboardTab = (props) => {
     if (!topCardRef.current) return;
     const updateHeight = () => {
       if (topCardRef.current) {
-        setTopCardHeight(topCardRef.current.offsetHeight);
+        if (window.innerWidth >= 1024) {
+          setTopCardHeight(topCardRef.current.offsetHeight);
+        } else {
+          setTopCardHeight(null);
+        }
       }
     };
     updateHeight();
@@ -180,13 +184,13 @@ const DashboardTab = (props) => {
   return (
     <>
       {activeTab === 'dashboard' && (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
 
           {/* Header */}
           <div className="flex justify-between items-end mb-2">
             <div>
               <div className="flex items-center gap-2 mb-1">
-                <h2 className="text-2xl font-bold text-slate-800">
+                <h2 className="text-xl sm:text-2xl font-bold text-slate-800">
                   {activeStore === 'ALL'
                     ? 'All Stores Network Command Center'
                     : activeStore === 'STORE_02'
@@ -198,7 +202,7 @@ const DashboardTab = (props) => {
                   {userRole === 'owner' ? '👑 Owner Mode' : '👔 Manager Mode'}
                 </span>
               </div>
-              <p className="text-sm text-slate-500">
+              <p className="text-xs sm:text-sm text-slate-500">
                 {activeStore === 'ALL'
                   ? 'Consolidated operational telemetry across all Cobb branches.'
                   : activeStore === 'STORE_02'
@@ -209,10 +213,10 @@ const DashboardTab = (props) => {
           </div>
 
           {/* Top Row Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
 
             {/* Revenue Card with WoW/MoM Trends */}
-            <div ref={topCardRef} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+            <div ref={topCardRef} className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
               <div className="flex justify-between items-start">
                 <div>
                   <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Today's Revenue</p>
@@ -294,7 +298,7 @@ const DashboardTab = (props) => {
             </div>
 
             {/* Target Progress Card */}
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow relative overflow-hidden">
+            <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow relative overflow-hidden">
               <div className="absolute -right-4 -bottom-4 opacity-5">
                 <Target className="w-32 h-32" />
               </div>
@@ -316,7 +320,7 @@ const DashboardTab = (props) => {
             </div>
 
             {/* Average Order Value + Bill Count Trends */}
-            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+            <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
               <div className="flex justify-between items-start">
                 <div>
                   <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Avg. Order Value</p>
@@ -909,10 +913,10 @@ const DashboardTab = (props) => {
             const latestHold = activeHolds[0];
 
             return (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                 {/* TILE 1: POCKET KHATA */}
                 <div 
-                  className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow"
+                  className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow"
                   style={{ height: topCardHeight ? `${topCardHeight}px` : undefined }}
                 >
                   <div className="flex justify-between items-start">
@@ -958,7 +962,7 @@ const DashboardTab = (props) => {
 
                 {/* TILE 2: FAST BARCODE & SIZE CHECKER (BARCODE SCANNER READY) */}
                 <div 
-                  className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow cursor-default group"
+                  className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow cursor-default group"
                   style={{ height: topCardHeight ? `${topCardHeight}px` : undefined }}
                   onClick={() => quickScanInputRef.current?.focus()}
                 >
@@ -1002,7 +1006,7 @@ const DashboardTab = (props) => {
                           }
                         }}
                         placeholder="Scan barcode or type article..."
-                        className={`w-full py-1.5 pl-2.5 pr-8 rounded-lg text-xs font-mono font-semibold border outline-none transition-all ${
+                        className={`w-full py-1.5 pl-2.5 pr-8 rounded-lg text-base sm:text-xs font-mono font-semibold border outline-none transition-all ${
                           isScannerFocused
                             ? 'ring-2 ring-blue-500 border-blue-500 bg-white dark:bg-slate-900 text-slate-800 dark:text-white'
                             : 'bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
@@ -1123,7 +1127,7 @@ const DashboardTab = (props) => {
 
                 {/* TILE 3: HOLD DESK */}
                 <div 
-                  className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow"
+                  className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow"
                   style={{ height: topCardHeight ? `${topCardHeight}px` : undefined }}
                 >
                   <div className="flex justify-between items-start">
@@ -1216,7 +1220,7 @@ const DashboardTab = (props) => {
 
                   return (
                     <div 
-                      className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow"
+                      className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow"
                       style={{ height: topCardHeight ? `${topCardHeight}px` : undefined }}
                     >
                       <div className="flex justify-between items-start">
@@ -1251,7 +1255,7 @@ const DashboardTab = (props) => {
                                 type="number"
                                 value={b1g3Items[0] === 0 ? '' : b1g3Items[0]}
                                 onChange={(e) => setB1g3Items([parseInt(e.target.value) || 0, b1g3Items[1], b1g3Items[2]])}
-                                className="w-full py-1 px-1 text-center font-bold text-[10px] rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                className="w-full py-1 px-1 text-center font-bold text-base sm:text-[10px] rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
                                 placeholder="P1"
                                 title="Piece 1 MRP"
                               />
@@ -1259,7 +1263,7 @@ const DashboardTab = (props) => {
                                 type="number"
                                 value={b1g3Items[1] === 0 ? '' : b1g3Items[1]}
                                 onChange={(e) => setB1g3Items([b1g3Items[0], parseInt(e.target.value) || 0, b1g3Items[2]])}
-                                className="w-full py-1 px-1 text-center font-bold text-[10px] rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                className="w-full py-1 px-1 text-center font-bold text-base sm:text-[10px] rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
                                 placeholder="P2"
                                 title="Piece 2 MRP"
                               />
@@ -1267,7 +1271,7 @@ const DashboardTab = (props) => {
                                 type="number"
                                 value={b1g3Items[2] === 0 ? '' : b1g3Items[2]}
                                 onChange={(e) => setB1g3Items([b1g3Items[0], b1g3Items[1], parseInt(e.target.value) || 0])}
-                                className="w-full py-1 px-1 text-center font-bold text-[10px] rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                className="w-full py-1 px-1 text-center font-bold text-base sm:text-[10px] rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
                                 placeholder="P3"
                                 title="Piece 3 MRP"
                               />
@@ -1282,7 +1286,7 @@ const DashboardTab = (props) => {
                                 type="number"
                                 value={calcMrp === 0 ? '' : calcMrp}
                                 onChange={(e) => setCalcMrp(parseInt(e.target.value) || 0)}
-                                className="w-full py-1 pl-6 pr-2.5 font-bold text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1.5 focus:ring-blue-500"
+                                className="w-full py-1 pl-6 pr-2.5 font-bold text-base sm:text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1.5 focus:ring-blue-500"
                                 placeholder="Type MRP (e.g. 1999)"
                               />
                             </div>

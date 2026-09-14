@@ -49,7 +49,35 @@ export default function FloatingCopilot({
   onNavigateTab = null,
   activeTab = null
 }) {
-  if (activeTab === 'copilot') return null;
+  const [isPhoneOrTunnel, setIsPhoneOrTunnel] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const isMobileDevice = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const isMobileWidth = window.innerWidth < 1024;
+    const isTunnelHost = window.location.hostname.includes('trycloudflare.com') ||
+                         window.location.hostname.includes('ngrok') ||
+                         window.location.hostname.includes('loca.lt');
+    const isPhoneQuery = new URLSearchParams(window.location.search).has('phone') || 
+                         new URLSearchParams(window.location.search).has('mobile');
+    return isMobileDevice || isMobileWidth || isTunnelHost || isPhoneQuery;
+  });
+
+  useEffect(() => {
+    const checkPhone = () => {
+      if (typeof window === 'undefined') return;
+      const isMobileDevice = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      const isMobileWidth = window.innerWidth < 1024;
+      const isTunnelHost = window.location.hostname.includes('trycloudflare.com') ||
+                           window.location.hostname.includes('ngrok') ||
+                           window.location.hostname.includes('loca.lt');
+      const isPhoneQuery = new URLSearchParams(window.location.search).has('phone') || 
+                           new URLSearchParams(window.location.search).has('mobile');
+      setIsPhoneOrTunnel(isMobileDevice || isMobileWidth || isTunnelHost || isPhoneQuery);
+    };
+    window.addEventListener('resize', checkPhone);
+    return () => window.removeEventListener('resize', checkPhone);
+  }, []);
+
+  if (activeTab === 'copilot' || isPhoneOrTunnel) return null;
 
   const [isOpen, setIsOpen] = useState(false);
   const [inputQuery, setInputQuery] = useState('');
@@ -302,7 +330,7 @@ export default function FloatingCopilot({
         <button
           type="button"
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-20 right-4 sm:bottom-6 sm:right-6 z-50 flex items-center space-x-2.5 px-4 py-3 rounded-full bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white shadow-xl hover:shadow-indigo-500/30 hover:scale-105 active:scale-95 transition-all cursor-pointer border border-white/20 group"
+          className="hidden lg:flex fixed bottom-6 right-6 z-50 items-center space-x-2.5 px-4 py-3 rounded-full bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white shadow-xl hover:shadow-indigo-500/30 hover:scale-105 active:scale-95 transition-all cursor-pointer border border-white/20 group"
           title="Open Cobb AI Copilot (Ctrl+K)"
         >
           <div className="relative">
@@ -319,7 +347,7 @@ export default function FloatingCopilot({
       {/* Floating Chat Drawer / Popover */}
       {isOpen && (
         <div
-          className={`fixed bottom-20 right-2 sm:bottom-6 sm:right-6 z-50 w-[96vw] sm:w-[460px] h-[560px] sm:h-[620px] max-h-[85vh] rounded-3xl shadow-2xl flex flex-col overflow-hidden border transition-all animate-in fade-in slide-in-from-bottom-5 duration-200 ${
+          className={`hidden lg:flex fixed bottom-6 right-6 z-50 w-[460px] h-[620px] max-h-[85vh] rounded-3xl shadow-2xl flex-col overflow-hidden border transition-all animate-in fade-in slide-in-from-bottom-5 duration-200 ${
             darkMode ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-800'
           }`}
         >

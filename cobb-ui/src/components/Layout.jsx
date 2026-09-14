@@ -345,7 +345,7 @@ const Layout = ({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={handleGlobalSearch}
-                  className={`w-full pl-8 pr-3 py-1.5 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all border ${
+                  className={`w-full pl-8 pr-3 py-1.5 rounded-xl text-base sm:text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all border ${
                     darkMode
                       ? 'bg-slate-800 border-slate-700 text-slate-100 placeholder-slate-500'
                       : 'bg-slate-100 border-slate-200 text-slate-800 placeholder-slate-400'
@@ -517,7 +517,7 @@ const Layout = ({
           </div>
         </header>
 
-        <div className={activeTab === 'copilot' ? 'p-0 sm:p-6 lg:p-8 max-w-7xl mx-auto' : 'p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto'}>
+        <div className={activeTab === 'copilot' ? 'p-0 sm:p-6 lg:p-8 max-w-7xl mx-auto' : 'p-3 sm:p-6 lg:p-8 max-w-7xl mx-auto'}>
 
           {children}
         </div>

@@ -2157,24 +2157,27 @@ export default function App() {
                 {/* BOTTOM NAVIGATION BAR (MOBILE ONLY) */}
         <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 flex items-center justify-around pb-safe-bottom z-40 shadow-[0_-5px_15px_rgba(0,0,0,0.05)]">
           <button onClick={() => { setActiveTab('dashboard'); setIsMobileMenuOpen(false); }}
-            className={`flex flex-col items-center justify-center w-full py-2 cursor-pointer ${activeTab === 'dashboard' ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}>
+            className={`flex flex-col items-center justify-center w-full py-2 cursor-pointer transition-colors ${activeTab === 'dashboard' ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}>
             <LayoutDashboard className="w-5 h-5 mb-0.5" />
             <span className="text-[9px] font-bold tracking-wider">HOME</span>
           </button>
           <button onClick={() => { setActiveTab('live'); setIsMobileMenuOpen(false); }}
-            className={`flex flex-col items-center justify-center w-full py-2 cursor-pointer ${activeTab === 'live' ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}>
+            className={`flex flex-col items-center justify-center w-full py-2 cursor-pointer transition-colors ${activeTab === 'live' ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}>
             <Receipt className="w-5 h-5 mb-0.5" />
             <span className="text-[9px] font-bold tracking-wider">LIVE</span>
           </button>
-
-
           <button onClick={() => { setActiveTab('inventory'); setIsMobileMenuOpen(false); }}
-            className={`flex flex-col items-center justify-center w-full py-2 cursor-pointer ${activeTab === 'inventory' ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}>
+            className={`flex flex-col items-center justify-center w-full py-2 cursor-pointer transition-colors ${['inventory', 'deadstock'].includes(activeTab) ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}>
             <Package className="w-5 h-5 mb-0.5" />
             <span className="text-[9px] font-bold tracking-wider">STOCK</span>
           </button>
+          <button onClick={() => { setActiveTab('copilot'); setIsMobileMenuOpen(false); }}
+            className={`flex flex-col items-center justify-center w-full py-2 cursor-pointer transition-colors ${activeTab === 'copilot' ? 'text-indigo-600 dark:text-indigo-400 font-bold' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}>
+            <Sparkles className="w-5 h-5 mb-0.5" />
+            <span className="text-[9px] font-bold tracking-wider">AI CHAT</span>
+          </button>
           <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className={`flex flex-col items-center justify-center w-full py-2 cursor-pointer ${isMobileMenuOpen ? 'text-blue-600 dark:text-white' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}>
+            className={`flex flex-col items-center justify-center w-full py-2 cursor-pointer transition-colors ${isMobileMenuOpen ? 'text-blue-600 dark:text-white font-bold' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}>
             {isMobileMenuOpen ? <X className="w-5 h-5 mb-0.5" /> : <Menu className="w-5 h-5 mb-0.5" />}
             <span className="text-[9px] font-bold tracking-wider">MORE</span>
           </button>
