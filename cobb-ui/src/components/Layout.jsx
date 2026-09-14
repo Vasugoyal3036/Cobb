@@ -262,54 +262,119 @@ const Layout = ({
         {/* Top Navbar */}
         <header className={`backdrop-blur-md px-3.5 sm:px-6 lg:px-8 py-2.5 sm:py-3.5 border-b sticky top-0 z-30 transition-colors ${darkMode ? 'bg-slate-900/95 border-slate-800 text-slate-100' : 'bg-white/95 border-slate-200 text-slate-800'}`}>
 
-          {/* MOBILE PHONE HEADER (md:hidden) — Clean single row */}
-          <div className="flex md:hidden items-center justify-between gap-2 w-full">
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className={`p-2 rounded-xl border transition-colors cursor-pointer shrink-0 ${darkMode ? 'bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'}`}
-                title="Toggle menu"
-              >
-                {isMobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
-              </button>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center text-white font-black text-xs shadow-sm">
-                  C
+          {/* MOBILE PHONE HEADER (md:hidden) — Split into two pieces */}
+          <div className="flex md:hidden flex-col gap-2 w-full">
+            {/* Piece 1: Brand & Top Controls */}
+            <div className="flex items-center justify-between gap-2 w-full">
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                  className={`p-2 rounded-xl border transition-colors cursor-pointer shrink-0 ${darkMode ? 'bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'}`}
+                  title="Toggle menu"
+                >
+                  {isMobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+                </button>
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center text-white font-black text-xs shadow-sm">
+                    C
+                  </div>
+                  <span className="font-extrabold text-xs tracking-wider uppercase">COBB</span>
                 </div>
-                <span className="font-extrabold text-xs tracking-wider uppercase">COBB</span>
+              </div>
+
+              {/* Top Controls: Store Switcher, Role, Dark Mode */}
+              <div className="flex items-center gap-1.5 shrink-0">
+                {/* Store Switcher */}
+                <div className={`flex items-center p-1 rounded-xl border shrink-0 ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-200'}`}>
+                  <select
+                    value={activeStore}
+                    onChange={(e) => switchStore(e.target.value)}
+                    className={`bg-transparent text-[11px] font-bold rounded py-0.5 px-0.5 focus:outline-none cursor-pointer ${darkMode ? 'text-slate-200' : 'text-slate-800'}`}
+                  >
+                    {AVAILABLE_STORES.map(store => (
+                      <option key={store.id} value={store.id} className={darkMode ? "bg-slate-900 text-slate-200" : "bg-white text-slate-800"}>
+                        {store.shortName || store.name.split(' ')[0]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Quick Role Pill */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextRole = currentRole === 'owner' ? 'manager' : 'owner';
+                    switchRole(nextRole);
+                  }}
+                  className={`px-2 py-1 rounded-xl font-bold text-[10px] transition-all shadow-xs flex items-center gap-1 cursor-pointer border shrink-0 ${
+                    currentRole === 'owner'
+                      ? darkMode
+                        ? 'bg-amber-950/60 text-amber-300 border-amber-800/60'
+                        : 'bg-amber-50 text-amber-800 border-amber-200'
+                      : darkMode
+                        ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/60'
+                        : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                  }`}
+                  title={currentRole === 'owner' ? 'Owner Mode (tap to switch)' : 'Manager Mode (tap to switch)'}
+                >
+                  {currentRole === 'owner' ? '👑 Owner' : '👔 Mgr'}
+                </button>
+
+                {/* Dark mode button */}
+                <button
+                  type="button"
+                  onClick={() => setDarkMode(!darkMode)}
+                  className={`p-1.5 rounded-xl border shrink-0 cursor-pointer ${
+                    darkMode ? 'bg-slate-800 border-slate-700 text-amber-400' : 'bg-slate-100 border-slate-200 text-slate-600'
+                  }`}
+                  title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                >
+                  {darkMode ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5 text-slate-600" />}
+                </button>
               </div>
             </div>
 
-            {/* Quick Actions on Mobile Top Bar */}
-            <div className="flex items-center gap-1.5">
-
-              {/* Compact Store Switcher */}
-              <div className={`flex items-center p-1 rounded-xl border shrink-0 ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-200'}`}>
-                <select
-                  value={activeStore}
-                  onChange={(e) => switchStore(e.target.value)}
-                  className={`bg-transparent text-[10px] font-bold rounded py-0.5 px-0.5 focus:outline-none cursor-pointer ${darkMode ? 'text-slate-200' : 'text-slate-800'}`}
-                >
-                  {AVAILABLE_STORES.map(store => (
-                    <option key={store.id} value={store.id} className={darkMode ? "bg-slate-900 text-slate-200" : "bg-white text-slate-800"}>
-                      {store.shortName || store.name.split(' ')[0]}
-                    </option>
-                  ))}
-                </select>
+            {/* Piece 2: Search Bar & Quick Tools */}
+            <div className="flex items-center gap-2 w-full">
+              <div className="relative flex-1">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+                <input
+                  type="text"
+                  placeholder="Search Article / Phone / Bill..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={handleGlobalSearch}
+                  className={`w-full pl-8 pr-3 py-1.5 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all border ${
+                    darkMode
+                      ? 'bg-slate-800 border-slate-700 text-slate-100 placeholder-slate-500'
+                      : 'bg-slate-100 border-slate-200 text-slate-800 placeholder-slate-400'
+                  }`}
+                />
               </div>
 
-              {/* Dark mode button */}
-              <button
-                type="button"
-                onClick={() => setDarkMode(!darkMode)}
-                className={`p-1.5 rounded-xl border shrink-0 cursor-pointer ${
-                  darkMode ? 'bg-slate-800 border-slate-700 text-amber-400' : 'bg-slate-100 border-slate-200 text-slate-600'
-                }`}
-                title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
-              >
-                {darkMode ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5 text-slate-600" />}
-              </button>
+              {/* Quick Mobile Actions */}
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowReconModal(true)}
+                  className="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-[10px] transition-all shadow-xs cursor-pointer flex items-center gap-1 shrink-0"
+                  title="EOD Cash Register Reconciliation"
+                >
+                  <Calculator className="w-3 h-3" />
+                  <span>Cash</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleGenerateEodReport}
+                  className="px-2 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-[10px] transition-all shadow-xs cursor-pointer flex items-center gap-1 shrink-0"
+                  title="Generate Daily EOD Report"
+                >
+                  <Send className="w-3 h-3" />
+                  <span>EOD</span>
+                </button>
+              </div>
             </div>
           </div>
 
