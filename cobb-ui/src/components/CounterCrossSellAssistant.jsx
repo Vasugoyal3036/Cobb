@@ -131,7 +131,7 @@ export default function CounterCrossSellAssistant({
 
   return (
     <div
-      className={`rounded-2xl border shadow-sm p-4 sm:p-5 transition-all relative overflow-hidden ${
+      className={`rounded-2xl border shadow-sm p-4 sm:p-5 transition-all relative overflow-hidden h-full flex flex-col justify-between ${
         darkMode
           ? 'bg-slate-900/90 border-slate-800/80 text-slate-100 shadow-black/20'
           : 'bg-white border-slate-200/90 text-slate-800 shadow-slate-200/50'

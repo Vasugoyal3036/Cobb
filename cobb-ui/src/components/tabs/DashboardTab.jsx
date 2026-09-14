@@ -114,62 +114,7 @@ const DashboardTab = (props) => {
     };
   }, []);
 
-  // Ref and height state to match Live Store Pulse with Margin Tracker
-  const marginTrackerRef = React.useRef(null);
-  const [marginTrackerHeight, setMarginTrackerHeight] = React.useState(null);
 
-  React.useEffect(() => {
-    if (!marginTrackerRef.current) return;
-    const updateMarginHeight = () => {
-      if (marginTrackerRef.current) {
-        const rawH = marginTrackerRef.current.offsetHeight;
-        if (rawH > 0) {
-          const boundedH = Math.min(380, Math.max(260, rawH));
-          setMarginTrackerHeight(prev => {
-            if (!prev || Math.abs(prev - boundedH) > 4) {
-              return boundedH;
-            }
-            return prev;
-          });
-        }
-      }
-    };
-    updateMarginHeight();
-    const ro = new ResizeObserver(updateMarginHeight);
-    ro.observe(marginTrackerRef.current);
-    window.addEventListener('resize', updateMarginHeight);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener('resize', updateMarginHeight);
-    };
-  }, [userRole, darkMode]);
-
-  // Ref and height state to match Goods in Transit with Counter Cross-Sell
-  const counterAssistantRef = React.useRef(null);
-  const [counterAssistantHeight, setCounterAssistantHeight] = React.useState(null);
-
-  React.useEffect(() => {
-    if (!counterAssistantRef.current) return;
-    const updateCounterHeight = () => {
-      if (counterAssistantRef.current) {
-        const h = counterAssistantRef.current.offsetHeight;
-        if (h > 0) {
-          setCounterAssistantHeight(prev => {
-            if (!prev || Math.abs(prev - h) > 4) return h;
-            return prev;
-          });
-        }
-      }
-    };
-    updateCounterHeight();
-    const ro = new ResizeObserver(updateCounterHeight);
-    ro.observe(counterAssistantRef.current);
-    window.addEventListener('resize', updateCounterHeight);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener('resize', updateCounterHeight);
-    };
-  }, [darkMode]);
 
   const fetchKhataExpenses = React.useCallback(async () => {
     try {
@@ -507,14 +452,8 @@ const DashboardTab = (props) => {
 
           </div>
 
-          {/* BENTO GRID: Middle Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-
-            {/* Left Column (Spans 2) */}
-            <div className="lg:col-span-2 flex flex-col gap-6">
-
-              {/* Visual Sales Trend */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* BENTO ROW 1: Operations Pulse (Automation Dispatches | Margin Tracker | Live Store Pulse) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch mb-6">
                 {/* Automation Engine Dispatched Messages (Checkouts vs Exchanges vs Failed) */}
                 {(() => {
                   // 1. Telemetry from backend automation dispatch tracker
@@ -763,7 +702,6 @@ const DashboardTab = (props) => {
                 {/* Margin Tracker (Owner) vs Counter Settlement Desk (Manager) */}
                 {userRole !== 'manager' ? (
                   <div 
-                    ref={marginTrackerRef}
                     className={`rounded-2xl border shadow-sm p-6 flex flex-col justify-between transition-all ${
                     darkMode 
                       ? 'bg-slate-900/90 border-slate-800/80 text-slate-100 shadow-black/20' 
@@ -846,7 +784,6 @@ const DashboardTab = (props) => {
                   </div>
                 ) : (
                   <div 
-                    ref={marginTrackerRef}
                     className={`rounded-2xl border shadow-sm p-5 flex flex-col justify-between transition-all ${
                     darkMode 
                       ? 'bg-slate-900/90 border-slate-800/80 text-slate-100 shadow-black/20' 
@@ -887,20 +824,10 @@ const DashboardTab = (props) => {
                     </div>
                   </div>
                 )}
-              </div>
 
-              {/* Counter Cross-Sell & Upsell Assistant */}
-              <div ref={counterAssistantRef}>
-                <CounterCrossSellAssistant formatCurrency={formatCurrency} darkMode={darkMode} />
-              </div>
-
-            </div>
-
-            {/* Right Column - Live Store Pulse (Moved Upwards, Sized to Match Margin Tracker) */}
-            <div className="flex flex-col gap-6">
+              {/* Child 3 of Row 1: Live Store Pulse */}
               <div 
-                style={{ height: marginTrackerHeight ? `${marginTrackerHeight}px` : '340px' }}
-                className={`rounded-2xl border shadow-sm overflow-hidden flex flex-col transition-all shrink-0 ${
+                className={`rounded-2xl border shadow-sm overflow-hidden flex flex-col transition-all h-full ${
                   darkMode 
                     ? 'bg-slate-900/90 border-slate-800/80 text-slate-100 shadow-black/20' 
                     : 'bg-white border-slate-200 text-slate-800 shadow-slate-200/50'
@@ -959,14 +886,18 @@ const DashboardTab = (props) => {
                   )}
                 </div>
               </div>
+          </div>
 
-              {/* Goods in Transit & Head Office Inward Velocity Desk */}
-              <GoodsInTransitDesk 
-                formatCurrency={formatCurrency} 
-                darkMode={darkMode} 
-                API_BASE={API_BASE} 
-                targetHeight={counterAssistantHeight} 
-              />
+          {/* BENTO ROW 2: Counter Cross-Sell & Upsell Assistant (2 cols) | Goods in Transit Desk (1 col) */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch mb-6">
+            {/* Left: Counter Cross-Sell & Upsell Assistant */}
+            <div className="lg:col-span-2 flex flex-col h-full">
+              <CounterCrossSellAssistant formatCurrency={formatCurrency} darkMode={darkMode} />
+            </div>
+
+            {/* Right: Goods in Transit Desk */}
+            <div className="lg:col-span-1 flex flex-col h-full">
+              <GoodsInTransitDesk formatCurrency={formatCurrency} darkMode={darkMode} API_BASE={API_BASE} />
             </div>
           </div>
 

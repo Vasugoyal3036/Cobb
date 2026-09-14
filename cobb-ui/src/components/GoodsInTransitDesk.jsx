@@ -136,7 +136,7 @@ export default function GoodsInTransitDesk({
   return (
     <div 
       style={{ height: targetHeight ? `${targetHeight}px` : undefined }}
-      className="flex flex-col gap-3.5 w-full transition-all"
+      className="flex flex-col gap-3.5 w-full h-full transition-all"
     >
       {/* TILE 1: GOODS IN TRANSIT (LIVE HO PARCEL) */}
       <div
