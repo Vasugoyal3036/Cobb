@@ -598,251 +598,81 @@ const DashboardTab = (props) => {
 
                 {/* Margin Tracker (Owner) vs Counter Settlement Desk (Manager) */}
                 {userRole !== 'manager' ? (
-                  <div className={`rounded-2xl border shadow-sm p-5 flex flex-col justify-between transition-all ${
+                  <div className={`rounded-2xl border shadow-sm p-6 flex flex-col justify-between transition-all ${
                     darkMode 
                       ? 'bg-slate-900/90 border-slate-800/80 text-slate-100 shadow-black/20' 
-                      : 'bg-white border-slate-200/90 text-slate-800 shadow-slate-200/50'
+                      : 'bg-white border-slate-200 text-slate-800 shadow-slate-200/50'
                   }`}>
-                    {(() => {
-                      const totalSales = overviewStats.today?.TotalSales || 0;
-                      const DAILY_EXPENSE = 3500; // Store fixed daily run expense (rent, staff, electricity)
-                      const COGS_RATE = 0.73; // ~73% wholesale inventory cost (27% gross margin)
+                    <div className="flex justify-between items-center mb-3">
+                      <h3 className="font-bold text-slate-800 dark:text-white flex items-center">
+                        <Tag className="w-4 h-4 mr-2 text-purple-500" /> Margin Tracker
+                      </h3>
+                      <span className="text-[10px] font-bold bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full border border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800">
+                        Owner Only
+                      </span>
+                    </div>
+                    <div className="flex-1 flex flex-col justify-center">
+                      {(() => {
+                        const totalSales = overviewStats.today?.TotalSales || 0;
+                        const total = totalSales > 0 ? totalSales : 1;
+                        const DAILY_EXPENSE = 3500;
 
-                      const cogs = Math.round(totalSales * COGS_RATE);
-                      const grossProfit = totalSales - cogs;
-                      const netMargin = grossProfit - DAILY_EXPENSE;
+                        // 73% COGS, fixed ₹3,500 Daily OpEx, remainder Net Margin
+                        const cogs = Math.round(totalSales * 0.73);
+                        const grossProfit = totalSales - cogs;
+                        const netMargin = grossProfit - DAILY_EXPENSE;
+                        const isProfitable = netMargin >= 0;
 
-                      // Breakeven sales needed to cover ₹3,500 daily overhead
-                      const breakevenSales = Math.round(DAILY_EXPENSE / (1 - COGS_RATE)); // ~₹12,963
-                      const isProfitable = netMargin >= 0;
-                      const breakevenCoverage = Math.min(100, Math.round((grossProfit / DAILY_EXPENSE) * 100));
+                        const cogsPct = ((cogs / total) * 100).toFixed(0);
+                        const expensePct = ((DAILY_EXPENSE / total) * 100).toFixed(0);
+                        const marginPct = ((netMargin / total) * 100).toFixed(0);
 
-                      const cogsPct = totalSales > 0 ? Math.round((cogs / totalSales) * 100) : 0;
-                      const expensePct = totalSales > 0 ? Math.round((DAILY_EXPENSE / totalSales) * 100) : 0;
-                      const netMarginPct = totalSales > 0 ? Math.round((netMargin / totalSales) * 100) : 0;
+                        // Visual progress bar segment calculations
+                        const opExBarPct = isProfitable 
+                          ? Math.min(27, Math.round((DAILY_EXPENSE / total) * 100))
+                          : Math.round((Math.max(0, grossProfit) / DAILY_EXPENSE) * 27);
+                        const netBarPct = isProfitable 
+                          ? Math.max(0, 100 - 73 - opExBarPct)
+                          : 0;
+                        const deficitBarPct = isProfitable ? 0 : (27 - opExBarPct);
 
-                      return (
-                        <>
-                          {/* Card Header */}
-                          <div className="flex justify-between items-center mb-3.5 gap-2">
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${
-                                darkMode 
-                                  ? 'bg-purple-500/10 border-purple-500/20 text-purple-400' 
-                                  : 'bg-purple-50 border-purple-200 text-purple-600'
-                              }`}>
-                                <Tag className="w-4 h-4" />
-                              </div>
-                              <div className="min-w-0">
-                                <h3 className="font-bold text-sm tracking-tight text-slate-900 dark:text-white truncate">
-                                  Margin Tracker
-                                </h3>
-                                <p className="text-[11px] text-slate-400 font-medium truncate">
-                                  Daily P&amp;L vs ₹3,500 Store Expense
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-2 shrink-0">
-                              <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border flex items-center gap-1.5 whitespace-nowrap ${
-                                isProfitable
-                                  ? darkMode ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                  : darkMode ? 'bg-amber-950/60 text-amber-300 border-amber-800/60' : 'bg-amber-50 text-amber-700 border-amber-200'
-                              }`}>
-                                <span className={`w-1.5 h-1.5 rounded-full ${isProfitable ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}></span>
-                                <span>{isProfitable ? `Profitable (+${netMarginPct}%)` : `${breakevenCoverage}% to Breakeven`}</span>
-                              </span>
-                              <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-md border uppercase tracking-wider ${
-                                darkMode ? 'bg-slate-800/80 text-slate-400 border-slate-700/60' : 'bg-slate-100 text-slate-500 border-slate-200'
-                              }`}>
-                                Owner
+                        return (
+                          <>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                              Daily Revenue split: Cost (73%), Daily OpEx (₹3,500), and Net Margin.
+                            </p>
+                            <div className="flex justify-between text-[10px] font-bold mb-2">
+                              <span className="text-slate-500 dark:text-slate-400 uppercase tracking-wide">Cost ({cogsPct}%)</span>
+                              <span className="text-amber-500 uppercase tracking-wide">OpEx ({expensePct}%)</span>
+                              <span className={`uppercase tracking-wide ${isProfitable ? 'text-emerald-500' : 'text-rose-500'}`}>
+                                {isProfitable ? `Net (+${marginPct}%)` : `Deficit (${marginPct}%)`}
                               </span>
                             </div>
-                          </div>
-
-                          {/* 3 Metric Cards: Wholesale Cost, Daily OpEx, Net Bottom Line */}
-                          <div className="grid grid-cols-3 gap-2 sm:gap-2.5 mb-3">
-                            {/* Card 1: COGS Cost */}
-                            <div className={`p-2.5 rounded-xl border flex flex-col justify-between transition-all ${
-                              darkMode 
-                                ? 'bg-slate-800/40 border-slate-700/60 hover:border-slate-600' 
-                                : 'bg-slate-50/70 border-slate-200/70 hover:border-slate-300'
-                            }`}>
-                              <div className="flex items-center justify-between gap-1 mb-1">
-                                <span className="text-[10px] font-extrabold uppercase tracking-tight text-slate-500 flex items-center gap-1 truncate">
-                                  <Package className="w-3 h-3 shrink-0" />
-                                  <span className="truncate">COGS Cost</span>
-                                </span>
-                                <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full shrink-0 ${
-                                  darkMode ? 'bg-slate-800 text-slate-300 border border-slate-700' : 'bg-slate-200/80 text-slate-700'
-                                }`}>
-                                  73%
-                                </span>
-                              </div>
-                              <div className="flex items-baseline justify-between gap-1 my-0.5">
-                                <span className="text-xl font-black text-slate-900 dark:text-white leading-none">
-                                  {formatCurrency(cogs)}
-                                </span>
-                              </div>
-                              <p className="text-[9px] text-slate-400 font-medium truncate mt-0.5">
-                                Wholesale Stock
-                              </p>
-                            </div>
-
-                            {/* Card 2: Fixed OpEx */}
-                            <div className={`p-2.5 rounded-xl border flex flex-col justify-between transition-all ${
-                              darkMode 
-                                ? 'bg-amber-950/15 border-amber-900/30 hover:border-amber-500/40' 
-                                : 'bg-amber-50/40 border-amber-100 hover:border-amber-300'
-                            }`}>
-                              <div className="flex items-center justify-between gap-1 mb-1">
-                                <span className="text-[10px] font-extrabold uppercase tracking-tight text-amber-500 flex items-center gap-1 truncate">
-                                  <Flame className="w-3 h-3 shrink-0" />
-                                  <span className="truncate">Daily OpEx</span>
-                                </span>
-                                <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full shrink-0 ${
-                                  darkMode ? 'bg-amber-950/80 text-amber-300 border border-amber-800/50' : 'bg-amber-100 text-amber-700'
-                                }`}>
-                                  Fixed
-                                </span>
-                              </div>
-                              <div className="flex items-baseline justify-between gap-1 my-0.5">
-                                <span className="text-xl font-black text-amber-500 dark:text-amber-400 leading-none">
-                                  {formatCurrency(DAILY_EXPENSE)}
-                                </span>
-                              </div>
-                              <p className="text-[9px] text-slate-400 font-medium truncate mt-0.5">
-                                Rent + Staff + Power
-                              </p>
-                            </div>
-
-                            {/* Card 3: Net Profit / Loss */}
-                            <div className={`p-2.5 rounded-xl border flex flex-col justify-between transition-all ${
-                              isProfitable
-                                ? darkMode 
-                                  ? 'bg-emerald-950/15 border-emerald-900/30 hover:border-emerald-500/40' 
-                                  : 'bg-emerald-50/40 border-emerald-100 hover:border-emerald-300'
-                                : darkMode 
-                                  ? 'bg-rose-950/15 border-rose-900/30 hover:border-rose-500/40' 
-                                  : 'bg-rose-50/40 border-rose-100 hover:border-rose-300'
-                            }`}>
-                              <div className="flex items-center justify-between gap-1 mb-1">
-                                <span className={`text-[10px] font-extrabold uppercase tracking-tight flex items-center gap-1 truncate ${
-                                  isProfitable ? 'text-emerald-500' : 'text-rose-500'
-                                }`}>
-                                  <DollarSign className="w-3 h-3 shrink-0" />
-                                  <span className="truncate">{isProfitable ? 'Net Profit' : 'Deficit'}</span>
-                                </span>
-                                <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full shrink-0 ${
-                                  isProfitable
-                                    ? darkMode ? 'bg-emerald-950/80 text-emerald-300 border border-emerald-800/50' : 'bg-emerald-100 text-emerald-700'
-                                    : darkMode ? 'bg-rose-950/80 text-rose-300 border border-rose-800/50' : 'bg-rose-100 text-rose-700'
-                                }`}>
-                                  {isProfitable ? `+${netMarginPct}%` : `${netMarginPct}%`}
-                                </span>
-                              </div>
-                              <div className="flex items-baseline justify-between gap-1 my-0.5">
-                                <span className={`text-xl font-black leading-none ${
-                                  isProfitable ? 'text-emerald-500 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'
-                                }`}>
-                                  {isProfitable ? `+${formatCurrency(netMargin)}` : `-${formatCurrency(Math.abs(netMargin))}`}
-                                </span>
-                              </div>
-                              <p className={`text-[9px] font-medium truncate mt-0.5 ${
-                                isProfitable ? 'text-emerald-500/90' : 'text-rose-400/90'
-                              }`}>
-                                {isProfitable ? 'Net Owner Margin' : 'Under Breakeven'}
-                              </p>
-                            </div>
-                          </div>
-
-                          {/* Status Callout Banner */}
-                          <div className={`flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg border text-[11px] mb-2.5 ${
-                            isProfitable
-                              ? darkMode 
-                                ? 'bg-emerald-950/20 border-emerald-900/40 text-emerald-300' 
-                                : 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                              : darkMode 
-                                ? 'bg-amber-950/20 border-amber-900/40 text-amber-300' 
-                                : 'bg-amber-50 border-amber-200 text-amber-800'
-                          }`}>
-                            <div className="flex items-center gap-1.5 min-w-0 truncate">
-                              <span className="shrink-0">{isProfitable ? '🎉' : '🎯'}</span>
-                              <span className="truncate font-medium">
-                                {isProfitable 
-                                  ? `Store operating overhead (₹3,500) covered! Generating pure net margin.`
-                                  : `${formatCurrency(Math.max(0, breakevenSales - totalSales))} more sales needed today to clear ₹3,500 store overhead.`
-                                }
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1.5 shrink-0 font-extrabold text-[10px]">
-                              <span>Breakeven: {formatCurrency(breakevenSales)}</span>
-                            </div>
-                          </div>
-
-                          {/* Breakeven Progress Bar & Legend */}
-                          <div className="space-y-1.5">
-                            <div className={`w-full h-2.5 rounded-full overflow-hidden ${darkMode ? 'bg-slate-800/80' : 'bg-slate-100'} flex p-0.5 gap-0.5`}>
-                              {totalSales === 0 ? (
-                                <div className="w-full h-full rounded-full bg-slate-200 dark:bg-slate-700"></div>
-                              ) : isProfitable ? (
-                                <>
-                                  <div 
-                                    className="h-full rounded-l-full bg-gradient-to-r from-slate-500 to-slate-400 transition-all duration-500" 
-                                    style={{ width: `${Math.min(73, cogsPct)}%` }} 
-                                    title={`COGS Wholesale Cost: ${formatCurrency(cogs)} (${cogsPct}%)`}
-                                  />
-                                  <div 
-                                    className="h-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-500" 
-                                    style={{ width: `${Math.min(100 - cogsPct, expensePct)}%` }} 
-                                    title={`Store OpEx: ${formatCurrency(DAILY_EXPENSE)} (${expensePct}%)`}
-                                  />
-                                  <div 
-                                    className="h-full rounded-r-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500" 
-                                    style={{ width: `${Math.max(2, 100 - cogsPct - expensePct)}%` }} 
-                                    title={`Net Profit: ${formatCurrency(netMargin)} (${netMarginPct}%)`}
-                                  />
-                                </>
+                            <div className={`w-full h-4 rounded-full flex overflow-hidden ${darkMode ? 'bg-slate-800' : 'bg-slate-100'} shadow-inner`}>
+                              <div className="bg-slate-400 h-full transition-all duration-1000" style={{ width: `73%` }}></div>
+                              <div className="bg-amber-400 h-full transition-all duration-1000" style={{ width: `${Math.max(2, opExBarPct)}%` }}></div>
+                              {isProfitable ? (
+                                <div className="bg-emerald-500 h-full transition-all duration-1000" style={{ width: `${Math.max(2, netBarPct)}%` }}></div>
                               ) : (
-                                <>
-                                  <div 
-                                    className="h-full rounded-l-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500" 
-                                    style={{ width: `${Math.max(4, breakevenCoverage)}%` }} 
-                                    title={`Overhead Covered: ${formatCurrency(grossProfit)} of ${formatCurrency(DAILY_EXPENSE)} (${breakevenCoverage}%)`}
-                                  />
-                                  <div 
-                                    className="h-full rounded-r-full bg-gradient-to-r from-amber-500 to-rose-500 transition-all duration-500 opacity-60" 
-                                    style={{ width: `${100 - Math.max(4, breakevenCoverage)}%` }} 
-                                    title={`Remaining Deficit: ${formatCurrency(Math.abs(netMargin))}`}
-                                  />
-                                </>
+                                <div className="bg-rose-400/70 h-full transition-all duration-1000" style={{ width: `${Math.max(2, deficitBarPct)}%` }}></div>
                               )}
                             </div>
-
-                            {/* Legend */}
-                            <div className="flex items-center justify-between text-[10px] text-slate-400 pt-0.5">
-                              <div className="flex items-center gap-3">
-                                <span className="flex items-center gap-1">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400 inline-block"></span>
-                                  <span>COGS (₹{formatCurrency(cogs)})</span>
-                                </span>
-                                <span className="flex items-center gap-1">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block"></span>
-                                  <span>OpEx (₹3,500)</span>
-                                </span>
-                                <span className={`flex items-center gap-1 font-medium ${isProfitable ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                  <span className={`w-1.5 h-1.5 rounded-full inline-block ${isProfitable ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
-                                  <span>{isProfitable ? `Net (+${formatCurrency(netMargin)})` : `Deficit (-${formatCurrency(Math.abs(netMargin))})`}</span>
-                                </span>
-                              </div>
-                              <span className="text-[9px] font-semibold text-purple-400 flex items-center gap-1">
-                                27% Gross Margin
+                            <div className="flex justify-between text-[10px] text-slate-500 dark:text-slate-400 mt-2 font-mono">
+                              <span>{formatCurrency(cogs)}</span>
+                              <span className="text-center flex-1">{formatCurrency(DAILY_EXPENSE)}</span>
+                              <span className={`text-right ${isProfitable ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-rose-500 dark:text-rose-400 font-bold'}`}>
+                                {isProfitable ? `+${formatCurrency(netMargin)}` : `-${formatCurrency(Math.abs(netMargin))}`}
                               </span>
                             </div>
-                          </div>
-                        </>
-                      );
-                    })()}
+                            {!isProfitable && (
+                              <p className="text-[10px] text-slate-400 text-center mt-2.5 font-sans">
+                                Breakeven at ₹12,964 ({formatCurrency(Math.max(0, 12964 - totalSales))} needed to clear overhead)
+                              </p>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
                   </div>
                 ) : (
                   <div className={`rounded-2xl border shadow-sm p-5 flex flex-col justify-between transition-all ${
