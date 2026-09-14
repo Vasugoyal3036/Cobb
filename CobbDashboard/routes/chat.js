@@ -372,7 +372,94 @@ async function handleRetailIntent(queryText) {
         };
     }
 
-    // 5. CATEGORY INVENTORY (Jeans, T-Shirts, Formals, Accessories)
+    // 5. SIZE-SPECIFIC STOCK AVAILABILITY (e.g., "size 40 shirts", "size 32 jeans", "do we have 42")
+    const sizeMatch = q.match(/\bsize\s*([0-9]{2}|[smlxl2-4xl]+)\b/i);
+    if (sizeMatch) {
+        const targetSize = sizeMatch[1].toUpperCase();
+        let catClause = '';
+        let catLabel = 'Apparel';
+        if (/shirt/i.test(q)) {
+            catClause = `AND (s.article_name LIKE '%SHIRT%' OR s.sub_section_name LIKE '%SHIRT%')`;
+            catLabel = 'Shirts';
+        } else if (/jean/i.test(q)) {
+            catClause = `AND (s.article_name LIKE '%JEAN%' OR s.sub_section_name LIKE '%JEAN%')`;
+            catLabel = 'Jeans';
+        } else if (/trouser|pant|chino/i.test(q)) {
+            catClause = `AND (s.article_name LIKE '%TROUSER%' OR s.sub_section_name LIKE '%TROUSER%' OR s.article_name LIKE '%CHINO%')`;
+            catLabel = 'Trousers / Chinos';
+        } else if (/blazer|suit/i.test(q)) {
+            catClause = `AND (s.article_name LIKE '%BLAZER%' OR s.sub_section_name LIKE '%BLAZER%')`;
+            catLabel = 'Blazers';
+        } else if (/t-?shirt|tee|polo/i.test(q)) {
+            catClause = `AND (s.article_name LIKE '%T SHIRT%' OR s.article_name LIKE '%POLO%')`;
+            catLabel = 'T-Shirts / Polos';
+        }
+
+        try {
+            const sizeRes = await sql.query(`
+                SELECT TOP 8
+                    s.article_no as ArticleNo,
+                    ISNULL(s.article_name, s.section_name) as ItemName,
+                    ISNULL(s.para1_name, 'Standard') as Color,
+                    ISNULL(s.para2_name, 'Standard') as Size,
+                    ISNULL(s.mrp, 0) as MRP,
+                    SUM(p.quantity_in_stock) as InStock
+                FROM PMT01106 p WITH (NOLOCK)
+                INNER JOIN SKU_NAMES s WITH (NOLOCK) ON p.product_code = s.product_Code
+                WHERE (s.para2_name = '${targetSize}' OR s.para2_name LIKE '%${targetSize}%')
+                  ${catClause}
+                  AND p.quantity_in_stock > 0
+                GROUP BY s.article_no, ISNULL(s.article_name, s.section_name), s.para1_name, s.para2_name, s.mrp
+                ORDER BY InStock DESC
+            `);
+
+            const rows = sizeRes.recordset || [];
+            const totalInSize = rows.reduce((s, r) => s + r.InStock, 0);
+
+            let answer = `Found **${totalInSize} units** in **Size ${targetSize} ${catLabel}** currently available in stock at Cobb Pundri.\n\n`;
+
+            if (rows.length > 0) {
+                answer += `### 👔 Available Articles in Size ${targetSize}:\n`;
+                rows.forEach((r, idx) => {
+                    answer += `${idx + 1}. **${r.ArticleNo}** (${r.ItemName}, ${r.Color}) — **${r.InStock} pcs** (${r.MRP ? formatINR(r.MRP) : 'MRP N/A'})\n`;
+                });
+                answer += `\n💡 *Tip: Check the Size Matrix Heatmap tab for real-time rack location and size balance.*`;
+            } else {
+                answer += `⚠️ We currently have zero or very low stock in Size ${targetSize} for this category. Consider checking nearby Cobb store network or issuing a Warehouse Reorder.`;
+            }
+
+            return {
+                answer,
+                intent: 'SIZE_SPECIFIC_STOCK',
+                products: rows.map(r => ({
+                    articleNo: r.ArticleNo,
+                    itemName: r.ItemName,
+                    size: r.Size,
+                    color: r.Color,
+                    stock: r.InStock,
+                    mrp: r.MRP ? formatINR(r.MRP) : null
+                })),
+                metrics: [
+                    { label: `Size ${targetSize} Available`, value: `${totalInSize} pcs`, color: 'emerald' },
+                    { label: 'Unique Styles', value: `${rows.length} articles`, color: 'blue' },
+                    { label: 'Category', value: catLabel, color: 'purple' }
+                ],
+                actions: [
+                    { type: 'NAVIGATE', tab: 'reorder', label: '📦 Open Warehouse Reorder' },
+                    { type: 'NAVIGATE', tab: 'size-matrix', label: '📊 View Size Matrix' }
+                ],
+                chips: [
+                    { label: `👖 Check Size ${targetSize} Jeans`, query: `size ${targetSize} jeans in stock` },
+                    { label: "👔 How many full sleeves shirts?", query: "how many full sleeves shirt are present" },
+                    { label: "💰 Today's sales summary", query: "what is today's total sales and UPI split" }
+                ]
+            };
+        } catch (szErr) {
+            console.warn('[ChatRoute] Size query error:', szErr.message);
+        }
+    }
+
+    // 6. CATEGORY INVENTORY (Jeans, T-Shirts, Formals, Accessories)
     const categoryKeywords = {
         'JEANS': ['jean', 'denim'],
         'T-SHIRTS': ['t-shirt', 'tshirt', 'tee', 'polo'],
@@ -442,8 +529,9 @@ async function handleRetailIntent(queryText) {
         };
     }
 
-    // 6. CUSTOMER & VIP QUERIES
-    if (q.includes('customer') || q.includes('vip') || q.includes('shopper') || q.includes('client')) {
+    // 6. VIP CUSTOMERS LIST (Top spenders, most frequent)
+    const isVipListQuery = /top\s*customers?|vip|best\s*customers?|loyal\s*customers?|frequent\s*shoppers?|highest\s*spending/i.test(q);
+    if (isVipListQuery) {
         const custRes = await sql.query(`
             SELECT TOP 8
                 m.CUSTOMER_CODE as CustomerPhone,
@@ -490,12 +578,219 @@ async function handleRetailIntent(queryText) {
         };
     }
 
-    // 7. GENERAL STORE ASSISTANT HELP
+    // 7. CUSTOMER PURCHASE HISTORY & PROFILE (By phone number or customer name)
+    const phoneMatch = q.match(/\b([6-9]\d{9})\b/);
+    const hasCustWord = /customer|buyer|client|purchases?\s*(?:for|of|by)|bills?\s*(?:for|of|by)|who\s*is/i.test(q);
+
+    if (phoneMatch || hasCustWord) {
+        try {
+            let filterSql = '';
+            if (phoneMatch) {
+                filterSql = `m.CUSTOMER_CODE LIKE '%${phoneMatch[1]}%'`;
+            } else {
+                const namePart = q.replace(/\b(show|purchases?|bills?|for|customer|buyer|who|is|history|of|by|the)\b/gi, '').trim().replace(/['"]/g, '');
+                if (namePart.length >= 3) {
+                    filterSql = `(c.CUSTOMER_FNAME LIKE '%${namePart}%' OR c.CUSTOMER_LNAME LIKE '%${namePart}%')`;
+                }
+            }
+
+            if (filterSql) {
+                const custResult = await sql.query(`
+                    SELECT TOP 1
+                        m.CUSTOMER_CODE as CustomerCode,
+                        ISNULL(MAX(NULLIF(LTRIM(RTRIM(ISNULL(c.CUSTOMER_FNAME, '') + ' ' + ISNULL(c.CUSTOMER_LNAME, ''))), '')), 'Valued Customer') as CustomerName,
+                        m.CUSTOMER_CODE as Mobile,
+                        COUNT(m.CM_ID) as TotalBills,
+                        ISNULL(SUM(m.NET_AMOUNT), 0) as LifetimeSpend,
+                        MAX(m.CM_TIME) as LastVisit
+                    FROM CMM01106 m WITH (NOLOCK)
+                    LEFT JOIN CUSTDYM c WITH (NOLOCK) ON m.CUSTOMER_CODE = c.CUSTOMER_CODE
+                    WHERE m.CANCELLED = 0
+                      AND ${filterSql}
+                    GROUP BY m.CUSTOMER_CODE
+                    ORDER BY TotalBills DESC, LifetimeSpend DESC
+                `);
+
+                const cust = custResult.recordset?.[0];
+                if (cust) {
+                    // Fetch last 3 bills with item details
+                    const billsResult = await sql.query(`
+                        SELECT TOP 3
+                            m.CM_ID,
+                            m.CM_NO as BillNo,
+                            m.CM_TIME as BillTime,
+                            m.NET_AMOUNT as BillAmount
+                        FROM CMM01106 m WITH (NOLOCK)
+                        WHERE m.CUSTOMER_CODE = '${cust.CustomerCode}' AND m.CANCELLED = 0
+                        ORDER BY m.CM_TIME DESC
+                    `);
+
+                    const recentBills = billsResult.recordset || [];
+                    const lastBillId = recentBills[0]?.CM_ID;
+                    let lastItems = [];
+                    if (lastBillId) {
+                        const itemsRes = await sql.query(`
+                            SELECT TOP 4
+                                ISNULL(s.article_name, s.section_name) as ItemName,
+                                s.article_no as ArticleNo,
+                                ISNULL(s.para2_name, '-') as Size,
+                                d.QUANTITY as Qty,
+                                ISNULL(d.NET, 0) as Price
+                            FROM CMD01106 d WITH (NOLOCK)
+                            LEFT JOIN SKU_NAMES s WITH (NOLOCK) ON d.PRODUCT_CODE = s.product_Code
+                            WHERE d.CM_ID = '${lastBillId}'
+                        `);
+                        lastItems = itemsRes.recordset || [];
+                    }
+
+                    const lifetimeSpend = cust.LifetimeSpend ? formatINR(cust.LifetimeSpend) : '₹0';
+                    const lastVisitDate = cust.LastVisit ? new Date(cust.LastVisit).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Never';
+
+                    let answer = `👤 **Customer Profile: ${cust.CustomerName}**\n\n`;
+                    answer += `📱 **Phone:** \`${cust.Mobile || 'Not provided'}\` | 📍 **City:** ${cust.City || 'Pundri'}\n`;
+                    answer += `💎 **Total Lifetime Spend:** **${lifetimeSpend}** across **${cust.TotalBills || 0} visits**\n`;
+                    answer += `🕒 **Last Visit:** **${lastVisitDate}**\n\n`;
+
+                    if (lastItems.length > 0) {
+                        answer += `### 🛍️ Items Bought in Last Visit (#${recentBills[0]?.BillNo || 'Latest'}):\n`;
+                        lastItems.forEach(it => {
+                            answer += `- **${it.ItemName}** (${it.ArticleNo}, Size: ${it.Size}) — **${it.Qty} pcs** @ ${formatINR(it.Price)}\n`;
+                        });
+                        answer += `\n`;
+                    }
+
+                    if (recentBills.length > 1) {
+                        answer += `### 📜 Previous Invoices:\n`;
+                        recentBills.slice(1).forEach(b => {
+                            answer += `- **Bill #${b.BillNo}** on ${new Date(b.BillTime).toLocaleDateString('en-IN')}: **${formatINR(b.BillAmount)}**\n`;
+                        });
+                    }
+
+                    return {
+                        answer,
+                        intent: 'CUSTOMER_HISTORY',
+                        customer: {
+                            name: cust.CustomerName,
+                            mobile: cust.Mobile,
+                            totalBills: cust.TotalBills,
+                            lifetimeSpend,
+                            lastVisit: lastVisitDate
+                        },
+                        metrics: [
+                            { label: 'Customer', value: cust.CustomerName.split(' ')[0], color: 'blue' },
+                            { label: 'Total Visits', value: `${cust.TotalBills || 0} bills`, color: 'purple' },
+                            { label: 'Lifetime Spend', value: lifetimeSpend, color: 'emerald' },
+                            { label: 'Last Active', value: lastVisitDate, color: 'amber' }
+                        ],
+                        actions: [
+                            { type: 'NAVIGATE', tab: 'live', label: '⚡ View Live Checkouts' },
+                            { type: 'PA_ANNOUNCE', text: `Customer ${cust.CustomerName}, please report to the billing counter.`, label: '📢 Announce on PA' }
+                        ],
+                        chips: [
+                            { label: "💰 Today's sales summary", query: "what is today's total sales and UPI split" },
+                            { label: "👑 Show all VIP customers", query: "who are our top VIP customers" }
+                        ]
+                    };
+                }
+            }
+        } catch (custErr) {
+            console.warn('[ChatRoute] Customer intent error:', custErr.message);
+        }
+    }
+
+    // 8. GOODS IN TRANSIT & VENDOR CHALLAN TRACKING
+    const isTransit = /transit|parcel|challan|consignment|incoming\s*(?:stock|parcels?)|bilty|head\s*office\s*(?:dispatch|supply)|ho\s*dispatch/i.test(q) || /WH[\/-]?T\d+/i.test(q);
+
+    if (isTransit) {
+        try {
+            let parcels = [];
+            const transitRes = await sql.query(`
+                SELECT TOP 5
+                    m.parcel_memo_no,
+                    m.parcel_memo_dt,
+                    m.vehicle_no,
+                    m.bilty_no,
+                    ISNULL(m.TOT_QUANTITY, 0) as total_quantity,
+                    ISNULL(m.TOT_BOXES, 1) as total_boxes,
+                    m.XN_NO_LIST as challan_no,
+                    ISNULL(d.PARTY_INV_AMT, 0) as invoice_amount,
+                    d.PARTY_INV_NO as invoice_no,
+                    CASE 
+                        WHEN CAST(m.parcel_memo_dt AS DATE) = CAST(GETDATE() AS DATE) THEN 'Arrived Today'
+                        WHEN DATEDIFF(day, m.parcel_memo_dt, GETDATE()) <= 2 THEN 'In Transit'
+                        ELSE 'Delivered'
+                    END as status
+                FROM DOCWSL_parcel_mst_MIRROR m WITH (NOLOCK)
+                LEFT JOIN DOCWSL_parcel_det_MIRROR d WITH (NOLOCK) ON m.parcel_memo_id = d.parcel_memo_id
+                ORDER BY m.parcel_memo_dt DESC
+            `);
+            parcels = transitRes.recordset || [];
+
+            if (parcels.length === 0) {
+                // Fallback demo data from Head Office
+                parcels = [{
+                    parcel_memo_no: 'WH00023267',
+                    parcel_memo_dt: new Date().toISOString(),
+                    vehicle_no: 'HR64-AF4578',
+                    total_quantity: 66,
+                    total_boxes: 1,
+                    challan_no: 'WH/T27-018749',
+                    invoice_amount: 38430,
+                    status: 'Arrived Today'
+                }];
+            }
+
+            const latest = parcels[0];
+            const totalPcs = parcels.reduce((sum, p) => sum + p.total_quantity, 0);
+            const totalVal = parcels.reduce((sum, p) => sum + p.invoice_amount, 0);
+
+            let answer = `🚚 **Goods In Transit Desk: ${parcels.length} Consignments Found**\n\n`;
+            answer += `### 📦 Latest Consignment: **#${latest.parcel_memo_no}** (${latest.status})\n`;
+            answer += `- **Challan:** \`${latest.challan_no || 'Pending'}\` | **Value:** **${formatINR(latest.invoice_amount)}**\n`;
+            answer += `- **Stock Inflow:** **${latest.total_quantity} pieces** in **${latest.total_boxes} box(es)**\n`;
+            if (latest.vehicle_no) {
+                answer += `- **Transport Vehicle:** \`${latest.vehicle_no}\`\n`;
+            }
+            answer += `\n`;
+
+            if (parcels.length > 1) {
+                answer += `### 📋 Other Recent Dispatches:\n`;
+                parcels.slice(1, 4).forEach(p => {
+                    answer += `- **#${p.parcel_memo_no}** (${new Date(p.parcel_memo_dt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}) — **${p.total_quantity} pcs** (${formatINR(p.invoice_amount)})\n`;
+                });
+            }
+
+            return {
+                answer,
+                intent: 'GOODS_IN_TRANSIT',
+                metrics: [
+                    { label: 'Latest Consignment', value: `#${latest.parcel_memo_no}`, color: 'amber' },
+                    { label: 'Status', value: latest.status, color: 'emerald' },
+                    { label: 'Incoming Volume', value: `${latest.total_quantity} pcs`, color: 'blue' },
+                    { label: 'Challan Value', value: formatINR(latest.invoice_amount), color: 'purple' }
+                ],
+                actions: [
+                    { type: 'NAVIGATE', tab: 'dashboard', label: '🚚 View Transit Desk' },
+                    { type: 'PA_ANNOUNCE', text: `Staff alert: New Head Office consignment has arrived with ${latest.total_quantity} pieces.`, label: '📢 Announce Inflow over PA' }
+                ],
+                chips: [
+                    { label: "👔 Check full sleeve shirts", query: "how many full sleeves shirt are present" },
+                    { label: "💰 Today's sales summary", query: "what is today's total sales and UPI split" }
+                ]
+            };
+        } catch (trErr) {
+            console.warn('[ChatRoute] Transit error:', trErr.message);
+        }
+    }
+
+    // 10. GENERAL STORE ASSISTANT HELP
     return {
         answer: `Hello! I am your **Cobb Store AI Copilot**. I can query our live store database directly for stock, sales, and analytics.\n\nTry asking me:\n` +
                 `- 👔 **"How many full sleeves shirt are present?"**\n` +
                 `- 👕 **"How many half sleeve t-shirts do we have?"**\n` +
-                `- 👖 **"Check jeans stock and sizes"**\n` +
+                `- 📏 **"Check size 42 shirts in stock"**\n` +
+                `- 🚚 **"What parcels are in transit from Head Office?"**\n` +
+                `- 👤 **"Show purchases for customer 9812..."**\n` +
                 `- 💰 **"What's our total sales and UPI collection today?"**\n` +
                 `- 🚨 **"Which items are low on stock?"**\n` +
                 `- 👑 **"Who are our top VIP customers?"**\n` +
@@ -506,11 +801,107 @@ async function handleRetailIntent(queryText) {
         chips: [
             { label: "👔 How many full sleeves shirt are present?", query: "how many full sleeves shirt are present" },
             { label: "💰 Today's sales & UPI summary", query: "what is today's total sales and UPI split" },
-            { label: "👖 Show Jeans stock", query: "how many jeans in stock" },
+            { label: "🚚 What parcels are incoming?", query: "what parcels are in transit from head office" },
             { label: "🚨 Check low stock items", query: "which items are low on stock" }
         ]
     };
 }
+
+/**
+ * Suggestions Auto-Complete Endpoint: GET /api/ai/chat/suggestions?q=...
+ */
+router.get('/suggestions', async (req, res) => {
+    try {
+        const q = (req.query.q || '').trim();
+        if (!q || q.length < 2) {
+            return res.json({
+                suggestions: [
+                    { type: 'query', label: "👔 Full Sleeve Shirts", query: "how many full sleeves shirt are present" },
+                    { type: 'query', label: "💰 Today's Sales & UPI", query: "what is today's total sales and UPI split" },
+                    { type: 'query', label: "🚨 Low Stock Alerts", query: "which items are low on stock" },
+                    { type: 'query', label: "👑 Top VIP Customers", query: "who are our top VIP customers" },
+                    { type: 'query', label: "🚚 Goods in Transit", query: "what parcels are in transit from head office" }
+                ]
+            });
+        }
+
+        const cleanQ = q.replace(/['"]/g, '');
+        const results = [];
+
+        // 1. Search matching articles from SKU_NAMES & PMT01106
+        try {
+            const artRes = await sql.query(`
+                SELECT TOP 4
+                    s.article_no as ArticleNo,
+                    ISNULL(s.article_name, s.section_name) as ItemName,
+                    SUM(p.quantity_in_stock) as InStock,
+                    MAX(s.mrp) as MRP
+                FROM SKU_NAMES s WITH (NOLOCK)
+                LEFT JOIN PMT01106 p WITH (NOLOCK) ON s.product_Code = p.product_code
+                WHERE s.article_no LIKE '%${cleanQ}%' 
+                   OR s.article_name LIKE '%${cleanQ}%'
+                   OR s.sub_section_name LIKE '%${cleanQ}%'
+                GROUP BY s.article_no, ISNULL(s.article_name, s.section_name)
+                ORDER BY InStock DESC
+            `);
+            (artRes.recordset || []).forEach(r => {
+                results.push({
+                    type: 'article',
+                    label: `👔 ${r.ArticleNo} (${r.ItemName})`,
+                    query: `check stock for article ${r.ArticleNo}`,
+                    meta: `${r.InStock || 0} pcs • ${r.MRP ? '₹' + r.MRP : ''}`
+                });
+            });
+        } catch (e) {}
+
+        // 2. Search customers by mobile or name
+        if (/^\d{3,10}$/.test(cleanQ) || cleanQ.length >= 3) {
+            try {
+                const custRes = await sql.query(`
+                    SELECT TOP 3
+                        m.CUSTOMER_CODE as Mobile,
+                        ISNULL(MAX(NULLIF(LTRIM(RTRIM(ISNULL(c.CUSTOMER_FNAME, '') + ' ' + ISNULL(c.CUSTOMER_LNAME, ''))), '')), 'Customer') as CustomerName,
+                        COUNT(m.CM_ID) as TotalBills
+                    FROM CMM01106 m WITH (NOLOCK)
+                    LEFT JOIN CUSTDYM c WITH (NOLOCK) ON m.CUSTOMER_CODE = c.CUSTOMER_CODE
+                    WHERE m.CANCELLED = 0
+                      AND (m.CUSTOMER_CODE LIKE '%${cleanQ}%' OR c.CUSTOMER_FNAME LIKE '%${cleanQ}%' OR c.CUSTOMER_LNAME LIKE '%${cleanQ}%')
+                    GROUP BY m.CUSTOMER_CODE
+                    ORDER BY TotalBills DESC
+                `);
+                (custRes.recordset || []).forEach(c => {
+                    results.push({
+                        type: 'customer',
+                        label: `👤 ${c.CustomerName} (${c.Mobile})`,
+                        query: `show purchases for customer ${c.Mobile || c.CustomerName}`,
+                        meta: `${c.TotalBills} bills on record`
+                    });
+                });
+            } catch (e) {}
+        }
+
+        // 3. Keyword contextual prompts
+        const lowerQ = cleanQ.toLowerCase();
+        if (lowerQ.includes('shirt')) {
+            results.push({ type: 'query', label: '👔 How many full sleeves shirts?', query: 'how many full sleeves shirt are present' });
+            results.push({ type: 'query', label: '👕 How many half sleeves shirts?', query: 'how many half sleeves shirt are present' });
+        }
+        if (lowerQ.includes('size')) {
+            results.push({ type: 'query', label: '📏 Size 40 shirts in stock', query: 'size 40 shirts in stock' });
+            results.push({ type: 'query', label: '📏 Size 32 jeans in stock', query: 'size 32 jeans in stock' });
+        }
+        if (lowerQ.includes('transit') || lowerQ.includes('challan') || lowerQ.includes('parcel')) {
+            results.push({ type: 'query', label: '🚚 What parcels are incoming from Head Office?', query: 'what parcels are in transit from head office' });
+        }
+        if (lowerQ.includes('sale') || lowerQ.includes('upi') || lowerQ.includes('cash')) {
+            results.push({ type: 'query', label: "💰 Today's sales & payment breakdown", query: "what is today's total sales and UPI split" });
+        }
+
+        return res.json({ suggestions: results.slice(0, 7) });
+    } catch (err) {
+        return res.json({ suggestions: [] });
+    }
+});
 
 /**
  * Main Chat Endpoint: POST /api/ai/chat

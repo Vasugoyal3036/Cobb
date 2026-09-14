@@ -17,6 +17,7 @@ import HoldDeskTab from './components/tabs/HoldDeskTab';
 import SaveTheSaleTab from './components/tabs/SaveTheSaleTab';
 import LoungeRadioTab from './components/tabs/LoungeRadioTab';
 import ChatbotTab from './components/tabs/ChatbotTab';
+import FloatingCopilot from './components/FloatingCopilot';
 import { fetchWithOfflineFallback, subscribeToData } from './utils/offlineDb';
 
 import Layout from './components/Layout';
@@ -1927,8 +1928,17 @@ export default function App() {
 
             {/* 15. COBB RETAIL AI COPILOT / CHATBOT */}
             {activeTab === 'copilot' && (
-              <ChatbotTab API_BASE={API_BASE} darkMode={darkMode} />
+              <ChatbotTab API_BASE={API_BASE} darkMode={darkMode} onNavigateTab={(tab) => setActiveTab(tab)} />
             )}
+
+            {/* FLOATING AI COPILOT ON-SCREEN WIDGET (Active across all tabs) */}
+            <FloatingCopilot
+              API_BASE={API_BASE}
+              darkMode={darkMode}
+              activeTab={activeTab}
+              onOpenFullTab={() => setActiveTab('copilot')}
+              onNavigateTab={(tab) => setActiveTab(tab)}
+            />
 
 
 
