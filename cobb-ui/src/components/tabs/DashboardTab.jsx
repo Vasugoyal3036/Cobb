@@ -375,109 +375,172 @@ const DashboardTab = (props) => {
                   );
 
                   return (
-                    <div className={`rounded-2xl border shadow-sm p-6 flex flex-col justify-between transition-colors ${
-                      darkMode ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-800'
+                    <div className={`rounded-2xl border shadow-sm p-5 flex flex-col justify-between transition-all ${
+                      darkMode 
+                        ? 'bg-slate-900/90 border-slate-800/80 text-slate-100 shadow-black/20' 
+                        : 'bg-white border-slate-200/90 text-slate-800 shadow-slate-200/50'
                     }`}>
-                      <div className="flex justify-between items-center mb-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
+                      {/* Tile Header */}
+                      <div className="flex justify-between items-center mb-3.5 gap-2">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${
+                            darkMode 
+                              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
+                              : 'bg-emerald-50 border-emerald-200 text-emerald-600'
+                          }`}>
                             <Zap className="w-4 h-4" />
                           </div>
-                          <div>
-                            <h3 className="font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
-                              <span>Automation Dispatches</span>
+                          <div className="min-w-0">
+                            <h3 className="font-bold text-sm tracking-tight text-slate-900 dark:text-white truncate">
+                              Automation Dispatches
                             </h3>
-                            <p className="text-[10px] text-slate-400 font-medium">Automatic WhatsApp Slip Delivery</p>
+                            <p className="text-[11px] text-slate-400 font-medium truncate">
+                              WhatsApp POS Slip Delivery
+                            </p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full border flex items-center gap-1.5 ${
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border flex items-center gap-1.5 whitespace-nowrap ${
                             isListenerRunning
                               ? darkMode ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
                               : darkMode ? 'bg-amber-950/60 text-amber-300 border-amber-800/60' : 'bg-amber-50 text-amber-700 border-amber-200'
                           }`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${isListenerRunning ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`}></span>
-                            <span>{isListenerRunning ? 'Engine Active' : 'Engine Idle'}</span>
+                            <span className={`w-1.5 h-1.5 rounded-full ${isListenerRunning ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}></span>
+                            <span>{isListenerRunning ? 'Live Active' : 'Idle'}</span>
                           </span>
                           <button 
                             onClick={() => setActiveTab('automation')} 
-                            className="text-xs font-bold text-blue-600 hover:text-blue-700 dark:text-blue-400 cursor-pointer"
-                            title="View POS Listener and WhatsApp Gateway Logs"
+                            className={`text-[11px] font-bold px-2.5 py-1 rounded-full border transition-all whitespace-nowrap flex items-center gap-1 cursor-pointer ${
+                              darkMode
+                                ? 'bg-blue-950/40 text-blue-400 border-blue-800/50 hover:bg-blue-900/60'
+                                : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'
+                            }`}
+                            title="Open Automation Engine Logs"
                           >
-                            Logs &rarr;
+                            <span>Logs</span>
+                            <span>&rarr;</span>
                           </button>
                         </div>
                       </div>
 
-                      {/* 3-Column Breakdown: Checkouts vs Exchanges vs Failed (Not on WhatsApp) */}
-                      <div className="grid grid-cols-3 gap-2.5 mb-3.5">
-                        {/* New Checkouts */}
-                        <div className={`p-2.5 sm:p-3 rounded-xl border flex flex-col justify-between ${
-                          darkMode ? 'bg-slate-800/60 border-slate-700/60' : 'bg-blue-50/60 border-blue-100'
+                      {/* 3-Column Breakdown: Checkouts vs Exchanges vs Failed */}
+                      <div className="grid grid-cols-3 gap-2 sm:gap-2.5 mb-3">
+                        {/* Card 1: Checkouts */}
+                        <div className={`p-2.5 rounded-xl border flex flex-col justify-between transition-all ${
+                          darkMode 
+                            ? 'bg-slate-800/40 border-slate-700/60 hover:border-blue-500/40' 
+                            : 'bg-blue-50/40 border-blue-100 hover:border-blue-300'
                         }`}>
-                          <div className="flex items-center justify-between">
-                            <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 flex items-center gap-1">
-                              <Receipt className="w-3 h-3" /> Checkouts
+                          <div className="flex items-center justify-between gap-1 mb-1">
+                            <span className="text-[10px] font-extrabold uppercase tracking-tight text-blue-500 flex items-center gap-1 truncate">
+                              <Receipt className="w-3 h-3 shrink-0" />
+                              <span className="truncate">Bills</span>
                             </span>
-                            <span className="text-[10px] font-bold text-slate-400">{checkoutPct}%</span>
+                            <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full shrink-0 ${
+                              darkMode ? 'bg-blue-950/80 text-blue-300 border border-blue-800/50' : 'bg-blue-100 text-blue-700'
+                            }`}>
+                              {checkoutPct}%
+                            </span>
                           </div>
-                          <div className="mt-1 flex items-baseline justify-between">
-                            <span className="text-lg sm:text-xl font-black text-slate-800 dark:text-slate-100">{checkoutsCount}</span>
-                            <span className="text-[9px] sm:text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Sent</span>
+                          <div className="flex items-baseline justify-between gap-1 my-0.5">
+                            <span className="text-xl font-black text-slate-900 dark:text-white leading-none">
+                              {checkoutsCount}
+                            </span>
+                            <span className="text-[9px] font-bold text-emerald-500 dark:text-emerald-400">
+                              Sent
+                            </span>
                           </div>
-                          <p className="text-[9px] text-slate-500 mt-0.5 truncate">Auto Bill PDF</p>
+                          <p className="text-[9px] text-slate-400 font-medium truncate mt-0.5">
+                            Checkouts
+                          </p>
                         </div>
 
-                        {/* Product Exchanges */}
-                        <div className={`p-2.5 sm:p-3 rounded-xl border flex flex-col justify-between ${
-                          darkMode ? 'bg-slate-800/60 border-slate-700/60' : 'bg-amber-50/60 border-amber-100'
+                        {/* Card 2: Exchanges */}
+                        <div className={`p-2.5 rounded-xl border flex flex-col justify-between transition-all ${
+                          darkMode 
+                            ? 'bg-slate-800/40 border-slate-700/60 hover:border-amber-500/40' 
+                            : 'bg-amber-50/40 border-amber-100 hover:border-amber-300'
                         }`}>
-                          <div className="flex items-center justify-between">
-                            <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1">
-                              <RotateCcw className="w-3 h-3" /> Exchanges
+                          <div className="flex items-center justify-between gap-1 mb-1">
+                            <span className="text-[10px] font-extrabold uppercase tracking-tight text-amber-500 flex items-center gap-1 truncate">
+                              <RotateCcw className="w-3 h-3 shrink-0" />
+                              <span className="truncate">Exchange</span>
                             </span>
-                            <span className="text-[10px] font-bold text-slate-400">{exchangePct}%</span>
+                            <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full shrink-0 ${
+                              darkMode ? 'bg-amber-950/80 text-amber-300 border border-amber-800/50' : 'bg-amber-100 text-amber-700'
+                            }`}>
+                              {exchangePct}%
+                            </span>
                           </div>
-                          <div className="mt-1 flex items-baseline justify-between">
-                            <span className="text-lg sm:text-xl font-black text-slate-800 dark:text-slate-100">{exchangesCount}</span>
-                            <span className="text-[9px] sm:text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Sent</span>
+                          <div className="flex items-baseline justify-between gap-1 my-0.5">
+                            <span className="text-xl font-black text-slate-900 dark:text-white leading-none">
+                              {exchangesCount}
+                            </span>
+                            <span className="text-[9px] font-bold text-emerald-500 dark:text-emerald-400">
+                              Sent
+                            </span>
                           </div>
-                          <p className="text-[9px] text-slate-500 mt-0.5 truncate">Exchange Slip</p>
+                          <p className="text-[9px] text-slate-400 font-medium truncate mt-0.5">
+                            Exchange Slips
+                          </p>
                         </div>
 
-                        {/* Failed: Not on WhatsApp */}
-                        <div className={`p-2.5 sm:p-3 rounded-xl border flex flex-col justify-between ${
-                          darkMode ? 'bg-slate-800/60 border-slate-700/60' : 'bg-rose-50/60 border-rose-100'
+                        {/* Card 3: Failed / Not on WA */}
+                        <div className={`p-2.5 rounded-xl border flex flex-col justify-between transition-all ${
+                          darkMode 
+                            ? 'bg-rose-950/15 border-rose-900/30 hover:border-rose-500/40' 
+                            : 'bg-rose-50/40 border-rose-100 hover:border-rose-300'
                         }`}>
-                          <div className="flex items-center justify-between">
-                            <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-rose-600 dark:text-rose-400 flex items-center gap-1">
-                              <AlertCircle className="w-3 h-3" /> Failed
+                          <div className="flex items-center justify-between gap-1 mb-1">
+                            <span className="text-[10px] font-extrabold uppercase tracking-tight text-rose-500 flex items-center gap-1 truncate">
+                              <AlertCircle className="w-3 h-3 shrink-0" />
+                              <span className="truncate">Failed</span>
                             </span>
-                            <span className="text-[10px] font-bold text-rose-500">{failedPct}%</span>
+                            <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full shrink-0 ${
+                              darkMode ? 'bg-rose-950/80 text-rose-300 border border-rose-800/50' : 'bg-rose-100 text-rose-700'
+                            }`}>
+                              {failedPct}%
+                            </span>
                           </div>
-                          <div className="mt-1 flex items-baseline justify-between">
-                            <span className="text-lg sm:text-xl font-black text-rose-600 dark:text-rose-400">{totalFailed}</span>
-                            <span className="text-[9px] sm:text-[10px] text-rose-500 font-bold">Failed</span>
+                          <div className="flex items-baseline justify-between gap-1 my-0.5">
+                            <span className="text-xl font-black text-rose-500 dark:text-rose-400 leading-none">
+                              {totalFailed}
+                            </span>
+                            <span className="text-[9px] font-bold text-rose-500 dark:text-rose-400">
+                              Failed
+                            </span>
                           </div>
-                          <p className="text-[9px] text-rose-500/90 font-medium mt-0.5 truncate">Not on WhatsApp</p>
+                          <p className="text-[9px] text-rose-400/90 font-medium truncate mt-0.5">
+                            Not on WhatsApp
+                          </p>
                         </div>
                       </div>
 
-                      {/* Split Dispatched Progress Bar */}
-                      <div className="space-y-1.5">
-                        <div className="flex justify-between items-center text-[11px]">
-                          <span className="text-slate-500 dark:text-slate-400 font-medium truncate max-w-[210px] sm:max-w-xs" title={latestReason}>
-                            {latestReason}
-                          </span>
-                          <span className="shrink-0 text-[11px] font-black flex items-center gap-1.5">
-                            <span className="text-emerald-600 dark:text-emerald-400">{sentCount} Sent</span>
-                            <span className="text-slate-300 dark:text-slate-600">•</span>
-                            <span className="text-rose-500 dark:text-rose-400">{totalFailed} Failed</span>
-                          </span>
+                      {/* Status / Activity Callout Strip */}
+                      <div className={`flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg border text-[11px] mb-2.5 ${
+                        totalFailed > 0
+                          ? darkMode 
+                            ? 'bg-rose-950/20 border-rose-900/40 text-rose-300' 
+                            : 'bg-rose-50 border-rose-200 text-rose-800'
+                          : darkMode 
+                            ? 'bg-slate-800/30 border-slate-700/40 text-slate-300' 
+                            : 'bg-slate-50 border-slate-200 text-slate-700'
+                      }`}>
+                        <div className="flex items-center gap-1.5 min-w-0 truncate">
+                          <span className="shrink-0">{totalFailed > 0 ? '⚠️' : '✅'}</span>
+                          <span className="truncate font-medium" title={latestReason}>{latestReason}</span>
                         </div>
+                        <div className="flex items-center gap-1.5 shrink-0 font-extrabold text-[10px]">
+                          <span className="text-emerald-500 dark:text-emerald-400">{sentCount} Sent</span>
+                          <span className="opacity-40">•</span>
+                          <span className="text-rose-500 dark:text-rose-400">{totalFailed} Failed</span>
+                        </div>
+                      </div>
 
-                        {/* Tri-Color Segmented Bar (Checkouts vs Exchanges vs Not on WhatsApp) */}
-                        <div className={`w-full h-3 rounded-full overflow-hidden ${darkMode ? 'bg-slate-800' : 'bg-slate-100'} flex p-0.5 gap-0.5`}>
+                      {/* Tri-Color Segmented Progress Bar & Legend */}
+                      <div className="space-y-1.5">
+                        <div className={`w-full h-2.5 rounded-full overflow-hidden ${darkMode ? 'bg-slate-800/80' : 'bg-slate-100'} flex p-0.5 gap-0.5`}>
                           {totalAttempts === 0 ? (
                             <div className="w-full h-full rounded-full bg-slate-200 dark:bg-slate-700"></div>
                           ) : (
@@ -486,21 +549,21 @@ const DashboardTab = (props) => {
                                 <div 
                                   className="h-full rounded-l-full bg-gradient-to-r from-blue-600 to-indigo-500 transition-all duration-500"
                                   style={{ width: `${checkoutPct}%` }}
-                                  title={`${checkoutsCount} New Checkouts Sent (${checkoutPct}%)`}
+                                  title={`${checkoutsCount} Checkouts Sent (${checkoutPct}%)`}
                                 />
                               )}
                               {exchangesCount > 0 && (
                                 <div 
                                   className={`h-full ${checkoutsCount === 0 ? 'rounded-l-full' : ''} ${totalFailed === 0 ? 'rounded-r-full' : ''} bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-500`}
                                   style={{ width: `${exchangePct}%` }}
-                                  title={`${exchangesCount} Product Exchanges Sent (${exchangePct}%)`}
+                                  title={`${exchangesCount} Exchanges Sent (${exchangePct}%)`}
                                 />
                               )}
                               {totalFailed > 0 && (
                                 <div 
-                                  className={`h-full rounded-r-full bg-gradient-to-r from-rose-500 to-red-600 transition-all duration-500`}
+                                  className="h-full rounded-r-full bg-gradient-to-r from-rose-500 to-red-500 transition-all duration-500"
                                   style={{ width: `${failedPct}%` }}
-                                  title={`${totalFailed} Failed (Not on WhatsApp) (${failedPct}%)`}
+                                  title={`${totalFailed} Failed (${failedPct}%)`}
                                 />
                               )}
                             </>
@@ -511,20 +574,21 @@ const DashboardTab = (props) => {
                         <div className="flex items-center justify-between text-[10px] text-slate-400 pt-0.5">
                           <div className="flex items-center gap-3">
                             <span className="flex items-center gap-1">
-                              <span className="w-2 h-2 rounded-xs bg-blue-600 inline-block"></span>
+                              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block"></span>
                               <span>Checkouts ({checkoutsCount})</span>
                             </span>
                             <span className="flex items-center gap-1">
-                              <span className="w-2 h-2 rounded-xs bg-amber-500 inline-block"></span>
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block"></span>
                               <span>Exchanges ({exchangesCount})</span>
                             </span>
-                            <span className="flex items-center gap-1 text-rose-500 font-medium">
-                              <span className="w-2 h-2 rounded-xs bg-rose-500 inline-block"></span>
+                            <span className="flex items-center gap-1 text-rose-400">
+                              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 inline-block"></span>
                               <span>Not on WA ({totalFailed})</span>
                             </span>
                           </div>
-                          <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                            POS Listener
+                          <span className="text-[9px] font-semibold text-emerald-500 dark:text-emerald-400 flex items-center gap-1">
+                            <span className="w-1 h-1 rounded-full bg-emerald-500 animate-ping"></span>
+                            POS Bridge
                           </span>
                         </div>
                       </div>
