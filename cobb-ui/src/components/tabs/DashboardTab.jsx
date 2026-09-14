@@ -453,7 +453,7 @@ const DashboardTab = (props) => {
           </div>
 
           {/* BENTO ROW 1: Operations Pulse (Automation Dispatches | Margin Tracker | Live Store Pulse) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch mb-6 lg:h-[280px]">
                 {/* Automation Engine Dispatched Messages (Checkouts vs Exchanges vs Failed) */}
                 {(() => {
                   // 1. Telemetry from backend automation dispatch tracker
@@ -478,7 +478,7 @@ const DashboardTab = (props) => {
                   );
 
                   return (
-                    <div className={`rounded-2xl border shadow-sm p-5 flex flex-col justify-between transition-all ${
+                    <div className={`rounded-2xl border shadow-sm p-5 flex flex-col justify-between transition-all h-full ${
                       darkMode 
                         ? 'bg-slate-900/90 border-slate-800/80 text-slate-100 shadow-black/20' 
                         : 'bg-white border-slate-200/90 text-slate-800 shadow-slate-200/50'
@@ -702,12 +702,12 @@ const DashboardTab = (props) => {
                 {/* Margin Tracker (Owner) vs Counter Settlement Desk (Manager) */}
                 {userRole !== 'manager' ? (
                   <div 
-                    className={`rounded-2xl border shadow-sm p-6 flex flex-col justify-between transition-all ${
+                    className={`rounded-2xl border shadow-sm p-5 flex flex-col justify-between transition-all h-full ${
                     darkMode 
                       ? 'bg-slate-900/90 border-slate-800/80 text-slate-100 shadow-black/20' 
                       : 'bg-white border-slate-200 text-slate-800 shadow-slate-200/50'
                   }`}>
-                    <div className="flex justify-between items-center mb-3">
+                    <div className="flex justify-between items-center mb-2 shrink-0">
                       <h3 className="font-bold text-slate-800 dark:text-white flex items-center">
                         <Tag className="w-4 h-4 mr-2 text-purple-500" /> Margin Tracker
                       </h3>
@@ -742,17 +742,17 @@ const DashboardTab = (props) => {
 
                         return (
                           <>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mb-2.5">
                               Daily Revenue split: Cost (73%), Daily OpEx (₹3,500), and Net Margin.
                             </p>
-                            <div className="flex justify-between text-[10px] font-bold mb-2">
+                            <div className="flex justify-between text-[10px] font-bold mb-1.5">
                               <span className="text-slate-500 dark:text-slate-400 uppercase tracking-wide">Cost ({cogsPct}%)</span>
                               <span className="text-amber-500 uppercase tracking-wide">OpEx ({expensePct}%)</span>
                               <span className={`uppercase tracking-wide ${isProfitable ? 'text-emerald-500' : 'text-rose-500'}`}>
                                 {isProfitable ? `Net (+${marginPct}%)` : `Deficit (${marginPct}%)`}
                               </span>
                             </div>
-                            <div className={`w-full h-4 rounded-full flex overflow-hidden ${darkMode ? 'bg-slate-800' : 'bg-slate-100'} shadow-inner`}>
+                            <div className={`w-full h-3.5 rounded-full flex overflow-hidden ${darkMode ? 'bg-slate-800' : 'bg-slate-100'} shadow-inner`}>
                               <div className="bg-slate-400 h-full transition-all duration-1000" style={{ width: `73%` }}></div>
                               <div className="bg-amber-400 h-full transition-all duration-1000" style={{ width: `${Math.max(2, opExBarPct)}%` }}></div>
                               {isProfitable ? (
@@ -761,7 +761,7 @@ const DashboardTab = (props) => {
                                 <div className="bg-rose-400/70 h-full transition-all duration-1000" style={{ width: `${Math.max(2, deficitBarPct)}%` }}></div>
                               )}
                             </div>
-                            <div className="flex justify-between text-xs text-slate-700 dark:text-slate-200 mt-2 font-mono font-medium">
+                            <div className="flex justify-between text-xs text-slate-700 dark:text-slate-200 mt-1.5 font-mono font-medium">
                               <span>{formatCurrency(cogs)}</span>
                               <span className="text-center flex-1 font-semibold text-amber-600 dark:text-amber-400">{formatCurrency(DAILY_EXPENSE)}</span>
                               <span className={`text-right ${isProfitable ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-rose-500 dark:text-rose-400 font-bold'}`}>
@@ -769,11 +769,11 @@ const DashboardTab = (props) => {
                               </span>
                             </div>
                             {!isProfitable ? (
-                              <p className="text-[11px] text-slate-600 dark:text-slate-200 font-medium text-center mt-2.5 font-sans">
+                              <p className="text-[11px] text-slate-600 dark:text-slate-200 font-medium text-center mt-2 font-sans">
                                 Breakeven at <span className="font-bold text-slate-900 dark:text-white">₹12,964</span> ({formatCurrency(Math.max(0, 12964 - totalSales))} needed to clear overhead)
                               </p>
                             ) : (
-                              <p className="text-[11px] text-emerald-600 dark:text-emerald-300 font-medium text-center mt-2.5 font-sans">
+                              <p className="text-[11px] text-emerald-600 dark:text-emerald-300 font-medium text-center mt-2 font-sans">
                                 🎉 Overhead cleared! Generating net profit today.
                               </p>
                             )}
@@ -784,12 +784,12 @@ const DashboardTab = (props) => {
                   </div>
                 ) : (
                   <div 
-                    className={`rounded-2xl border shadow-sm p-5 flex flex-col justify-between transition-all ${
+                    className={`rounded-2xl border shadow-sm p-5 flex flex-col justify-between transition-all h-full ${
                     darkMode 
                       ? 'bg-slate-900/90 border-slate-800/80 text-slate-100 shadow-black/20' 
                       : 'bg-white border-slate-200/90 text-slate-800 shadow-slate-200/50'
                   }`}>
-                    <div className="flex justify-between items-center mb-3">
+                    <div className="flex justify-between items-center mb-3 shrink-0">
                       <h3 className="font-bold text-slate-900 dark:text-white flex items-center">
                         <Receipt className="w-4 h-4 mr-2 text-blue-500" /> Counter Settlement Desk
                       </h3>
@@ -833,7 +833,7 @@ const DashboardTab = (props) => {
                     : 'bg-white border-slate-200 text-slate-800 shadow-slate-200/50'
                 }`}
               >
-                <div className={`p-4 border-b flex items-center justify-between transition-colors shrink-0 ${
+                <div className={`p-3.5 sm:p-4 border-b flex items-center justify-between transition-colors shrink-0 ${
                   darkMode ? 'bg-slate-800/40 border-slate-800/80' : 'bg-slate-50/50 border-slate-100'
                 }`}>
                   <h3 className="text-sm font-bold flex items-center text-slate-900 dark:text-white">
@@ -841,13 +841,13 @@ const DashboardTab = (props) => {
                   </h3>
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Latest Checkouts</span>
                 </div>
-                <div className={`divide-y flex-1 min-h-0 overflow-y-auto ${
+                <div className={`divide-y flex-1 min-h-0 overflow-y-auto custom-scrollbar ${
                   darkMode ? 'divide-slate-800/80' : 'divide-slate-100'
                 }`}>
                   {liveBills.map((bill, idx) => (
                     <div 
                       key={idx} 
-                      className={`p-3.5 sm:p-4 transition-colors flex justify-between items-center cursor-pointer group ${
+                      className={`p-3 sm:p-3.5 transition-colors flex justify-between items-center cursor-pointer group ${
                         darkMode ? 'hover:bg-slate-800/50' : 'hover:bg-slate-50'
                       }`} 
                       onClick={() => setActiveTab('live')}
