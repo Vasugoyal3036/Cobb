@@ -7,6 +7,7 @@ import socket
 import signal
 import atexit
 import datetime
+import json
 
 # Ensure UTF-8 output on Windows console
 if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
@@ -35,7 +36,51 @@ MEDIA_FILE = "WhatsApp Image 2026-08-14 at 20.35.17.jpeg"
 WHATSAPP_SERVER_URL = "http://localhost:3000/send"
 SENT_BILLS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sent_bills.txt")
 SENT_EOD_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sent_eod_date.txt")
+DISPATCHES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "automation_dispatches.json")
+ENGINE_LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "automation_engine.log")
 EOD_RECIPIENTS = ['9138122820', '8708788707', '9034522000', '9466422821']
+
+def log_engine(msg):
+    ts = time.strftime('%X')
+    line = f"[{ts}] {msg}"
+    print(line, flush=True)
+    try:
+        with open(ENGINE_LOG_FILE, 'a', encoding='utf-8') as lf:
+            lf.write(line + "\n")
+    except Exception:
+        pass
+
+def record_dispatch_event(bill_no, cm_id, customer_name, phone, reason, status, detail):
+    now_iso = datetime.datetime.now().isoformat()
+    today_str = datetime.date.today().strftime('%Y-%m-%d')
+    time_str = time.strftime('%I:%M %p')
+    event = {
+        'timestamp': now_iso,
+        'date': today_str,
+        'time': time_str,
+        'billNo': bill_no,
+        'cmId': cm_id,
+        'customerName': (customer_name or 'Valued Customer').strip(),
+        'phone': phone or '',
+        'reason': reason,  # 'checkout' or 'exchange'
+        'status': status,  # 'sent', 'not_on_whatsapp', 'failed', 'no_phone'
+        'detail': detail
+    }
+    try:
+        events = []
+        if os.path.exists(DISPATCHES_FILE):
+            try:
+                with open(DISPATCHES_FILE, 'r', encoding='utf-8') as f:
+                    events = json.load(f)
+            except Exception:
+                events = []
+        events.append(event)
+        if len(events) > 500:
+            events = events[-500:]
+        with open(DISPATCHES_FILE, 'w', encoding='utf-8') as f:
+            json.dump(events, f, indent=2)
+    except Exception as e:
+        log_engine(f"[DISPATCH RECORD ERROR] {e}")
 
 def send_daily_closing_digest(cursor, target_date=None, label_suffix=""):
     """Compiles and sends the store owner closing digest to all configured numbers."""
@@ -213,17 +258,17 @@ def send_whatsapp_message(phone_number, customer_name):
     try:
         response = requests.post(WHATSAPP_SERVER_URL, json=payload, headers=headers, timeout=15)
         if response.status_code == 200:
-            print(f"[{time.strftime('%X')}] [SUCCESS] Regular Bill sent to {clean_phone} ({customer_name})", flush=True)
-            return True
+            log_engine(f"[SUCCESS] Regular Bill sent to {clean_phone} ({customer_name})")
+            return {'status': 'sent', 'detail': 'Digital bill & review link sent'}
         elif response.status_code == 400 and 'not registered' in response.text.lower():
-            print(f"[{time.strftime('%X')}] [SKIPPED] {clean_phone} is not on WhatsApp. Marking as processed.", flush=True)
-            return True
+            log_engine(f"[SKIPPED] {clean_phone} is not on WhatsApp. Marking as processed.")
+            return {'status': 'not_on_whatsapp', 'detail': 'Phone number is not registered on WhatsApp'}
         else:
-            print(f"[{time.strftime('%X')}] [FAILED] Sender responded: {response.text}", flush=True)
-            return False
+            log_engine(f"[FAILED] Sender responded: {response.text}")
+            return {'status': 'failed', 'detail': f"Sender responded {response.status_code}"}
     except Exception as e:
-        print(f"[{time.strftime('%X')}] [ERROR] Connecting to WhatsApp sender (port 3000): {e}", flush=True)
-        return False
+        log_engine(f"[ERROR] Connecting to WhatsApp sender (port 3000): {e}")
+        return {'status': 'failed', 'detail': str(e)}
 
 def send_exchange_whatsapp_slip(phone_number, customer_name, bill_no, bill_time, net_amount, returned_items, replacement_items):
     """Sends official digital exchange slip for product exchanges."""
@@ -285,7 +330,7 @@ def send_exchange_whatsapp_slip(phone_number, customer_name, bill_no, bill_time,
         f"↩️ *RETURNED ITEM:*\n"
         f"{ret_text}\n\n"
         f"✨ *NEW REPLACEMENT ITEM:*\n"
-        f"{rep_text}\n"
+        f"{rep_text}\n\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
         f"{settlement_line}\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
@@ -306,17 +351,17 @@ def send_exchange_whatsapp_slip(phone_number, customer_name, bill_no, bill_time,
     try:
         response = requests.post(WHATSAPP_SERVER_URL, json=payload, headers=headers, timeout=15)
         if response.status_code == 200:
-            print(f"[{time.strftime('%X')}] [EXCHANGE SUCCESS] Sent slip to {clean_phone} ({cust_name}) for Bill #{bill_no}", flush=True)
-            return True
+            log_engine(f"[EXCHANGE SUCCESS] Sent slip to {clean_phone} ({cust_name}) for Bill #{bill_no}")
+            return {'status': 'sent', 'detail': 'Official Exchange Slip sent'}
         elif response.status_code == 400 and 'not registered' in response.text.lower():
-            print(f"[{time.strftime('%X')}] [SKIPPED] {clean_phone} is not on WhatsApp. Marking as processed.", flush=True)
-            return True
+            log_engine(f"[SKIPPED] {clean_phone} is not on WhatsApp. Marking as processed.")
+            return {'status': 'not_on_whatsapp', 'detail': 'Phone number is not registered on WhatsApp'}
         else:
-            print(f"[{time.strftime('%X')}] [FAILED] Sender responded: {response.text}", flush=True)
-            return False
+            log_engine(f"[FAILED] Sender responded: {response.text}")
+            return {'status': 'failed', 'detail': f"Sender responded {response.status_code}"}
     except Exception as e:
-        print(f"[{time.strftime('%X')}] [ERROR] Connecting to WhatsApp sender (port 3000): {e}", flush=True)
-        return False
+        log_engine(f"[ERROR] Connecting to WhatsApp sender (port 3000): {e}")
+        return {'status': 'failed', 'detail': str(e)}
 
 def run_listener():
     if not get_lock():
@@ -479,14 +524,19 @@ def run_listener():
                     success = False
 
                     if not phone or len(str(phone).strip()) < 10:
-                        print(f"[{time.strftime('%X')}] [SKIPPED] No valid phone attached to bill #{bill_no}", flush=True)
+                        log_engine(f"[SKIPPED] No valid phone attached to bill #{bill_no}")
+                        record_dispatch_event(bill_no, cm_id_str, name, phone, 'exchange' if is_exchange else 'checkout', 'no_phone', 'No valid phone attached to invoice')
                         success = True
                     elif is_exchange:
-                        print(f"[{time.strftime('%X')}] [NEW EXCHANGE DETECTED] Bill #{bill_no} | Phone: {phone} | Returned: {len(returned_items)} | Replaced: {len(replacement_items)}", flush=True)
-                        success = send_exchange_whatsapp_slip(phone, name, bill_no, bill_time, amount, returned_items, replacement_items)
+                        log_engine(f"[NEW EXCHANGE DETECTED] Bill #{bill_no} | Phone: {phone} | Returned: {len(returned_items)} | Replaced: {len(replacement_items)}")
+                        res = send_exchange_whatsapp_slip(phone, name, bill_no, bill_time, amount, returned_items, replacement_items)
+                        record_dispatch_event(bill_no, cm_id_str, name, phone, 'exchange', res['status'], res['detail'])
+                        success = res['status'] in ('sent', 'not_on_whatsapp')
                     else:
-                        print(f"[{time.strftime('%X')}] [NEW BILL DETECTED] Bill #{bill_no} | Rs.{amount} | Phone: {phone}", flush=True)
-                        success = send_whatsapp_message(phone, name)
+                        log_engine(f"[NEW BILL DETECTED] Bill #{bill_no} | Rs.{amount} | Phone: {phone}")
+                        res = send_whatsapp_message(phone, name)
+                        record_dispatch_event(bill_no, cm_id_str, name, phone, 'checkout', res['status'], res['detail'])
+                        success = res['status'] in ('sent', 'not_on_whatsapp')
 
                     if success:
                         # Mark as processed in memory and write to history file
@@ -494,14 +544,14 @@ def run_listener():
                         try:
                             with open(SENT_BILLS_FILE, 'a') as f:
                                 f.write(cm_id_str + "\n")
-                            # Add phone to our local database for marketing
-                            if phone and len(str(phone).strip()) >= 10:
+                            # Add phone to our local database for marketing if on whatsapp
+                            if phone and len(str(phone).strip()) >= 10 and (res.get('status') == 'sent' if 'res' in locals() and isinstance(res, dict) else False):
                                 clean_phone = ''.join(filter(str.isdigit, str(phone)))
                                 customer_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "customer_numbers.txt")
                                 with open(customer_file, 'a') as cf:
                                     cf.write(clean_phone + "\n")
                         except Exception as file_err:
-                            print(f"[{time.strftime('%X')}] [LOG FILE WRITE ERROR] {file_err}", flush=True)
+                            log_engine(f"[LOG FILE WRITE ERROR] {file_err}")
 
         except pyodbc.Error as db_err:
             print(f"[{time.strftime('%X')}] [DB ERROR] SQL connection interrupted: {db_err}. Initiating auto-recovery...", flush=True)

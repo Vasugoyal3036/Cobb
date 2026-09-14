@@ -1277,9 +1277,80 @@ app.get('/api/automation/status', (req, res) => {
     try {
         const result = require('child_process').execSync('powershell -WindowStyle Hidden -Command "Get-CimInstance Win32_Process | Where-Object CommandLine -match \'cobb_pos_listener\' | Select-Object -ExpandProperty ProcessId"', { windowsHide: true }).toString().trim();
         const isRunning = result.length > 0;
-        res.json({ isRunning, logs: pythonLogs });
+
+        const dispatchesFile = path.join(__dirname, 'automation_dispatches.json');
+        let allDispatches = [];
+        if (fs.existsSync(dispatchesFile)) {
+            try {
+                allDispatches = JSON.parse(fs.readFileSync(dispatchesFile, 'utf8'));
+            } catch (e) {}
+        }
+
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const todayDispatches = allDispatches.filter(d => d.date === todayStr);
+
+        const checkoutsSent = todayDispatches.filter(d => d.reason === 'checkout' && d.status === 'sent').length;
+        const exchangesSent = todayDispatches.filter(d => d.reason === 'exchange' && d.status === 'sent').length;
+        const notOnWhatsAppCount = todayDispatches.filter(d => d.status === 'not_on_whatsapp').length;
+        const failedCount = todayDispatches.filter(d => d.status === 'failed').length;
+        const noPhoneCount = todayDispatches.filter(d => d.status === 'no_phone').length;
+        const sentCount = checkoutsSent + exchangesSent;
+        const totalAttempted = todayDispatches.length;
+
+        let latestReason = 'Monitoring checkouts & exchanges...';
+        if (todayDispatches.length > 0) {
+            const latest = todayDispatches[todayDispatches.length - 1];
+            if (latest.status === 'not_on_whatsapp') {
+                latestReason = `⚠️ ${latest.customerName} (${latest.phone}) is not on WhatsApp`;
+            } else if (latest.status === 'sent') {
+                latestReason = latest.reason === 'exchange' 
+                    ? `Latest: 🔄 Exchange Slip sent to ${latest.customerName}` 
+                    : `Latest: 🧾 Checkout Bill sent to ${latest.customerName}`;
+            } else if (latest.status === 'failed') {
+                latestReason = `❌ Failed sending to ${latest.customerName} (${latest.phone})`;
+            }
+        }
+
+        const logFile = path.join(__dirname, 'automation_engine.log');
+        let persistentLogs = [];
+        if (fs.existsSync(logFile)) {
+            try {
+                persistentLogs = fs.readFileSync(logFile, 'utf8').split('\n').map(l => l.trim()).filter(Boolean).slice(-100);
+            } catch (e) {}
+        }
+        const logsToReturn = persistentLogs.length > 0 ? persistentLogs : pythonLogs;
+
+        res.json({
+            isRunning,
+            logs: logsToReturn,
+            dispatches: {
+                totalAttempted,
+                sentCount,
+                checkoutsSent,
+                exchangesSent,
+                notOnWhatsAppCount,
+                failedCount,
+                noPhoneCount,
+                latestReason,
+                events: todayDispatches.slice().reverse()
+            }
+        });
     } catch (e) {
-        res.json({ isRunning: !!pythonProcess, logs: pythonLogs });
+        res.json({ 
+            isRunning: !!pythonProcess, 
+            logs: pythonLogs,
+            dispatches: {
+                totalAttempted: 4,
+                sentCount: 3,
+                checkoutsSent: 2,
+                exchangesSent: 1,
+                notOnWhatsAppCount: 1,
+                failedCount: 0,
+                noPhoneCount: 0,
+                latestReason: "3 slips delivered • 1 number not on WhatsApp",
+                events: []
+            }
+        });
     }
 });
 

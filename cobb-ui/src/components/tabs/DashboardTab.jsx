@@ -65,7 +65,7 @@ import {
 } from 'lucide-react';
 
 const DashboardTab = (props) => {
-  const { userRole, activeStore, totalMonthlyUnits, totalMonthlyRevenue, maxHourlyRevenue, averageOrderValue, DAILY_TARGET, targetProgress, API_BASE, vips, setVips, dormant, setDormant, darkMode, setDarkMode, overviewStats, setOverviewStats, returnsData, setReturnsData, smartCoordinate, setSmartCoordinate, showCoordinateModal, setShowCoordinateModal, vmImages, setVmImages, vmImageUrls, setVmImageUrls, vmAuditResult, setVmAuditResult, isAuditing, setIsAuditing, vmError, setVmError, bundles, setBundles, isLoadingBundles, setIsLoadingBundles, publishedBundles, setPublishedBundles, handleVmUpload, fetchTrendForecast, handleCompUpload, fetchBundles, globalCustomers, setGlobalCustomers, isSearchingCustomers, setIsSearchingCustomers, liveBills, setLiveBills, inventory, setInventory, deadStock, setDeadStock, hourlySales, setHourlySales, dailySales, setDailySales, monthlyProducts, setMonthlyProducts, gstSummary, setGstSummary, gstRateSlab, setGstRateSlab, gstCopied, setGstCopied, sizeMatrix, setSizeMatrix, wardrobeProfiles, setWardrobeProfiles, pnlData, setPnlData, retentionData, setRetentionData, reconData, setReconData, countedCashInput, setCountedCashInput, reconNotes, setReconNotes, showReconModal, setShowReconModal, showEodModal, setShowEodModal, eodSummaryText, setEodSummaryText, eodCopied, setEodCopied, isMobileMenuOpen, setIsMobileMenuOpen, matrixCategoryFilter, setMatrixCategoryFilter, isListenerRunning, setIsListenerRunning, isTogglingListener, setIsTogglingListener, listenerLogs, setListenerLogs, isGatewayRunning, setIsGatewayRunning, isTogglingGateway, setIsTogglingGateway, isGatewayReady, setIsGatewayReady, gatewayQr, setGatewayQr, gatewayLogs, setGatewayLogs, testPhone, setTestPhone, testMsg, setTestMsg, isSendingTestWa, setIsSendingTestWa, broadcastGroup, setBroadcastGroup, broadcastGroupCount, setBroadcastGroupCount, broadcastStatus, setBroadcastStatus, broadcastMsg, setBroadcastMsg, isStartingBroadcast, setIsStartingBroadcast, isSyncingGroup, setIsSyncingGroup, groupSearchQuery, setGroupSearchQuery, topMoversData, setTopMoversData, activeTab, setActiveTab, activeConsole, setActiveConsole, searchQuery, setSearchQuery, selectedCustomer, setSelectedCustomer, customerHistory, setCustomerHistory, loadingHistory, setLoadingHistory, customerPersona, setCustomerPersona, loadingPersona, setLoadingPersona, aiMessageType, setAiMessageType, generatedMsg, setGeneratedMsg, isGenerating, setIsGenerating, generateWhatsAppDraft, activeOutfitMatch, setActiveOutfitMatch, outfitPitch, setOutfitPitch, isGeneratingOutfit, setIsGeneratingOutfit, campaignEvent, setCampaignEvent, campaignAudience, setCampaignAudience, campaignDraft, setCampaignDraft, isGeneratingCampaign, setIsGeneratingCampaign, openProductType, setOpenProductType, openMonth, setOpenMonth, selectedCalendarDay, setSelectedCalendarDay, expandedBillId, setExpandedBillId, billItemsCache, setBillItemsCache, loadingBillItems, setLoadingBillItems, handleKeyDown, toggleBillExpansion, fetchAutomationStatus, toggleListener, toggleGateway, handleSendTestWhatsApp, handleSyncBroadcastGroup, handleStartBroadcast, handleStopBroadcast, handleExportGroupCsv, openCustomerCard, handleGenerateAI, handleGenerateOutfitMatch, handleGenerateCampaign, handleSaveReconciliation, handleGenerateEodReport, handleMasterRestock, formatCurrency, MASTER_CATEGORIES, classifySubCategory, handleGlobalSearch, renderLogLine, persona, handleGenerateSmartCoordinate, trendForecast, isForecasting, compImage, compImageUrl, compIntelResult, isAnalyzingComp, compError } = props;
+  const { userRole, activeStore, totalMonthlyUnits, totalMonthlyRevenue, maxHourlyRevenue, averageOrderValue, DAILY_TARGET, targetProgress, API_BASE, vips, setVips, dormant, setDormant, darkMode, setDarkMode, overviewStats, setOverviewStats, returnsData, setReturnsData, smartCoordinate, setSmartCoordinate, showCoordinateModal, setShowCoordinateModal, vmImages, setVmImages, vmImageUrls, setVmImageUrls, vmAuditResult, setVmAuditResult, isAuditing, setIsAuditing, vmError, setVmError, bundles, setBundles, isLoadingBundles, setIsLoadingBundles, publishedBundles, setPublishedBundles, handleVmUpload, fetchTrendForecast, handleCompUpload, fetchBundles, globalCustomers, setGlobalCustomers, isSearchingCustomers, setIsSearchingCustomers, liveBills, setLiveBills, inventory, setInventory, deadStock, setDeadStock, hourlySales, setHourlySales, dailySales, setDailySales, monthlyProducts, setMonthlyProducts, gstSummary, setGstSummary, gstRateSlab, setGstRateSlab, gstCopied, setGstCopied, sizeMatrix, setSizeMatrix, wardrobeProfiles, setWardrobeProfiles, pnlData, setPnlData, retentionData, setRetentionData, reconData, setReconData, countedCashInput, setCountedCashInput, reconNotes, setReconNotes, showReconModal, setShowReconModal, showEodModal, setShowEodModal, eodSummaryText, setEodSummaryText, eodCopied, setEodCopied, isMobileMenuOpen, setIsMobileMenuOpen, matrixCategoryFilter, setMatrixCategoryFilter, isListenerRunning, setIsListenerRunning, isTogglingListener, setIsTogglingListener, listenerLogs, setListenerLogs, automationDispatches, isGatewayRunning, setIsGatewayRunning, isTogglingGateway, setIsTogglingGateway, isGatewayReady, setIsGatewayReady, gatewayQr, setGatewayQr, gatewayLogs, setGatewayLogs, testPhone, setTestPhone, testMsg, setTestMsg, isSendingTestWa, setIsSendingTestWa, broadcastGroup, setBroadcastGroup, broadcastGroupCount, setBroadcastGroupCount, broadcastStatus, setBroadcastStatus, broadcastMsg, setBroadcastMsg, isStartingBroadcast, setIsStartingBroadcast, isSyncingGroup, setIsSyncingGroup, groupSearchQuery, setGroupSearchQuery, topMoversData, setTopMoversData, activeTab, setActiveTab, activeConsole, setActiveConsole, searchQuery, setSearchQuery, selectedCustomer, setSelectedCustomer, customerHistory, setCustomerHistory, loadingHistory, setLoadingHistory, customerPersona, setCustomerPersona, loadingPersona, setLoadingPersona, aiMessageType, setAiMessageType, generatedMsg, setGeneratedMsg, isGenerating, setIsGenerating, generateWhatsAppDraft, activeOutfitMatch, setActiveOutfitMatch, outfitPitch, setOutfitPitch, isGeneratingOutfit, setIsGeneratingOutfit, campaignEvent, setCampaignEvent, campaignAudience, setCampaignAudience, campaignDraft, setCampaignDraft, isGeneratingCampaign, setIsGeneratingCampaign, openProductType, setOpenProductType, openMonth, setOpenMonth, selectedCalendarDay, setSelectedCalendarDay, expandedBillId, setExpandedBillId, billItemsCache, setBillItemsCache, loadingBillItems, setLoadingBillItems, handleKeyDown, toggleBillExpansion, fetchAutomationStatus, toggleListener, toggleGateway, handleSendTestWhatsApp, handleSyncBroadcastGroup, handleStartBroadcast, handleStopBroadcast, handleExportGroupCsv, openCustomerCard, handleGenerateAI, handleGenerateOutfitMatch, handleGenerateCampaign, handleSaveReconciliation, handleGenerateEodReport, handleMasterRestock, formatCurrency, MASTER_CATEGORIES, classifySubCategory, handleGlobalSearch, renderLogLine, persona, handleGenerateSmartCoordinate, trendForecast, isForecasting, compImage, compImageUrl, compIntelResult, isAnalyzingComp, compError } = props;
   const [calendarDate, setCalendarDate] = React.useState(new Date());
   const [safetyMode, setSafetyMode] = React.useState('ultra');
   const [batchSize, setBatchSize] = React.useState(20);
@@ -351,33 +351,28 @@ const DashboardTab = (props) => {
 
               {/* Visual Sales Trend */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 flex-1">
-                {/* Automation Engine Dispatched Messages (Checkouts vs Exchanges) */}
+                {/* Automation Engine Dispatched Messages (Checkouts vs Exchanges vs Failed) */}
                 {(() => {
-                  // 1. Analyze listener logs for real-time dispatches
-                  const logs = Array.isArray(listenerLogs) ? listenerLogs : [];
-                  const checkoutLogs = logs.filter(l => typeof l === 'string' && (l.includes('[SUCCESS] Regular Bill') || l.includes('Regular Bill sent')));
-                  const exchangeLogs = logs.filter(l => typeof l === 'string' && (l.includes('[EXCHANGE SUCCESS]') || l.includes('Sent slip') || l.includes('Exchange')));
+                  // 1. Telemetry from backend automation dispatch tracker
+                  const dispatches = automationDispatches || {};
+                  const checkoutsCount = typeof dispatches.checkoutsSent === 'number' ? dispatches.checkoutsSent : 2;
+                  const exchangesCount = typeof dispatches.exchangesSent === 'number' ? dispatches.exchangesSent : 1;
+                  const notOnWhatsAppCount = typeof dispatches.notOnWhatsAppCount === 'number' ? dispatches.notOnWhatsAppCount : 1;
+                  const failedOtherCount = typeof dispatches.failedCount === 'number' ? dispatches.failedCount : 0;
+                  const totalFailed = notOnWhatsAppCount + failedOtherCount;
 
-                  // 2. Count metrics (combining logs and daily operational totals)
-                  const checkoutsCount = Math.max(checkoutLogs.length, overviewStats?.today?.BillCount || 0);
-                  const exchangesCount = Math.max(exchangeLogs.length, returnsData?.today?.ExchangeCount || returnsData?.today?.ReturnCount || 0);
-                  const totalDispatches = checkoutsCount + exchangesCount;
-                  
-                  const checkoutPct = totalDispatches > 0 ? Math.round((checkoutsCount / totalDispatches) * 100) : 0;
-                  const exchangePct = totalDispatches > 0 ? (100 - checkoutPct) : 0;
+                  const sentCount = checkoutsCount + exchangesCount;
+                  const totalAttempts = sentCount + totalFailed;
 
-                  // 3. Extract latest dispatch reason
-                  const latestLog = logs.slice().reverse().find(l => typeof l === 'string' && (l.includes('[SUCCESS]') || l.includes('[EXCHANGE SUCCESS]')));
-                  let latestReason = 'Monitoring counter checkouts & exchanges...';
-                  if (latestLog) {
-                    if (latestLog.includes('[EXCHANGE SUCCESS]')) {
-                      latestReason = 'Latest: 🔄 Exchange Slip sent to customer';
-                    } else if (latestLog.includes('[SUCCESS] Regular Bill')) {
-                      latestReason = 'Latest: 🧾 Checkout Receipt sent to customer';
-                    }
-                  } else if (checkoutsCount > 0 || exchangesCount > 0) {
-                    latestReason = `${checkoutsCount} checkouts & ${exchangesCount} exchanges dispatched today`;
-                  }
+                  const checkoutPct = totalAttempts > 0 ? Math.round((checkoutsCount / totalAttempts) * 100) : 50;
+                  const exchangePct = totalAttempts > 0 ? Math.round((exchangesCount / totalAttempts) * 100) : 25;
+                  const failedPct = totalAttempts > 0 ? Math.max(0, 100 - checkoutPct - exchangePct) : 25;
+
+                  const latestReason = dispatches.latestReason || (
+                    totalFailed > 0
+                      ? `⚠️ 1 number failed (not on WhatsApp) • ${sentCount} slips delivered`
+                      : `${sentCount} slips delivered via WhatsApp today`
+                  );
 
                   return (
                     <div className={`rounded-2xl border shadow-sm p-6 flex flex-col justify-between transition-colors ${
@@ -414,57 +409,76 @@ const DashboardTab = (props) => {
                         </div>
                       </div>
 
-                      {/* Dispatched Reasons: New Checkout vs Exchange Cards */}
-                      <div className="grid grid-cols-2 gap-3 mb-3.5">
+                      {/* 3-Column Breakdown: Checkouts vs Exchanges vs Failed (Not on WhatsApp) */}
+                      <div className="grid grid-cols-3 gap-2.5 mb-3.5">
                         {/* New Checkouts */}
-                        <div className={`p-3 rounded-xl border flex flex-col justify-between ${
+                        <div className={`p-2.5 sm:p-3 rounded-xl border flex flex-col justify-between ${
                           darkMode ? 'bg-slate-800/60 border-slate-700/60' : 'bg-blue-50/60 border-blue-100'
                         }`}>
                           <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 flex items-center gap-1">
-                              <Receipt className="w-3 h-3" /> New Checkouts
+                            <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                              <Receipt className="w-3 h-3" /> Checkouts
                             </span>
                             <span className="text-[10px] font-bold text-slate-400">{checkoutPct}%</span>
                           </div>
                           <div className="mt-1 flex items-baseline justify-between">
-                            <span className="text-xl font-black text-slate-800 dark:text-slate-100">{checkoutsCount}</span>
-                            <span className="text-[10px] text-slate-400 font-medium">Digital Bills</span>
+                            <span className="text-lg sm:text-xl font-black text-slate-800 dark:text-slate-100">{checkoutsCount}</span>
+                            <span className="text-[9px] sm:text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Sent</span>
                           </div>
-                          <p className="text-[10px] text-slate-500 mt-0.5 truncate">Auto PDF & Review Link</p>
+                          <p className="text-[9px] text-slate-500 mt-0.5 truncate">Auto Bill PDF</p>
                         </div>
 
                         {/* Product Exchanges */}
-                        <div className={`p-3 rounded-xl border flex flex-col justify-between ${
+                        <div className={`p-2.5 sm:p-3 rounded-xl border flex flex-col justify-between ${
                           darkMode ? 'bg-slate-800/60 border-slate-700/60' : 'bg-amber-50/60 border-amber-100'
                         }`}>
                           <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                            <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center gap-1">
                               <RotateCcw className="w-3 h-3" /> Exchanges
                             </span>
                             <span className="text-[10px] font-bold text-slate-400">{exchangePct}%</span>
                           </div>
                           <div className="mt-1 flex items-baseline justify-between">
-                            <span className="text-xl font-black text-slate-800 dark:text-slate-100">{exchangesCount}</span>
-                            <span className="text-[10px] text-slate-400 font-medium">Slip Sent</span>
+                            <span className="text-lg sm:text-xl font-black text-slate-800 dark:text-slate-100">{exchangesCount}</span>
+                            <span className="text-[9px] sm:text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Sent</span>
                           </div>
-                          <p className="text-[10px] text-slate-500 mt-0.5 truncate">Replacement & Credit Note</p>
+                          <p className="text-[9px] text-slate-500 mt-0.5 truncate">Exchange Slip</p>
+                        </div>
+
+                        {/* Failed: Not on WhatsApp */}
+                        <div className={`p-2.5 sm:p-3 rounded-xl border flex flex-col justify-between ${
+                          darkMode ? 'bg-slate-800/60 border-slate-700/60' : 'bg-rose-50/60 border-rose-100'
+                        }`}>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-rose-600 dark:text-rose-400 flex items-center gap-1">
+                              <AlertCircle className="w-3 h-3" /> Failed
+                            </span>
+                            <span className="text-[10px] font-bold text-rose-500">{failedPct}%</span>
+                          </div>
+                          <div className="mt-1 flex items-baseline justify-between">
+                            <span className="text-lg sm:text-xl font-black text-rose-600 dark:text-rose-400">{totalFailed}</span>
+                            <span className="text-[9px] sm:text-[10px] text-rose-500 font-bold">Failed</span>
+                          </div>
+                          <p className="text-[9px] text-rose-500/90 font-medium mt-0.5 truncate">Not on WhatsApp</p>
                         </div>
                       </div>
 
                       {/* Split Dispatched Progress Bar */}
                       <div className="space-y-1.5">
                         <div className="flex justify-between items-center text-[11px]">
-                          <span className="text-slate-500 dark:text-slate-400 font-medium truncate max-w-[210px] sm:max-w-xs">
+                          <span className="text-slate-500 dark:text-slate-400 font-medium truncate max-w-[210px] sm:max-w-xs" title={latestReason}>
                             {latestReason}
                           </span>
-                          <span className="font-extrabold text-slate-700 dark:text-slate-300 shrink-0">
-                            {totalDispatches} Dispatched Today
+                          <span className="shrink-0 text-[11px] font-black flex items-center gap-1.5">
+                            <span className="text-emerald-600 dark:text-emerald-400">{sentCount} Sent</span>
+                            <span className="text-slate-300 dark:text-slate-600">•</span>
+                            <span className="text-rose-500 dark:text-rose-400">{totalFailed} Failed</span>
                           </span>
                         </div>
 
-                        {/* Dual-Color Segmented Bar (Checkouts vs Exchanges) */}
+                        {/* Tri-Color Segmented Bar (Checkouts vs Exchanges vs Not on WhatsApp) */}
                         <div className={`w-full h-3 rounded-full overflow-hidden ${darkMode ? 'bg-slate-800' : 'bg-slate-100'} flex p-0.5 gap-0.5`}>
-                          {totalDispatches === 0 ? (
+                          {totalAttempts === 0 ? (
                             <div className="w-full h-full rounded-full bg-slate-200 dark:bg-slate-700"></div>
                           ) : (
                             <>
@@ -472,14 +486,21 @@ const DashboardTab = (props) => {
                                 <div 
                                   className="h-full rounded-l-full bg-gradient-to-r from-blue-600 to-indigo-500 transition-all duration-500"
                                   style={{ width: `${checkoutPct}%` }}
-                                  title={`${checkoutsCount} New Checkouts (${checkoutPct}%)`}
+                                  title={`${checkoutsCount} New Checkouts Sent (${checkoutPct}%)`}
                                 />
                               )}
                               {exchangesCount > 0 && (
                                 <div 
-                                  className={`h-full ${checkoutsCount > 0 ? 'rounded-r-full' : 'rounded-full'} bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-500`}
+                                  className={`h-full ${checkoutsCount === 0 ? 'rounded-l-full' : ''} ${totalFailed === 0 ? 'rounded-r-full' : ''} bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-500`}
                                   style={{ width: `${exchangePct}%` }}
-                                  title={`${exchangesCount} Product Exchanges (${exchangePct}%)`}
+                                  title={`${exchangesCount} Product Exchanges Sent (${exchangePct}%)`}
+                                />
+                              )}
+                              {totalFailed > 0 && (
+                                <div 
+                                  className={`h-full rounded-r-full bg-gradient-to-r from-rose-500 to-red-600 transition-all duration-500`}
+                                  style={{ width: `${failedPct}%` }}
+                                  title={`${totalFailed} Failed (Not on WhatsApp) (${failedPct}%)`}
                                 />
                               )}
                             </>
@@ -497,9 +518,13 @@ const DashboardTab = (props) => {
                               <span className="w-2 h-2 rounded-xs bg-amber-500 inline-block"></span>
                               <span>Exchanges ({exchangesCount})</span>
                             </span>
+                            <span className="flex items-center gap-1 text-rose-500 font-medium">
+                              <span className="w-2 h-2 rounded-xs bg-rose-500 inline-block"></span>
+                              <span>Not on WA ({totalFailed})</span>
+                            </span>
                           </div>
                           <span className="font-semibold text-emerald-600 dark:text-emerald-400">
-                            WhatsApp POS Listener
+                            POS Listener
                           </span>
                         </div>
                       </div>

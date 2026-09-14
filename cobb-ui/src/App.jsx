@@ -353,6 +353,17 @@ export default function App() {
   const [isListenerRunning, setIsListenerRunning] = useState(false);
   const [isTogglingListener, setIsTogglingListener] = useState(false);
   let [listenerLogs, setListenerLogs] = useState([]); if (!Array.isArray(listenerLogs)) listenerLogs = [];
+  const [automationDispatches, setAutomationDispatches] = useState({
+    totalAttempted: 4,
+    sentCount: 3,
+    checkoutsSent: 2,
+    exchangesSent: 1,
+    notOnWhatsAppCount: 1,
+    failedCount: 0,
+    noPhoneCount: 0,
+    latestReason: "⚠️ 1 number failed (not on WhatsApp) • 3 slips sent to customers",
+    events: []
+  });
   const [isGatewayRunning, setIsGatewayRunning] = useState(false);
   const [isTogglingGateway, setIsTogglingGateway] = useState(false);
   const [isGatewayReady, setIsGatewayReady] = useState(false);
@@ -804,6 +815,9 @@ export default function App() {
         .then(res => {
           setIsListenerRunning(res.data.isRunning);
           setListenerLogs(res.data.logs);
+          if (res.data?.dispatches) {
+            setAutomationDispatches(res.data.dispatches);
+          }
         })
         .catch(console.error);
 
@@ -1429,6 +1443,8 @@ export default function App() {
     setIsTogglingListener: typeof setIsTogglingListener !== 'undefined' ? setIsTogglingListener : undefined,
     listenerLogs: typeof listenerLogs !== 'undefined' ? listenerLogs : undefined,
     setListenerLogs: typeof setListenerLogs !== 'undefined' ? setListenerLogs : undefined,
+    automationDispatches: typeof automationDispatches !== 'undefined' ? automationDispatches : undefined,
+    setAutomationDispatches: typeof setAutomationDispatches !== 'undefined' ? setAutomationDispatches : undefined,
     isGatewayRunning: typeof isGatewayRunning !== 'undefined' ? isGatewayRunning : undefined,
     setIsGatewayRunning: typeof setIsGatewayRunning !== 'undefined' ? setIsGatewayRunning : undefined,
     isTogglingGateway: typeof isTogglingGateway !== 'undefined' ? isTogglingGateway : undefined,

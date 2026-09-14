@@ -1,0 +1,50 @@
+[
+  {
+    "timestamp": "2026-09-14T10:26:39",
+    "date": "2026-09-14",
+    "time": "10:26 AM",
+    "billNo": "STST27-00635",
+    "cmId": "ST01127000STST27-00635",
+    "customerName": "Anu",
+    "phone": "9253878534",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital Bill & Review link delivered via WhatsApp"
+  },
+  {
+    "timestamp": "2026-09-14T11:58:21",
+    "date": "2026-09-14",
+    "time": "11:58 AM",
+    "billNo": "STST27-00636",
+    "cmId": "ST01127000STST27-00636",
+    "customerName": "Vinod Kumar",
+    "phone": "9416737420",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital Bill & Review link delivered via WhatsApp"
+  },
+  {
+    "timestamp": "2026-09-14T13:09:14",
+    "date": "2026-09-14",
+    "time": "01:09 PM",
+    "billNo": "STST27-00637",
+    "cmId": "ST01127000STST27-00637",
+    "customerName": "Ragbeer Singh",
+    "phone": "9896027575",
+    "reason": "exchange",
+    "status": "sent",
+    "detail": "Official Exchange Slip delivered via WhatsApp"
+  },
+  {
+    "timestamp": "2026-09-14T14:42:35",
+    "date": "2026-09-14",
+    "time": "02:42 PM",
+    "billNo": "STST27-00638",
+    "cmId": "ST01127000STST27-00638",
+    "customerName": "Jaipal Pilni",
+    "phone": "8607411435",
+    "reason": "exchange",
+    "status": "not_on_whatsapp",
+    "detail": "Phone number is not registered on WhatsApp"
+  }
+]
