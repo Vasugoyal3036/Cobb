@@ -70,7 +70,6 @@ import {
   AlarmClock,
   Network
 } from 'lucide-react';
-import StoreMusicPlayer from '../StoreMusicPlayer';
 
 
 const DashboardTab = (props) => {
@@ -827,8 +826,25 @@ const DashboardTab = (props) => {
                 )}
               </div>
 
-              {/* In-Store Music Player */}
-              <StoreMusicPlayer API_BASE={API_BASE} />
+              {/* Quick Action Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <button onClick={() => setActiveTab('inventory')} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center gap-2 group text-center cursor-pointer">
+                  <div className="bg-amber-50 dark:bg-amber-950/40 p-3 rounded-full text-amber-600 group-hover:scale-110 transition-transform"><Package className="w-5 h-5" /></div>
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Auto Restock</span>
+                </button>
+                <button onClick={() => setActiveTab('campaigns')} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center gap-2 group text-center cursor-pointer">
+                  <div className="bg-indigo-50 dark:bg-indigo-950/40 p-3 rounded-full text-indigo-600 group-hover:scale-110 transition-transform"><Megaphone className="w-5 h-5" /></div>
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-200">AI Broadcast</span>
+                </button>
+                <button onClick={() => setActiveTab('deadstock')} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center gap-2 group text-center cursor-pointer">
+                  <div className="bg-blue-50 dark:bg-blue-950/40 p-3 rounded-full text-blue-600 group-hover:scale-110 transition-transform"><Package className="w-5 h-5" /></div>
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Inventory</span>
+                </button>
+                <button onClick={() => setActiveTab('automation')} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 rounded-2xl shadow-sm hover:shadow-md transition-all flex flex-col items-center justify-center gap-2 group text-center cursor-pointer">
+                  <div className="bg-green-50 dark:bg-green-950/40 p-3 rounded-full text-green-600 group-hover:scale-110 transition-transform"><Zap className="w-5 h-5" /></div>
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-200">Check Gateways</span>
+                </button>
+              </div>
 
             </div>
 
