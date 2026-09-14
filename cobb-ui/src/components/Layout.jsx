@@ -262,10 +262,10 @@ const Layout = ({
         {/* Top Navbar */}
         <header className={`backdrop-blur-md px-3.5 sm:px-6 lg:px-8 py-2.5 sm:py-3.5 border-b sticky top-0 z-30 transition-colors ${darkMode ? 'bg-slate-900/95 border-slate-800 text-slate-100' : 'bg-white/95 border-slate-200 text-slate-800'}`}>
 
-          {/* MOBILE PHONE HEADER (md:hidden) — Split into two pieces */}
-          <div className="flex md:hidden flex-col gap-2 w-full">
-            {/* Piece 1: Brand & Top Controls */}
-            <div className="flex items-center justify-between gap-2 w-full">
+          {/* MOBILE / PHONE HEADER (lg:hidden) — Split into two distinct pieces */}
+          <div className="flex lg:hidden flex-col gap-2 w-full">
+            {/* Piece 1: Brand & Management Controls */}
+            <div className={`flex items-center justify-between gap-2 w-full pb-2 border-b ${darkMode ? 'border-slate-800' : 'border-slate-100'}`}>
               <div className="flex items-center gap-2 shrink-0">
                 <button
                   type="button"
@@ -336,7 +336,7 @@ const Layout = ({
             </div>
 
             {/* Piece 2: Search Bar & Quick Tools */}
-            <div className="flex items-center gap-2 w-full">
+            <div className="flex items-center gap-2 w-full pt-0.5">
               <div className="relative flex-1">
                 <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
                 <input
@@ -378,8 +378,8 @@ const Layout = ({
             </div>
           </div>
 
-          {/* DESKTOP HEADER (hidden md:flex) */}
-          <div className="hidden md:flex flex-row justify-between items-center gap-4 w-full">
+          {/* DESKTOP HEADER (hidden lg:flex) */}
+          <div className="hidden lg:flex flex-row justify-between items-center gap-4 w-full">
             <div className="flex items-center gap-3 w-full sm:max-w-lg">
               <div className="relative flex-1">
                 <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />

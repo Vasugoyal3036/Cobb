@@ -97,7 +97,15 @@ app.use((req, res, next) => {
 // Serve the compiled frontend UI so it can be accessed on a phone via tunneling port 5000
 const frontendPath = path.join(__dirname, '../cobb-ui/dist');
 if (fs.existsSync(frontendPath)) {
-    app.use(express.static(frontendPath));
+    app.use(express.static(frontendPath, {
+        setHeaders: (res, filePath) => {
+            if (filePath.endsWith('.html')) {
+                res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+                res.setHeader('Pragma', 'no-cache');
+                res.setHeader('Expires', '0');
+            }
+        }
+    }));
 }
 
 process.on('uncaughtException', (err) => {
