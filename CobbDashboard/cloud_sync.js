@@ -55,6 +55,8 @@ const endpointsToSync = [
     { url: "/api/ai/demand-forecasts", method: "POST", data: { refresh: true } }
 ];
 
+const lastPayloadHash = new Map();
+
 async function runSyncCycle() {
     if (!db) {
         console.log("[SYNC AGENT] Firebase not configured yet. Skipping sync cycle.");
@@ -82,11 +84,18 @@ async function runSyncCycle() {
             }
 
             if (response && response.data) {
+                // Deduplicate: Don't write to Firestore if the content is identical to last sync
+                const jsonStr = JSON.stringify(response.data);
+                if (lastPayloadHash.get(docName) === jsonStr) {
+                    continue; // Skip write, saves Firestore quota!
+                }
+
                 // Ensure data is an object before pushing (if it's an array, wrap it)
                 const payload = Array.isArray(response.data) ? { items: response.data } : response.data;
                 payload.lastUpdated = FieldValue.serverTimestamp();
 
                 await db.collection("stores").doc(STORE_ID).collection("data").doc(docName).set(payload, { merge: true });
+                lastPayloadHash.set(docName, jsonStr);
                 console.log(`[SYNC AGENT] ✅ Synced ${docName}`);
             }
         } catch (err) {
