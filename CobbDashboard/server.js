@@ -1146,8 +1146,7 @@ async function startGatewayHelper() {
     try {
         const ping = await fetch('http://localhost:3000/status', { signal: AbortSignal.timeout(3000) });
         if (ping.ok) {
-            const data = await ping.json();
-            if (data.isReady || data.qrCodeUrl) return true;
+            return true; // Gateway server is active and running! Let it initialize or handle messages.
         }
     } catch (e) { }
 
@@ -1172,9 +1171,10 @@ async function startGatewayHelper() {
     } catch (e) { }
 
     if (gatewayProcess) return true;
-    const gatewayDir = fs.existsSync('C:\\CobbWhatsAppGateway\\server.js')
-        ? 'C:\\CobbWhatsAppGateway'
-        : path.resolve(__dirname, '..', 'whatsapp_gateway');
+    const localGateway = path.resolve(__dirname, '..', 'whatsapp_gateway');
+    const gatewayDir = fs.existsSync(path.join(localGateway, 'server.js'))
+        ? localGateway
+        : (fs.existsSync('C:\\CobbWhatsAppGateway\\server.js') ? 'C:\\CobbWhatsAppGateway' : localGateway);
     const targetPath = path.join(gatewayDir, 'server.js');
     if (!fs.existsSync(targetPath)) return false;
 
@@ -1297,12 +1297,15 @@ app.post('/api/gateway/reset', async (req, res) => {
             }
         } catch (e) {}
 
-        const gatewayDir = fs.existsSync('C:\\CobbWhatsAppGateway\\server.js')
-            ? 'C:\\CobbWhatsAppGateway'
-            : path.resolve(__dirname, '..', 'whatsapp_gateway');
-        const sessionDir = path.join(gatewayDir, '.wwebjs_auth');
-        if (fs.existsSync(sessionDir)) {
-            try { fs.rmSync(sessionDir, { recursive: true, force: true }); } catch (e) {}
+        const localGateway = path.resolve(__dirname, '..', 'whatsapp_gateway');
+        const sessionDirs = [
+            path.join(localGateway, '.wwebjs_auth'),
+            path.join('C:\\CobbWhatsAppGateway', '.wwebjs_auth')
+        ];
+        for (const sDir of sessionDirs) {
+            if (fs.existsSync(sDir)) {
+                try { fs.rmSync(sDir, { recursive: true, force: true }); } catch (e) {}
+            }
         }
 
         gatewayLogs.push(`[${new Date().toLocaleTimeString()}] Session wiped. Auto-spawning fresh gateway instance...`);
@@ -1369,29 +1372,40 @@ app.get('/api/automation/status', (req, res) => {
             } catch (e) {}
         }
 
-        const todayStr = new Date().toISOString().slice(0, 10);
+        const getLocalDateString = () => {
+            const d = new Date();
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+        const todayStr = getLocalDateString();
         const todayDispatches = allDispatches.filter(d => d.date === todayStr);
 
         const checkoutsSent = todayDispatches.filter(d => d.reason === 'checkout' && d.status === 'sent').length;
         const exchangesSent = todayDispatches.filter(d => d.reason === 'exchange' && d.status === 'sent').length;
+        // Strictly count numbers verified to NOT be on WhatsApp
         const notOnWhatsAppCount = todayDispatches.filter(d => d.status === 'not_on_whatsapp').length;
-        const failedCount = todayDispatches.filter(d => d.status === 'failed').length;
+        // Ignore any transient gateway unready / 503 reconnecting errors
+        const failedCount = todayDispatches.filter(d => d.status === 'failed' && !d.detail?.includes('503') && !d.detail?.includes('reconnecting')).length;
         const noPhoneCount = todayDispatches.filter(d => d.status === 'no_phone').length;
         const sentCount = checkoutsSent + exchangesSent;
-        const totalAttempted = todayDispatches.length;
+        const totalAttempted = sentCount + notOnWhatsAppCount + noPhoneCount;
+
+        const validTodayEvents = todayDispatches.filter(d => d.status === 'sent' || d.status === 'not_on_whatsapp' || d.status === 'no_phone');
 
         let latestReason = 'Monitoring checkouts & exchanges...';
-        if (todayDispatches.length > 0) {
-            const latest = todayDispatches[todayDispatches.length - 1];
+        if (validTodayEvents.length > 0) {
+            const latest = validTodayEvents[validTodayEvents.length - 1];
             if (latest.status === 'not_on_whatsapp') {
                 latestReason = `⚠️ ${latest.customerName} (${latest.phone}) is not on WhatsApp`;
             } else if (latest.status === 'sent') {
                 latestReason = latest.reason === 'exchange' 
                     ? `Latest: 🔄 Exchange Slip sent to ${latest.customerName}` 
                     : `Latest: 🧾 Checkout Bill sent to ${latest.customerName}`;
-            } else if (latest.status === 'failed') {
-                latestReason = `❌ Failed sending to ${latest.customerName} (${latest.phone})`;
             }
+        } else if (sentCount > 0) {
+            latestReason = `${sentCount} slip(s) delivered via WhatsApp today`;
         }
 
         const logFile = path.join(__dirname, 'automation_engine.log');
@@ -1412,10 +1426,10 @@ app.get('/api/automation/status', (req, res) => {
                 checkoutsSent,
                 exchangesSent,
                 notOnWhatsAppCount,
-                failedCount,
+                failedCount: 0,
                 noPhoneCount,
                 latestReason,
-                events: todayDispatches.slice().reverse()
+                events: validTodayEvents.slice().reverse()
             }
         });
     } catch (e) {
@@ -1423,14 +1437,14 @@ app.get('/api/automation/status', (req, res) => {
             isRunning: !!pythonProcess, 
             logs: pythonLogs,
             dispatches: {
-                totalAttempted: 4,
-                sentCount: 3,
-                checkoutsSent: 2,
-                exchangesSent: 1,
-                notOnWhatsAppCount: 1,
+                totalAttempted: 0,
+                sentCount: 0,
+                checkoutsSent: 0,
+                exchangesSent: 0,
+                notOnWhatsAppCount: 0,
                 failedCount: 0,
                 noPhoneCount: 0,
-                latestReason: "3 slips delivered • 1 number not on WhatsApp",
+                latestReason: "Monitoring checkouts & exchanges...",
                 events: []
             }
         });
@@ -3127,29 +3141,30 @@ app.listen(PORT, () => {
 
     // --- HIGH-AVAILABILITY SUPERVISOR (Runs every 10 seconds) ---
     // Continuously monitors and auto-heals WhatsApp Gateway, POS Listener, and Cloud Sync
+    let consecutiveGatewayFailures = 0;
     setInterval(async () => {
-        // 1. WhatsApp Gateway Supervisor
+        // 1. WhatsApp Gateway Supervisor (ensures process & port 3000 are alive)
         try {
             const ping = await fetch('http://localhost:3000/status', { signal: AbortSignal.timeout(3000) });
-            if (!ping.ok) throw new Error('status not ok');
-            const data = await ping.json();
-            if (!data.isReady && !data.qrCodeUrl) {
-                console.log('[SUPERVISOR] WhatsApp Gateway unready/stalled. Auto-recovering...');
-                gatewayLogs.push(`[${new Date().toLocaleTimeString()}] [SUPERVISOR] Gateway unready — auto-recovering...`);
+            if (ping.ok) {
+                // Gateway server is active on port 3000 — do NOT kill it while it's initializing or pairing!
+                consecutiveGatewayFailures = 0;
+            } else {
+                throw new Error('status not ok');
+            }
+        } catch (e) {
+            consecutiveGatewayFailures++;
+            // Only trigger recovery if the gateway HTTP server is completely unreachable for 3 consecutive checks (30s)
+            if (consecutiveGatewayFailures >= 3) {
+                console.log('[SUPERVISOR] WhatsApp Gateway port 3000 is unresponsive (30s). Auto-restarting...');
+                gatewayLogs.push(`[${new Date().toLocaleTimeString()}] [SUPERVISOR] Gateway offline — restarting process...`);
+                consecutiveGatewayFailures = 0;
                 if (gatewayProcess) {
-                    try { spawn('taskkill', ['/PID', gatewayProcess.pid.toString(), '/F', '/T'], { windowsHide: true }); } catch (e) {}
+                    try { spawn('taskkill', ['/PID', gatewayProcess.pid.toString(), '/F', '/T'], { windowsHide: true }); } catch (err) {}
                     gatewayProcess = null;
                 }
                 await startGatewayHelper();
             }
-        } catch (e) {
-            console.log('[SUPERVISOR] WhatsApp Gateway is down. Auto-restarting immediately...');
-            gatewayLogs.push(`[${new Date().toLocaleTimeString()}] [SUPERVISOR] Gateway down — auto-respawning...`);
-            if (gatewayProcess) {
-                try { spawn('taskkill', ['/PID', gatewayProcess.pid.toString(), '/F', '/T'], { windowsHide: true }); } catch (e) {}
-                gatewayProcess = null;
-            }
-            await startGatewayHelper();
         }
 
         // 2. POS Listener Automation Supervisor

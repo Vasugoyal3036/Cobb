@@ -28,38 +28,47 @@ const MAX_RECONNECT_ATTEMPTS = 5;
 let watchdogTimer = null;
 let consecutiveWatchdogFailures = 0;
 
-// Clean up stale lock files & ephemeral crash-prone caches without touching auth tokens
+// Clean up stale lock files & ephemeral crash-prone caches without touching auth tokens or database files
 function cleanStaleLocksAndCaches() {
     const profileDir = path.join(sessionPath, `session-${clientId}`);
     if (!fs.existsSync(profileDir)) return;
 
     try {
-        const cleanDir = (dir) => {
-            if (!fs.existsSync(dir)) return;
-            const entries = fs.readdirSync(dir, { withFileTypes: true });
-            for (const entry of entries) {
-                const fullPath = path.join(dir, entry.name);
-                if (entry.isDirectory()) {
-                    // Ephemeral caches that corrupt on sudden power cuts
-                    if (['GPUCache', 'DawnGraphiteCache', 'Crashpad'].includes(entry.name)) {
-                        try { fs.rmSync(fullPath, { recursive: true, force: true }); } catch (e) {}
-                    } else {
-                        cleanDir(fullPath);
-                    }
-                } else {
-                    // Lock files that prevent Chromium from launching after a crash/restart
-                    if (
-                        entry.name.includes('Singleton') ||
-                        entry.name === 'DevToolsActivePort' ||
-                        entry.name === '.parentlock' ||
-                        entry.name === 'LOCK'
-                    ) {
-                        try { fs.unlinkSync(fullPath); } catch (e) {}
-                    }
+        const ephemeralCacheNames = ['GPUCache', 'DawnGraphiteCache', 'Crashpad', 'ShaderCache'];
+
+        // Clean root profile directory for locks and ephemeral caches
+        const entries = fs.readdirSync(profileDir, { withFileTypes: true });
+        for (const entry of entries) {
+            const fullPath = path.join(profileDir, entry.name);
+            if (entry.isDirectory()) {
+                if (ephemeralCacheNames.includes(entry.name)) {
+                    try { fs.rmSync(fullPath, { recursive: true, force: true }); } catch (e) {}
+                }
+            } else {
+                // Remove ONLY Chromium process locks (do NOT touch LevelDB LOCK files inside databases)
+                if (
+                    entry.name.includes('Singleton') ||
+                    entry.name === 'DevToolsActivePort' ||
+                    entry.name === '.parentlock'
+                ) {
+                    try { fs.unlinkSync(fullPath); } catch (e) {}
                 }
             }
-        };
-        cleanDir(profileDir);
+        }
+
+        // Also check Default/ folder if present
+        const defaultDir = path.join(profileDir, 'Default');
+        if (fs.existsSync(defaultDir)) {
+            const defaultEntries = fs.readdirSync(defaultDir, { withFileTypes: true });
+            for (const entry of defaultEntries) {
+                const fullPath = path.join(defaultDir, entry.name);
+                if (entry.isDirectory() && ephemeralCacheNames.includes(entry.name)) {
+                    try { fs.rmSync(fullPath, { recursive: true, force: true }); } catch (e) {}
+                } else if (entry.isFile() && (entry.name.includes('Singleton') || entry.name === '.parentlock')) {
+                    try { fs.unlinkSync(fullPath); } catch (e) {}
+                }
+            }
+        }
         console.log('[WHATSAPP] Pre-launch lock files & ephemeral caches cleaned successfully.');
     } catch (err) {
         console.warn('[WHATSAPP] Lock cleanup warning:', err.message);
@@ -75,31 +84,19 @@ function clearWatchdog() {
 
 function startWatchdog() {
     clearWatchdog();
-    // 60-second watchdog: If neither 'ready' nor 'qr' fires, the browser session is hung
+    // 120-second watchdog: If neither 'ready' nor 'qr' fires after 2 minutes,
+    // Chromium might have hung on boot. Safely reboot Chromium WITHOUT wiping the session.
     watchdogTimer = setTimeout(async () => {
-        console.error('[WATCHDOG] WhatsApp Web initialization hung for >60s. Auto-recovering...');
-        consecutiveWatchdogFailures++;
-        if (consecutiveWatchdogFailures >= 2) {
-            console.error('[WATCHDOG] Corrupted session detected after repeated hangs. Wiping session cache to force fresh QR pairing...');
-            try {
-                if (client) await client.destroy().catch(() => {});
-            } catch (e) {}
-            try {
-                if (fs.existsSync(sessionPath)) {
-                    fs.rmSync(sessionPath, { recursive: true, force: true });
-                }
-            } catch (e) {}
-            consecutiveWatchdogFailures = 0;
-            initWhatsApp(true);
-            return;
-        }
+        console.warn('[WATCHDOG] WhatsApp Web initialization taking >120s. Restarting browser process while preserving session...');
         try {
             if (client) await client.destroy().catch(() => {});
         } catch (e) {}
         cleanStaleLocksAndCaches();
-        initWhatsApp(false);
-    }, 60000);
+        initWhatsApp(false); // ALWAYS preserve saved session tokens!
+    }, 120000);
 }
+
+let isReconnecting = false;
 
 function initWhatsApp(isFresh = false) {
     clearWatchdog();
@@ -127,12 +124,15 @@ function initWhatsApp(isFresh = false) {
                 '--disable-gpu',
                 '--disable-extensions',
                 '--disable-session-crashed-bubble',
-                '--disable-features=IsolateOrigins,site-per-process',
                 '--no-default-browser-check',
                 '--disable-background-networking',
-                '--disable-component-update'
+                '--disable-component-update',
+                '--disable-blink-features=AutomationControlled',
+                '--disable-renderer-backgrounding',
+                '--disable-background-timer-throttling',
+                '--disable-backgrounding-occluded-windows'
             ],
-            timeout: 60000
+            timeout: 120000
         },
         userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'
     });
@@ -141,7 +141,8 @@ function initWhatsApp(isFresh = false) {
 
     client.on('qr', (qr) => {
         clearWatchdog();
-        consecutiveWatchdogFailures = 0;
+        reconnectAttempts = 0;
+        isReconnecting = false;
         try {
             currentQrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" + encodeURIComponent(qr);
             isClientReady = false;
@@ -154,15 +155,16 @@ function initWhatsApp(isFresh = false) {
     client.on('authenticated', () => {
         console.log('[WHATSAPP] Scanned successfully! Authenticating session...');
         reconnectAttempts = 0;
+        isReconnecting = false;
         startWatchdog();
     });
 
     client.on('ready', () => {
         clearWatchdog();
-        consecutiveWatchdogFailures = 0;
         isClientReady = true;
         currentQrCodeUrl = null;
         reconnectAttempts = 0;
+        isReconnecting = false;
         console.log('[WHATSAPP] Client is ONLINE and ready to dispatch messages!');
         flushOutbox();
     });
@@ -174,7 +176,7 @@ function initWhatsApp(isFresh = false) {
         try {
             if (client) await client.destroy().catch(() => {});
         } catch (e) {}
-        console.log('[WHATSAPP] Clearing stale session and requesting new QR code...');
+        console.log('[WHATSAPP] Auth revoked by WhatsApp servers. Clearing stale tokens and requesting new QR code...');
         try {
             if (fs.existsSync(sessionPath)) {
                 fs.rmSync(sessionPath, { recursive: true, force: true });
@@ -198,21 +200,20 @@ function initWhatsApp(isFresh = false) {
 }
 
 function scheduleReconnect() {
-    if (reconnectAttempts >= MAX_RECONNECT_ATTEMPTS) {
-        console.error('[WHATSAPP] Max reconnect attempts reached. Auto-resetting session...');
-        reconnectAttempts = 0;
-        initWhatsApp(true);
-        return;
-    }
+    if (isReconnecting) return;
+    isReconnecting = true;
     reconnectAttempts++;
+    // Exponential backoff capped at 60s. NEVER wipe the session on max attempts!
+    // When internet recovers (e.g. overnight broadband drops), the saved LocalAuth logs right back in.
     const delay = Math.min(reconnectAttempts * 10000, 60000);
-    console.log(`[WHATSAPP] Scheduling reconnect attempt ${reconnectAttempts}/${MAX_RECONNECT_ATTEMPTS} in ${delay/1000}s...`);
-    setTimeout(() => {
+    console.log(`[WHATSAPP] Scheduling reconnect attempt ${reconnectAttempts} in ${delay/1000}s (preserving session)...`);
+    setTimeout(async () => {
         try {
-            if (client) client.destroy().catch(() => {});
+            if (client) await client.destroy().catch(() => {});
         } catch (e) {}
         cleanStaleLocksAndCaches();
-        initWhatsApp(false);
+        isReconnecting = false;
+        initWhatsApp(false); // ALWAYS preserve saved session!
     }, delay);
 }
 

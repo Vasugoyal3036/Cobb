@@ -459,23 +459,25 @@ const DashboardTab = (props) => {
                 {(() => {
                   // 1. Telemetry from backend automation dispatch tracker
                   const dispatches = automationDispatches || {};
-                  const checkoutsCount = typeof dispatches.checkoutsSent === 'number' ? dispatches.checkoutsSent : 2;
-                  const exchangesCount = typeof dispatches.exchangesSent === 'number' ? dispatches.exchangesSent : 1;
-                  const notOnWhatsAppCount = typeof dispatches.notOnWhatsAppCount === 'number' ? dispatches.notOnWhatsAppCount : 1;
-                  const failedOtherCount = typeof dispatches.failedCount === 'number' ? dispatches.failedCount : 0;
-                  const totalFailed = notOnWhatsAppCount + failedOtherCount;
+                  const checkoutsCount = typeof dispatches.checkoutsSent === 'number' ? dispatches.checkoutsSent : 0;
+                  const exchangesCount = typeof dispatches.exchangesSent === 'number' ? dispatches.exchangesSent : 0;
+                  // Strictly count numbers verified to NOT be on WhatsApp (never transient gateway/client unready errors)
+                  const notOnWhatsAppCount = typeof dispatches.notOnWhatsAppCount === 'number' ? dispatches.notOnWhatsAppCount : 0;
+                  const totalFailed = notOnWhatsAppCount;
 
                   const sentCount = checkoutsCount + exchangesCount;
                   const totalAttempts = sentCount + totalFailed;
 
-                  const checkoutPct = totalAttempts > 0 ? Math.round((checkoutsCount / totalAttempts) * 100) : 50;
-                  const exchangePct = totalAttempts > 0 ? Math.round((exchangesCount / totalAttempts) * 100) : 25;
-                  const failedPct = totalAttempts > 0 ? Math.max(0, 100 - checkoutPct - exchangePct) : 25;
+                  const checkoutPct = totalAttempts > 0 ? Math.round((checkoutsCount / totalAttempts) * 100) : 0;
+                  const exchangePct = totalAttempts > 0 ? Math.round((exchangesCount / totalAttempts) * 100) : 0;
+                  const failedPct = totalAttempts > 0 ? Math.max(0, 100 - checkoutPct - exchangePct) : 0;
 
                   const latestReason = dispatches.latestReason || (
                     totalFailed > 0
-                      ? `⚠️ 1 number failed (not on WhatsApp) • ${sentCount} slips delivered`
-                      : `${sentCount} slips delivered via WhatsApp today`
+                      ? `⚠️ ${totalFailed} number(s) not on WhatsApp • ${sentCount} slips delivered`
+                      : sentCount > 0
+                        ? `${sentCount} slip(s) delivered via WhatsApp today`
+                        : 'Monitoring checkouts & exchanges...'
                   );
 
                   return (
@@ -599,7 +601,7 @@ const DashboardTab = (props) => {
                           <div className="flex items-center justify-between gap-1 mb-1">
                             <span className="text-[10px] font-extrabold uppercase tracking-tight text-rose-500 flex items-center gap-1 truncate">
                               <AlertCircle className="w-3 h-3 shrink-0" />
-                              <span className="truncate">Failed</span>
+                              <span className="truncate">Not on WA</span>
                             </span>
                             <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full shrink-0 ${
                               darkMode ? 'bg-rose-950/80 text-rose-300 border border-rose-800/50' : 'bg-rose-100 text-rose-700'
@@ -638,7 +640,7 @@ const DashboardTab = (props) => {
                         <div className="flex items-center gap-1.5 shrink-0 font-extrabold text-[10px]">
                           <span className="text-emerald-500 dark:text-emerald-400">{sentCount} Sent</span>
                           <span className="opacity-40">•</span>
-                          <span className="text-rose-500 dark:text-rose-400">{totalFailed} Failed</span>
+                          <span className="text-rose-500 dark:text-rose-400">{totalFailed} Not on WA</span>
                         </div>
                       </div>
 

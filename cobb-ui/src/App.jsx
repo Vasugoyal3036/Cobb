@@ -142,6 +142,22 @@ const getActiveStoreId = () => {
 const originalAxiosGet = axios.get;
 
 axios.get = async (url, config) => {
+  const targetUrl = url.startsWith('http') ? url : `${API_BASE}${url}`;
+
+  // 1. If we have an active live tunnel API_BASE (ngrok/Cloudflare) or are local, prioritize live real-time backend!
+  // This guarantees the phone link receives real-time, 100% updated data directly from the POS.
+  if (API_BASE && (API_BASE.includes('ngrok') || API_BASE.includes('trycloudflare') || isLocalEnvironment)) {
+    try {
+      const liveRes = await originalAxiosGet(targetUrl, { ...config, timeout: 6000 });
+      if (liveRes && liveRes.status === 200) {
+        return liveRes;
+      }
+    } catch (liveErr) {
+      // If live tunnel failed or is momentarily unreachable, fall through to Firestore cloud cache
+    }
+  }
+
+  // 2. Fallback to Firestore Cloud Cache when running on remote phone without live tunnel
   if (!isLocalEnvironment && db && url.includes('/api/')) {
        let docName = url.replace(API_BASE, '').replace('/api/', '').replace(/\//g, '_');
        docName = docName.split('?')[0]; 
@@ -168,7 +184,7 @@ axios.get = async (url, config) => {
          return { data: { error: e.message }, status: 500 };
        }
   }
-  return originalAxiosGet(url, config);
+  return originalAxiosGet(targetUrl, config);
 };
 
 // Local Cache Helpers for Instant 0ms Page Renders
@@ -360,14 +376,14 @@ export default function App() {
   const [isTogglingListener, setIsTogglingListener] = useState(false);
   let [listenerLogs, setListenerLogs] = useState([]); if (!Array.isArray(listenerLogs)) listenerLogs = [];
   const [automationDispatches, setAutomationDispatches] = useState({
-    totalAttempted: 4,
-    sentCount: 3,
-    checkoutsSent: 2,
-    exchangesSent: 1,
-    notOnWhatsAppCount: 1,
+    totalAttempted: 0,
+    sentCount: 0,
+    checkoutsSent: 0,
+    exchangesSent: 0,
+    notOnWhatsAppCount: 0,
     failedCount: 0,
     noPhoneCount: 0,
-    latestReason: "⚠️ 1 number failed (not on WhatsApp) • 3 slips sent to customers",
+    latestReason: "Monitoring checkouts & exchanges...",
     events: []
   });
   const [isGatewayRunning, setIsGatewayRunning] = useState(false);

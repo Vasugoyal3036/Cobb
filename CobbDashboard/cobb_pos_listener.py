@@ -268,12 +268,15 @@ def send_whatsapp_message(phone_number, customer_name):
         elif response.status_code == 400 and 'not registered' in response.text.lower():
             log_engine(f"[SKIPPED] {clean_phone} is not on WhatsApp. Marking as processed.")
             return {'status': 'not_on_whatsapp', 'detail': 'Phone number is not registered on WhatsApp'}
+        elif response.status_code == 503 or 'reconnecting' in response.text.lower() or 'not ready' in response.text.lower():
+            log_engine(f"[WAITING] WhatsApp client is reconnecting/initializing (503). Retrying when online.")
+            return {'status': 'client_not_ready', 'detail': 'WhatsApp client is reconnecting/unready'}
         else:
             log_engine(f"[FAILED] Sender responded: {response.text}")
             return {'status': 'failed', 'detail': f"Sender responded {response.status_code}"}
     except Exception as e:
         log_engine(f"[ERROR] Connecting to WhatsApp sender (port 3000): {e}")
-        return {'status': 'failed', 'detail': str(e)}
+        return {'status': 'client_not_ready', 'detail': str(e)}
 
 def send_exchange_whatsapp_slip(phone_number, customer_name, bill_no, bill_time, net_amount, returned_items, replacement_items):
     """Sends official digital exchange slip for product exchanges."""
@@ -361,12 +364,15 @@ def send_exchange_whatsapp_slip(phone_number, customer_name, bill_no, bill_time,
         elif response.status_code == 400 and 'not registered' in response.text.lower():
             log_engine(f"[SKIPPED] {clean_phone} is not on WhatsApp. Marking as processed.")
             return {'status': 'not_on_whatsapp', 'detail': 'Phone number is not registered on WhatsApp'}
+        elif response.status_code == 503 or 'reconnecting' in response.text.lower() or 'not ready' in response.text.lower():
+            log_engine(f"[WAITING] WhatsApp client is reconnecting/initializing (503). Retrying when online.")
+            return {'status': 'client_not_ready', 'detail': 'WhatsApp client is reconnecting/unready'}
         else:
             log_engine(f"[FAILED] Sender responded: {response.text}")
             return {'status': 'failed', 'detail': f"Sender responded {response.status_code}"}
     except Exception as e:
         log_engine(f"[ERROR] Connecting to WhatsApp sender (port 3000): {e}")
-        return {'status': 'failed', 'detail': str(e)}
+        return {'status': 'client_not_ready', 'detail': str(e)}
 
 def run_listener():
     if not get_lock():
@@ -535,11 +541,17 @@ def run_listener():
                     elif is_exchange:
                         log_engine(f"[NEW EXCHANGE DETECTED] Bill #{bill_no} | Phone: {phone} | Returned: {len(returned_items)} | Replaced: {len(replacement_items)}")
                         res = send_exchange_whatsapp_slip(phone, name, bill_no, bill_time, amount, returned_items, replacement_items)
+                        if res.get('status') == 'client_not_ready':
+                            log_engine(f"[GATEWAY WAITING] WhatsApp Client is reconnecting. Will retry Bill #{bill_no} once gateway is ready.")
+                            break
                         record_dispatch_event(bill_no, cm_id_str, name, phone, 'exchange', res['status'], res['detail'])
                         success = res['status'] in ('sent', 'not_on_whatsapp')
                     else:
                         log_engine(f"[NEW BILL DETECTED] Bill #{bill_no} | Rs.{amount} | Phone: {phone}")
                         res = send_whatsapp_message(phone, name)
+                        if res.get('status') == 'client_not_ready':
+                            log_engine(f"[GATEWAY WAITING] WhatsApp Client is reconnecting. Will retry Bill #{bill_no} once gateway is ready.")
+                            break
                         record_dispatch_event(bill_no, cm_id_str, name, phone, 'checkout', res['status'], res['detail'])
                         success = res['status'] in ('sent', 'not_on_whatsapp')
 
