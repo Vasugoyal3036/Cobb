@@ -142,23 +142,23 @@ export default function GoodsInTransitDesk({
       <div
         className={`flex-1 min-h-0 rounded-2xl border shadow-sm p-3.5 sm:p-4 transition-all relative overflow-hidden flex flex-col justify-between ${
           darkMode
-            ? 'bg-slate-900/90 border-slate-800/80 text-slate-100 shadow-black/20'
-            : 'bg-white border-slate-200 text-slate-800 shadow-slate-200/50'
+            ? 'bg-[#0e1320] border-[#1c2436] text-slate-100'
+            : 'bg-white border-slate-200 text-slate-800'
         }`}
       >
         {/* Top Header */}
-        <div className="flex items-center justify-between gap-2 pb-2 border-b border-inherit shrink-0">
+        <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-inherit shrink-0">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-amber-500 to-orange-600 flex items-center justify-center text-white shadow-xs shrink-0">
               <Truck className="w-3.5 h-3.5" />
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
-                <h3 className={`text-xs font-black tracking-tight truncate ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+                <h3 className={`text-xs font-black uppercase tracking-wider truncate ${darkMode ? 'text-white' : 'text-slate-900'}`}>
                   Goods In Transit
                 </h3>
                 <span
-                  className={`inline-flex items-center gap-1 px-1.5 py-0.2 rounded-full text-[8.5px] font-black uppercase tracking-wider border shrink-0 ${
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border shrink-0 ${
                     darkMode
                       ? 'bg-amber-950/80 text-amber-300 border-amber-800/60'
                       : 'bg-amber-50 text-amber-700 border-amber-200'
@@ -168,7 +168,7 @@ export default function GoodsInTransitDesk({
                   HO Dispatch
                 </span>
               </div>
-              <p className={`text-[9.5px] font-medium truncate ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+              <p className={`text-[11px] font-medium truncate ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                 Incoming from Head Office Central Warehouse
               </p>
             </div>
@@ -178,32 +178,32 @@ export default function GoodsInTransitDesk({
             type="button"
             onClick={fetchTransitData}
             title="Refresh Consignment Status"
-            className={`p-1 rounded-md border transition-colors cursor-pointer shrink-0 ${
+            className={`p-1.5 rounded-lg border transition-colors cursor-pointer shrink-0 ${
               darkMode
-                ? 'bg-slate-800/60 hover:bg-slate-800 text-slate-400 hover:text-white border-slate-700/60'
+                ? 'bg-[#121829] hover:bg-[#1a2336] text-slate-300 hover:text-white border-[#1c2436]'
                 : 'bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 border-slate-200'
             }`}
           >
-            <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
 
         {/* Consignment Hero Card */}
         {latest && (
           <div
-            className={`my-auto p-2.5 rounded-xl border transition-all ${
+            className={`my-auto p-3 rounded-xl border transition-all ${
               darkMode
-                ? 'bg-slate-950/70 border-slate-800'
+                ? 'bg-[#121829] border-[#1c2436]'
                 : 'bg-slate-50 border-slate-200/80'
             }`}
           >
-            <div className="flex items-center justify-between gap-1 mb-1">
+            <div className="flex items-center justify-between gap-1 mb-1.5">
               <div className="flex items-center gap-1.5 truncate">
                 <span className={`font-mono text-xs font-black truncate ${darkMode ? 'text-white' : 'text-slate-900'}`}>
                   #{latest.parcel_memo_no || 'HO-PARCEL'}
                 </span>
                 <span
-                  className={`text-[8.5px] font-bold px-1.5 py-0.2 rounded border truncate ${
+                  className={`text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded border truncate ${
                     darkMode
                       ? 'bg-blue-950/60 text-blue-300 border-blue-800/60'
                       : 'bg-blue-50 text-blue-700 border-blue-200'
@@ -214,7 +214,7 @@ export default function GoodsInTransitDesk({
               </div>
 
               <span
-                className={`text-[8.5px] font-black uppercase px-2 py-0.2 rounded-full border shrink-0 ${
+                className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border shrink-0 ${
                   latest.status === 'Arrived Today'
                     ? darkMode
                       ? 'bg-emerald-950/80 text-emerald-300 border-emerald-700/80'
@@ -229,25 +229,25 @@ export default function GoodsInTransitDesk({
             </div>
 
             {/* Specs Grid */}
-            <div className="grid grid-cols-2 gap-2 mt-1.5 pt-1.5 border-t border-dashed border-inherit text-xs">
+            <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-dashed border-inherit text-xs">
               <div>
-                <span className={`text-[9.5px] block ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                <span className={`text-[11px] block ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                   Stock Volume
                 </span>
-                <span className="font-bold text-xs text-emerald-400 flex items-center gap-1">
-                  <Boxes className="w-3 h-3" />
+                <span className="font-bold text-xs text-emerald-400 flex items-center gap-1 mt-0.5">
+                  <Boxes className="w-3.5 h-3.5" />
                   {latest.total_quantity} Pcs
-                  <span className={`text-[9px] font-normal ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  <span className={`text-[10px] font-normal ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                     ({latest.total_boxes || 1} Box)
                   </span>
                 </span>
               </div>
 
               <div className="text-right">
-                <span className={`text-[9.5px] block ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                <span className={`text-[11px] block ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                   Challan Value
                 </span>
-                <span className={`font-mono font-black text-xs ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
+                <span className={`font-mono font-black text-xs mt-0.5 block ${darkMode ? 'text-slate-100' : 'text-slate-900'}`}>
                   {formatCurrency(latest.invoice_amount)}
                 </span>
               </div>
@@ -255,12 +255,12 @@ export default function GoodsInTransitDesk({
 
             {/* Transport Vehicle Line */}
             {latest.vehicle_no && (
-              <div className={`flex items-center justify-between text-[9px] mt-1.5 pt-1 border-t ${darkMode ? 'border-slate-800/80 text-slate-400' : 'border-slate-200 text-slate-500'}`}>
-                <span className="flex items-center gap-1 truncate">
-                  <Truck className="w-2.5 h-2.5 text-amber-400 shrink-0" />
+              <div className={`flex items-center justify-between text-[11px] mt-2 pt-1.5 border-t ${darkMode ? 'border-[#1c2436] text-slate-400' : 'border-slate-200 text-slate-500'}`}>
+                <span className="flex items-center gap-1.5 truncate">
+                  <Truck className="w-3 h-3 text-amber-400 shrink-0" />
                   Vehicle: <span className="font-bold font-mono text-slate-200">{latest.vehicle_no}</span>
                 </span>
-                <span className="shrink-0">
+                <span className="shrink-0 font-mono text-[10px]">
                   {latest.parcel_memo_dt ? new Date(latest.parcel_memo_dt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'Today'}
                 </span>
               </div>
@@ -269,8 +269,8 @@ export default function GoodsInTransitDesk({
         )}
 
         {/* Footer Action */}
-        <div className="pt-1.5 border-t border-inherit flex items-center justify-between shrink-0">
-          <span className={`text-[9.5px] font-bold truncate ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+        <div className="pt-2 border-t border-inherit flex items-center justify-between shrink-0">
+          <span className={`text-[11px] font-medium truncate ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
             {summary.incomingCount > 0
               ? `${summary.incomingCount} Inflow (${summary.incomingPieces} pcs)`
               : 'All parcels inwarded'}
@@ -278,12 +278,12 @@ export default function GoodsInTransitDesk({
           <button
             type="button"
             onClick={() => setSelectedParcel(latest)}
-            className={`text-[9.5px] font-bold flex items-center gap-0.5 cursor-pointer shrink-0 transition-colors ${
+            className={`text-xs font-bold flex items-center gap-1 cursor-pointer shrink-0 transition-colors ${
               darkMode ? 'text-amber-400 hover:text-amber-300' : 'text-amber-600 hover:underline'
             }`}
           >
             <span>View Challan</span>
-            <ChevronRight className="w-3 h-3" />
+            <ChevronRight className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
@@ -292,21 +292,21 @@ export default function GoodsInTransitDesk({
       <div
         className={`flex-1 min-h-0 rounded-2xl border shadow-sm p-3.5 sm:p-4 transition-all relative overflow-hidden flex flex-col justify-between ${
           darkMode
-            ? 'bg-slate-900/90 border-slate-800/80 text-slate-100 shadow-black/20'
-            : 'bg-white border-slate-200 text-slate-800 shadow-slate-200/50'
+            ? 'bg-[#0e1320] border-[#1c2436] text-slate-100'
+            : 'bg-white border-slate-200 text-slate-800'
         }`}
       >
         {/* Top Header */}
-        <div className="flex items-center justify-between gap-2 pb-2 border-b border-inherit shrink-0">
+        <div className="flex items-center justify-between gap-2 pb-2.5 border-b border-inherit shrink-0">
           <div className="flex items-center gap-2">
             <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-xs shrink-0">
               <Package className="w-3.5 h-3.5" />
             </div>
             <div className="min-w-0">
-              <h3 className={`text-xs font-black tracking-tight truncate ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+              <h3 className={`text-xs font-black uppercase tracking-wider truncate ${darkMode ? 'text-white' : 'text-slate-900'}`}>
                 HO Inward Velocity
               </h3>
-              <p className={`text-[9.5px] font-medium truncate ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+              <p className={`text-[11px] font-medium truncate ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                 {new Date().toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })} Restock & Supply
               </p>
             </div>
@@ -315,37 +315,37 @@ export default function GoodsInTransitDesk({
           <button
             type="button"
             onClick={() => setShowAllModal(true)}
-            className={`text-[9.5px] font-bold px-2 py-0.5 rounded-md border transition-colors cursor-pointer flex items-center gap-1 shrink-0 ${
+            className={`text-xs font-bold px-2.5 py-1 rounded-lg border transition-colors cursor-pointer flex items-center gap-1 shrink-0 ${
               darkMode
-                ? 'bg-slate-800/80 hover:bg-slate-800 text-blue-400 border-slate-700/80'
+                ? 'bg-[#121829] hover:bg-[#1a2336] text-blue-400 border-[#1c2436]'
                 : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200'
             }`}
           >
             <span>Log</span>
-            <ExternalLink className="w-2.5 h-2.5" />
+            <ExternalLink className="w-3 h-3" />
           </button>
         </div>
 
         {/* Monthly Summary KPI Banner */}
         <div
-          className={`my-auto p-2 rounded-xl border flex items-center justify-between ${
+          className={`my-auto p-2.5 rounded-xl border flex items-center justify-between ${
             darkMode
-              ? 'bg-slate-950/70 border-slate-800'
+              ? 'bg-[#121829] border-[#1c2436]'
               : 'bg-slate-50 border-slate-200/80'
           }`}
         >
           <div>
-            <span className={`text-[9px] uppercase font-bold tracking-wider ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+            <span className={`text-[10px] uppercase font-bold tracking-wider ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
               Month Inflow
             </span>
-            <div className="text-sm font-black text-blue-400 flex items-center gap-1 mt-0.5">
+            <div className="text-sm font-black font-mono text-blue-400 flex items-center gap-1 mt-0.5">
               <span>{summary.monthPieces ? summary.monthPieces.toLocaleString('en-IN') : '1,021'}</span>
-              <span className="text-[10px] font-normal text-slate-400">Pcs</span>
+              <span className="text-[11px] font-sans font-normal text-slate-400">Pcs</span>
             </div>
           </div>
 
           <div className="text-right">
-            <span className={`text-[9px] uppercase font-bold tracking-wider ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+            <span className={`text-[10px] uppercase font-bold tracking-wider ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
               Stock Value
             </span>
             <div className={`text-sm font-mono font-black mt-0.5 ${darkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
@@ -355,8 +355,8 @@ export default function GoodsInTransitDesk({
         </div>
 
         {/* Mini Consignments Feed */}
-        <div className="space-y-1 mb-1">
-          <span className={`text-[8.5px] font-extrabold uppercase tracking-wider block ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+        <div className="space-y-1.5 mb-1">
+          <span className={`text-[10px] font-extrabold uppercase tracking-wider block ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
             Recent Restock Dispatches:
           </span>
           <div className="space-y-1">
@@ -364,25 +364,25 @@ export default function GoodsInTransitDesk({
               <div
                 key={idx}
                 onClick={() => setSelectedParcel(item)}
-                className={`p-1.5 rounded-lg border transition-all cursor-pointer flex items-center justify-between text-[10px] ${
+                className={`p-2 rounded-lg border transition-all cursor-pointer flex items-center justify-between text-xs ${
                   darkMode
-                    ? 'bg-slate-950/40 hover:bg-slate-800/50 border-slate-800/80 text-slate-300'
+                    ? 'bg-[#121829] hover:bg-[#182035] border-[#1c2436] text-slate-300'
                     : 'bg-white hover:bg-slate-50 border-slate-200/80 text-slate-700'
                 }`}
               >
-                <div className="min-w-0 flex items-center gap-1.5">
+                <div className="min-w-0 flex items-center gap-2">
                   <span className="w-1.5 h-1.5 rounded-full bg-blue-500 shrink-0" />
                   <div className="min-w-0">
-                    <span className="font-bold truncate block">{item.parcel_memo_no}</span>
-                    <span className={`text-[8.5px] ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                    <span className="font-bold font-mono truncate block">{item.parcel_memo_no}</span>
+                    <span className={`text-[10px] ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                       {item.parcel_memo_dt ? new Date(item.parcel_memo_dt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'Recent'} • {item.origin_name || 'HO'}
                     </span>
                   </div>
                 </div>
 
                 <div className="text-right shrink-0">
-                  <span className="font-bold block text-emerald-400">{item.total_quantity} pcs</span>
-                  <span className={`text-[8.5px] font-mono ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  <span className="font-bold font-mono block text-emerald-400">{item.total_quantity} pcs</span>
+                  <span className={`text-[10px] font-mono ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                     {formatCurrency(item.invoice_amount)}
                   </span>
                 </div>
@@ -392,10 +392,10 @@ export default function GoodsInTransitDesk({
         </div>
 
         {/* Footer info */}
-        <div className={`pt-1.5 border-t border-inherit flex items-center justify-between text-[9.5px] shrink-0 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-          <span>{summary.monthParcelsCount || 7} consignments</span>
-          <span className="text-emerald-400 font-bold flex items-center gap-1">
-            <ShieldCheck className="w-2.5 h-2.5" /> Auto-Synced with HO
+        <div className={`pt-2 border-t border-inherit flex items-center justify-between text-xs shrink-0 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+          <span className="font-mono text-[11px]">{summary.monthParcelsCount || 7} consignments</span>
+          <span className="text-emerald-400 font-bold flex items-center gap-1 text-[11px]">
+            <ShieldCheck className="w-3 h-3" /> Auto-Synced with HO
           </span>
         </div>
       </div>

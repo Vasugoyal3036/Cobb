@@ -302,22 +302,24 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
 
               {/* Revenue Card with WoW/MoM Trends & Payment Breakdown */}
-              <div ref={topCardRef} className={`p-5 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-all ${
+              <div ref={topCardRef} className={`p-5 rounded-2xl border shadow-xs flex flex-col justify-between hover:shadow-md transition-all ${
                 darkMode ? 'kpi-card-revenue text-white' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
               }`}>
                 <div className="flex justify-between items-start">
                   <div>
-                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Today's Revenue</p>
-                    <h3 className="text-3xl font-black text-slate-900 dark:text-white mt-1">{formatCurrency((overviewStats?.today?.TotalSales || 0))}</h3>
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Today's Revenue</span>
+                    <h3 className="text-3xl sm:text-4xl font-black font-mono tracking-tight text-slate-900 dark:text-white mt-1">
+                      {formatCurrency((overviewStats?.today?.TotalSales || 0))}
+                    </h3>
                   </div>
-                  <div className="p-2.5 bg-emerald-500/10 text-emerald-500 rounded-xl border border-emerald-500/20">
+                  <div className="p-2.5 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20 shrink-0">
                     <TrendingUp className="w-5 h-5" />
                   </div>
                 </div>
 
-                <div className="mt-3.5 flex flex-wrap gap-x-3 gap-y-1 text-xs mb-2">
+                <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs mb-2">
                   {/* vs Yesterday */}
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5">
                     {(() => {
                       const diff = (overviewStats?.yesterday?.TotalSales || 0) > 0
                         ? ((((overviewStats?.today?.TotalSales || 0) - (overviewStats?.yesterday?.TotalSales || 0)) / (overviewStats?.yesterday?.TotalSales || 0)) * 100).toFixed(1)
@@ -325,16 +327,20 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                       const isUp = diff >= 0;
                       return (
                         <>
-                          <span className={`font-black ${isUp ? 'text-emerald-500' : 'text-rose-500'}`}>
+                          <span className={`font-mono font-black text-xs px-1.5 py-0.5 rounded border ${
+                            isUp 
+                              ? 'text-emerald-400 bg-emerald-950/40 border-emerald-800/50' 
+                              : 'text-rose-400 bg-rose-950/40 border-rose-800/50'
+                          }`}>
                             {isUp ? '↑' : '↓'} {Math.abs(diff)}%
                           </span>
-                          <span className="text-slate-400 text-[11px]">vs yest</span>
+                          <span className="text-slate-400 text-xs font-medium">vs yest</span>
                         </>
                       );
                     })()}
                   </div>
                   {/* vs Last Week */}
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5">
                     {(() => {
                       const thisW = overviewStats?.thisWeek?.TotalSales || 0;
                       const lastW = overviewStats?.lastWeek?.TotalSales || 0;
@@ -342,16 +348,20 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                       const isUp = diff >= 0;
                       return (
                         <>
-                          <span className={`font-black ${isUp ? 'text-emerald-500' : 'text-rose-500'}`}>
+                          <span className={`font-mono font-black text-xs px-1.5 py-0.5 rounded border ${
+                            isUp 
+                              ? 'text-emerald-400 bg-emerald-950/40 border-emerald-800/50' 
+                              : 'text-rose-400 bg-rose-950/40 border-rose-800/50'
+                          }`}>
                             {isUp ? '↑' : '↓'} {Math.abs(diff)}%
                           </span>
-                          <span className="text-slate-400 text-[11px]">WoW</span>
+                          <span className="text-slate-400 text-xs font-medium">WoW</span>
                         </>
                       );
                     })()}
                   </div>
                   {/* vs Last Month */}
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5">
                     {(() => {
                       const thisM = overviewStats?.thisMonth?.TotalSales || 0;
                       const lastM = overviewStats?.lastMonth?.TotalSales || 0;
@@ -359,94 +369,105 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                       const isUp = diff >= 0;
                       return (
                         <>
-                          <span className={`font-black ${isUp ? 'text-emerald-500' : 'text-rose-500'}`}>
+                          <span className={`font-mono font-black text-xs px-1.5 py-0.5 rounded border ${
+                            isUp 
+                              ? 'text-emerald-400 bg-emerald-950/40 border-emerald-800/50' 
+                              : 'text-rose-400 bg-rose-950/40 border-rose-800/50'
+                          }`}>
                             {isUp ? '↑' : '↓'} {Math.abs(diff)}%
                           </span>
-                          <span className="text-slate-400 text-[11px]">MoM</span>
+                          <span className="text-slate-400 text-xs font-medium">MoM</span>
                         </>
                       );
                     })()}
                   </div>
                 </div>
 
-                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex gap-2 text-xs font-bold tracking-wide uppercase">
-                  <div className={`flex-1 flex flex-col justify-center items-center px-2 py-1.5 rounded-lg border ${darkMode ? 'bg-emerald-950/30 text-emerald-400 border-emerald-800/50' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
-                    <span className="text-[9px] opacity-75">Cash</span>
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex gap-2 text-xs font-bold tracking-wide">
+                  <div className={`flex-1 flex flex-col justify-center items-center px-2 py-1.5 rounded-xl border ${darkMode ? 'bg-[#080d14] text-emerald-400 border-[#1a2538]' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Cash</span>
                     <span className="text-xs font-mono font-black">{formatCurrency((overviewStats?.today?.CashAmount || 0))}</span>
                   </div>
-                  <div className={`flex-1 flex flex-col justify-center items-center px-2 py-1.5 rounded-lg border ${darkMode ? 'bg-purple-950/30 text-purple-400 border-purple-800/50' : 'bg-purple-50 text-purple-700 border-purple-200'}`}>
-                    <span className="text-[9px] opacity-75">UPI</span>
+                  <div className={`flex-1 flex flex-col justify-center items-center px-2 py-1.5 rounded-xl border ${darkMode ? 'bg-[#080d14] text-purple-400 border-[#1a2538]' : 'bg-purple-50 text-purple-700 border-purple-200'}`}>
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">UPI</span>
                     <span className="text-xs font-mono font-black">{formatCurrency((overviewStats?.today?.UPIAmount || 0))}</span>
                   </div>
-                  <div className={`flex-1 flex flex-col justify-center items-center px-2 py-1.5 rounded-lg border ${darkMode ? 'bg-blue-950/30 text-blue-400 border-blue-800/50' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
-                    <span className="text-[9px] opacity-75">Card</span>
+                  <div className={`flex-1 flex flex-col justify-center items-center px-2 py-1.5 rounded-xl border ${darkMode ? 'bg-[#080d14] text-blue-400 border-[#1a2538]' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
+                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Card</span>
                     <span className="text-xs font-mono font-black">{formatCurrency((overviewStats?.today?.CardAmount || 0))}</span>
                   </div>
                 </div>
               </div>
 
               {/* Target Progress Card */}
-              <div className={`p-5 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-all relative overflow-hidden ${
+              <div className={`p-5 rounded-2xl border shadow-xs flex flex-col justify-between hover:shadow-md transition-all relative overflow-hidden ${
                 darkMode ? 'kpi-card-target text-white' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
               }`}>
-                <div className="absolute -right-4 -bottom-4 opacity-5 pointer-events-none">
-                  <Target className="w-32 h-32 text-blue-500" />
-                </div>
                 <div className="flex justify-between items-start relative z-10">
                   <div>
-                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Daily Target</p>
-                    <h3 className="text-2xl font-black text-slate-800 dark:text-white mt-1">{formatCurrency(DAILY_TARGET)}</h3>
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Daily Target</span>
+                    <h3 className="text-3xl sm:text-4xl font-black font-mono tracking-tight text-slate-900 dark:text-white mt-1">
+                      {formatCurrency(DAILY_TARGET)}
+                    </h3>
                   </div>
                   <div className="text-right">
-                    <span className="text-xl font-black text-blue-600 dark:text-blue-400">{targetProgress.toFixed(0)}%</span>
+                    <span className="text-xs font-bold font-mono px-2 py-1 rounded-lg bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                      {targetProgress.toFixed(0)}% Paced
+                    </span>
                   </div>
                 </div>
-                <div className="mt-4 relative z-10">
-                  <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden">
-                    <div className="bg-gradient-to-r from-blue-600 to-indigo-500 h-2.5 rounded-full transition-all duration-1000" style={{ width: `${Math.min(100, targetProgress)}%` }}></div>
+
+                <div className="mt-3 relative z-10">
+                  <div className="w-full bg-slate-100 dark:bg-slate-800/80 rounded-full h-2.5 overflow-hidden p-0.5">
+                    <div className="bg-gradient-to-r from-blue-500 via-indigo-500 to-cyan-400 h-full rounded-full transition-all duration-1000 shadow-xs" style={{ width: `${Math.min(100, targetProgress)}%` }}></div>
                   </div>
-                  <div className="flex justify-between items-center text-xs text-slate-400 mt-2">
+                  <div className="flex justify-between items-center text-xs text-slate-400 mt-2 font-medium">
                     <span>{formatCurrency(Math.max(0, DAILY_TARGET - (overviewStats?.today?.TotalSales || 0)))} remaining</span>
-                    <span className="text-blue-500 font-bold">Pacing</span>
+                    <span className="text-blue-400 font-bold">On Pace</span>
                   </div>
                 </div>
-                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] flex justify-between items-center text-slate-500 dark:text-slate-400">
-                  <span>Run Rate Needed:</span>
-                  <span className="font-bold text-slate-800 dark:text-slate-200">
+
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 text-xs flex justify-between items-center text-slate-400">
+                  <span className="font-medium">Run Rate Needed:</span>
+                  <span className="font-mono font-bold text-slate-200">
                     {formatCurrency(Math.round(Math.max(0, DAILY_TARGET - (overviewStats?.today?.TotalSales || 0)) / 5))}/hr
                   </span>
                 </div>
               </div>
 
               {/* Average Order Value + Bill Volume */}
-              <div className={`p-5 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-all ${
+              <div className={`p-5 rounded-2xl border shadow-xs flex flex-col justify-between hover:shadow-md transition-all ${
                 darkMode ? 'kpi-card-aov text-white' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
               }`}>
                 <div className="flex justify-between items-start">
                   <div>
-                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Avg. Order Value</p>
-                    <h3 className="text-3xl font-black text-slate-900 dark:text-white mt-1">{formatCurrency(averageOrderValue)}</h3>
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Avg. Order Value</span>
+                    <h3 className="text-3xl sm:text-4xl font-black font-mono tracking-tight text-slate-900 dark:text-white mt-1">
+                      {formatCurrency(averageOrderValue)}
+                    </h3>
                   </div>
-                  <div className="p-2.5 bg-purple-500/10 text-purple-500 rounded-xl border border-purple-500/20">
+                  <div className="p-2.5 bg-purple-500/10 text-purple-400 rounded-xl border border-purple-500/20 shrink-0">
                     <ShoppingBag className="w-5 h-5" />
                   </div>
                 </div>
-                <div className="mt-2">
-                  <div className="text-xs text-slate-500 dark:text-slate-400 mb-2">
-                    Across <span className="font-black text-slate-800 dark:text-slate-200">{(overviewStats?.today?.BillCount || 0)}</span> customer invoices today.
+
+                <div className="mt-3">
+                  <div className="text-xs text-slate-400 mb-2 font-medium">
+                    Across <span className="font-bold text-slate-200">{(overviewStats?.today?.BillCount || 0)}</span> customer invoices today.
                   </div>
-                  <div className="flex flex-wrap gap-2 text-[10px] font-bold">
-                    <span className={`px-2 py-0.5 rounded-md border ${darkMode ? 'bg-slate-800 text-slate-300 border-slate-700' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                  <div className="flex flex-wrap gap-2 text-xs font-medium">
+                    <span className={`px-2 py-0.5 rounded-md border ${darkMode ? 'bg-slate-800/60 text-slate-300 border-slate-700/60' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
                       Week: {overviewStats.thisWeek?.BillCount || 0} bills
                     </span>
-                    <span className={`px-2 py-0.5 rounded-md border ${darkMode ? 'bg-slate-800 text-slate-300 border-slate-700' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                    <span className={`px-2 py-0.5 rounded-md border ${darkMode ? 'bg-slate-800/60 text-slate-300 border-slate-700/60' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
                       Month: {overviewStats.thisMonth?.BillCount || 0} bills
                     </span>
                   </div>
                 </div>
-                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-xs text-slate-500 dark:text-slate-400">
-                  <span>Basket Conversion:</span>
-                  <span className="font-bold text-purple-600 dark:text-purple-400">
+
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex justify-between items-center text-xs text-slate-400">
+                  <span className="font-medium">Basket Conversion:</span>
+                  <span className="font-bold text-purple-400 font-mono">
                     {((overviewStats?.today?.BillCount || 0) > 0 ? (totalMonthlyUnits / Math.max(1, overviewStats.thisMonth?.BillCount || 1)).toFixed(1) : '2.4')} pcs / bill
                   </span>
                 </div>
@@ -454,12 +475,12 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
 
               {/* Card 4: Profit Margin (Owner) vs Counter Settlement Desk (Manager) */}
               {userRole !== 'manager' ? (
-                <div className={`p-5 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-all ${
+                <div className={`p-5 rounded-2xl border shadow-xs flex flex-col justify-between hover:shadow-md transition-all ${
                   darkMode ? 'kpi-card-margin text-white' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
                 }`}>
                   <div className="flex justify-between items-start mb-1">
                     <div>
-                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Gross &amp; Net Margin</p>
+                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Gross &amp; Net Margin</span>
                       {(() => {
                         const totalSales = overviewStats.today?.TotalSales || 0;
                         const cogs = Math.round(totalSales * 0.73);
@@ -468,13 +489,13 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                         const netMargin = grossProfit - DAILY_EXPENSE;
                         const isProfitable = netMargin >= 0;
                         return (
-                          <h3 className={`text-2xl font-black mt-1 ${isProfitable ? 'text-emerald-500' : 'text-rose-500'}`}>
+                          <h3 className={`text-3xl sm:text-4xl font-black font-mono tracking-tight mt-1 ${isProfitable ? 'text-emerald-400' : 'text-rose-400'}`}>
                             {isProfitable ? `+${formatCurrency(netMargin)}` : `-${formatCurrency(Math.abs(netMargin))}`}
                           </h3>
                         );
                       })()}
                     </div>
-                    <span className="text-[10px] font-bold bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full border border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md border border-amber-500/30 bg-amber-500/15 text-amber-300">
                       Owner Only
                     </span>
                   </div>
@@ -495,15 +516,15 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
 
                     return (
                       <div className="space-y-1.5 my-1">
-                        <div className="flex justify-between text-[10px] font-bold">
+                        <div className="flex justify-between text-[11px] font-semibold">
                           <span className="text-slate-400">Cost (73%)</span>
-                          <span className="text-amber-500">OpEx (₹3.5k)</span>
-                          <span className={isProfitable ? 'text-emerald-500' : 'text-rose-500'}>
+                          <span className="text-amber-400">OpEx (₹3.5k)</span>
+                          <span className={isProfitable ? 'text-emerald-400' : 'text-rose-400'}>
                             {isProfitable ? 'Profit' : 'Deficit'}
                           </span>
                         </div>
-                        <div className={`w-full h-2.5 rounded-full flex overflow-hidden ${darkMode ? 'bg-slate-800' : 'bg-slate-100'}`}>
-                          <div className="bg-slate-400 h-full" style={{ width: '73%' }}></div>
+                        <div className={`w-full h-2 rounded-full flex overflow-hidden ${darkMode ? 'bg-slate-800' : 'bg-slate-100'}`}>
+                          <div className="bg-slate-500 h-full" style={{ width: '73%' }}></div>
                           <div className="bg-amber-400 h-full" style={{ width: `${Math.max(2, opExBarPct)}%` }}></div>
                           {isProfitable ? (
                             <div className="bg-emerald-500 h-full" style={{ width: `${Math.max(2, netBarPct)}%` }}></div>
@@ -511,7 +532,7 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                             <div className="bg-rose-400/80 h-full" style={{ width: `${Math.max(2, deficitBarPct)}%` }}></div>
                           )}
                         </div>
-                        <div className="flex justify-between text-[10px] font-mono text-slate-500">
+                        <div className="flex justify-between text-[11px] font-mono text-slate-400">
                           <span>₹{Math.round(cogs / 1000)}k COGS</span>
                           <span>{isProfitable ? '🎉 Profitable' : `₹${Math.max(0, 12964 - totalSales)} to BEP`}</span>
                         </div>
@@ -519,11 +540,11 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                     );
                   })()}
 
-                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-xs">
-                    <span className="text-[10px] text-slate-400">Breakeven at ₹12,964</span>
+                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex justify-between items-center text-xs">
+                    <span className="text-xs text-slate-400 font-medium">Breakeven at ₹12,964</span>
                     <button
                       onClick={() => setActiveTab('pnl')}
-                      className="font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1 cursor-pointer hover:underline"
+                      className="font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer transition-colors"
                     >
                       <span>Full P&amp;L</span>
                       <ArrowRight className="w-3.5 h-3.5" />
@@ -531,17 +552,17 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                   </div>
                 </div>
               ) : (
-                <div className={`p-5 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-all ${
+                <div className={`p-5 rounded-2xl border shadow-xs flex flex-col justify-between hover:shadow-md transition-all ${
                   darkMode ? 'kpi-card-revenue text-white' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
                 }`}>
                   <div className="flex justify-between items-start mb-1">
                     <div>
-                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Counter Register</p>
-                      <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-1">
+                      <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Counter Register</span>
+                      <h3 className="text-3xl sm:text-4xl font-black font-mono tracking-tight text-slate-900 dark:text-white mt-1">
                         {formatCurrency((overviewStats?.today?.CashAmount || 0) + (overviewStats?.today?.UPIAmount || 0) + (overviewStats?.today?.CardAmount || 0))}
                       </h3>
                     </div>
-                    <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full border border-emerald-200">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md border border-emerald-500/30 bg-emerald-500/15 text-emerald-300">
                       Live Drawer
                     </span>
                   </div>
@@ -556,28 +577,28 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                     const cardPct = Math.round((card / total) * 100);
                     return (
                       <div className="space-y-1.5 my-1">
-                        <div className="flex justify-between text-[10px] font-bold">
-                          <span className="text-emerald-500">Cash ({cashPct}%)</span>
-                          <span className="text-purple-500">UPI ({upiPct}%)</span>
-                          <span className="text-blue-500">Card ({cardPct}%)</span>
+                        <div className="flex justify-between text-[11px] font-semibold">
+                          <span className="text-emerald-400">Cash ({cashPct}%)</span>
+                          <span className="text-purple-400">UPI ({upiPct}%)</span>
+                          <span className="text-blue-400">Card ({cardPct}%)</span>
                         </div>
-                        <div className={`w-full h-2.5 rounded-full flex overflow-hidden ${darkMode ? 'bg-slate-800' : 'bg-slate-100'} p-0.5 gap-0.5`}>
+                        <div className={`w-full h-2 rounded-full flex overflow-hidden ${darkMode ? 'bg-slate-800' : 'bg-slate-100'} p-0.5 gap-0.5`}>
                           <div className="bg-emerald-500 h-full rounded-l-full" style={{ width: `${cashPct}%` }}></div>
                           <div className="bg-purple-500 h-full" style={{ width: `${upiPct}%` }}></div>
                           <div className="bg-blue-500 h-full rounded-r-full" style={{ width: `${cardPct}%` }}></div>
                         </div>
-                        <div className="text-[10px] text-slate-400 text-center">
+                        <div className="text-xs text-slate-400 text-center font-medium">
                           EOD reconciliation at 8:30 PM
                         </div>
                       </div>
                     );
                   })()}
 
-                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-xs">
-                    <span className="text-[10px] text-slate-400">Cashier Settlement</span>
+                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex justify-between items-center text-xs">
+                    <span className="text-xs text-slate-400 font-medium">Cashier Settlement</span>
                     <button
                       onClick={() => setShowReconModal && setShowReconModal(true)}
-                      className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 cursor-pointer hover:underline"
+                      className="font-bold text-emerald-400 hover:text-emerald-300 flex items-center gap-1 cursor-pointer transition-colors"
                     >
                       <span>Reconcile</span>
                       <ArrowRight className="w-3.5 h-3.5" />
@@ -601,55 +622,58 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                   {/* PANEL 1: Live Store Pulse (Real-Time Bill Feed) */}
                   <div className={`rounded-2xl border shadow-sm overflow-hidden flex flex-col h-[320px] transition-all ${
                     darkMode 
-                      ? 'bg-slate-900/90 border-slate-800/80 text-slate-100' 
+                      ? 'bg-[#0e1320] border-[#1c2436] text-slate-100' 
                       : 'bg-white border-slate-200 text-slate-800'
                   }`}>
                     <div className={`p-3.5 border-b flex items-center justify-between shrink-0 ${
-                      darkMode ? 'bg-slate-800/40 border-slate-800' : 'bg-slate-50/70 border-slate-100'
+                      darkMode ? 'bg-[#121829] border-[#1c2436]' : 'bg-slate-50/70 border-slate-100'
                     }`}>
                       <div className="flex items-center gap-2">
-                        <Activity className="w-4 h-4 text-emerald-500" />
-                        <h3 className={`text-xs font-bold flex items-center gap-1.5 ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+                        <Activity className="w-4 h-4 text-emerald-400" />
+                        <h3 className={`text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${darkMode ? 'text-white' : 'text-slate-900'}`}>
                           <span>Live Store Pulse</span>
-                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                          <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                          </span>
                         </h3>
                       </div>
                       {typeof setActiveTab === 'function' && (
                         <button
                           type="button"
                           onClick={() => setActiveTab('live')}
-                          className={`text-[11px] font-bold flex items-center gap-1 cursor-pointer ${
+                          className={`text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors ${
                             darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-500'
                           }`}
                         >
                           <span>View ({liveBills.length})</span>
-                          <ArrowRight className="w-3 h-3" />
+                          <ArrowRight className="w-3.5 h-3.5" />
                         </button>
                       )}
                     </div>
                     <div className={`divide-y flex-1 min-h-0 overflow-y-auto custom-scrollbar ${
-                      darkMode ? 'divide-slate-800/80' : 'divide-slate-100'
+                      darkMode ? 'divide-[#1a2336]' : 'divide-slate-100'
                     }`}>
                       {liveBills.map((bill, idx) => (
                         <div 
                           key={idx} 
                           className={`p-2.5 sm:p-3 transition-colors flex justify-between items-center cursor-pointer group ${
-                            darkMode ? 'hover:bg-slate-800/50' : 'hover:bg-slate-50'
+                            darkMode ? 'hover:bg-[#151c2e]' : 'hover:bg-slate-50'
                           }`} 
                           onClick={() => setActiveTab('live')}
                         >
                           <div className="min-w-0 flex-1 pr-2">
-                            <p className={`text-xs font-bold truncate group-hover:text-blue-500 transition-colors ${
+                            <p className={`text-xs font-bold truncate group-hover:text-blue-400 transition-colors ${
                               darkMode ? 'text-slate-100' : 'text-slate-800'
                             }`}>
                               {bill.CustomerName?.trim() || bill.FirstName?.trim() || 'Guest Customer'}
                             </p>
-                            <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-400">
-                              <span>{new Date(bill.BillTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-slate-400">
+                              <span className="font-mono">{new Date(bill.BillTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                               <span>•</span>
-                              <span className="font-mono">#{bill.BillNumber}</span>
+                              <span className="font-mono text-slate-300">#{bill.BillNumber}</span>
                               <span>•</span>
-                              <span className={`font-bold px-1.5 py-0.2 rounded text-[9px] ${
+                              <span className={`font-mono font-semibold px-2 py-0.5 rounded text-[10px] ${
                                 bill.PaymentMode === 'Cash' 
                                   ? darkMode ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                                   : bill.PaymentMode === 'UPI / Online' 
@@ -660,8 +684,8 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                               </span>
                             </div>
                           </div>
-                          <span className={`text-xs font-black px-2 py-0.5 rounded-lg shrink-0 ${
-                            darkMode ? 'text-emerald-400 bg-emerald-950/40 border border-emerald-800/40' : 'text-green-600 bg-green-50'
+                          <span className={`text-xs font-mono font-black px-2.5 py-1 rounded-lg shrink-0 ${
+                            darkMode ? 'text-emerald-400 bg-emerald-950/40 border border-emerald-800/40' : 'text-emerald-700 bg-emerald-50 border border-emerald-200'
                           }`}>
                             {formatCurrency(bill.Amount)}
                           </span>
@@ -700,7 +724,7 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                     return (
                       <div className={`rounded-2xl border shadow-sm p-5 flex flex-col justify-between h-[320px] transition-all ${
                         darkMode 
-                          ? 'bg-slate-900/90 border-slate-800/80 text-slate-100' 
+                          ? 'bg-[#0e1320] border-[#1c2436] text-slate-100' 
                           : 'bg-white border-slate-200 text-slate-800'
                       }`}>
                         {/* Header */}
@@ -712,24 +736,24 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                               <Zap className="w-4 h-4" />
                             </div>
                             <div className="min-w-0">
-                              <h3 className={`font-bold text-xs truncate ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+                              <h3 className={`font-bold text-xs uppercase tracking-wider truncate ${darkMode ? 'text-white' : 'text-slate-900'}`}>
                                 Automation Slips
                               </h3>
-                              <p className={`text-[10px] truncate ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                              <p className={`text-[11px] font-medium truncate ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                                 WhatsApp POS delivery
                               </p>
                             </div>
                           </div>
                           <button 
                             onClick={() => setActiveTab('automation')} 
-                            className={`text-[10px] font-bold px-2.5 py-1 rounded-full border transition-all flex items-center gap-1 cursor-pointer ${
+                            className={`text-xs font-bold px-3 py-1 rounded-full border transition-all flex items-center gap-1 cursor-pointer ${
                               darkMode 
                                 ? 'bg-blue-950/40 text-blue-400 border-blue-800/50 hover:bg-blue-900/50' 
                                 : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'
                             }`}
                           >
                             <span>Logs</span>
-                            <ArrowRight className="w-3 h-3" />
+                            <ArrowRight className="w-3.5 h-3.5" />
                           </button>
                         </div>
 
@@ -738,45 +762,45 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                           {/* Bills Sent */}
                           <div className={`p-3 rounded-xl border text-center transition-all ${
                             darkMode 
-                              ? 'bg-slate-800/50 border-slate-700/60' 
+                              ? 'bg-[#121829] border-[#1c2436]' 
                               : 'bg-blue-50/50 border-blue-100'
                           }`}>
-                            <span className="text-[9px] font-bold text-blue-500 uppercase tracking-wider block mb-0.5">Bills</span>
-                            <div className={`text-xl font-black ${darkMode ? 'text-white' : 'text-slate-900'}`}>{checkoutsCount}</div>
-                            <span className={`text-[10px] font-medium ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{checkoutPct}%</span>
+                            <span className="text-[10px] font-bold text-blue-400 uppercase tracking-wider block mb-0.5">Bills</span>
+                            <div className={`text-2xl font-black font-mono ${darkMode ? 'text-white' : 'text-slate-900'}`}>{checkoutsCount}</div>
+                            <span className={`text-[11px] font-mono font-medium ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{checkoutPct}%</span>
                           </div>
 
                           {/* Exchanges Sent */}
                           <div className={`p-3 rounded-xl border text-center transition-all ${
                             darkMode 
-                              ? 'bg-slate-800/50 border-slate-700/60' 
+                              ? 'bg-[#121829] border-[#1c2436]' 
                               : 'bg-amber-50/50 border-amber-100'
                           }`}>
-                            <span className="text-[9px] font-bold text-amber-500 uppercase tracking-wider block mb-0.5">Exch</span>
-                            <div className={`text-xl font-black ${darkMode ? 'text-white' : 'text-slate-900'}`}>{exchangesCount}</div>
-                            <span className={`text-[10px] font-medium ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{exchangePct}%</span>
+                            <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider block mb-0.5">Exch</span>
+                            <div className={`text-2xl font-black font-mono ${darkMode ? 'text-white' : 'text-slate-900'}`}>{exchangesCount}</div>
+                            <span className={`text-[11px] font-mono font-medium ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{exchangePct}%</span>
                           </div>
 
                           {/* Failed / Not on WhatsApp */}
                           <div className={`p-3 rounded-xl border text-center transition-all ${
                             totalFailed > 0
                               ? darkMode ? 'bg-rose-950/30 border-rose-900/40' : 'bg-rose-50/70 border-rose-200'
-                              : darkMode ? 'bg-slate-800/50 border-slate-700/60' : 'bg-slate-50 border-slate-200'
+                              : darkMode ? 'bg-[#121829] border-[#1c2436]' : 'bg-slate-50 border-slate-200'
                           }`}>
-                            <span className="text-[9px] font-bold text-rose-500 uppercase tracking-wider block mb-0.5">No WA</span>
-                            <div className={`text-xl font-black ${totalFailed > 0 ? 'text-rose-500' : (darkMode ? 'text-slate-300' : 'text-slate-800')}`}>{totalFailed}</div>
-                            <span className={`text-[10px] font-medium ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{failedPct}%</span>
+                            <span className="text-[10px] font-bold text-rose-400 uppercase tracking-wider block mb-0.5">No WA</span>
+                            <div className={`text-2xl font-black font-mono ${totalFailed > 0 ? 'text-rose-400' : (darkMode ? 'text-slate-200' : 'text-slate-800')}`}>{totalFailed}</div>
+                            <span className={`text-[11px] font-mono font-medium ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{failedPct}%</span>
                           </div>
                         </div>
 
                         {/* Status Callout */}
-                        <div className={`px-3 py-2 rounded-xl border text-[11px] truncate font-medium ${
+                        <div className={`px-3.5 py-2.5 rounded-xl border text-xs truncate font-medium ${
                           totalFailed > 0 
                             ? darkMode 
                               ? 'bg-rose-950/30 border-rose-900/40 text-rose-300' 
                               : 'bg-rose-50 border-rose-200 text-rose-800'
                             : darkMode 
-                              ? 'bg-slate-800/60 border-slate-700/60 text-slate-300' 
+                              ? 'bg-[#121829] border-[#1c2436] text-slate-300' 
                               : 'bg-slate-50 border-slate-200 text-slate-700'
                         }`} title={latestReason}>
                           {latestReason}
@@ -785,7 +809,7 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                         {/* Tri-Color Segmented Bar */}
                         <div className="space-y-1.5">
                           <div className={`w-full h-2 rounded-full overflow-hidden flex p-0.5 gap-0.5 ${
-                            darkMode ? 'bg-slate-800' : 'bg-slate-100'
+                            darkMode ? 'bg-slate-800/80' : 'bg-slate-100'
                           }`}>
                             {totalAttempts === 0 ? (
                               <div className={`w-full h-full rounded-full ${darkMode ? 'bg-slate-700' : 'bg-slate-200'}`} />
@@ -803,12 +827,12 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                               </>
                             )}
                           </div>
-                          <div className={`flex justify-between items-center text-[10px] ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                            <span className="flex items-center gap-1.5 font-semibold text-emerald-500">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          <div className={`flex justify-between items-center text-[11px] ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                            <span className="flex items-center gap-1.5 font-semibold text-emerald-400">
+                              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                               POS Engine Active
                             </span>
-                            <span>{sentCount} delivered total</span>
+                            <span className="font-mono">{sentCount} delivered total</span>
                           </div>
                         </div>
                       </div>
@@ -832,10 +856,10 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
 
                   return (
                     <div className={`p-5 rounded-2xl border shadow-sm transition-all ${
-                      darkMode ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-800'
+                      darkMode ? 'bg-[#0e1320] border-[#1c2436] text-slate-100' : 'bg-white border-slate-200 text-slate-800'
                     }`}>
                       {/* Header */}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-slate-100 dark:border-slate-800">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-slate-100 dark:border-[#1c2436]">
                         <div className="flex items-center gap-2.5 min-w-0">
                           <div className={`p-2 rounded-xl border ${
                             darkMode ? 'bg-rose-500/15 text-rose-400 border-rose-500/30' : 'bg-rose-50 text-rose-600 border-rose-200'
@@ -843,11 +867,11 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                             <Layers className="w-4 h-4" />
                           </div>
                           <div>
-                            <h3 className={`font-bold text-sm flex items-center gap-2 ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+                            <h3 className={`font-bold text-sm uppercase tracking-wider flex items-center gap-2 ${darkMode ? 'text-white' : 'text-slate-900'}`}>
                               <span>Stock Health &amp; Inventory Vulnerabilities</span>
                               <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
                             </h3>
-                            <p className={`text-[11px] ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                            <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                               Silent lost sales, capital blockage &amp; stockout alerts across catalog
                             </p>
                           </div>
@@ -857,17 +881,17 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                           <button 
                             onClick={fetchStockHealth}
                             disabled={stockHealthLoading}
-                            className={`p-1.5 rounded-lg border transition-all ${
-                              darkMode ? 'bg-slate-800/80 text-slate-400 border-slate-700 hover:text-white' : 'bg-slate-100 text-slate-600 border-slate-200 hover:text-slate-900'
+                            className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
+                              darkMode ? 'bg-[#121829] text-slate-300 border-[#1c2436] hover:text-white hover:border-[#28354f]' : 'bg-slate-100 text-slate-600 border-slate-200 hover:text-slate-900'
                             }`}
                             title="Refresh stock health metrics"
                           >
                             <RefreshCw className={`w-3.5 h-3.5 ${stockHealthLoading ? 'animate-spin' : ''}`} />
                           </button>
-                          <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${
+                          <span className={`text-xs font-bold px-3 py-1 rounded-full border ${
                             zeroStockCount > 0 || units90 > 0
-                              ? darkMode ? 'bg-rose-950/40 text-rose-400 border-rose-800/50' : 'bg-rose-50 text-rose-600 border-rose-200'
-                              : darkMode ? 'bg-emerald-950/40 text-emerald-400 border-emerald-800/50' : 'bg-emerald-50 text-emerald-600 border-emerald-200'
+                              ? darkMode ? 'bg-rose-950/40 text-rose-300 border-rose-800/50' : 'bg-rose-50 text-rose-600 border-rose-200'
+                              : darkMode ? 'bg-emerald-950/40 text-emerald-300 border-emerald-800/50' : 'bg-emerald-50 text-emerald-600 border-emerald-200'
                           }`}>
                             {zeroStockCount > 0 ? `${zeroStockCount} Fast Movers at 0 Stock` : 'Catalog Healthy'}
                           </span>
@@ -882,17 +906,17 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                           onClick={() => typeof setActiveTab === 'function' && setActiveTab('sizematrix')}
                           className={`p-4 rounded-xl border transition-all cursor-pointer group flex flex-col justify-between ${
                             darkMode 
-                              ? 'bg-slate-800/40 border-slate-700/60 hover:border-rose-500/50' 
+                              ? 'bg-[#121829] border-[#1c2436] hover:border-rose-500/50' 
                               : 'bg-rose-50/40 border-rose-100 hover:border-rose-300'
                           }`}
                         >
                           <div>
                             <div className="flex justify-between items-start mb-2">
-                              <span className="text-[10px] font-extrabold uppercase tracking-tight text-rose-500 flex items-center gap-1">
+                              <span className="text-[10px] font-extrabold uppercase tracking-wider text-rose-400 flex items-center gap-1">
                                 <Scissors className="w-3.5 h-3.5" />
                                 <span>Broken Size Runs</span>
                               </span>
-                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
                                 brokenCount > 0
                                   ? darkMode ? 'bg-rose-950/60 text-rose-300 border-rose-800/60' : 'bg-rose-100 text-rose-700 border-rose-200'
                                   : darkMode ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/60' : 'bg-emerald-100 text-emerald-700 border-emerald-200'
@@ -901,25 +925,25 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                               </span>
                             </div>
 
-                            <div className="my-1.5">
-                              <span className="text-3xl font-black text-rose-500 leading-none">
+                            <div className="my-2">
+                              <span className="text-3xl sm:text-4xl font-black font-mono text-rose-400 leading-none">
                                 {stockHealthLoading ? '...' : brokenCount}
                               </span>
-                              <span className={`text-xs ml-1 font-bold ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>styles affected</span>
+                              <span className={`text-xs ml-1.5 font-bold ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>styles affected</span>
                             </div>
 
-                            <p className={`text-[11px] leading-relaxed mt-1 ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                              Core sizes <span className="font-bold text-rose-500">32–40</span> missing while fringe sizes (XS, 44+) sit idle.
+                            <p className={`text-xs leading-relaxed mt-1 ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                              Core sizes <span className="font-bold text-rose-400">32–40</span> missing while fringe sizes (XS, 44+) sit idle.
                             </p>
 
-                            <div className={`mt-2.5 p-2 rounded-lg text-[10px] border ${
-                              darkMode ? 'bg-slate-900/60 border-slate-700/60 text-slate-400' : 'bg-white/80 border-rose-100 text-slate-600'
+                            <div className={`mt-3 p-2.5 rounded-lg text-xs border ${
+                              darkMode ? 'bg-[#0a0f1a] border-[#1c2436] text-slate-300' : 'bg-white/80 border-rose-100 text-slate-600'
                             }`}>
                               💡 <strong>Action:</strong> Refill core sizes from nearby stores via Save-the-Sale or raise warehouse indent.
                             </div>
                           </div>
 
-                          <div className="mt-3 pt-2.5 border-t border-rose-200/40 dark:border-slate-700/40 flex items-center justify-between text-[11px] font-bold text-rose-500 group-hover:underline">
+                          <div className="mt-3.5 pt-2.5 border-t border-rose-200/40 dark:border-[#1c2436] flex items-center justify-between text-xs font-bold text-rose-400 group-hover:underline">
                             <span>Open Size Matrix Heatmap</span>
                             <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                           </div>
@@ -930,17 +954,17 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                           onClick={() => typeof setActiveTab === 'function' && setActiveTab('inventory')}
                           className={`p-4 rounded-xl border transition-all cursor-pointer group flex flex-col justify-between ${
                             darkMode 
-                              ? 'bg-slate-800/40 border-slate-700/60 hover:border-amber-500/50' 
+                              ? 'bg-[#121829] border-[#1c2436] hover:border-amber-500/50' 
                               : 'bg-amber-50/40 border-amber-100 hover:border-amber-300'
                           }`}
                         >
                           <div>
                             <div className="flex justify-between items-start mb-2">
-                              <span className="text-[10px] font-extrabold uppercase tracking-tight text-amber-500 flex items-center gap-1">
+                              <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-400 flex items-center gap-1">
                                 <Archive className="w-3.5 h-3.5" />
                                 <span>Dead Stock &amp; Ageing</span>
                               </span>
-                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
                                 units90 > 0
                                   ? darkMode ? 'bg-amber-950/60 text-amber-300 border-amber-800/60' : 'bg-amber-100 text-amber-700 border-amber-200'
                                   : darkMode ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/60' : 'bg-emerald-100 text-emerald-700 border-emerald-200'
@@ -949,25 +973,25 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                               </span>
                             </div>
 
-                            <div className="my-1.5">
-                              <span className="text-3xl font-black text-amber-500 leading-none">
+                            <div className="my-2">
+                              <span className="text-3xl sm:text-4xl font-black font-mono text-amber-400 leading-none">
                                 {stockHealthLoading ? '...' : (stockHealth?.deadStock?.units60Plus || 0)}
                               </span>
-                              <span className={`text-xs ml-1 font-bold ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>units ageing</span>
+                              <span className={`text-xs ml-1.5 font-bold ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>units ageing</span>
                             </div>
 
-                            <p className={`text-[11px] leading-relaxed mt-1 ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                              Critical 90+ days: <span className="font-bold text-rose-500">{units90} units</span> blocked on floor.
+                            <p className={`text-xs leading-relaxed mt-1 ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                              Critical 90+ days: <span className="font-bold text-rose-400">{units90} units</span> blocked on floor.
                             </p>
 
-                            <div className={`mt-2.5 p-2 rounded-lg text-[10px] border ${
-                              darkMode ? 'bg-slate-900/60 border-slate-700/60 text-slate-400' : 'bg-white/80 border-amber-100 text-slate-600'
+                            <div className={`mt-3 p-2.5 rounded-lg text-xs border ${
+                              darkMode ? 'bg-[#0a0f1a] border-[#1c2436] text-slate-300' : 'bg-white/80 border-amber-100 text-slate-600'
                             }`}>
                               💡 <strong>Action:</strong> Pair with fast-moving shirts for Smart Bundles (B1G3 / B3@70%) to liquidate cash.
                             </div>
                           </div>
 
-                          <div className="mt-3 pt-2.5 border-t border-amber-200/40 dark:border-slate-700/40 flex items-center justify-between text-[11px] font-bold text-amber-500 group-hover:underline">
+                          <div className="mt-3.5 pt-2.5 border-t border-amber-200/40 dark:border-[#1c2436] flex items-center justify-between text-xs font-bold text-amber-400 group-hover:underline">
                             <span>Open Inventory Desk</span>
                             <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                           </div>
@@ -978,17 +1002,17 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                           onClick={() => typeof setActiveTab === 'function' && setActiveTab('reorder')}
                           className={`p-4 rounded-xl border transition-all cursor-pointer group flex flex-col justify-between ${
                             darkMode 
-                              ? 'bg-slate-800/40 border-slate-700/60 hover:border-blue-500/50' 
+                              ? 'bg-[#121829] border-[#1c2436] hover:border-blue-500/50' 
                               : 'bg-blue-50/40 border-blue-100 hover:border-blue-300'
                           }`}
                         >
                           <div>
                             <div className="flex justify-between items-start mb-2">
-                              <span className="text-[10px] font-extrabold uppercase tracking-tight text-blue-500 flex items-center gap-1">
+                              <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-400 flex items-center gap-1">
                                 <Package className="w-3.5 h-3.5" />
                                 <span>Reorder Alerts</span>
                               </span>
-                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
                                 zeroStockCount > 0
                                   ? darkMode ? 'bg-rose-950/60 text-rose-300 border-rose-800/60' : 'bg-rose-100 text-rose-700 border-rose-200'
                                   : darkMode ? 'bg-blue-950/60 text-blue-300 border-blue-800/60' : 'bg-blue-100 text-blue-700 border-blue-200'
@@ -997,25 +1021,25 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                               </span>
                             </div>
 
-                            <div className="my-1.5">
-                              <span className="text-3xl font-black text-blue-500 leading-none">
+                            <div className="my-2">
+                              <span className="text-3xl sm:text-4xl font-black font-mono text-blue-400 leading-none">
                                 {stockHealthLoading ? '...' : reorderCount}
                               </span>
-                              <span className={`text-xs ml-1 font-bold ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>SKUs low cover</span>
+                              <span className={`text-xs ml-1.5 font-bold ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>SKUs low cover</span>
                             </div>
 
-                            <p className={`text-[11px] leading-relaxed mt-1 ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                              <span className="font-bold text-rose-500">{zeroStockCount} fast movers</span> completely at 0 stock.
+                            <p className={`text-xs leading-relaxed mt-1 ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                              <span className="font-bold text-rose-400">{zeroStockCount} fast movers</span> completely at 0 stock.
                             </p>
 
-                            <div className={`mt-2.5 p-2 rounded-lg text-[10px] border ${
-                              darkMode ? 'bg-slate-900/60 border-slate-700/60 text-slate-400' : 'bg-white/80 border-blue-100 text-slate-600'
+                            <div className={`mt-3 p-2.5 rounded-lg text-xs border ${
+                              darkMode ? 'bg-[#0a0f1a] border-[#1c2436] text-slate-300' : 'bg-white/80 border-blue-100 text-slate-600'
                             }`}>
                               💡 <strong>Action:</strong> 1-tap raise restock requisition to Head Office Central Warehouse.
                             </div>
                           </div>
 
-                          <div className="mt-3 pt-2.5 border-t border-blue-200/40 dark:border-slate-700/40 flex items-center justify-between text-[11px] font-bold text-blue-500 group-hover:underline">
+                          <div className="mt-3.5 pt-2.5 border-t border-blue-200/40 dark:border-[#1c2436] flex items-center justify-between text-xs font-bold text-blue-400 group-hover:underline">
                             <span>Open Reorder Desk</span>
                             <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                           </div>
@@ -1024,35 +1048,35 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                       </div>
 
                       {/* Bottom: Ageing Spectrum & Catalog Health Status */}
-                      <div className={`pt-3 border-t flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[11px] ${
-                        darkMode ? 'border-slate-800 text-slate-400' : 'border-slate-100 text-slate-500'
+                      <div className={`pt-3 border-t flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs ${
+                        darkMode ? 'border-[#1c2436] text-slate-400' : 'border-slate-100 text-slate-500'
                       }`}>
-                        <div className="flex items-center gap-3">
-                          <span className="font-bold uppercase tracking-wider text-[10px]">Catalog Ageing:</span>
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <span className="font-bold uppercase tracking-wider text-[10px] text-slate-400">Catalog Ageing:</span>
                           <div className="flex items-center gap-1.5">
                             <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                            <span>Active (&lt;60d): ~{activePct}%</span>
+                            <span className="font-mono">Active (&lt;60d): ~{activePct}%</span>
                           </div>
                           <div className="flex items-center gap-1.5">
                             <span className="w-2 h-2 rounded-full bg-amber-500" />
-                            <span>Slow (60-90d): ~{ageingPct}%</span>
+                            <span className="font-mono">Slow (60-90d): ~{ageingPct}%</span>
                           </div>
                           <div className="flex items-center gap-1.5">
                             <span className="w-2 h-2 rounded-full bg-rose-500" />
-                            <span>Dead (90d+): ~{deadPct}%</span>
+                            <span className="font-mono">Dead (90d+): ~{deadPct}%</span>
                           </div>
                         </div>
 
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => typeof setActiveTab === 'function' && setActiveTab('smart_bundles')}
-                            className={`px-2.5 py-1 rounded-lg border font-bold text-[10px] transition-all flex items-center gap-1 ${
+                            className={`px-3 py-1.5 rounded-lg border font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer ${
                               darkMode 
                                 ? 'bg-purple-950/40 text-purple-300 border-purple-800/50 hover:bg-purple-900/50' 
                                 : 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100'
                             }`}
                           >
-                            <Sparkles className="w-3 h-3" />
+                            <Sparkles className="w-3.5 h-3.5" />
                             <span>Create Smart Bundle</span>
                           </button>
                         </div>
@@ -1067,37 +1091,37 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
 
                 {/* WIDGET 1: SALES PERFORMANCE CALENDAR */}
                 <div className={`p-5 rounded-2xl border shadow-sm relative overflow-visible ${
-                  darkMode ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-800'
+                  darkMode ? 'bg-[#0e1320] border-[#1c2436] text-slate-100' : 'bg-white border-slate-200 text-slate-800'
                 }`}>
-                  <div className="flex items-center justify-between mb-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center justify-between mb-3 pb-3 border-b border-slate-100 dark:border-[#1c2436]">
                     <div className="flex items-center gap-2">
-                      <div className="p-2 bg-blue-500/10 text-blue-500 rounded-xl border border-blue-500/20">
+                      <div className="p-2 bg-blue-500/10 text-blue-400 rounded-xl border border-blue-500/20">
                         <Calendar className="w-4 h-4" />
                       </div>
                       <div>
-                        <h3 className="font-bold text-sm text-slate-900 dark:text-white">Sales Performance Calendar</h3>
-                        <p className="text-[11px] text-slate-400">Click highlighted days for payment mode split</p>
+                        <h3 className="font-bold text-sm text-slate-900 dark:text-white uppercase tracking-wider">Sales Performance Calendar</h3>
+                        <p className="text-xs text-slate-400">Click highlighted days for payment mode split</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg border border-slate-200/80 dark:border-slate-700">
-                      <button onClick={() => setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() - 1, 1))} className="text-slate-400 hover:text-slate-700 dark:hover:text-white">
+                    <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-[#121829] px-2 py-1 rounded-lg border border-slate-200/80 dark:border-[#1c2436]">
+                      <button onClick={() => setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() - 1, 1))} className="text-slate-400 hover:text-slate-700 dark:hover:text-white cursor-pointer">
                         <ChevronLeft className="w-3.5 h-3.5" />
                       </button>
-                      <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 min-w-[65px] text-center">
+                      <span className="text-xs font-mono font-bold text-slate-600 dark:text-slate-200 min-w-[65px] text-center">
                         {calendarDate.toLocaleString('default', { month: 'short', year: '2-digit' })}
                       </span>
-                      <button onClick={() => setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 1))} className="text-slate-400 hover:text-slate-700 dark:hover:text-white">
+                      <button onClick={() => setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 1))} className="text-slate-400 hover:text-slate-700 dark:hover:text-white cursor-pointer">
                         <ChevronRight className="w-3.5 h-3.5" />
                       </button>
                       {calendarDate.getMonth() !== new Date().getMonth() || calendarDate.getFullYear() !== new Date().getFullYear() ? (
-                        <button onClick={() => setCalendarDate(new Date())} className="text-[9px] font-bold text-blue-500 ml-1 bg-blue-50 dark:bg-blue-950/60 px-1 rounded">Now</button>
+                        <button onClick={() => setCalendarDate(new Date())} className="text-[10px] font-bold text-blue-400 ml-1 bg-blue-50 dark:bg-blue-950/60 px-1.5 py-0.5 rounded cursor-pointer">Now</button>
                       ) : null}
                     </div>
                   </div>
 
                   <div className="grid grid-cols-7 gap-1">
                     {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
-                      <div key={day} className="text-[10px] font-bold text-slate-400 text-center py-1">{day}</div>
+                      <div key={day} className="text-[10px] font-bold uppercase text-slate-400 text-center py-1">{day}</div>
                     ))}
 
                     {Array.from({ length: new Date(calendarDate.getFullYear(), calendarDate.getMonth(), 1).getDay() }).map((_, i) => (
@@ -1130,7 +1154,7 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                                 setSelectedCalendarDay(selectedCalendarDay === day ? null : day);
                               }
                             }}
-                            className={`w-7 h-7 flex items-center justify-center rounded-full text-xs font-semibold transition-colors ${
+                            className={`w-7 h-7 flex items-center justify-center rounded-lg text-xs font-mono font-semibold transition-all ${
                               hasSales ? 'cursor-pointer' : 'cursor-default'
                             } ${
                               hasSales 
@@ -1147,36 +1171,36 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
 
                           {/* Tooltip */}
                           {hasSales && selectedCalendarDay === day && (
-                            <div className={`absolute bottom-full mb-2 w-48 bg-slate-800 text-white text-xs rounded-xl p-3 z-[60] shadow-xl animate-in fade-in zoom-in-95 duration-200 ${tooltipPositionClass}`}>
-                              <div className="font-bold border-b border-slate-700 pb-1 mb-1.5 text-slate-200 flex justify-between items-center">
+                            <div className={`absolute bottom-full mb-2 w-52 bg-[#121829] border border-[#232e47] text-white text-xs rounded-xl p-3 z-[60] shadow-2xl animate-in fade-in zoom-in-95 duration-200 ${tooltipPositionClass}`}>
+                              <div className="font-bold border-b border-[#1c2436] pb-1 mb-1.5 text-slate-200 flex justify-between items-center">
                                 <span>{new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setSelectedCalendarDay(null);
                                   }}
-                                  className="text-slate-400 hover:text-white p-1 -mr-1 rounded"
+                                  className="text-slate-400 hover:text-white p-1 -mr-1 rounded cursor-pointer"
                                 >
                                   ✕
                                 </button>
                               </div>
-                              <div className="flex justify-between items-center mb-1">
-                                <span className="text-slate-400">Total:</span>
-                                <span className="font-bold text-emerald-400">{formatCurrency(dayData.TotalSales)}</span>
+                              <div className="flex justify-between items-center mb-1 font-mono">
+                                <span className="text-slate-400 font-sans">Total:</span>
+                                <span className="font-black text-emerald-400">{formatCurrency(dayData.TotalSales)}</span>
                               </div>
-                              <div className="flex justify-between items-center mb-1 text-[11px]">
-                                <span className="text-slate-400 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>Cash:</span>
+                              <div className="flex justify-between items-center mb-1 text-xs font-mono">
+                                <span className="text-slate-400 font-sans flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>Cash:</span>
                                 <span>{formatCurrency(dayData.CashAmount || 0)}</span>
                               </div>
-                              <div className="flex justify-between items-center mb-1 text-[11px]">
-                                <span className="text-slate-400 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-purple-400"></span>UPI:</span>
+                              <div className="flex justify-between items-center mb-1 text-xs font-mono">
+                                <span className="text-slate-400 font-sans flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-purple-400"></span>UPI:</span>
                                 <span>{formatCurrency(dayData.UPIAmount || 0)}</span>
                               </div>
-                              <div className="flex justify-between items-center text-[11px]">
-                                <span className="text-slate-400 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-orange-400"></span>Card:</span>
+                              <div className="flex justify-between items-center text-xs font-mono">
+                                <span className="text-slate-400 font-sans flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-orange-400"></span>Card:</span>
                                 <span>{formatCurrency(dayData.CardAmount || 0)}</span>
                               </div>
-                              <div className={`absolute top-full border-4 border-transparent border-t-slate-800 ${arrowPositionClass}`}></div>
+                              <div className={`absolute top-full border-4 border-transparent border-t-[#121829] ${arrowPositionClass}`}></div>
                             </div>
                           )}
                         </div>
@@ -1227,15 +1251,17 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
 
                   {/* TILE 1: FAST BARCODE & SIZE CHECKER */}
                   <div 
-                    className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow group"
+                    className={`p-4 sm:p-5 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-all group ${
+                      darkMode ? 'bg-[#0e1320] border-[#1c2436] text-slate-100' : 'bg-white border-slate-200 text-slate-800'
+                    }`}
                     onClick={() => quickScanInputRef.current?.focus()}
                   >
                     <div className="flex justify-between items-start">
                       <div>
-                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Barcode &amp; Size Matrix</p>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Barcode &amp; Size Matrix</p>
                         <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mt-1 flex items-center gap-1.5">
                           {quickScanResult ? (
-                            <span className="font-mono text-blue-600 dark:text-blue-400 truncate max-w-[170px]">
+                            <span className="font-mono text-blue-500 dark:text-blue-400 truncate max-w-[170px]">
                               {quickScanResult.articleNo}
                             </span>
                           ) : (
@@ -1245,8 +1271,8 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                       </div>
                       <div className={`p-2.5 rounded-xl border transition-all ${
                         isScannerFocused 
-                          ? 'bg-blue-500/20 text-blue-500 border-blue-500/40 animate-pulse' 
-                          : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
+                          ? 'bg-blue-500/20 text-blue-400 border-blue-500/40 animate-pulse' 
+                          : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
                       }`}>
                         <Barcode className="w-5 h-5" />
                       </div>
@@ -1271,8 +1297,8 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                           placeholder="Scan barcode or type style..."
                           className={`w-full py-1.5 pl-2.5 pr-8 rounded-lg text-xs font-mono font-semibold border outline-none transition-all ${
                             isScannerFocused
-                              ? 'ring-2 ring-blue-500 border-blue-500 bg-white dark:bg-slate-900 text-slate-800 dark:text-white'
-                              : 'bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
+                              ? 'ring-2 ring-blue-500 border-blue-500 bg-white dark:bg-[#121829] text-slate-800 dark:text-white'
+                              : 'bg-slate-50 dark:bg-[#121829] border-slate-200 dark:border-[#1c2436] text-slate-700 dark:text-slate-200'
                           }`}
                         />
                         {quickScanQuery ? (
@@ -1296,7 +1322,7 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                               e.stopPropagation();
                               handleQuickScan();
                             }}
-                            className="absolute right-1.5 p-1 text-blue-500 hover:text-blue-600 cursor-pointer"
+                            className="absolute right-1.5 p-1 text-blue-500 hover:text-blue-400 cursor-pointer"
                             title="Search"
                           >
                             <Search className="w-3.5 h-3.5" />
@@ -1307,7 +1333,7 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                       {/* Result Display: Sizes Matrix */}
                       {quickScanResult ? (
                         <div className="space-y-1.5">
-                          <div className="flex justify-between items-center text-[11px]">
+                          <div className="flex justify-between items-center text-xs">
                             <span className="text-slate-500 dark:text-slate-400 truncate max-w-[130px] font-medium">
                               {quickScanResult.itemName} • {quickScanResult.color}
                             </span>
@@ -1334,15 +1360,15 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                           </div>
                         </div>
                       ) : quickScanError ? (
-                        <div className="text-[11px] text-rose-500 font-semibold py-1">
+                        <div className="text-xs text-rose-400 font-semibold py-1">
                           ⚠️ {quickScanError}
                         </div>
                       ) : (
                         <div className="space-y-1">
-                          <div className="text-[11px] text-slate-400 flex items-center justify-between">
+                          <div className="text-xs text-slate-400 flex items-center justify-between">
                             <span>Ready for scanner gun</span>
-                            <span className="text-[10px] text-emerald-500 font-bold flex items-center gap-1">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                               Active
                             </span>
                           </div>
@@ -1357,7 +1383,7 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                                   setQuickScanQuery(sample);
                                   handleQuickScan(sample);
                                 }}
-                                className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 text-[10px] font-mono text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 cursor-pointer"
+                                className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-[#121829] hover:bg-blue-50 text-[10px] font-mono text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-[#1c2436] cursor-pointer"
                               >
                                 {sample}
                               </button>
@@ -1367,7 +1393,7 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                       )}
                     </div>
 
-                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+                    <div className="pt-3 border-t border-slate-100 dark:border-[#1c2436] flex items-center justify-between text-xs">
                       <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">
                         {quickScanResult ? `${quickScanResult.totalStock} in stock` : 'Gun Ready'}
                       </span>
@@ -1427,25 +1453,27 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                     }
 
                     return (
-                      <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                      <div className={`p-4 sm:p-5 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-all ${
+                        darkMode ? 'bg-[#0e1320] border-[#1c2436] text-slate-100' : 'bg-white border-slate-200 text-slate-800'
+                      }`}>
                         <div className="flex justify-between items-start">
                           <div>
-                            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Fast Offer Quote</p>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Fast Offer Quote</p>
                             <div className="flex items-baseline gap-2 mt-1">
-                              <h3 className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400">
+                              <h3 className="text-2xl sm:text-3xl font-black font-mono text-emerald-600 dark:text-emerald-400">
                                 ₹{displayFinal.toLocaleString('en-IN')}
                               </h3>
-                              <span className="text-[11px] font-bold text-slate-400 line-through">
+                              <span className="text-xs font-mono font-bold text-slate-400 line-through">
                                 ₹{displayOriginal.toLocaleString('en-IN')}
                               </span>
                               {(isB3_70 || isB1G3) && (
-                                <span className="text-[10px] font-bold text-blue-500 bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/20">
+                                <span className="text-[10px] font-mono font-bold text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/20">
                                   ₹{effPerPc}/pc
                                 </span>
                               )}
                             </div>
                           </div>
-                          <div className="p-2.5 bg-emerald-500/10 text-emerald-500 rounded-xl border border-emerald-500/20">
+                          <div className="p-2.5 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20">
                             <Calculator className="w-5 h-5" />
                           </div>
                         </div>
@@ -1460,21 +1488,21 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                                   type="number"
                                   value={b1g3Items[0] === 0 ? '' : b1g3Items[0]}
                                   onChange={(e) => setB1g3Items([parseInt(e.target.value) || 0, b1g3Items[1], b1g3Items[2]])}
-                                  className="w-full py-1 px-1 text-center font-bold text-xs rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none"
+                                  className="w-full py-1 px-1 text-center font-mono font-bold text-xs rounded border border-slate-200 dark:border-[#1c2436] bg-slate-50 dark:bg-[#121829] text-slate-800 dark:text-slate-100 focus:outline-none"
                                   placeholder="P1"
                                 />
                                 <input
                                   type="number"
                                   value={b1g3Items[1] === 0 ? '' : b1g3Items[1]}
                                   onChange={(e) => setB1g3Items([b1g3Items[0], parseInt(e.target.value) || 0, b1g3Items[2]])}
-                                  className="w-full py-1 px-1 text-center font-bold text-xs rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none"
+                                  className="w-full py-1 px-1 text-center font-mono font-bold text-xs rounded border border-slate-200 dark:border-[#1c2436] bg-slate-50 dark:bg-[#121829] text-slate-800 dark:text-slate-100 focus:outline-none"
                                   placeholder="P2"
                                 />
                                 <input
                                   type="number"
                                   value={b1g3Items[2] === 0 ? '' : b1g3Items[2]}
                                   onChange={(e) => setB1g3Items([b1g3Items[0], b1g3Items[1], parseInt(e.target.value) || 0])}
-                                  className="w-full py-1 px-1 text-center font-bold text-xs rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none"
+                                  className="w-full py-1 px-1 text-center font-mono font-bold text-xs rounded border border-slate-200 dark:border-[#1c2436] bg-slate-50 dark:bg-[#121829] text-slate-800 dark:text-slate-100 focus:outline-none"
                                   placeholder="P3"
                                 />
                               </div>
@@ -1488,7 +1516,7 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                                   type="number"
                                   value={calcMrp === 0 ? '' : calcMrp}
                                   onChange={(e) => setCalcMrp(parseInt(e.target.value) || 0)}
-                                  className="w-full py-1 pl-6 pr-2.5 font-bold text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none"
+                                  className="w-full py-1 pl-6 pr-2.5 font-mono font-bold text-xs rounded-lg border border-slate-200 dark:border-[#1c2436] bg-slate-50 dark:bg-[#121829] text-slate-800 dark:text-slate-100 focus:outline-none"
                                   placeholder="Type MRP"
                                 />
                               </div>
@@ -1512,7 +1540,7 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                                   className={`py-1 rounded-md text-[10px] font-bold border transition-all cursor-pointer truncate ${
                                     calcOffer === opt.id 
                                       ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs' 
-                                      : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200/80 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+                                      : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200/80 dark:bg-[#121829] dark:text-slate-300 dark:border-[#1c2436]'
                                   }`}
                                 >
                                   {opt.label}
@@ -1522,8 +1550,8 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                           </div>
                         </div>
 
-                        <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
-                          <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 truncate max-w-[170px]">
+                        <div className="pt-3 border-t border-slate-100 dark:border-[#1c2436] flex items-center justify-between text-xs">
+                          <span className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 truncate max-w-[170px]">
                             Save ₹{displaySavings.toLocaleString('en-IN')}
                           </span>
                           <span className="text-[10px] font-semibold text-slate-400">
@@ -1535,15 +1563,17 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                   })()}
 
                   {/* TILE 3: HOLD DESK */}
-                  <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                  <div className={`p-4 sm:p-5 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-all ${
+                    darkMode ? 'bg-[#0e1320] border-[#1c2436] text-slate-100' : 'bg-white border-slate-200 text-slate-800'
+                  }`}>
                     <div className="flex justify-between items-start">
                       <div>
-                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Customer Hold Desk</p>
-                        <h3 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-1">
-                          {activeHolds.length} <span className="text-sm font-bold text-slate-400">Active</span>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Customer Hold Desk</p>
+                        <h3 className="text-2xl sm:text-3xl font-black font-mono text-slate-900 dark:text-white mt-1">
+                          {activeHolds.length} <span className="text-sm font-sans font-bold text-slate-400">Active</span>
                         </h3>
                       </div>
-                      <div className="p-2.5 bg-purple-500/10 text-purple-500 rounded-xl border border-purple-500/20">
+                      <div className="p-2.5 bg-purple-500/10 text-purple-400 rounded-xl border border-purple-500/20">
                         <AlarmClock className="w-5 h-5" />
                       </div>
                     </div>
@@ -1551,7 +1581,7 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                     <div className="my-3 space-y-1.5 text-xs">
                       <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
                         <span>Checkout Lane:</span>
-                        <span className={`font-semibold ${activeHolds.length > 0 ? 'text-amber-500' : 'text-slate-700 dark:text-slate-200'}`}>
+                        <span className={`font-semibold ${activeHolds.length > 0 ? 'text-amber-400' : 'text-slate-700 dark:text-slate-200'}`}>
                           {activeHolds.length > 0 ? `${activeHolds.length} Reserved` : 'Lane Clear'}
                         </span>
                       </div>
@@ -1561,12 +1591,12 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                           30 Min Policy
                         </span>
                       </div>
-                      <div className="text-[10px] text-slate-400">
+                      <div className="text-xs text-slate-400">
                         Keeps sizes reserved for shoppers trying outfits.
                       </div>
                     </div>
 
-                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+                    <div className="pt-3 border-t border-slate-100 dark:border-[#1c2436] flex items-center justify-between text-xs">
                       <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full border border-purple-500/20">
                         {activeHolds.length} Reserved
                       </span>
@@ -1583,15 +1613,17 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                   </div>
 
                   {/* TILE 4: POCKET KHATA */}
-                  <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                  <div className={`p-4 sm:p-5 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-all ${
+                    darkMode ? 'bg-[#0e1320] border-[#1c2436] text-slate-100' : 'bg-white border-slate-200 text-slate-800'
+                  }`}>
                     <div className="flex justify-between items-start">
                       <div>
-                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Pocket Khata</p>
-                        <h3 className="text-2xl sm:text-3xl font-black text-rose-500 dark:text-rose-400 mt-1">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pocket Khata</p>
+                        <h3 className="text-2xl sm:text-3xl font-black font-mono text-rose-500 dark:text-rose-400 mt-1">
                           {totalPettyCash > 0 ? `- ${formatCurrency(totalPettyCash)}` : '₹0'}
                         </h3>
                       </div>
-                      <div className="p-2.5 bg-amber-500/10 text-amber-500 rounded-xl border border-amber-500/20">
+                      <div className="p-2.5 bg-amber-500/10 text-amber-400 rounded-xl border border-amber-500/20">
                         <Wallet className="w-5 h-5" />
                       </div>
                     </div>
@@ -1607,12 +1639,12 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                           {latestExpense ? `${latestExpense.categoryIcon || '☕'} ${latestExpense.description || 'Expense'}` : 'No petty outflows'}
                         </span>
                       </div>
-                      <div className="text-[10px] text-slate-400">
+                      <div className="text-xs text-slate-400">
                         Drawer net = Cash sales minus petty cash.
                       </div>
                     </div>
 
-                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+                    <div className="pt-3 border-t border-slate-100 dark:border-[#1c2436] flex items-center justify-between text-xs">
                       <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
                         Drawer Safe
                       </span>

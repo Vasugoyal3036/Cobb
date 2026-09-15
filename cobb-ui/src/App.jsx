@@ -1657,45 +1657,45 @@ export default function App() {
           box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.28), 0 14px 40px -4px rgba(0, 0, 0, 0.98), 0 0 20px -4px rgba(59, 130, 246, 0.25) !important;
         }
 
-        /* DEDICATED KPI METRIC TILES (Matching Obsidian Centerpiece from Reference) */
+        /* DEDICATED KPI METRIC TILES (Apple/Bloomberg Enterprise Precision Standards) */
         .dark-mode .kpi-card-revenue {
-          background: radial-gradient(circle at top left, rgba(16, 185, 129, 0.18) 0%, #0d1522 75%) !important;
-          border: 1.5px solid rgba(16, 185, 129, 0.5) !important;
-          box-shadow: inset 0 1px 0 0 rgba(16, 185, 129, 0.4), 0 10px 30px -4px rgba(0, 0, 0, 0.95) !important;
+          background: radial-gradient(circle at 12% 0%, rgba(16, 185, 129, 0.09) 0%, #0b0f19 80%) !important;
+          border: 1px solid rgba(16, 185, 129, 0.28) !important;
+          box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.08), 0 8px 24px -4px rgba(0, 0, 0, 0.8) !important;
         }
         .dark-mode .kpi-card-revenue:hover {
-          border-color: rgba(52, 211, 153, 0.85) !important;
-          box-shadow: inset 0 1px 0 0 rgba(52, 211, 153, 0.55), 0 14px 40px -4px rgba(0, 0, 0, 0.98), 0 0 25px -4px rgba(16, 185, 129, 0.35) !important;
+          border-color: rgba(52, 211, 153, 0.55) !important;
+          box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12), 0 12px 32px -4px rgba(0, 0, 0, 0.9), 0 0 20px -4px rgba(16, 185, 129, 0.2) !important;
         }
 
         .dark-mode .kpi-card-target {
-          background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.18) 0%, #0d1522 75%) !important;
-          border: 1.5px solid rgba(59, 130, 246, 0.5) !important;
-          box-shadow: inset 0 1px 0 0 rgba(59, 130, 246, 0.4), 0 10px 30px -4px rgba(0, 0, 0, 0.95) !important;
+          background: radial-gradient(circle at 12% 0%, rgba(59, 130, 246, 0.09) 0%, #0b0f19 80%) !important;
+          border: 1px solid rgba(59, 130, 246, 0.28) !important;
+          box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.08), 0 8px 24px -4px rgba(0, 0, 0, 0.8) !important;
         }
         .dark-mode .kpi-card-target:hover {
-          border-color: rgba(96, 165, 250, 0.85) !important;
-          box-shadow: inset 0 1px 0 0 rgba(96, 165, 250, 0.55), 0 14px 40px -4px rgba(0, 0, 0, 0.98), 0 0 25px -4px rgba(59, 130, 246, 0.35) !important;
+          border-color: rgba(96, 165, 250, 0.55) !important;
+          box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12), 0 12px 32px -4px rgba(0, 0, 0, 0.9), 0 0 20px -4px rgba(59, 130, 246, 0.2) !important;
         }
 
         .dark-mode .kpi-card-aov {
-          background: radial-gradient(circle at top left, rgba(168, 85, 247, 0.18) 0%, #0d1522 75%) !important;
-          border: 1.5px solid rgba(168, 85, 247, 0.5) !important;
-          box-shadow: inset 0 1px 0 0 rgba(168, 85, 247, 0.4), 0 10px 30px -4px rgba(0, 0, 0, 0.95) !important;
+          background: radial-gradient(circle at 12% 0%, rgba(168, 85, 247, 0.09) 0%, #0b0f19 80%) !important;
+          border: 1px solid rgba(168, 85, 247, 0.28) !important;
+          box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.08), 0 8px 24px -4px rgba(0, 0, 0, 0.8) !important;
         }
         .dark-mode .kpi-card-aov:hover {
-          border-color: rgba(192, 132, 252, 0.85) !important;
-          box-shadow: inset 0 1px 0 0 rgba(192, 132, 252, 0.55), 0 14px 40px -4px rgba(0, 0, 0, 0.98), 0 0 25px -4px rgba(168, 85, 247, 0.35) !important;
+          border-color: rgba(192, 132, 252, 0.55) !important;
+          box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12), 0 12px 32px -4px rgba(0, 0, 0, 0.9), 0 0 20px -4px rgba(168, 85, 247, 0.2) !important;
         }
 
         .dark-mode .kpi-card-margin {
-          background: radial-gradient(circle at top left, rgba(244, 63, 94, 0.18) 0%, #170d14 75%) !important;
-          border: 1.5px solid rgba(244, 63, 94, 0.5) !important;
-          box-shadow: inset 0 1px 0 0 rgba(244, 63, 94, 0.4), 0 10px 30px -4px rgba(0, 0, 0, 0.95) !important;
+          background: radial-gradient(circle at 12% 0%, rgba(244, 63, 94, 0.09) 0%, #0f0d14 80%) !important;
+          border: 1px solid rgba(244, 63, 94, 0.28) !important;
+          box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.08), 0 8px 24px -4px rgba(0, 0, 0, 0.8) !important;
         }
         .dark-mode .kpi-card-margin:hover {
-          border-color: rgba(251, 113, 133, 0.85) !important;
-          box-shadow: inset 0 1px 0 0 rgba(251, 113, 133, 0.55), 0 14px 40px -4px rgba(0, 0, 0, 0.98), 0 0 25px -4px rgba(244, 63, 94, 0.35) !important;
+          border-color: rgba(251, 113, 133, 0.55) !important;
+          box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12), 0 12px 32px -4px rgba(0, 0, 0, 0.9), 0 0 20px -4px rgba(244, 63, 94, 0.2) !important;
         }
 
         /* RECESSED SUB-TILES, INNER BOXES & CONTAINERS */

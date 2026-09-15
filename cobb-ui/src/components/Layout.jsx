@@ -231,27 +231,27 @@ const Layout = ({
         <nav className="flex-1 px-3 space-y-4 mt-6 overflow-y-auto custom-scrollbar">
           {filteredNavigation.map((cat, catIdx) => (
             <div key={catIdx} className="space-y-1">
-              <p className={`px-4 text-[9px] font-extrabold uppercase tracking-widest mb-1.5 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>{cat.category}</p>
+              <p className={`px-4 text-[10px] font-bold uppercase tracking-wider mb-2 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{cat.category}</p>
               {cat.items.map((item) => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.id;
 
                 const normalColor = darkMode
-                  ? (item.colorClass ? `${item.colorClass.split(' ')[0]} hover:bg-white/[0.08] hover:text-white rounded-xl` : "text-slate-300 hover:bg-white/[0.08] hover:text-white rounded-xl")
-                  : (item.colorClass || "text-slate-400 hover:bg-slate-900/60 hover:text-slate-200 rounded-lg");
+                  ? (item.colorClass ? `${item.colorClass.split(' ')[0]} hover:bg-white/[0.06] hover:text-white rounded-xl font-medium` : "text-slate-300 hover:bg-white/[0.06] hover:text-white rounded-xl font-medium")
+                  : (item.colorClass || "text-slate-600 hover:bg-slate-100 hover:text-slate-900 rounded-lg font-medium");
 
                 const activeColor = darkMode
-                  ? "border border-purple-500/60 bg-purple-500/20 text-white font-bold rounded-xl shadow-[0_0_20px_rgba(168,85,247,0.3)]"
-                  : (item.activeColorClass || "bg-blue-600/15 text-blue-400 font-semibold border-l-2 border-blue-500 rounded-lg");
+                  ? "border border-blue-500/40 bg-gradient-to-r from-blue-600/25 via-blue-600/15 to-transparent text-white font-bold rounded-xl shadow-[0_2px_12px_rgba(37,99,235,0.25)]"
+                  : (item.activeColorClass || "bg-blue-600/10 text-blue-600 font-bold border-l-3 border-blue-600 rounded-lg");
 
                 return (
                   <button
                     key={item.id}
                     onClick={() => { setActiveTab(item.id); setSearchQuery(''); setIsMobileMenuOpen(false); }}
-                    className={`w-full flex items-center px-4 py-2.5 transition-all duration-200 cursor-pointer relative group text-xs ${isActive ? activeColor : normalColor}`}
+                    className={`w-full flex items-center px-3.5 py-2 transition-all duration-200 cursor-pointer relative group text-xs ${isActive ? activeColor : normalColor}`}
                   >
-                    <Icon className={`w-4 h-4 mr-3 transition-colors ${isActive ? (darkMode ? "text-purple-300" : "") : "opacity-80 group-hover:opacity-100"}`} />
-                    <span>{item.label}</span>
+                    <Icon className={`w-4 h-4 mr-3 transition-colors shrink-0 ${isActive ? "text-blue-400" : "opacity-75 group-hover:opacity-100"}`} />
+                    <span className="truncate">{item.label}</span>
                   </button>
                 );
               })}
@@ -262,20 +262,20 @@ const Layout = ({
       </div>
 
       {/* Main Content Area */}
-      <div className={`flex-1 overflow-auto relative min-w-0 pb-20 lg:pb-0 transition-colors duration-200 ${darkMode ? 'bg-[#000000] text-white' : 'bg-slate-50 text-slate-800'}`}>
+      <div className={`flex-1 overflow-auto relative min-w-0 pb-20 lg:pb-0 transition-colors duration-200 ${darkMode ? 'bg-[#080b12] text-white' : 'bg-slate-50 text-slate-800'}`}>
 
         {/* Top Navbar */}
-        <header className={`backdrop-blur-md px-3.5 sm:px-6 lg:px-8 py-2.5 sm:py-3.5 border-b sticky top-0 z-30 transition-colors ${darkMode ? 'bg-[#000000]/95 border-[#2e3342] text-white' : 'bg-white/95 border-slate-200 text-slate-800'}`}>
+        <header className={`backdrop-blur-md px-3.5 sm:px-6 lg:px-8 py-2.5 sm:py-3 border-b sticky top-0 z-30 transition-colors ${darkMode ? 'bg-[#080b12]/95 border-[#1c2436] text-white' : 'bg-white/95 border-slate-200 text-slate-800'}`}>
 
           {/* MOBILE / PHONE HEADER (lg:hidden) — Split into two distinct pieces */}
           <div className="flex lg:hidden flex-col gap-2 w-full">
             {/* Piece 1: Brand & Management Controls */}
-            <div className={`flex items-center justify-between gap-2 w-full pb-2 border-b ${darkMode ? 'border-[#2e3342]' : 'border-slate-100'}`}>
+            <div className={`flex items-center justify-between gap-2 w-full pb-2 border-b ${darkMode ? 'border-[#1c2436]' : 'border-slate-100'}`}>
               <div className="flex items-center gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                  className={`p-2 rounded-xl border transition-colors cursor-pointer shrink-0 ${darkMode ? 'bg-[#000000] border-[#2e3342] text-white hover:bg-[#0d0d12]' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'}`}
+                  className={`p-2 rounded-xl border transition-colors cursor-pointer shrink-0 ${darkMode ? 'bg-[#0e1320] border-[#1c2436] text-white hover:bg-[#141a2c]' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'}`}
                   title="Toggle menu"
                 >
                   {isMobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
@@ -291,14 +291,14 @@ const Layout = ({
               {/* Top Controls: Store Switcher, Role, Dark Mode */}
               <div className="flex items-center gap-1.5 shrink-0">
                 {/* Store Switcher */}
-                <div className={`flex items-center p-1 rounded-xl border shrink-0 ${darkMode ? 'bg-[#000000] border-[#2e3342]' : 'bg-slate-100 border-slate-200'}`}>
+                <div className={`flex items-center p-1 rounded-xl border shrink-0 ${darkMode ? 'bg-[#0e1320] border-[#1c2436]' : 'bg-slate-100 border-slate-200'}`}>
                   <select
                     value={activeStore}
                     onChange={(e) => switchStore(e.target.value)}
                     className={`bg-transparent text-[11px] font-bold rounded py-0.5 px-0.5 focus:outline-none cursor-pointer ${darkMode ? 'text-white' : 'text-slate-800'}`}
                   >
                     {AVAILABLE_STORES.map(store => (
-                      <option key={store.id} value={store.id} className={darkMode ? "bg-[#000000] text-white" : "bg-white text-slate-800"}>
+                      <option key={store.id} value={store.id} className={darkMode ? "bg-[#0b0e17] text-white" : "bg-white text-slate-800"}>
                         {store.shortName || store.name.split(' ')[0]}
                       </option>
                     ))}
@@ -315,10 +315,10 @@ const Layout = ({
                   className={`px-2 py-1 rounded-xl font-bold text-[10px] transition-all shadow-xs flex items-center gap-1 cursor-pointer border shrink-0 ${
                     currentRole === 'owner'
                       ? darkMode
-                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30'
+                        ? 'bg-amber-500/15 text-amber-300 border-amber-500/30 hover:bg-amber-500/25'
                         : 'bg-amber-50 text-amber-800 border-amber-200'
                       : darkMode
-                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
+                        ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/25'
                         : 'bg-emerald-50 text-emerald-800 border-emerald-200'
                   }`}
                   title={currentRole === 'owner' ? 'Owner Mode (tap to switch)' : 'Manager Mode (tap to switch)'}
@@ -331,7 +331,7 @@ const Layout = ({
                   type="button"
                   onClick={() => setDarkMode(!darkMode)}
                   className={`p-1.5 rounded-xl border shrink-0 cursor-pointer ${
-                    darkMode ? 'bg-[#000000] border-[#2e3342] text-amber-400 hover:bg-[#0d0d12]' : 'bg-slate-100 border-slate-200 text-slate-600'
+                    darkMode ? 'bg-[#0e1320] border-[#1c2436] text-amber-400 hover:bg-[#141a2c]' : 'bg-slate-100 border-slate-200 text-slate-600'
                   }`}
                   title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
                 >
@@ -350,20 +350,20 @@ const Layout = ({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={handleGlobalSearch}
-                  className={`w-full pl-8 pr-3 py-1.5 rounded-xl text-base sm:text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all border ${
+                  className={`w-full pl-8 pr-3 py-1.5 rounded-xl text-base sm:text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all border ${
                     darkMode
-                      ? 'bg-[#000000] border-[#2e3342] text-white placeholder-slate-400 focus:bg-[#000000]'
+                      ? 'bg-[#0b0e17] border-[#1c2436] text-white placeholder-slate-400'
                       : 'bg-slate-100 border-slate-200 text-slate-800 placeholder-slate-400'
                   }`}
                 />
               </div>
 
               {/* Quick Mobile Actions */}
-              <div className="flex items-center gap-1 shrink-0">
+              <div className="flex items-center gap-1.5 shrink-0">
                 <button
                   type="button"
                   onClick={() => setShowReconModal(true)}
-                  className="px-2 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-[10px] transition-all shadow-xs cursor-pointer flex items-center gap-1 shrink-0"
+                  className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-[10px] transition-all shadow-xs cursor-pointer flex items-center gap-1 shrink-0"
                   title="EOD Cash Register Reconciliation"
                 >
                   <Calculator className="w-3 h-3" />
@@ -373,7 +373,7 @@ const Layout = ({
                 <button
                   type="button"
                   onClick={handleGenerateEodReport}
-                  className="px-2 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-[10px] transition-all shadow-xs cursor-pointer flex items-center gap-1 shrink-0"
+                  className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-[10px] transition-all shadow-xs cursor-pointer flex items-center gap-1 shrink-0"
                   title="Generate Daily EOD Report"
                 >
                   <Send className="w-3 h-3" />
@@ -385,37 +385,42 @@ const Layout = ({
 
           {/* DESKTOP HEADER (hidden lg:flex) */}
           <div className="hidden lg:flex flex-row justify-between items-center gap-4 w-full">
-            <div className="flex items-center gap-3 w-full sm:max-w-lg">
+            <div className="flex items-center gap-3 w-full sm:max-w-md">
               <div className="relative flex-1">
-                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
                 <input
                   type="text"
-                  placeholder="Search Article / Phone / Name / Amount..."
+                  placeholder="Command Search: Article / Phone / Bill..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={handleGlobalSearch}
-                  className={`w-full pl-9 pr-28 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all shadow-inner border ${darkMode ? 'bg-[#000000] border-[#2e3342] text-white placeholder-slate-400 focus:bg-[#000000]' : 'bg-slate-100 border-transparent text-slate-800 focus:bg-white'}`}
+                  className={`w-full pl-9 pr-24 py-2 rounded-xl text-xs font-medium focus:outline-none focus:ring-1 focus:ring-blue-500 transition-all border ${darkMode ? 'bg-[#0b0f19] border-[#1e2638] text-white placeholder-slate-400' : 'bg-slate-100 border-slate-200 text-slate-800'}`}
                 />
-                <div className={`absolute right-2 top-1.5 hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-lg border shadow-xs pointer-events-none ${darkMode ? 'bg-[#000000] border-[#2e3342] text-slate-300' : 'bg-white border-slate-200 text-slate-500'}`}>
-                  <Barcode className="w-3.5 h-3.5 text-blue-500" />
-                  <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wide">Scanner Ready</span>
+                <div className="absolute right-2.5 top-2 flex items-center gap-1.5">
+                  <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded border pointer-events-none ${darkMode ? 'bg-blue-950/40 border-blue-800/50 text-blue-400' : 'bg-blue-50 border-blue-200 text-blue-700'}`}>
+                    <Barcode className="w-3 h-3" />
+                    <span className="text-[9.5px] font-mono font-bold uppercase">POS</span>
+                  </div>
+                  <kbd className={`px-1.5 py-0.5 text-[9.5px] font-mono font-semibold rounded border pointer-events-none ${darkMode ? 'bg-[#151b2a] border-[#252f44] text-slate-400' : 'bg-slate-200 border-slate-300 text-slate-600'}`}>
+                    ⌘K
+                  </kbd>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-end gap-2 shrink-0">
+            <div className="flex items-center justify-end gap-2.5 shrink-0">
 
               {/* Multi-Store Switcher */}
-              <div className={`flex items-center gap-1.5 p-1 rounded-xl border shrink-0 ${darkMode ? 'bg-[#000000] border-[#2e3342]' : 'bg-slate-100 border-slate-200'}`}>
-                <Store className="w-3.5 h-3.5 text-blue-500 ml-1.5 shrink-0" />
+              <div className={`flex items-center gap-1.5 px-2 py-1 rounded-xl border shrink-0 ${darkMode ? 'bg-[#0b0f19] border-[#1e2638]' : 'bg-slate-100 border-slate-200'}`}>
+                <Store className="w-3.5 h-3.5 text-blue-400 ml-0.5 shrink-0" />
                 <select
                   value={activeStore}
                   onChange={(e) => switchStore(e.target.value)}
-                  className={`bg-transparent text-xs font-bold rounded-lg py-0.5 pr-2 focus:outline-none cursor-pointer ${darkMode ? 'text-white' : 'text-slate-800'}`}
+                  className={`bg-transparent text-xs font-bold rounded-lg py-0.5 pr-1 focus:outline-none cursor-pointer ${darkMode ? 'text-slate-200' : 'text-slate-800'}`}
                   title="Switch Cobb Store Branch"
                 >
                   {AVAILABLE_STORES.map(store => (
-                    <option key={store.id} value={store.id} className={darkMode ? "bg-[#000000] text-white py-1" : "bg-white text-slate-800 py-1"}>
+                    <option key={store.id} value={store.id} className={darkMode ? "bg-[#0b0f19] text-white py-1" : "bg-white text-slate-800 py-1"}>
                       {store.name}
                     </option>
                   ))}
@@ -432,10 +437,10 @@ const Layout = ({
                 className={`px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer border shrink-0 ${
                   currentRole === 'owner'
                     ? darkMode
-                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30'
+                      ? 'bg-amber-500/15 text-amber-300 border-amber-500/30 hover:bg-amber-500/25'
                       : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
                     : darkMode
-                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
+                      ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/25'
                       : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
                 }`}
                 title={currentRole === 'owner' ? 'Click to preview Manager View' : 'Click to return to Owner View'}
@@ -457,7 +462,7 @@ const Layout = ({
               <button
                 type="button"
                 onClick={() => setShowReconModal(true)}
-                className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs transition-all shadow-sm cursor-pointer flex items-center gap-1 shrink-0"
+                className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs transition-all shadow-xs cursor-pointer flex items-center gap-1 shrink-0"
                 title="EOD Cash Register Reconciliation"
               >
                 <Calculator className="w-3.5 h-3.5" />
@@ -468,7 +473,7 @@ const Layout = ({
               <button
                 type="button"
                 onClick={handleGenerateEodReport}
-                className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs transition-all shadow-sm cursor-pointer flex items-center gap-1 shrink-0"
+                className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold text-xs transition-all shadow-xs cursor-pointer flex items-center gap-1 shrink-0"
                 title="Generate Daily EOD Report for Owner"
               >
                 <Send className="w-3.5 h-3.5" />
@@ -481,7 +486,7 @@ const Layout = ({
                 onClick={() => setShowSetupModal(true)}
                 className={`px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all shadow-xs cursor-pointer flex items-center gap-1.5 shrink-0 border ${
                   darkMode
-                    ? 'bg-[#000000] text-blue-400 hover:bg-[#0d0d12] border-[#2e3342]'
+                    ? 'bg-[#0b0f19] text-blue-400 hover:bg-[#121828] hover:text-white border-[#1e2638]'
                     : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200'
                 }`}
                 title="Configure Database, Presets & Store Profile"
@@ -494,9 +499,9 @@ const Layout = ({
               <button
                 type="button"
                 onClick={() => setDarkMode(!darkMode)}
-                className={`p-1.5 rounded-xl transition-all shadow-sm cursor-pointer flex items-center justify-center shrink-0 border ${
+                className={`p-1.5 rounded-xl transition-all shadow-xs cursor-pointer flex items-center justify-center shrink-0 border ${
                   darkMode
-                    ? 'bg-[#000000] hover:bg-[#0d0d12] border-[#2e3342] text-amber-400'
+                    ? 'bg-[#0b0f19] hover:bg-[#121828] border-[#1e2638] text-amber-400'
                     : 'bg-slate-100 hover:bg-slate-200/80 border-slate-200 text-slate-600'
                 }`}
                 title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
@@ -505,16 +510,16 @@ const Layout = ({
               </button>
 
               {/* Systems status badge */}
-              <div className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-full border shadow-sm cursor-help shrink-0 ${
+              <div className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-full border shadow-xs cursor-help shrink-0 ${
                 darkMode
-                  ? 'bg-[#000000] border-[#2e3342] text-white'
+                  ? 'bg-[#0b0f19] border-[#1e2638] text-white'
                   : 'bg-slate-100 border-slate-200 text-slate-600'
               }`} title="Automation Engine Status">
                 <div className="relative flex h-2 w-2">
-                  {(isGatewayRunning && isListenerRunning) && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>}
-                  <span className={`relative inline-flex rounded-full h-2 w-2 ${isGatewayRunning && isListenerRunning ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                  {(isGatewayRunning && isListenerRunning) && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>}
+                  <span className={`relative inline-flex rounded-full h-2 w-2 ${isGatewayRunning && isListenerRunning ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
                 </div>
-                <span className={`text-[10px] font-bold uppercase tracking-wide ${darkMode ? 'text-slate-300' : 'text-slate-400'}`}>
+                <span className={`text-[10px] font-bold uppercase tracking-wider ${darkMode ? 'text-slate-300' : 'text-slate-500'}`}>
                   {isGatewayRunning && isListenerRunning ? 'Active' : 'Offline'}
                 </span>
               </div>
