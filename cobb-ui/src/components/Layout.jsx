@@ -79,7 +79,7 @@ const navigationItems = [
   {
     category: "Overview & P&L", items: [
       { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { id: "pnl", label: "Store P&L Statement", icon: DollarSign, colorClass: "text-green-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-green-500/15 text-green-400 font-bold border-l-2 border-green-500" },
+      { id: "pnl", label: "Sales & P&L Statement", icon: DollarSign, colorClass: "text-green-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-green-500/15 text-green-400 font-bold border-l-2 border-green-500" },
       { id: "gst", label: "GST & Tax Summary", icon: FileText, colorClass: "text-emerald-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-emerald-500/15 text-emerald-400 font-bold border-l-2 border-emerald-500" },
       { id: "analytics", label: "Visual Rush Chart", icon: Clock },
       { id: "monthly", label: "Monthly Products", icon: Calendar },
@@ -198,9 +198,9 @@ const Layout = ({
         />
       )}
 
-      {/* Sidebar Navigation */}
-      <div className={`fixed lg:static inset-y-0 left-0 w-64 bg-slate-950 text-slate-300 flex flex-col shadow-xl z-40 border-r border-slate-800 transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
-        <div className="p-6 border-b border-slate-800 flex justify-between items-center">
+      {/* Sidebar Navigation - Obsidian Black Theme */}
+      <div className={`fixed lg:static inset-y-0 left-0 w-64 ${darkMode ? 'bg-[#000000] border-[#2e3342]' : 'bg-slate-950 border-slate-800'} text-slate-300 flex flex-col shadow-xl z-40 border-r transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+        <div className={`p-6 border-b ${darkMode ? 'border-[#2e3342]' : 'border-slate-800'} flex justify-between items-center`}>
           <div>
             <div className="flex items-center gap-3 mb-1">
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/30">
@@ -208,7 +208,7 @@ const Layout = ({
               </div>
               <h1 className="text-xl font-bold tracking-wider text-white">COBB ITALY</h1>
             </div>
-            <p className="text-slate-500 text-xs font-medium ml-11">Smart Retail ERP</p>
+            <p className={`text-xs font-medium ml-11 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Smart Retail ERP</p>
             <div className="mt-2.5 ml-11 flex items-center gap-1.5 flex-wrap">
               <span className="px-2 py-0.5 text-[9px] font-black rounded-md bg-blue-500/20 text-blue-300 border border-blue-500/30 uppercase tracking-wide">
                 {AVAILABLE_STORES.find(s => s.id === activeStore)?.shortName || 'Pundri'}
@@ -231,21 +231,26 @@ const Layout = ({
         <nav className="flex-1 px-3 space-y-4 mt-6 overflow-y-auto custom-scrollbar">
           {filteredNavigation.map((cat, catIdx) => (
             <div key={catIdx} className="space-y-1">
-              <p className="px-4 text-[9px] font-bold text-slate-600 uppercase tracking-widest mb-1.5">{cat.category}</p>
+              <p className={`px-4 text-[9px] font-extrabold uppercase tracking-widest mb-1.5 ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>{cat.category}</p>
               {cat.items.map((item) => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.id;
 
-                const normalColor = item.colorClass || "text-slate-400 hover:bg-slate-900/60 hover:text-slate-200";
-                const activeColor = item.activeColorClass || "bg-blue-600/15 text-blue-400 font-semibold border-l-2 border-blue-500";
+                const normalColor = darkMode
+                  ? (item.colorClass ? `${item.colorClass.split(' ')[0]} hover:bg-white/[0.08] hover:text-white rounded-xl` : "text-slate-300 hover:bg-white/[0.08] hover:text-white rounded-xl")
+                  : (item.colorClass || "text-slate-400 hover:bg-slate-900/60 hover:text-slate-200 rounded-lg");
+
+                const activeColor = darkMode
+                  ? "border border-purple-500/60 bg-purple-500/20 text-white font-bold rounded-xl shadow-[0_0_20px_rgba(168,85,247,0.3)]"
+                  : (item.activeColorClass || "bg-blue-600/15 text-blue-400 font-semibold border-l-2 border-blue-500 rounded-lg");
 
                 return (
                   <button
                     key={item.id}
                     onClick={() => { setActiveTab(item.id); setSearchQuery(''); setIsMobileMenuOpen(false); }}
-                    className={`w-full flex items-center px-4 py-2.5 rounded-lg transition-all duration-200 cursor-pointer relative group text-xs ${isActive ? activeColor : normalColor}`}
+                    className={`w-full flex items-center px-4 py-2.5 transition-all duration-200 cursor-pointer relative group text-xs ${isActive ? activeColor : normalColor}`}
                   >
-                    <Icon className={`w-4 h-4 mr-3 transition-colors ${isActive ? "" : "opacity-60 group-hover:opacity-100"}`} />
+                    <Icon className={`w-4 h-4 mr-3 transition-colors ${isActive ? (darkMode ? "text-purple-300" : "") : "opacity-80 group-hover:opacity-100"}`} />
                     <span>{item.label}</span>
                   </button>
                 );
@@ -257,20 +262,20 @@ const Layout = ({
       </div>
 
       {/* Main Content Area */}
-      <div className={`flex-1 overflow-auto relative min-w-0 pb-20 lg:pb-0 transition-colors duration-200 ${darkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-800'}`}>
+      <div className={`flex-1 overflow-auto relative min-w-0 pb-20 lg:pb-0 transition-colors duration-200 ${darkMode ? 'bg-[#000000] text-white' : 'bg-slate-50 text-slate-800'}`}>
 
         {/* Top Navbar */}
-        <header className={`backdrop-blur-md px-3.5 sm:px-6 lg:px-8 py-2.5 sm:py-3.5 border-b sticky top-0 z-30 transition-colors ${darkMode ? 'bg-slate-900/95 border-slate-800 text-slate-100' : 'bg-white/95 border-slate-200 text-slate-800'}`}>
+        <header className={`backdrop-blur-md px-3.5 sm:px-6 lg:px-8 py-2.5 sm:py-3.5 border-b sticky top-0 z-30 transition-colors ${darkMode ? 'bg-[#000000]/95 border-[#2e3342] text-white' : 'bg-white/95 border-slate-200 text-slate-800'}`}>
 
           {/* MOBILE / PHONE HEADER (lg:hidden) — Split into two distinct pieces */}
           <div className="flex lg:hidden flex-col gap-2 w-full">
             {/* Piece 1: Brand & Management Controls */}
-            <div className={`flex items-center justify-between gap-2 w-full pb-2 border-b ${darkMode ? 'border-slate-800' : 'border-slate-100'}`}>
+            <div className={`flex items-center justify-between gap-2 w-full pb-2 border-b ${darkMode ? 'border-[#2e3342]' : 'border-slate-100'}`}>
               <div className="flex items-center gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                  className={`p-2 rounded-xl border transition-colors cursor-pointer shrink-0 ${darkMode ? 'bg-slate-800 border-slate-700 text-slate-200 hover:bg-slate-700' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'}`}
+                  className={`p-2 rounded-xl border transition-colors cursor-pointer shrink-0 ${darkMode ? 'bg-[#000000] border-[#2e3342] text-white hover:bg-[#0d0d12]' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'}`}
                   title="Toggle menu"
                 >
                   {isMobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
@@ -286,14 +291,14 @@ const Layout = ({
               {/* Top Controls: Store Switcher, Role, Dark Mode */}
               <div className="flex items-center gap-1.5 shrink-0">
                 {/* Store Switcher */}
-                <div className={`flex items-center p-1 rounded-xl border shrink-0 ${darkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-100 border-slate-200'}`}>
+                <div className={`flex items-center p-1 rounded-xl border shrink-0 ${darkMode ? 'bg-[#000000] border-[#2e3342]' : 'bg-slate-100 border-slate-200'}`}>
                   <select
                     value={activeStore}
                     onChange={(e) => switchStore(e.target.value)}
-                    className={`bg-transparent text-[11px] font-bold rounded py-0.5 px-0.5 focus:outline-none cursor-pointer ${darkMode ? 'text-slate-200' : 'text-slate-800'}`}
+                    className={`bg-transparent text-[11px] font-bold rounded py-0.5 px-0.5 focus:outline-none cursor-pointer ${darkMode ? 'text-white' : 'text-slate-800'}`}
                   >
                     {AVAILABLE_STORES.map(store => (
-                      <option key={store.id} value={store.id} className={darkMode ? "bg-slate-900 text-slate-200" : "bg-white text-slate-800"}>
+                      <option key={store.id} value={store.id} className={darkMode ? "bg-[#000000] text-white" : "bg-white text-slate-800"}>
                         {store.shortName || store.name.split(' ')[0]}
                       </option>
                     ))}
@@ -310,10 +315,10 @@ const Layout = ({
                   className={`px-2 py-1 rounded-xl font-bold text-[10px] transition-all shadow-xs flex items-center gap-1 cursor-pointer border shrink-0 ${
                     currentRole === 'owner'
                       ? darkMode
-                        ? 'bg-amber-950/60 text-amber-300 border-amber-800/60'
+                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30'
                         : 'bg-amber-50 text-amber-800 border-amber-200'
                       : darkMode
-                        ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/60'
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
                         : 'bg-emerald-50 text-emerald-800 border-emerald-200'
                   }`}
                   title={currentRole === 'owner' ? 'Owner Mode (tap to switch)' : 'Manager Mode (tap to switch)'}
@@ -326,7 +331,7 @@ const Layout = ({
                   type="button"
                   onClick={() => setDarkMode(!darkMode)}
                   className={`p-1.5 rounded-xl border shrink-0 cursor-pointer ${
-                    darkMode ? 'bg-slate-800 border-slate-700 text-amber-400' : 'bg-slate-100 border-slate-200 text-slate-600'
+                    darkMode ? 'bg-[#000000] border-[#2e3342] text-amber-400 hover:bg-[#0d0d12]' : 'bg-slate-100 border-slate-200 text-slate-600'
                   }`}
                   title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
                 >
@@ -345,9 +350,9 @@ const Layout = ({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={handleGlobalSearch}
-                  className={`w-full pl-8 pr-3 py-1.5 rounded-xl text-base sm:text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all border ${
+                  className={`w-full pl-8 pr-3 py-1.5 rounded-xl text-base sm:text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all border ${
                     darkMode
-                      ? 'bg-slate-800 border-slate-700 text-slate-100 placeholder-slate-500'
+                      ? 'bg-[#000000] border-[#2e3342] text-white placeholder-slate-400 focus:bg-[#000000]'
                       : 'bg-slate-100 border-slate-200 text-slate-800 placeholder-slate-400'
                   }`}
                 />
@@ -389,11 +394,11 @@ const Layout = ({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={handleGlobalSearch}
-                  className={`w-full pl-9 pr-28 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all shadow-inner border ${darkMode ? 'bg-slate-950 border-slate-800 text-slate-100 placeholder-slate-500 focus:bg-slate-900' : 'bg-slate-100 border-transparent text-slate-800 focus:bg-white'}`}
+                  className={`w-full pl-9 pr-28 py-2 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all shadow-inner border ${darkMode ? 'bg-[#000000] border-[#2e3342] text-white placeholder-slate-400 focus:bg-[#000000]' : 'bg-slate-100 border-transparent text-slate-800 focus:bg-white'}`}
                 />
-                <div className={`absolute right-2 top-1.5 hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-lg border shadow-xs pointer-events-none ${darkMode ? 'bg-slate-900 border-slate-800 text-slate-400' : 'bg-white border-slate-200 text-slate-500'}`}>
+                <div className={`absolute right-2 top-1.5 hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-lg border shadow-xs pointer-events-none ${darkMode ? 'bg-[#000000] border-[#2e3342] text-slate-300' : 'bg-white border-slate-200 text-slate-500'}`}>
                   <Barcode className="w-3.5 h-3.5 text-blue-500" />
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Scanner Ready</span>
+                  <span className="text-[10px] font-bold text-slate-300 uppercase tracking-wide">Scanner Ready</span>
                 </div>
               </div>
             </div>
@@ -401,16 +406,16 @@ const Layout = ({
             <div className="flex items-center justify-end gap-2 shrink-0">
 
               {/* Multi-Store Switcher */}
-              <div className={`flex items-center gap-1.5 p-1 rounded-xl border shrink-0 ${darkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-100 border-slate-200'}`}>
+              <div className={`flex items-center gap-1.5 p-1 rounded-xl border shrink-0 ${darkMode ? 'bg-[#000000] border-[#2e3342]' : 'bg-slate-100 border-slate-200'}`}>
                 <Store className="w-3.5 h-3.5 text-blue-500 ml-1.5 shrink-0" />
                 <select
                   value={activeStore}
                   onChange={(e) => switchStore(e.target.value)}
-                  className={`bg-transparent text-xs font-bold rounded-lg py-0.5 pr-2 focus:outline-none cursor-pointer ${darkMode ? 'text-slate-200' : 'text-slate-800'}`}
+                  className={`bg-transparent text-xs font-bold rounded-lg py-0.5 pr-2 focus:outline-none cursor-pointer ${darkMode ? 'text-white' : 'text-slate-800'}`}
                   title="Switch Cobb Store Branch"
                 >
                   {AVAILABLE_STORES.map(store => (
-                    <option key={store.id} value={store.id} className={darkMode ? "bg-slate-900 text-slate-200 py-1" : "bg-white text-slate-800 py-1"}>
+                    <option key={store.id} value={store.id} className={darkMode ? "bg-[#000000] text-white py-1" : "bg-white text-slate-800 py-1"}>
                       {store.name}
                     </option>
                   ))}
@@ -427,10 +432,10 @@ const Layout = ({
                 className={`px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer border shrink-0 ${
                   currentRole === 'owner'
                     ? darkMode
-                      ? 'bg-amber-950/60 text-amber-300 border-amber-800/60 hover:bg-amber-900/60'
+                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30'
                       : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
                     : darkMode
-                      ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/60 hover:bg-emerald-900/60'
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
                       : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
                 }`}
                 title={currentRole === 'owner' ? 'Click to preview Manager View' : 'Click to return to Owner View'}
@@ -476,7 +481,7 @@ const Layout = ({
                 onClick={() => setShowSetupModal(true)}
                 className={`px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all shadow-xs cursor-pointer flex items-center gap-1.5 shrink-0 border ${
                   darkMode
-                    ? 'bg-blue-950/60 text-blue-300 hover:bg-blue-900/60 border-blue-800/60'
+                    ? 'bg-[#000000] text-blue-400 hover:bg-[#0d0d12] border-[#2e3342]'
                     : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200'
                 }`}
                 title="Configure Database, Presets & Store Profile"
@@ -491,7 +496,7 @@ const Layout = ({
                 onClick={() => setDarkMode(!darkMode)}
                 className={`p-1.5 rounded-xl transition-all shadow-sm cursor-pointer flex items-center justify-center shrink-0 border ${
                   darkMode
-                    ? 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-amber-400'
+                    ? 'bg-[#000000] hover:bg-[#0d0d12] border-[#2e3342] text-amber-400'
                     : 'bg-slate-100 hover:bg-slate-200/80 border-slate-200 text-slate-600'
                 }`}
                 title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
@@ -502,14 +507,14 @@ const Layout = ({
               {/* Systems status badge */}
               <div className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-full border shadow-sm cursor-help shrink-0 ${
                 darkMode
-                  ? 'bg-slate-900 border-slate-800 text-slate-300'
+                  ? 'bg-[#000000] border-[#2e3342] text-white'
                   : 'bg-slate-100 border-slate-200 text-slate-600'
               }`} title="Automation Engine Status">
                 <div className="relative flex h-2 w-2">
                   {(isGatewayRunning && isListenerRunning) && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>}
                   <span className={`relative inline-flex rounded-full h-2 w-2 ${isGatewayRunning && isListenerRunning ? 'bg-green-500' : 'bg-red-500'}`}></span>
                 </div>
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+                <span className={`text-[10px] font-bold uppercase tracking-wide ${darkMode ? 'text-slate-300' : 'text-slate-400'}`}>
                   {isGatewayRunning && isListenerRunning ? 'Active' : 'Offline'}
                 </span>
               </div>

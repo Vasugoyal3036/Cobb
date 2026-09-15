@@ -2414,43 +2414,132 @@ app.get('/api/analytics/wardrobe-profiles', async (req, res) => {
     }
 });
 
-// 4. Monthly Store Profit & Loss (P&L) Endpoint
+// 4. Monthly Store Profit & Loss (P&L) & Lifetime Sales Endpoint
 app.get('/api/financials/pnl', async (req, res) => {
     try {
-        const monthlyRev = await sql.query(`
+        const batchQuery = await sql.query(`
+            -- 1. Current Month Sales
             DECLARE @startOfMonth DATETIME = DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1);
             SELECT 
                 ISNULL(SUM(NET_AMOUNT), 0) as GrossSales,
                 ISNULL(SUM(TOTAL_GST_AMOUNT), 0) as TotalTax,
                 COUNT(CM_ID) as TotalBills
             FROM CMM01106 WITH (NOLOCK)
-            WHERE CM_TIME >= @startOfMonth AND CANCELLED = 0
+            WHERE CM_TIME >= @startOfMonth AND CANCELLED = 0;
+
+            -- 2. Lifetime Store Sales
+            SELECT 
+                ISNULL(SUM(NET_AMOUNT), 0) as LifetimeGrossSales,
+                ISNULL(SUM(TOTAL_GST_AMOUNT), 0) as LifetimeTax,
+                COUNT(CM_ID) as LifetimeBills,
+                MIN(CM_TIME) as FirstSaleDate,
+                MAX(CM_TIME) as LastSaleDate
+            FROM CMM01106 WITH (NOLOCK)
+            WHERE CANCELLED = 0;
+
+            -- 3. Monthly Sales History
+            SELECT 
+                CONVERT(varchar(7), CM_TIME, 120) as MonthKey,
+                YEAR(CM_TIME) as Year,
+                MONTH(CM_TIME) as Month,
+                ISNULL(SUM(NET_AMOUNT), 0) as GrossSales,
+                ISNULL(SUM(TOTAL_GST_AMOUNT), 0) as TotalTax,
+                COUNT(CM_ID) as TotalBills
+            FROM CMM01106 WITH (NOLOCK)
+            WHERE CANCELLED = 0
+            GROUP BY CONVERT(varchar(7), CM_TIME, 120), YEAR(CM_TIME), MONTH(CM_TIME)
+            ORDER BY MonthKey DESC;
         `);
 
-        const sales = monthlyRev.recordset[0]?.GrossSales || 0;
-        const tax = monthlyRev.recordset[0]?.TotalTax || 0;
-        const taxable = sales - tax;
-
-        // Franchise Retail P&L Model
+        // Franchise Retail P&L Model Standard Costs
         const rent = 40000;
         const electricity = 15000;
         const staffSalaries = 45000;
         const miscExpenses = 10000;
         const totalExpenses = 110000; // As requested
 
-        // Total gross profit margin is 27% (so COGS is 73% of taxable revenue)
-        const grossProfit = Math.round(taxable * 0.27);
-        const cogs = taxable - grossProfit;
+        const monthNames = [
+            "January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"
+        ];
 
-        // Deduct 110,000 store expense from the gross profit
-        const netProfit = grossProfit - totalExpenses;
-        const profitMarginPct = sales > 0 ? Math.round((netProfit / sales) * 100) : 0;
+        // 1. Current Month Metrics
+        const currentSales = batchQuery.recordsets[0]?.[0]?.GrossSales || 0;
+        const currentTax = batchQuery.recordsets[0]?.[0]?.TotalTax || 0;
+        const currentTaxable = currentSales - currentTax;
+        const currentBills = batchQuery.recordsets[0]?.[0]?.TotalBills || 0;
+        const currentGrossProfit = Math.round(currentTaxable * 0.27);
+        const currentCogs = currentTaxable - currentGrossProfit;
+        const currentNetProfit = currentGrossProfit - totalExpenses;
+        const currentMarginPct = currentSales > 0 ? Math.round((currentNetProfit / currentSales) * 100) : 0;
+
+        // 2. Lifetime Metrics
+        const ltRecord = batchQuery.recordsets[1]?.[0] || {};
+        const ltSales = ltRecord.LifetimeGrossSales || 0;
+        const ltTax = ltRecord.LifetimeTax || 0;
+        const ltTaxable = ltSales - ltTax;
+        const ltBills = ltRecord.LifetimeBills || 0;
+        const ltGrossProfit = Math.round(ltTaxable * 0.27);
+        const ltCogs = ltTaxable - ltGrossProfit;
+        const ltAvgBill = ltBills > 0 ? Math.round(ltSales / ltBills) : 0;
+
+        // 3. Each Month Sales Breakdown
+        const monthlyRows = batchQuery.recordsets[2] || [];
+        const monthlySales = monthlyRows.map(row => {
+            const mSales = row.GrossSales || 0;
+            const mTax = row.TotalTax || 0;
+            const mTaxable = mSales - mTax;
+            const mBills = row.TotalBills || 0;
+            const mGrossProfit = Math.round(mTaxable * 0.27);
+            const mCogs = mTaxable - mGrossProfit;
+            const mNetProfit = mGrossProfit - totalExpenses;
+            const mMarginPct = mSales > 0 ? Math.round((mNetProfit / mSales) * 100) : 0;
+            const mAvgBill = mBills > 0 ? Math.round(mSales / mBills) : 0;
+            const monthLabel = `${monthNames[row.Month - 1] || ''} ${row.Year}`;
+
+            return {
+                monthKey: row.MonthKey,
+                monthName: monthLabel,
+                year: row.Year,
+                month: row.Month,
+                grossSales: mSales,
+                taxCollected: mTax,
+                taxableRevenue: mTaxable,
+                costOfGoodsSold: mCogs,
+                grossProfit: mGrossProfit,
+                totalBills: mBills,
+                avgBillValue: mAvgBill,
+                operatingExpenses: {
+                    rent,
+                    electricity,
+                    staffSalaries,
+                    miscExpenses,
+                    totalExpenses
+                },
+                netStoreProfit: mNetProfit,
+                profitMarginPct: mMarginPct
+            };
+        });
+
+        // Cumulative active months
+        const activeMonthsCount = monthlySales.length || 1;
+        const ltExpenses = totalExpenses * activeMonthsCount;
+        const ltNetProfit = ltGrossProfit - ltExpenses;
+        const ltMarginPct = ltSales > 0 ? Math.round((ltNetProfit / ltSales) * 100) : 0;
+
+        const now = new Date();
+        const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        const currentMonthName = `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
 
         res.json({
-            grossSales: sales,
-            taxCollected: tax,
-            taxableRevenue: taxable,
-            costOfGoodsSold: cogs,
+            // Current month (preserves existing contract)
+            grossSales: currentSales,
+            taxCollected: currentTax,
+            taxableRevenue: currentTaxable,
+            costOfGoodsSold: currentCogs,
+            grossProfit: currentGrossProfit,
+            totalBills: currentBills,
+            avgBillValue: currentBills > 0 ? Math.round(currentSales / currentBills) : 0,
             operatingExpenses: {
                 rent,
                 electricity,
@@ -2458,8 +2547,30 @@ app.get('/api/financials/pnl', async (req, res) => {
                 miscExpenses,
                 totalExpenses
             },
-            netStoreProfit: netProfit,
-            profitMarginPct: profitMarginPct
+            netStoreProfit: currentNetProfit,
+            profitMarginPct: currentMarginPct,
+            currentMonthKey,
+            currentMonthName,
+
+            // Lifetime telemetry
+            lifetime: {
+                grossSales: ltSales,
+                taxCollected: ltTax,
+                taxableRevenue: ltTaxable,
+                costOfGoodsSold: ltCogs,
+                grossProfit: ltGrossProfit,
+                totalBills: ltBills,
+                avgBillValue: ltAvgBill,
+                firstSaleDate: ltRecord.FirstSaleDate,
+                lastSaleDate: ltRecord.LastSaleDate,
+                activeMonthsCount,
+                totalOperatingExpenses: ltExpenses,
+                netStoreProfit: ltNetProfit,
+                profitMarginPct: ltMarginPct
+            },
+
+            // Month-by-month history
+            monthlySales
         });
     } catch (err) {
         res.status(500).json({ error: err.message });

@@ -34,5 +34,41 @@
     "reason": "checkout",
     "status": "sent",
     "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-09-15T15:09:44.344180",
+    "date": "2026-09-15",
+    "time": "03:09 PM",
+    "billNo": "STST27-00647   ",
+    "cmId": "ST01127000STST27-00647",
+    "customerName": "Balvinder",
+    "phone": "9588708186",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-09-15T17:24:08.567351",
+    "date": "2026-09-15",
+    "time": "05:24 PM",
+    "billNo": "STST27-00648   ",
+    "cmId": "ST01127000STST27-00648",
+    "customerName": "Sachin",
+    "phone": "9896866652",
+    "reason": "exchange",
+    "status": "sent",
+    "detail": "Official Exchange Slip sent"
+  },
+  {
+    "timestamp": "2026-09-15T18:27:41.066146",
+    "date": "2026-09-15",
+    "time": "06:27 PM",
+    "billNo": "STST27-00649   ",
+    "cmId": "ST01127000STST27-00649",
+    "customerName": "Aryan",
+    "phone": "9138507579",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
   }
 ]

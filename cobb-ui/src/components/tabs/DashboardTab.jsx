@@ -68,7 +68,11 @@ import {
   Trash2,
   ArrowRight,
   AlarmClock,
-  Network
+  Network,
+  Building2,
+  Copy,
+  Check,
+  Share2
 } from 'lucide-react';
 // Stock Health tiles (Broken Size Runs, Dead Stock & Ageing, Reorder Alerts)
 import GoodsInTransitDesk from '../GoodsInTransitDesk';
@@ -97,6 +101,37 @@ const DashboardTab = (props) => {
   const [calcMrp, setCalcMrp] = React.useState(1999);
   const [calcOffer, setCalcOffer] = React.useState('b3_70');
   const [b1g3Items, setB1g3Items] = React.useState([1700, 1800, 1900]);
+
+  // P&L Selected Month State
+  const [selectedPnlMonth, setSelectedPnlMonth] = React.useState('current');
+  const [pnlCopied, setPnlCopied] = React.useState(false);
+
+  const copyPnlSummary = (data) => {
+    if (!data) return;
+    const text = `📊 COBB POS - STORE P&L STATEMENT (${data.monthName || 'Month'})
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Gross Sales Revenue: ${formatCurrency(data.grossSales)}
+Less GST Tax Output: -${formatCurrency(data.taxCollected)}
+Net Taxable Receipts: ${formatCurrency(data.taxableRevenue)}
+
+Wholesale COGS (~73%): -${formatCurrency(data.costOfGoodsSold)}
+Gross Retail Margin: ${formatCurrency(data.grossProfit || Math.round(data.taxableRevenue * 0.27))} (27%)
+
+Fixed Operating Overheads: -${formatCurrency(data.operatingExpenses?.totalExpenses || 110000)}
+  • Store Rent (Pundri): -${formatCurrency(data.operatingExpenses?.rent || 40000)}
+  • Staff Salaries: -${formatCurrency(data.operatingExpenses?.staffSalaries || 45000)}
+  • Electricity & AC: -${formatCurrency(data.operatingExpenses?.electricity || 15000)}
+  • Misc & Maintenance: -${formatCurrency(data.operatingExpenses?.miscExpenses || 10000)}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🏆 NET STORE PROFIT: ${formatCurrency(data.netStoreProfit)} (${data.profitMarginPct}% Net Margin)
+Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue || 0)}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+    try {
+      navigator.clipboard?.writeText(text);
+      setPnlCopied(true);
+      setTimeout(() => setPnlCopied(false), 2500);
+    } catch (e) {}
+  };
 
   // Ref and height state to guarantee operational tiles match the exact pixel height of top KPI cards
   const topCardRef = React.useRef(null);
@@ -267,7 +302,9 @@ const DashboardTab = (props) => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
 
               {/* Revenue Card with WoW/MoM Trends & Payment Breakdown */}
-              <div ref={topCardRef} className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+              <div ref={topCardRef} className={`p-5 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-all ${
+                darkMode ? 'kpi-card-revenue text-white' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
+              }`}>
                 <div className="flex justify-between items-start">
                   <div>
                     <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Today's Revenue</p>
@@ -349,7 +386,9 @@ const DashboardTab = (props) => {
               </div>
 
               {/* Target Progress Card */}
-              <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow relative overflow-hidden">
+              <div className={`p-5 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-all relative overflow-hidden ${
+                darkMode ? 'kpi-card-target text-white' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
+              }`}>
                 <div className="absolute -right-4 -bottom-4 opacity-5 pointer-events-none">
                   <Target className="w-32 h-32 text-blue-500" />
                 </div>
@@ -380,7 +419,9 @@ const DashboardTab = (props) => {
               </div>
 
               {/* Average Order Value + Bill Volume */}
-              <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+              <div className={`p-5 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-all ${
+                darkMode ? 'kpi-card-aov text-white' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
+              }`}>
                 <div className="flex justify-between items-start">
                   <div>
                     <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Avg. Order Value</p>
@@ -413,7 +454,9 @@ const DashboardTab = (props) => {
 
               {/* Card 4: Profit Margin (Owner) vs Counter Settlement Desk (Manager) */}
               {userRole !== 'manager' ? (
-                <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                <div className={`p-5 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-all ${
+                  darkMode ? 'kpi-card-margin text-white' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
+                }`}>
                   <div className="flex justify-between items-start mb-1">
                     <div>
                       <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Gross &amp; Net Margin</p>
@@ -488,7 +531,9 @@ const DashboardTab = (props) => {
                   </div>
                 </div>
               ) : (
-                <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                <div className={`p-5 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-all ${
+                  darkMode ? 'kpi-card-revenue text-white' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
+                }`}>
                   <div className="flex justify-between items-start mb-1">
                     <div>
                       <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Counter Register</p>
@@ -547,138 +592,10 @@ const DashboardTab = (props) => {
           {(dashboardZone === 'all' || dashboardZone === 'executive') && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start">
 
-              {/* LEFT 7 COLUMNS: Stock Health Radar + Operational Stream (Pulse & Automation) */}
+              {/* LEFT 7 COLUMNS: Operational Stream (Pulse & Automation) ABOVE, Stock Health BELOW */}
               <div className="lg:col-span-7 space-y-5 sm:space-y-6">
 
-                {/* HERO CARD: STOCK HEALTH RADAR (3-TIER PILLARS) */}
-                <div className={`p-5 rounded-2xl border shadow-sm transition-all ${
-                  darkMode ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-800'
-                }`}>
-                  <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
-                    <div className="flex items-center gap-2.5">
-                      <div className="p-2 bg-rose-500/10 text-rose-500 rounded-xl border border-rose-500/20">
-                        <Layers className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                          <span>Stock Health &amp; Inventory Vulnerabilities</span>
-                          <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                        </h3>
-                        <p className="text-[11px] text-slate-400">Silent lost sales, capital blockage &amp; reorder risk</p>
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                      3 Core Alerts
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-                    {/* Pillar 1: Broken Size Runs */}
-                    <div 
-                      onClick={() => typeof setActiveTab === 'function' && setActiveTab('sizematrix')}
-                      className={`p-3.5 rounded-xl border transition-all cursor-pointer group flex flex-col justify-between ${
-                        darkMode 
-                          ? 'bg-slate-800/40 border-slate-700/60 hover:border-rose-500/40' 
-                          : 'bg-rose-50/40 border-rose-100 hover:border-rose-300'
-                      }`}
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="text-[10px] font-extrabold uppercase tracking-tight text-rose-500 flex items-center gap-1">
-                          <Scissors className="w-3 h-3" />
-                          <span>Broken Sizes</span>
-                        </span>
-                        <span className="text-[10px] font-bold text-rose-600 bg-rose-500/10 px-1.5 py-0.5 rounded border border-rose-500/20">
-                          {stockHealth?.brokenSizeRuns?.count > 0 ? 'Action' : 'Clean'}
-                        </span>
-                      </div>
-                      <div className="my-1">
-                        <span className="text-2xl font-black text-rose-500 leading-none">
-                          {stockHealthLoading ? '...' : (stockHealth?.brokenSizeRuns?.count || 0)}
-                        </span>
-                        <span className="text-xs text-slate-400 ml-1 font-bold">styles</span>
-                      </div>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-tight">
-                        Core sizes <span className="font-bold text-rose-500">32–40</span> out while rest sits.
-                      </p>
-                      <div className="mt-2 pt-2 border-t border-rose-200/40 dark:border-slate-700/40 flex items-center justify-between text-[10px] font-bold text-rose-500 group-hover:underline">
-                        <span>Size Matrix</span>
-                        <ArrowRight className="w-3 h-3" />
-                      </div>
-                    </div>
-
-                    {/* Pillar 2: Dead Stock & Ageing */}
-                    <div 
-                      onClick={() => typeof setActiveTab === 'function' && setActiveTab('inventory')}
-                      className={`p-3.5 rounded-xl border transition-all cursor-pointer group flex flex-col justify-between ${
-                        darkMode 
-                          ? 'bg-slate-800/40 border-slate-700/60 hover:border-amber-500/40' 
-                          : 'bg-amber-50/40 border-amber-100 hover:border-amber-300'
-                      }`}
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="text-[10px] font-extrabold uppercase tracking-tight text-amber-500 flex items-center gap-1">
-                          <Archive className="w-3 h-3" />
-                          <span>Dead Stock</span>
-                        </span>
-                        <span className="text-[10px] font-bold text-amber-600 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
-                          60+ Days
-                        </span>
-                      </div>
-                      <div className="my-1">
-                        <span className="text-2xl font-black text-amber-500 leading-none">
-                          {stockHealthLoading ? '...' : (stockHealth?.deadStock?.units60Plus || 0)}
-                        </span>
-                        <span className="text-xs text-slate-400 ml-1 font-bold">units</span>
-                      </div>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-tight">
-                        90+ days: <span className="font-bold text-rose-500">{stockHealth?.deadStock?.units90Plus || 0} units</span> blocked.
-                      </p>
-                      <div className="mt-2 pt-2 border-t border-amber-200/40 dark:border-slate-700/40 flex items-center justify-between text-[10px] font-bold text-amber-500 group-hover:underline">
-                        <span>Inventory Desk</span>
-                        <ArrowRight className="w-3 h-3" />
-                      </div>
-                    </div>
-
-                    {/* Pillar 3: Reorder Alerts */}
-                    <div 
-                      onClick={() => typeof setActiveTab === 'function' && setActiveTab('reorder')}
-                      className={`p-3.5 rounded-xl border transition-all cursor-pointer group flex flex-col justify-between ${
-                        darkMode 
-                          ? 'bg-slate-800/40 border-slate-700/60 hover:border-blue-500/40' 
-                          : 'bg-blue-50/40 border-blue-100 hover:border-blue-300'
-                      }`}
-                    >
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="text-[10px] font-extrabold uppercase tracking-tight text-blue-500 flex items-center gap-1">
-                          <Package className="w-3 h-3" />
-                          <span>Reorder Risk</span>
-                        </span>
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
-                          (stockHealth?.reorderAlerts?.zeroStock || 0) > 0
-                            ? 'text-rose-600 bg-rose-500/10 border-rose-500/20'
-                            : 'text-blue-600 bg-blue-500/10 border-blue-500/20'
-                        }`}>
-                          {(stockHealth?.reorderAlerts?.zeroStock || 0) > 0 ? 'Urgent' : 'Watch'}
-                        </span>
-                      </div>
-                      <div className="my-1">
-                        <span className="text-2xl font-black text-blue-500 leading-none">
-                          {stockHealthLoading ? '...' : (stockHealth?.reorderAlerts?.count || 0)}
-                        </span>
-                        <span className="text-xs text-slate-400 ml-1 font-bold">SKUs</span>
-                      </div>
-                      <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-tight">
-                        <span className="font-bold text-rose-500">{stockHealth?.reorderAlerts?.zeroStock || 0} fast movers</span> at 0 stock.
-                      </p>
-                      <div className="mt-2 pt-2 border-t border-blue-200/40 dark:border-slate-700/40 flex items-center justify-between text-[10px] font-bold text-blue-500 group-hover:underline">
-                        <span>Reorder Desk</span>
-                        <ArrowRight className="w-3 h-3" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* TWO STREAM PANELS: Live Store Pulse & WhatsApp Automation */}
+                {/* ROW 1: TWO STREAM PANELS: Live Store Pulse & WhatsApp Automation */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
                   {/* PANEL 1: Live Store Pulse (Real-Time Bill Feed) */}
@@ -692,7 +609,7 @@ const DashboardTab = (props) => {
                     }`}>
                       <div className="flex items-center gap-2">
                         <Activity className="w-4 h-4 text-emerald-500" />
-                        <h3 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                        <h3 className={`text-xs font-bold flex items-center gap-1.5 ${darkMode ? 'text-white' : 'text-slate-900'}`}>
                           <span>Live Store Pulse</span>
                           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
                         </h3>
@@ -701,7 +618,9 @@ const DashboardTab = (props) => {
                         <button
                           type="button"
                           onClick={() => setActiveTab('live')}
-                          className="text-[11px] font-bold text-blue-600 hover:text-blue-500 dark:text-blue-400 flex items-center gap-1 cursor-pointer"
+                          className={`text-[11px] font-bold flex items-center gap-1 cursor-pointer ${
+                            darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-500'
+                          }`}
                         >
                           <span>View ({liveBills.length})</span>
                           <ArrowRight className="w-3 h-3" />
@@ -720,7 +639,9 @@ const DashboardTab = (props) => {
                           onClick={() => setActiveTab('live')}
                         >
                           <div className="min-w-0 flex-1 pr-2">
-                            <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate group-hover:text-blue-500 transition-colors">
+                            <p className={`text-xs font-bold truncate group-hover:text-blue-500 transition-colors ${
+                              darkMode ? 'text-slate-100' : 'text-slate-800'
+                            }`}>
                               {bill.CustomerName?.trim() || bill.FirstName?.trim() || 'Guest Customer'}
                             </p>
                             <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-400">
@@ -777,26 +698,34 @@ const DashboardTab = (props) => {
                     );
 
                     return (
-                      <div className={`rounded-2xl border shadow-sm p-4 sm:p-4 flex flex-col justify-between h-[320px] transition-all ${
+                      <div className={`rounded-2xl border shadow-sm p-5 flex flex-col justify-between h-[320px] transition-all ${
                         darkMode 
                           ? 'bg-slate-900/90 border-slate-800/80 text-slate-100' 
                           : 'bg-white border-slate-200 text-slate-800'
                       }`}>
                         {/* Header */}
-                        <div className="flex justify-between items-center mb-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <div className="p-1.5 bg-emerald-500/10 text-emerald-500 rounded-lg border border-emerald-500/20">
-                              <Zap className="w-3.5 h-3.5" />
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className={`p-2 rounded-xl border ${
+                              darkMode ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : 'bg-emerald-50 text-emerald-600 border-emerald-200'
+                            }`}>
+                              <Zap className="w-4 h-4" />
                             </div>
                             <div className="min-w-0">
-                              <h3 className="font-bold text-xs text-slate-900 dark:text-white truncate">Automation Slips</h3>
-                              <p className="text-[10px] text-slate-400 truncate">WhatsApp POS delivery</p>
+                              <h3 className={`font-bold text-xs truncate ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+                                Automation Slips
+                              </h3>
+                              <p className={`text-[10px] truncate ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                                WhatsApp POS delivery
+                              </p>
                             </div>
                           </div>
                           <button 
                             onClick={() => setActiveTab('automation')} 
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full border transition-all flex items-center gap-1 cursor-pointer ${
-                              darkMode ? 'bg-blue-950/40 text-blue-400 border-blue-800/50' : 'bg-blue-50 text-blue-600 border-blue-200'
+                            className={`text-[10px] font-bold px-2.5 py-1 rounded-full border transition-all flex items-center gap-1 cursor-pointer ${
+                              darkMode 
+                                ? 'bg-blue-950/40 text-blue-400 border-blue-800/50 hover:bg-blue-900/50' 
+                                : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'
                             }`}
                           >
                             <span>Logs</span>
@@ -805,38 +734,61 @@ const DashboardTab = (props) => {
                         </div>
 
                         {/* 3 Metric Pills */}
-                        <div className="grid grid-cols-3 gap-2 my-1">
-                          <div className="p-2 rounded-lg bg-blue-50/50 dark:bg-slate-800/50 border border-blue-100 dark:border-slate-700 text-center">
-                            <span className="text-[9px] font-bold text-blue-500 uppercase">Bills</span>
-                            <div className="text-base font-black text-slate-900 dark:text-white">{checkoutsCount}</div>
-                            <span className="text-[9px] text-slate-400">{checkoutPct}%</span>
+                        <div className="grid grid-cols-3 gap-2.5 my-1">
+                          {/* Bills Sent */}
+                          <div className={`p-3 rounded-xl border text-center transition-all ${
+                            darkMode 
+                              ? 'bg-slate-800/50 border-slate-700/60' 
+                              : 'bg-blue-50/50 border-blue-100'
+                          }`}>
+                            <span className="text-[9px] font-bold text-blue-500 uppercase tracking-wider block mb-0.5">Bills</span>
+                            <div className={`text-xl font-black ${darkMode ? 'text-white' : 'text-slate-900'}`}>{checkoutsCount}</div>
+                            <span className={`text-[10px] font-medium ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{checkoutPct}%</span>
                           </div>
-                          <div className="p-2 rounded-lg bg-amber-50/50 dark:bg-slate-800/50 border border-amber-100 dark:border-slate-700 text-center">
-                            <span className="text-[9px] font-bold text-amber-500 uppercase">Exch</span>
-                            <div className="text-base font-black text-slate-900 dark:text-white">{exchangesCount}</div>
-                            <span className="text-[9px] text-slate-400">{exchangePct}%</span>
+
+                          {/* Exchanges Sent */}
+                          <div className={`p-3 rounded-xl border text-center transition-all ${
+                            darkMode 
+                              ? 'bg-slate-800/50 border-slate-700/60' 
+                              : 'bg-amber-50/50 border-amber-100'
+                          }`}>
+                            <span className="text-[9px] font-bold text-amber-500 uppercase tracking-wider block mb-0.5">Exch</span>
+                            <div className={`text-xl font-black ${darkMode ? 'text-white' : 'text-slate-900'}`}>{exchangesCount}</div>
+                            <span className={`text-[10px] font-medium ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{exchangePct}%</span>
                           </div>
-                          <div className="p-2 rounded-lg bg-rose-50/50 dark:bg-slate-800/50 border border-rose-100 dark:border-slate-700 text-center">
-                            <span className="text-[9px] font-bold text-rose-500 uppercase">No WA</span>
-                            <div className="text-base font-black text-rose-500">{totalFailed}</div>
-                            <span className="text-[9px] text-slate-400">{failedPct}%</span>
+
+                          {/* Failed / Not on WhatsApp */}
+                          <div className={`p-3 rounded-xl border text-center transition-all ${
+                            totalFailed > 0
+                              ? darkMode ? 'bg-rose-950/30 border-rose-900/40' : 'bg-rose-50/70 border-rose-200'
+                              : darkMode ? 'bg-slate-800/50 border-slate-700/60' : 'bg-slate-50 border-slate-200'
+                          }`}>
+                            <span className="text-[9px] font-bold text-rose-500 uppercase tracking-wider block mb-0.5">No WA</span>
+                            <div className={`text-xl font-black ${totalFailed > 0 ? 'text-rose-500' : (darkMode ? 'text-slate-300' : 'text-slate-800')}`}>{totalFailed}</div>
+                            <span className={`text-[10px] font-medium ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{failedPct}%</span>
                           </div>
                         </div>
 
                         {/* Status Callout */}
-                        <div className={`p-2 rounded-lg border text-[10.5px] truncate font-medium ${
+                        <div className={`px-3 py-2 rounded-xl border text-[11px] truncate font-medium ${
                           totalFailed > 0 
-                            ? 'bg-rose-50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/40 text-rose-800 dark:text-rose-300' 
-                            : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                            ? darkMode 
+                              ? 'bg-rose-950/30 border-rose-900/40 text-rose-300' 
+                              : 'bg-rose-50 border-rose-200 text-rose-800'
+                            : darkMode 
+                              ? 'bg-slate-800/60 border-slate-700/60 text-slate-300' 
+                              : 'bg-slate-50 border-slate-200 text-slate-700'
                         }`} title={latestReason}>
                           {latestReason}
                         </div>
 
                         {/* Tri-Color Segmented Bar */}
-                        <div className="space-y-1">
-                          <div className={`w-full h-2 rounded-full overflow-hidden ${darkMode ? 'bg-slate-800' : 'bg-slate-100'} flex p-0.5 gap-0.5`}>
+                        <div className="space-y-1.5">
+                          <div className={`w-full h-2 rounded-full overflow-hidden flex p-0.5 gap-0.5 ${
+                            darkMode ? 'bg-slate-800' : 'bg-slate-100'
+                          }`}>
                             {totalAttempts === 0 ? (
-                              <div className="w-full h-full rounded-full bg-slate-200 dark:bg-slate-700"></div>
+                              <div className={`w-full h-full rounded-full ${darkMode ? 'bg-slate-700' : 'bg-slate-200'}`} />
                             ) : (
                               <>
                                 {checkoutsCount > 0 && (
@@ -851,9 +803,9 @@ const DashboardTab = (props) => {
                               </>
                             )}
                           </div>
-                          <div className="flex justify-between items-center text-[9px] text-slate-400 pt-1">
-                            <span className="flex items-center gap-1 font-semibold text-emerald-500">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                          <div className={`flex justify-between items-center text-[10px] ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                            <span className="flex items-center gap-1.5 font-semibold text-emerald-500">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                               POS Engine Active
                             </span>
                             <span>{sentCount} delivered total</span>
@@ -863,6 +815,251 @@ const DashboardTab = (props) => {
                     );
                   })()}
                 </div>
+
+                {/* ROW 2: EXPANDED STOCK HEALTH & INVENTORY VULNERABILITIES DECK */}
+                {(() => {
+                  const brokenCount = stockHealth?.brokenSizeRuns?.count || 0;
+                  const units90 = stockHealth?.deadStock?.units90Plus || 0;
+                  const units60 = stockHealth?.deadStock?.units60Plus || 0;
+                  const totalStock = stockHealth?.deadStock?.totalStockUnits || 1;
+                  const reorderCount = stockHealth?.reorderAlerts?.count || 0;
+                  const zeroStockCount = stockHealth?.reorderAlerts?.zeroStock || 0;
+
+                  // Ageing breakdown percentages
+                  const deadPct = totalStock > 0 ? Math.min(100, Math.round((units90 / totalStock) * 100)) : 0;
+                  const ageingPct = totalStock > 0 ? Math.min(100 - deadPct, Math.round(((units60 - units90) / totalStock) * 100)) : 0;
+                  const activePct = Math.max(0, 100 - deadPct - ageingPct);
+
+                  return (
+                    <div className={`p-5 rounded-2xl border shadow-sm transition-all ${
+                      darkMode ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-800'
+                    }`}>
+                      {/* Header */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-slate-100 dark:border-slate-800">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <div className={`p-2 rounded-xl border ${
+                            darkMode ? 'bg-rose-500/15 text-rose-400 border-rose-500/30' : 'bg-rose-50 text-rose-600 border-rose-200'
+                          }`}>
+                            <Layers className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <h3 className={`font-bold text-sm flex items-center gap-2 ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+                              <span>Stock Health &amp; Inventory Vulnerabilities</span>
+                              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                            </h3>
+                            <p className={`text-[11px] ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                              Silent lost sales, capital blockage &amp; stockout alerts across catalog
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+                          <button 
+                            onClick={fetchStockHealth}
+                            disabled={stockHealthLoading}
+                            className={`p-1.5 rounded-lg border transition-all ${
+                              darkMode ? 'bg-slate-800/80 text-slate-400 border-slate-700 hover:text-white' : 'bg-slate-100 text-slate-600 border-slate-200 hover:text-slate-900'
+                            }`}
+                            title="Refresh stock health metrics"
+                          >
+                            <RefreshCw className={`w-3.5 h-3.5 ${stockHealthLoading ? 'animate-spin' : ''}`} />
+                          </button>
+                          <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${
+                            zeroStockCount > 0 || units90 > 0
+                              ? darkMode ? 'bg-rose-950/40 text-rose-400 border-rose-800/50' : 'bg-rose-50 text-rose-600 border-rose-200'
+                              : darkMode ? 'bg-emerald-950/40 text-emerald-400 border-emerald-800/50' : 'bg-emerald-50 text-emerald-600 border-emerald-200'
+                          }`}>
+                            {zeroStockCount > 0 ? `${zeroStockCount} Fast Movers at 0 Stock` : 'Catalog Healthy'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* 3 Interactive Deep-Dive Cards */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 my-4">
+
+                        {/* Pillar 1: Broken Size Runs */}
+                        <div 
+                          onClick={() => typeof setActiveTab === 'function' && setActiveTab('sizematrix')}
+                          className={`p-4 rounded-xl border transition-all cursor-pointer group flex flex-col justify-between ${
+                            darkMode 
+                              ? 'bg-slate-800/40 border-slate-700/60 hover:border-rose-500/50' 
+                              : 'bg-rose-50/40 border-rose-100 hover:border-rose-300'
+                          }`}
+                        >
+                          <div>
+                            <div className="flex justify-between items-start mb-2">
+                              <span className="text-[10px] font-extrabold uppercase tracking-tight text-rose-500 flex items-center gap-1">
+                                <Scissors className="w-3.5 h-3.5" />
+                                <span>Broken Size Runs</span>
+                              </span>
+                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${
+                                brokenCount > 0
+                                  ? darkMode ? 'bg-rose-950/60 text-rose-300 border-rose-800/60' : 'bg-rose-100 text-rose-700 border-rose-200'
+                                  : darkMode ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/60' : 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                              }`}>
+                                {brokenCount > 0 ? 'Lost Sales Risk' : 'Healthy'}
+                              </span>
+                            </div>
+
+                            <div className="my-1.5">
+                              <span className="text-3xl font-black text-rose-500 leading-none">
+                                {stockHealthLoading ? '...' : brokenCount}
+                              </span>
+                              <span className={`text-xs ml-1 font-bold ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>styles affected</span>
+                            </div>
+
+                            <p className={`text-[11px] leading-relaxed mt-1 ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                              Core sizes <span className="font-bold text-rose-500">32–40</span> missing while fringe sizes (XS, 44+) sit idle.
+                            </p>
+
+                            <div className={`mt-2.5 p-2 rounded-lg text-[10px] border ${
+                              darkMode ? 'bg-slate-900/60 border-slate-700/60 text-slate-400' : 'bg-white/80 border-rose-100 text-slate-600'
+                            }`}>
+                              💡 <strong>Action:</strong> Refill core sizes from nearby stores via Save-the-Sale or raise warehouse indent.
+                            </div>
+                          </div>
+
+                          <div className="mt-3 pt-2.5 border-t border-rose-200/40 dark:border-slate-700/40 flex items-center justify-between text-[11px] font-bold text-rose-500 group-hover:underline">
+                            <span>Open Size Matrix Heatmap</span>
+                            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                          </div>
+                        </div>
+
+                        {/* Pillar 2: Dead Stock & Capital Ageing */}
+                        <div 
+                          onClick={() => typeof setActiveTab === 'function' && setActiveTab('inventory')}
+                          className={`p-4 rounded-xl border transition-all cursor-pointer group flex flex-col justify-between ${
+                            darkMode 
+                              ? 'bg-slate-800/40 border-slate-700/60 hover:border-amber-500/50' 
+                              : 'bg-amber-50/40 border-amber-100 hover:border-amber-300'
+                          }`}
+                        >
+                          <div>
+                            <div className="flex justify-between items-start mb-2">
+                              <span className="text-[10px] font-extrabold uppercase tracking-tight text-amber-500 flex items-center gap-1">
+                                <Archive className="w-3.5 h-3.5" />
+                                <span>Dead Stock &amp; Ageing</span>
+                              </span>
+                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${
+                                units90 > 0
+                                  ? darkMode ? 'bg-amber-950/60 text-amber-300 border-amber-800/60' : 'bg-amber-100 text-amber-700 border-amber-200'
+                                  : darkMode ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/60' : 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                              }`}>
+                                60+ Days
+                              </span>
+                            </div>
+
+                            <div className="my-1.5">
+                              <span className="text-3xl font-black text-amber-500 leading-none">
+                                {stockHealthLoading ? '...' : (stockHealth?.deadStock?.units60Plus || 0)}
+                              </span>
+                              <span className={`text-xs ml-1 font-bold ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>units ageing</span>
+                            </div>
+
+                            <p className={`text-[11px] leading-relaxed mt-1 ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                              Critical 90+ days: <span className="font-bold text-rose-500">{units90} units</span> blocked on floor.
+                            </p>
+
+                            <div className={`mt-2.5 p-2 rounded-lg text-[10px] border ${
+                              darkMode ? 'bg-slate-900/60 border-slate-700/60 text-slate-400' : 'bg-white/80 border-amber-100 text-slate-600'
+                            }`}>
+                              💡 <strong>Action:</strong> Pair with fast-moving shirts for Smart Bundles (B1G3 / B3@70%) to liquidate cash.
+                            </div>
+                          </div>
+
+                          <div className="mt-3 pt-2.5 border-t border-amber-200/40 dark:border-slate-700/40 flex items-center justify-between text-[11px] font-bold text-amber-500 group-hover:underline">
+                            <span>Open Inventory Desk</span>
+                            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                          </div>
+                        </div>
+
+                        {/* Pillar 3: Fast Mover Reorder Alerts */}
+                        <div 
+                          onClick={() => typeof setActiveTab === 'function' && setActiveTab('reorder')}
+                          className={`p-4 rounded-xl border transition-all cursor-pointer group flex flex-col justify-between ${
+                            darkMode 
+                              ? 'bg-slate-800/40 border-slate-700/60 hover:border-blue-500/50' 
+                              : 'bg-blue-50/40 border-blue-100 hover:border-blue-300'
+                          }`}
+                        >
+                          <div>
+                            <div className="flex justify-between items-start mb-2">
+                              <span className="text-[10px] font-extrabold uppercase tracking-tight text-blue-500 flex items-center gap-1">
+                                <Package className="w-3.5 h-3.5" />
+                                <span>Reorder Alerts</span>
+                              </span>
+                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${
+                                zeroStockCount > 0
+                                  ? darkMode ? 'bg-rose-950/60 text-rose-300 border-rose-800/60' : 'bg-rose-100 text-rose-700 border-rose-200'
+                                  : darkMode ? 'bg-blue-950/60 text-blue-300 border-blue-800/60' : 'bg-blue-100 text-blue-700 border-blue-200'
+                              }`}>
+                                {zeroStockCount > 0 ? 'Urgent' : 'Watch'}
+                              </span>
+                            </div>
+
+                            <div className="my-1.5">
+                              <span className="text-3xl font-black text-blue-500 leading-none">
+                                {stockHealthLoading ? '...' : reorderCount}
+                              </span>
+                              <span className={`text-xs ml-1 font-bold ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>SKUs low cover</span>
+                            </div>
+
+                            <p className={`text-[11px] leading-relaxed mt-1 ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+                              <span className="font-bold text-rose-500">{zeroStockCount} fast movers</span> completely at 0 stock.
+                            </p>
+
+                            <div className={`mt-2.5 p-2 rounded-lg text-[10px] border ${
+                              darkMode ? 'bg-slate-900/60 border-slate-700/60 text-slate-400' : 'bg-white/80 border-blue-100 text-slate-600'
+                            }`}>
+                              💡 <strong>Action:</strong> 1-tap raise restock requisition to Head Office Central Warehouse.
+                            </div>
+                          </div>
+
+                          <div className="mt-3 pt-2.5 border-t border-blue-200/40 dark:border-slate-700/40 flex items-center justify-between text-[11px] font-bold text-blue-500 group-hover:underline">
+                            <span>Open Reorder Desk</span>
+                            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                          </div>
+                        </div>
+
+                      </div>
+
+                      {/* Bottom: Ageing Spectrum & Catalog Health Status */}
+                      <div className={`pt-3 border-t flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-[11px] ${
+                        darkMode ? 'border-slate-800 text-slate-400' : 'border-slate-100 text-slate-500'
+                      }`}>
+                        <div className="flex items-center gap-3">
+                          <span className="font-bold uppercase tracking-wider text-[10px]">Catalog Ageing:</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                            <span>Active (&lt;60d): ~{activePct}%</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-amber-500" />
+                            <span>Slow (60-90d): ~{ageingPct}%</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="w-2 h-2 rounded-full bg-rose-500" />
+                            <span>Dead (90d+): ~{deadPct}%</span>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => typeof setActiveTab === 'function' && setActiveTab('smart_bundles')}
+                            className={`px-2.5 py-1 rounded-lg border font-bold text-[10px] transition-all flex items-center gap-1 ${
+                              darkMode 
+                                ? 'bg-purple-950/40 text-purple-300 border-purple-800/50 hover:bg-purple-900/50' 
+                                : 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100'
+                            }`}
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            <span>Create Smart Bundle</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* RIGHT 5 COLUMNS: Sales Performance Calendar + Goods In Transit */}
@@ -937,7 +1134,11 @@ const DashboardTab = (props) => {
                               hasSales ? 'cursor-pointer' : 'cursor-default'
                             } ${
                               hasSales 
-                                ? (selectedCalendarDay === day ? 'bg-blue-600 text-white shadow-md' : 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 hover:bg-blue-200') 
+                                ? (selectedCalendarDay === day 
+                                    ? 'bg-purple-600 text-white shadow-md' 
+                                    : darkMode 
+                                      ? 'bg-purple-950/60 text-purple-300 border border-purple-700/60 hover:bg-purple-900/60' 
+                                      : 'bg-blue-100 text-blue-700 hover:bg-blue-200') 
                                 : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60'
                             }`}
                           >
@@ -1437,120 +1638,732 @@ const DashboardTab = (props) => {
       {/* STORE P&L STATEMENT */}
       {activeTab === 'pnl' && (
         userRole === 'manager' ? (
-          <div className="p-12 max-w-lg mx-auto text-center mt-12 bg-white rounded-3xl border border-slate-200 shadow-xl animate-in fade-in">
-            <div className="w-16 h-16 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-rose-100 shadow-sm">
+          <div className="p-12 max-w-lg mx-auto text-center mt-12 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl animate-in fade-in">
+            <div className="w-16 h-16 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-rose-100 dark:border-rose-900/50 shadow-sm">
               <AlertTriangle className="w-8 h-8" />
             </div>
-            <h3 className="text-xl font-black text-slate-800">Restricted Access (Owner Only)</h3>
-            <p className="text-sm text-slate-500 mt-2">
-              Store P&L statements, wholesale purchase costs, supplier margins, and financial bottom lines are strictly confidential and restricted to the Store Owner.
+            <h3 className="text-xl font-black text-slate-800 dark:text-white">Restricted Access (Owner Only)</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
+              Store P&amp;L statements, wholesale purchase costs, supplier margins, and financial bottom lines are strictly confidential and restricted to the Store Owner.
             </p>
-            <p className="text-xs text-slate-400 mt-4">
+            <p className="text-xs text-slate-400 dark:text-slate-500 mt-4">
               Switch to <strong>Owner Mode</strong> in the top navbar to view financial telemetry.
             </p>
           </div>
         ) : (
-          <div className="p-4 sm:p-6 lg:p-8">
-            <div className="border-b border-slate-200 pb-5 mb-8 flex justify-between items-center">
+          <div className="p-4 sm:p-6 lg:p-8 space-y-8">
+            <div className="border-b border-slate-200 dark:border-slate-800 pb-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
-                <h3 className="text-2xl font-bold text-slate-800 flex items-center">
-                  <DollarSign className="w-6 h-6 mr-3 text-green-600" /> Monthly Store Profit & Loss (P&L) Statement
+                <h3 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center">
+                  <DollarSign className="w-6 h-6 mr-3 text-emerald-600 dark:text-emerald-400" /> Sales &amp; Store Profit &amp; Loss (P&amp;L) Statement
                 </h3>
-                <p className="text-sm text-slate-500 mt-1">Net revenue, COGS wholesale inventory cost, and store operating expenses (Current Month).</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                  Comprehensive store telemetry — Lifetime sales volume, month-by-month financial ledger, wholesale inventory COGS, and operating net margins.
+                </p>
               </div>
+              {pnlData?.lifetime && (
+                <div className="flex items-center gap-2 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 px-3.5 py-2 rounded-2xl">
+                  <TrendingUp className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                  <span className="text-xs font-bold text-emerald-800 dark:text-emerald-300">
+                    Lifetime: {formatCurrency(pnlData.lifetime.grossSales)}
+                  </span>
+                </div>
+              )}
             </div>
 
-            {pnlData ? (
-              <>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Gross Monthly Sales (Inc. Tax)</p>
-                    <h4 className="text-3xl font-black text-slate-800 mt-2">{formatCurrency(pnlData.grossSales)}</h4>
-                    <p className="text-xs text-slate-400 mt-1">Taxable: <span className="font-bold text-slate-700">{formatCurrency(pnlData.taxableRevenue)}</span></p>
-                  </div>
+            {pnlData ? (() => {
+              // Active month data computation
+              const activeMonthData = (() => {
+                if (pnlData.monthlySales && pnlData.monthlySales.length > 0) {
+                  if (selectedPnlMonth && selectedPnlMonth !== 'current') {
+                    const found = pnlData.monthlySales.find(m => m.monthKey === selectedPnlMonth);
+                    if (found) return found;
+                  }
+                }
+                return {
+                  grossSales: pnlData.grossSales,
+                  taxCollected: pnlData.taxCollected,
+                  taxableRevenue: pnlData.taxableRevenue,
+                  costOfGoodsSold: pnlData.costOfGoodsSold,
+                  operatingExpenses: pnlData.operatingExpenses,
+                  netStoreProfit: pnlData.netStoreProfit,
+                  profitMarginPct: pnlData.profitMarginPct,
+                  monthName: pnlData.currentMonthName || 'Current Month',
+                  monthKey: pnlData.currentMonthKey,
+                  totalBills: pnlData.totalBills,
+                  avgBillValue: pnlData.avgBillValue
+                };
+              })();
 
-                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Estimated COGS Wholesale Cost (~48%)</p>
-                    <h4 className="text-3xl font-black text-amber-600 mt-2">{formatCurrency(pnlData.costOfGoodsSold)}</h4>
-                    <p className="text-xs text-slate-400 mt-1">Distributor Transfer Cost</p>
-                  </div>
+              const isViewingCurrent = !selectedPnlMonth || selectedPnlMonth === 'current' || selectedPnlMonth === pnlData.currentMonthKey;
 
-                  <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Store Operating Expenses</p>
-                    <h4 className="text-3xl font-black text-rose-600 mt-2">{formatCurrency(pnlData.operatingExpenses.totalExpenses)}</h4>
-                    <p className="text-xs text-slate-400 mt-1">Rent + Staff + Power + Misc</p>
-                  </div>
+              return (
+                <>
+                  {/* 1. LIFETIME STORE SALES HERO DECK */}
+                  {pnlData.lifetime && (
+                    <div className="rounded-3xl p-6 sm:p-8 bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 text-white shadow-xl border border-slate-800 relative overflow-hidden">
+                      <div className="absolute top-0 right-0 -mr-20 -mt-20 w-72 h-72 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+                      <div className="absolute bottom-0 left-1/4 -mb-20 w-72 h-72 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
 
-                  <div className="bg-gradient-to-br from-emerald-600 to-green-700 text-white p-5 rounded-2xl shadow-lg flex flex-col justify-between">
-                    <div>
-                      <p className="text-[10px] font-bold text-emerald-200 uppercase tracking-wider">Est. Net Store Profit</p>
-                      <h4 className="text-3xl font-black text-white mt-1">{formatCurrency(pnlData.netStoreProfit)}</h4>
+                      <div className="relative z-10">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pb-6 border-b border-white/10">
+                          <div>
+                            <div className="flex flex-wrap items-center gap-2 mb-3">
+                              <span className="px-3 py-1 bg-emerald-500/20 text-emerald-400 text-[11px] font-black uppercase tracking-wider rounded-full border border-emerald-500/30 flex items-center gap-1.5">
+                                <Award className="w-3.5 h-3.5" /> All-Time Store Performance
+                              </span>
+                              <span className="text-xs text-slate-400">
+                                {pnlData.lifetime.activeMonthsCount || 1} Active Billing Months
+                              </span>
+                            </div>
+                            <p className="text-xs font-bold text-slate-300 uppercase tracking-wider">Lifetime Gross Sales (Receipts)</p>
+                            <div className="text-4xl sm:text-5xl font-black text-white tracking-tight mt-1 flex flex-wrap items-baseline gap-3">
+                              <span>{formatCurrency(pnlData.lifetime.grossSales)}</span>
+                              <span className="text-xs font-bold text-emerald-300 bg-emerald-950/80 px-2.5 py-1 rounded-lg border border-emerald-700/50">
+                                {pnlData.lifetime.profitMarginPct}% All-Time Net Margin
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap items-center gap-4 sm:gap-6 bg-white/5 backdrop-blur-sm px-5 py-4 rounded-2xl border border-white/10">
+                            <div>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Lifetime Customer Bills</p>
+                              <p className="text-2xl font-black text-white mt-0.5">{pnlData.lifetime.totalBills?.toLocaleString()} <span className="text-xs font-normal text-slate-400">Checkouts</span></p>
+                            </div>
+                            <div className="w-px h-8 bg-white/10 hidden sm:block" />
+                            <div>
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Lifetime Avg Order (AOV)</p>
+                              <p className="text-2xl font-black text-emerald-400 mt-0.5">{formatCurrency(pnlData.lifetime.avgBillValue)}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Lifetime Breakdown Grid */}
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 pt-6">
+                          <div className="bg-white/5 backdrop-blur-sm p-4 rounded-2xl border border-white/10">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Lifetime Taxable Revenue</p>
+                            <h5 className="text-xl sm:text-2xl font-black text-slate-100 mt-1">{formatCurrency(pnlData.lifetime.taxableRevenue)}</h5>
+                            <p className="text-[11px] text-slate-400 mt-1">Excl. {formatCurrency(pnlData.lifetime.taxCollected)} GST Tax</p>
+                          </div>
+
+                          <div className="bg-white/5 backdrop-blur-sm p-4 rounded-2xl border border-white/10">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Est. Wholesale COGS (73%)</p>
+                            <h5 className="text-xl sm:text-2xl font-black text-amber-300 mt-1">{formatCurrency(pnlData.lifetime.costOfGoodsSold)}</h5>
+                            <p className="text-[11px] text-slate-400 mt-1">Wholesale Inventory Cost</p>
+                          </div>
+
+                          <div className="bg-white/5 backdrop-blur-sm p-4 rounded-2xl border border-white/10">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Store Operating Expenses</p>
+                            <h5 className="text-xl sm:text-2xl font-black text-rose-300 mt-1">{formatCurrency(pnlData.lifetime.totalOperatingExpenses)}</h5>
+                            <p className="text-[11px] text-slate-400 mt-1">Rent, Staff, Power &amp; Misc</p>
+                          </div>
+
+                          <div className="bg-emerald-500/15 backdrop-blur-sm p-4 rounded-2xl border border-emerald-500/30">
+                            <p className="text-[10px] font-bold text-emerald-300 uppercase tracking-wider">Est. Cumulative Net Profit</p>
+                            <h5 className="text-xl sm:text-2xl font-black text-emerald-300 mt-1">{formatCurrency(pnlData.lifetime.netStoreProfit)}</h5>
+                            <p className="text-[11px] text-emerald-400 mt-1">Net Owner Bottomline</p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-xs font-bold text-emerald-100 mt-3">Profit Margin: {pnlData.profitMarginPct}%</p>
-                  </div>
-                </div>
+                  )}
 
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-6">
-                  <h4 className="font-bold text-slate-800 text-lg mb-4">Detailed Financial Statement Breakdown</h4>
-                  <table className="w-full text-left text-sm">
-                    <thead>
-                      <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase text-[11px]">
-                        <th className="pb-3 whitespace-nowrap">Line Item Description</th>
-                        <th className="pb-3 text-right whitespace-nowrap">Amount (₹)</th>
-                        <th className="pb-3 text-right whitespace-nowrap">% of Revenue</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100 font-medium">
-                      <tr>
-                        <td className="py-3 font-bold text-slate-800 whitespace-nowrap">Gross Sales Revenue (Receipts)</td>
-                        <td className="py-3 text-right font-bold text-slate-900 whitespace-nowrap">{formatCurrency(pnlData.grossSales)}</td>
-                        <td className="py-3 text-right text-slate-500 font-mono whitespace-nowrap">100%</td>
-                      </tr>
-                      <tr>
-                        <td className="py-3 text-slate-600 whitespace-nowrap">Less: GST Tax Collected</td>
-                        <td className="py-3 text-right text-rose-600 font-mono whitespace-nowrap">-{formatCurrency(pnlData.taxCollected)}</td>
-                        <td className="py-3 text-right text-slate-400 font-mono whitespace-nowrap">{pnlData.grossSales > 0 ? (pnlData.taxCollected / pnlData.grossSales * 100).toFixed(1) : 0}%</td>
-                      </tr>
-                      <tr className="bg-slate-50 font-bold">
-                        <td className="py-3 text-slate-800 whitespace-nowrap">Net Taxable Revenue</td>
-                        <td className="py-3 text-right text-slate-900 whitespace-nowrap">{formatCurrency(pnlData.taxableRevenue)}</td>
-                        <td className="py-3 text-right text-slate-600 font-mono whitespace-nowrap">{pnlData.grossSales > 0 ? (pnlData.taxableRevenue / pnlData.grossSales * 100).toFixed(1) : 0}%</td>
-                      </tr>
-                      <tr>
-                        <td className="py-3 text-slate-600 whitespace-nowrap">Less: Cost of Goods Sold (Wholesale Purchase)</td>
-                        <td className="py-3 text-right text-rose-600 font-mono whitespace-nowrap">-{formatCurrency(pnlData.costOfGoodsSold)}</td>
-                        <td className="py-3 text-right text-slate-400 font-mono whitespace-nowrap">48%</td>
-                      </tr>
-                      <tr>
-                        <td className="py-3 text-slate-600 whitespace-nowrap">Less: Store Rent (Pundri Main Market)</td>
-                        <td className="py-3 text-right text-slate-600 font-mono whitespace-nowrap">-{formatCurrency(pnlData.operatingExpenses.rent)}</td>
-                        <td className="py-3 text-right text-slate-400 font-mono whitespace-nowrap">-</td>
-                      </tr>
-                      <tr>
-                        <td className="py-3 text-slate-600 whitespace-nowrap">Less: Staff Salaries & Payroll</td>
-                        <td className="py-3 text-right text-slate-600 font-mono whitespace-nowrap">-{formatCurrency(pnlData.operatingExpenses.staffSalaries)}</td>
-                        <td className="py-3 text-right text-slate-400 font-mono whitespace-nowrap">-</td>
-                      </tr>
-                      <tr>
-                        <td className="py-3 text-slate-600 whitespace-nowrap">Less: Electricity & Air-Conditioning Utilities</td>
-                        <td className="py-3 text-right text-slate-600 font-mono whitespace-nowrap">-{formatCurrency(pnlData.operatingExpenses.electricity)}</td>
-                        <td className="py-3 text-right text-slate-400 font-mono whitespace-nowrap">-</td>
-                      </tr>
-                      <tr>
-                        <td className="py-3 text-slate-600 whitespace-nowrap">Less: Miscellaneous Operating & Maintenance</td>
-                        <td className="py-3 text-right text-slate-600 font-mono whitespace-nowrap">-{formatCurrency(pnlData.operatingExpenses.miscExpenses)}</td>
-                        <td className="py-3 text-right text-slate-400 font-mono whitespace-nowrap">-</td>
-                      </tr>
-                      <tr className="bg-emerald-50 text-emerald-900 font-black text-base">
-                        <td className="py-4 whitespace-nowrap">Net Monthly Store Operating Profit</td>
-                        <td className="py-4 text-right text-emerald-600 whitespace-nowrap">{formatCurrency(pnlData.netStoreProfit)}</td>
-                        <td className="py-4 text-right text-emerald-700 font-mono whitespace-nowrap">{pnlData.profitMarginPct}%</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            ) : <p className="text-slate-400">Loading P&L statement...</p>}
+                  {/* 2. EACH MONTH SALES & PROFITABILITY LEDGER */}
+                  {pnlData.monthlySales && pnlData.monthlySales.length > 0 && (
+                    <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden p-6 sm:p-8 transition-all">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="p-2 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 rounded-xl border border-indigo-100 dark:border-indigo-900/50">
+                              <Calendar className="w-5 h-5" />
+                            </span>
+                            <h4 className="text-xl font-black text-slate-900 dark:text-white">
+                              Each Month Sales &amp; Profitability Ledger
+                            </h4>
+                          </div>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                            Historical month-by-month financial telemetry. Click any row to inspect that month's full statement.
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-3.5 py-1.5 rounded-full border border-slate-200 dark:border-slate-700">
+                            {pnlData.monthlySales.length} Billing Cycles
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="overflow-x-auto rounded-2xl border border-slate-100 dark:border-slate-800">
+                        <table className="w-full text-left text-sm">
+                          <thead>
+                            <tr className="bg-slate-50/80 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold uppercase text-[11px] tracking-wider">
+                              <th className="py-3.5 px-4 whitespace-nowrap">Billing Month</th>
+                              <th className="py-3.5 px-4 text-right whitespace-nowrap">Footfall / Bills</th>
+                              <th className="py-3.5 px-4 text-right whitespace-nowrap">Avg Ticket (AOV)</th>
+                              <th className="py-3.5 px-4 text-right whitespace-nowrap">Gross Receipts</th>
+                              <th className="py-3.5 px-4 text-right whitespace-nowrap">Tax (GST)</th>
+                              <th className="py-3.5 px-4 text-right whitespace-nowrap">Net Taxable</th>
+                              <th className="py-3.5 px-4 text-right whitespace-nowrap">Wholesale COGS</th>
+                              <th className="py-3.5 px-4 text-right whitespace-nowrap">Fixed Overheads</th>
+                              <th className="py-3.5 px-4 text-right whitespace-nowrap">Net Profit</th>
+                              <th className="py-3.5 px-4 text-right whitespace-nowrap">Net Margin</th>
+                              <th className="py-3.5 px-4 text-center whitespace-nowrap">Action</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
+                            {pnlData.monthlySales.map((m) => {
+                              const isSelected = selectedPnlMonth === m.monthKey || (selectedPnlMonth === 'current' && m.monthKey === pnlData.currentMonthKey);
+                              const isCurrent = m.monthKey === pnlData.currentMonthKey;
+
+                              return (
+                                <tr
+                                  key={m.monthKey}
+                                  onClick={() => setSelectedPnlMonth(m.monthKey)}
+                                  className={`transition-all cursor-pointer ${
+                                    isSelected
+                                      ? 'bg-emerald-500/10 dark:bg-emerald-500/15 border-l-4 border-emerald-500 font-bold'
+                                      : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+                                  }`}
+                                >
+                                  <td className="py-4 px-4 whitespace-nowrap">
+                                    <div className="flex items-center gap-2">
+                                      <div className={`w-2.5 h-2.5 rounded-full ${isSelected ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300 dark:bg-slate-600'}`} />
+                                      <span className="font-black text-slate-900 dark:text-white text-sm">{m.monthName}</span>
+                                      {isCurrent && (
+                                        <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-300 rounded-full border border-emerald-300 dark:border-emerald-800">
+                                          Current
+                                        </span>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="py-4 px-4 text-right font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                                    <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md text-xs font-bold">{m.totalBills}</span>
+                                  </td>
+                                  <td className="py-4 px-4 text-right font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                                    {formatCurrency(m.avgBillValue)}
+                                  </td>
+                                  <td className="py-4 px-4 text-right font-black text-slate-900 dark:text-white whitespace-nowrap">
+                                    {formatCurrency(m.grossSales)}
+                                  </td>
+                                  <td className="py-4 px-4 text-right font-mono text-rose-600 dark:text-rose-400 whitespace-nowrap">
+                                    -{formatCurrency(m.taxCollected)}
+                                  </td>
+                                  <td className="py-4 px-4 text-right font-mono text-slate-800 dark:text-slate-200 whitespace-nowrap">
+                                    {formatCurrency(m.taxableRevenue)}
+                                  </td>
+                                  <td className="py-4 px-4 text-right font-mono text-amber-600 dark:text-amber-400 whitespace-nowrap">
+                                    -{formatCurrency(m.costOfGoodsSold)}
+                                  </td>
+                                  <td className="py-4 px-4 text-right font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                                    -{formatCurrency(m.operatingExpenses?.totalExpenses || 110000)}
+                                  </td>
+                                  <td className="py-4 px-4 text-right font-black whitespace-nowrap">
+                                    <span className={m.netStoreProfit >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}>
+                                      {formatCurrency(m.netStoreProfit)}
+                                    </span>
+                                  </td>
+                                  <td className="py-4 px-4 text-right whitespace-nowrap">
+                                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black font-mono shadow-sm ${
+                                      m.profitMarginPct >= 0
+                                        ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800'
+                                        : 'bg-rose-100 dark:bg-rose-950/60 text-rose-800 dark:text-rose-300 border border-rose-300 dark:border-rose-800'
+                                    }`}>
+                                      {m.profitMarginPct >= 0 ? '▲' : '▼'} {m.profitMarginPct}%
+                                    </span>
+                                  </td>
+                                  <td className="py-4 px-4 text-center whitespace-nowrap">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedPnlMonth(m.monthKey);
+                                      }}
+                                      className={`text-xs px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer ${
+                                        isSelected
+                                          ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
+                                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 hover:text-emerald-600'
+                                      }`}
+                                    >
+                                      {isSelected ? 'Viewing' : 'Inspect P&L'}
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 3. SELECTED MONTH DETAILED STATEMENT & WATERFALL VIEW */}
+                  <div className="bg-slate-50/50 dark:bg-slate-900/50 rounded-3xl p-6 sm:p-8 border border-slate-200 dark:border-slate-800 space-y-8">
+                    {/* Control Bar: Month Switcher Tabs + Share Action */}
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-6 border-b border-slate-200 dark:border-slate-800">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                          <span className="px-3 py-0.5 bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 text-[11px] font-black uppercase tracking-wider rounded-full border border-emerald-500/30">
+                            Executive Detailed Audit
+                          </span>
+                          <span className="text-xs font-bold text-slate-400">
+                            {activeMonthData.totalBills} bills • Avg Ticket {formatCurrency(activeMonthData.avgBillValue)}
+                          </span>
+                        </div>
+                        <h3 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
+                          <span>Detailed Statement:</span>
+                          <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 to-teal-500 dark:from-emerald-400 dark:to-teal-300">
+                            {activeMonthData.monthName}
+                          </span>
+                        </h3>
+                      </div>
+
+                      {/* Interactive Month Switcher Pills + Share Button */}
+                      <div className="flex flex-wrap items-center gap-2.5">
+                        <div className="bg-white dark:bg-slate-800 p-1 rounded-2xl border border-slate-200 dark:border-slate-700 flex items-center gap-1 shadow-sm">
+                          <button
+                            onClick={() => setSelectedPnlMonth(pnlData.currentMonthKey)}
+                            className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-1.5 ${
+                              isViewingCurrent
+                                ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-500/25'
+                                : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                            }`}
+                          >
+                            <Sparkles className="w-3.5 h-3.5" />
+                            <span>{pnlData.currentMonthName || 'Current Month'}</span>
+                          </button>
+
+                          {pnlData.monthlySales
+                            ?.filter(m => m.monthKey !== pnlData.currentMonthKey)
+                            .map(m => {
+                              const isSelected = selectedPnlMonth === m.monthKey;
+                              return (
+                                <button
+                                  key={m.monthKey}
+                                  onClick={() => setSelectedPnlMonth(m.monthKey)}
+                                  className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all cursor-pointer ${
+                                    isSelected
+                                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-500/25'
+                                      : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                                  }`}
+                                >
+                                  {m.monthName}
+                                </button>
+                              );
+                            })}
+                        </div>
+
+                        {/* Copy / Export Button */}
+                        <button
+                          onClick={() => copyPnlSummary(activeMonthData)}
+                          className="px-3.5 py-2 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-2xl border border-slate-200 dark:border-slate-700 text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+                          title="Copy text summary for WhatsApp/Accountant"
+                        >
+                          {pnlCopied ? (
+                            <>
+                              <Check className="w-3.5 h-3.5 text-emerald-500" />
+                              <span className="text-emerald-600 dark:text-emerald-400 font-black">Copied!</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-3.5 h-3.5 text-slate-400" />
+                              <span>Copy Summary</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Visual Financial Waterfall Pipeline */}
+                    <div className="bg-white dark:bg-slate-800/80 backdrop-blur-md rounded-2xl p-5 border border-slate-200 dark:border-slate-700/80 shadow-sm">
+                      <div className="flex items-center justify-between mb-4">
+                        <p className="text-[11px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                          <TrendingUp className="w-4 h-4 text-emerald-500" /> Revenue-to-Profit Financial Flow ({activeMonthData.monthName})
+                        </p>
+                        <span className="text-xs font-bold text-slate-500 dark:text-slate-400 font-mono">
+                          Bottom Line: {activeMonthData.profitMarginPct}% Net Margin
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 md:grid-cols-6 gap-3 text-center">
+                        <div className="p-3 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-slate-100 dark:border-slate-800">
+                          <p className="text-[10px] font-bold text-slate-400 uppercase">1. Gross Receipts</p>
+                          <p className="text-base font-black text-slate-800 dark:text-white mt-0.5">{formatCurrency(activeMonthData.grossSales)}</p>
+                          <span className="text-[10px] font-bold text-slate-400">100% (Base)</span>
+                        </div>
+
+                        <div className="p-3 bg-rose-50/60 dark:bg-rose-950/30 rounded-xl border border-rose-100 dark:border-rose-900/40">
+                          <p className="text-[10px] font-bold text-rose-500 uppercase">2. Less GST Tax</p>
+                          <p className="text-base font-black text-rose-600 dark:text-rose-400 mt-0.5">-{formatCurrency(activeMonthData.taxCollected)}</p>
+                          <span className="text-[10px] font-bold text-rose-400 font-mono">{activeMonthData.grossSales > 0 ? (activeMonthData.taxCollected / activeMonthData.grossSales * 100).toFixed(1) : 0}%</span>
+                        </div>
+
+                        <div className="p-3 bg-blue-50/60 dark:bg-blue-950/30 rounded-xl border border-blue-100 dark:border-blue-900/40">
+                          <p className="text-[10px] font-bold text-blue-500 uppercase">3. Net Taxable</p>
+                          <p className="text-base font-black text-blue-700 dark:text-blue-300 mt-0.5">{formatCurrency(activeMonthData.taxableRevenue)}</p>
+                          <span className="text-[10px] font-bold text-blue-400 font-mono">{activeMonthData.grossSales > 0 ? (activeMonthData.taxableRevenue / activeMonthData.grossSales * 100).toFixed(1) : 0}%</span>
+                        </div>
+
+                        <div className="p-3 bg-amber-50/60 dark:bg-amber-950/30 rounded-xl border border-amber-100 dark:border-amber-900/40">
+                          <p className="text-[10px] font-bold text-amber-500 uppercase">4. Less COGS (~73%)</p>
+                          <p className="text-base font-black text-amber-600 dark:text-amber-400 mt-0.5">-{formatCurrency(activeMonthData.costOfGoodsSold)}</p>
+                          <span className="text-[10px] font-bold text-amber-400 font-mono">Wholesale</span>
+                        </div>
+
+                        <div className="p-3 bg-purple-50/60 dark:bg-purple-950/30 rounded-xl border border-purple-100 dark:border-purple-900/40">
+                          <p className="text-[10px] font-bold text-purple-500 uppercase">5. Less Overheads</p>
+                          <p className="text-base font-black text-purple-600 dark:text-purple-400 mt-0.5">-{formatCurrency(activeMonthData.operatingExpenses?.totalExpenses || 110000)}</p>
+                          <span className="text-[10px] font-bold text-purple-400 font-mono">Rent+Staff+Pwr</span>
+                        </div>
+
+                        <div className="p-3 bg-gradient-to-br from-emerald-500/20 to-teal-500/20 rounded-xl border border-emerald-500/40 shadow-sm">
+                          <p className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase">6. Net Profit</p>
+                          <p className="text-base font-black text-emerald-700 dark:text-emerald-300 mt-0.5">{formatCurrency(activeMonthData.netStoreProfit)}</p>
+                          <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/60 px-1.5 py-0.5 rounded font-mono">
+                            {activeMonthData.profitMarginPct}% Margin
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Top 4 Bento KPI Metric Cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {/* Card 1: Gross Sales */}
+                      <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Gross Sales Receipts</span>
+                            <div className="w-8 h-8 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 flex items-center justify-center">
+                              <Receipt className="w-4 h-4" />
+                            </div>
+                          </div>
+                          <h4 className="text-3xl font-black text-slate-900 dark:text-white mt-2 tracking-tight">
+                            {formatCurrency(activeMonthData.grossSales)}
+                          </h4>
+                        </div>
+                        <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-700/60 flex flex-col gap-1 text-xs">
+                          <div className="flex justify-between text-slate-500 dark:text-slate-400">
+                            <span>Taxable Inflow:</span>
+                            <span className="font-bold text-slate-800 dark:text-slate-200">{formatCurrency(activeMonthData.taxableRevenue)}</span>
+                          </div>
+                          <div className="flex justify-between text-slate-400 text-[11px]">
+                            <span>Transactions:</span>
+                            <span>{activeMonthData.totalBills} Bills (AOV {formatCurrency(activeMonthData.avgBillValue)})</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Card 2: Wholesale COGS */}
+                      <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Wholesale Inventory (COGS)</span>
+                            <div className="w-8 h-8 rounded-xl bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+                              <Package className="w-4 h-4" />
+                            </div>
+                          </div>
+                          <h4 className="text-3xl font-black text-amber-600 dark:text-amber-400 mt-2 tracking-tight">
+                            {formatCurrency(activeMonthData.costOfGoodsSold)}
+                          </h4>
+                        </div>
+                        <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-700/60 flex flex-col gap-1 text-xs">
+                          <div className="flex justify-between text-slate-500 dark:text-slate-400">
+                            <span>Distributor Cost:</span>
+                            <span className="font-bold text-amber-600 dark:text-amber-400">~73% of Taxable</span>
+                          </div>
+                          <div className="flex justify-between text-slate-400 text-[11px]">
+                            <span>Gross Retained Margin:</span>
+                            <span className="text-emerald-600 dark:text-emerald-400 font-bold">27% ({formatCurrency(activeMonthData.grossProfit || Math.round(activeMonthData.taxableRevenue * 0.27))})</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Card 3: Store Fixed Overheads */}
+                      <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-all flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Store Fixed Overheads</span>
+                            <div className="w-8 h-8 rounded-xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center">
+                              <Building2 className="w-4 h-4" />
+                            </div>
+                          </div>
+                          <h4 className="text-3xl font-black text-rose-600 dark:text-rose-400 mt-2 tracking-tight">
+                            {formatCurrency(activeMonthData.operatingExpenses?.totalExpenses || 110000)}
+                          </h4>
+                        </div>
+                        <div className="pt-4 mt-4 border-t border-slate-100 dark:border-slate-700/60 flex flex-col gap-1 text-xs">
+                          <div className="flex justify-between text-slate-500 dark:text-slate-400">
+                            <span>Main Components:</span>
+                            <span className="font-bold text-slate-800 dark:text-slate-200">4 Fixed Expenses</span>
+                          </div>
+                          <div className="flex justify-between text-slate-400 text-[11px]">
+                            <span>Rent+Staff+Power+Misc:</span>
+                            <span>₹40k + ₹45k + ₹15k + ₹10k</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Card 4: Net Store Profit */}
+                      <div className="bg-gradient-to-br from-emerald-600 via-teal-700 to-green-800 text-white p-6 rounded-3xl shadow-xl flex flex-col justify-between relative overflow-hidden">
+                        <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-white/10 rounded-full blur-xl pointer-events-none" />
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-black text-emerald-200 uppercase tracking-wider">Net Owner Bottom Line</span>
+                            <div className="w-8 h-8 rounded-xl bg-white/20 backdrop-blur-sm text-white flex items-center justify-center">
+                              <Award className="w-4 h-4" />
+                            </div>
+                          </div>
+                          <h4 className="text-3xl font-black text-white mt-2 tracking-tight">
+                            {formatCurrency(activeMonthData.netStoreProfit)}
+                          </h4>
+                        </div>
+                        <div className="pt-4 mt-4 border-t border-white/20 flex flex-col gap-1">
+                          <div className="flex justify-between items-center text-xs font-bold text-emerald-100">
+                            <span>Store Net Margin:</span>
+                            <span className="bg-white/20 px-2.5 py-0.5 rounded-full font-mono text-white text-xs">
+                              {activeMonthData.profitMarginPct}%
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-emerald-200/90 mt-0.5">
+                            {activeMonthData.netStoreProfit >= 0 ? '🎉 Profitable Billing Cycle' : '⚠️ Breakeven shortfall'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Detailed Itemized Financial Statement Ledger */}
+                    <div className="bg-white dark:bg-slate-800 rounded-3xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+                      <div className="p-6 border-b border-slate-100 dark:border-slate-700/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50 dark:bg-slate-800/50">
+                        <div>
+                          <h4 className="font-black text-slate-900 dark:text-white text-lg flex items-center gap-2">
+                            <span>Audit Statement Breakdown</span>
+                            <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold">
+                              {activeMonthData.monthName}
+                            </span>
+                          </h4>
+                          <p className="text-xs text-slate-400 mt-0.5">
+                            Full statutory audit trail including GST tax deductions, wholesale distributor transfers, and shop operational expenses.
+                          </p>
+                        </div>
+                        <div className="text-xs font-mono font-bold text-slate-500 bg-white dark:bg-slate-700/80 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-600">
+                          Accounting Model: Franchise Retail 27% Gross
+                        </div>
+                      </div>
+
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-sm">
+                          <thead>
+                            <tr className="border-b border-slate-200 dark:border-slate-700/80 text-slate-400 font-black uppercase text-[10px] tracking-wider bg-slate-50/30 dark:bg-slate-800/30">
+                              <th className="py-3 px-6 whitespace-nowrap">Itemized Telemetry &amp; Line Item</th>
+                              <th className="py-3 px-6 text-center whitespace-nowrap">Accounting Category</th>
+                              <th className="py-3 px-6 text-right whitespace-nowrap">Amount (₹)</th>
+                              <th className="py-3 px-6 text-right whitespace-nowrap">% of Gross Revenue</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60 font-medium text-slate-700 dark:text-slate-200">
+                            {/* SECTION 1: INFLOW */}
+                            <tr className="bg-slate-50/70 dark:bg-slate-800/60 font-black text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                              <td colSpan={4} className="py-2.5 px-6">
+                                1. Gross Inflow &amp; Tax Deductions
+                              </td>
+                            </tr>
+                            <tr className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                              <td className="py-3.5 px-6 font-bold text-slate-900 dark:text-white whitespace-nowrap flex items-center gap-2.5">
+                                <span className="w-2 h-2 rounded-full bg-blue-500" />
+                                <span>Gross Sales Revenue (POS Checkouts)</span>
+                              </td>
+                              <td className="py-3.5 px-6 text-center whitespace-nowrap">
+                                <span className="px-2.5 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 text-[11px] font-bold">
+                                  Inflow
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-6 text-right font-black text-slate-900 dark:text-white whitespace-nowrap font-mono">
+                                {formatCurrency(activeMonthData.grossSales)}
+                              </td>
+                              <td className="py-3.5 px-6 text-right text-slate-500 font-mono whitespace-nowrap">
+                                100.0%
+                              </td>
+                            </tr>
+                            <tr className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                              <td className="py-3.5 px-6 text-slate-600 dark:text-slate-300 whitespace-nowrap flex items-center gap-2.5">
+                                <span className="w-2 h-2 rounded-full bg-rose-500" />
+                                <span>Less: Output GST Collected (5% &amp; 12% Slabs)</span>
+                              </td>
+                              <td className="py-3.5 px-6 text-center whitespace-nowrap">
+                                <span className="px-2.5 py-0.5 rounded-md bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 text-[11px] font-bold">
+                                  Tax Liability
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-6 text-right font-bold text-rose-600 dark:text-rose-400 whitespace-nowrap font-mono">
+                                -{formatCurrency(activeMonthData.taxCollected)}
+                              </td>
+                              <td className="py-3.5 px-6 text-right text-rose-500 dark:text-rose-400 font-mono whitespace-nowrap">
+                                -{activeMonthData.grossSales > 0 ? (activeMonthData.taxCollected / activeMonthData.grossSales * 100).toFixed(1) : 0}%
+                              </td>
+                            </tr>
+                            <tr className="bg-blue-50/30 dark:bg-blue-950/20 font-bold border-y border-blue-100 dark:border-blue-900/30">
+                              <td className="py-3 px-6 text-blue-950 dark:text-blue-200 whitespace-nowrap flex items-center gap-2.5">
+                                <span className="text-blue-500">↳</span>
+                                <span>Net Taxable Sales (Store Retained Inflow)</span>
+                              </td>
+                              <td className="py-3 px-6 text-center whitespace-nowrap">
+                                <span className="text-xs font-bold text-blue-600 dark:text-blue-400">Subtotal</span>
+                              </td>
+                              <td className="py-3 px-6 text-right font-black text-blue-900 dark:text-blue-200 whitespace-nowrap font-mono">
+                                {formatCurrency(activeMonthData.taxableRevenue)}
+                              </td>
+                              <td className="py-3 px-6 text-right text-blue-600 dark:text-blue-300 font-mono whitespace-nowrap">
+                                {activeMonthData.grossSales > 0 ? (activeMonthData.taxableRevenue / activeMonthData.grossSales * 100).toFixed(1) : 0}%
+                              </td>
+                            </tr>
+
+                            {/* SECTION 2: COGS */}
+                            <tr className="bg-slate-50/70 dark:bg-slate-800/60 font-black text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                              <td colSpan={4} className="py-2.5 px-6">
+                                2. Merchandise Inventory &amp; Wholesale Purchase
+                              </td>
+                            </tr>
+                            <tr className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                              <td className="py-3.5 px-6 text-slate-700 dark:text-slate-200 whitespace-nowrap flex items-center gap-2.5">
+                                <span className="w-2 h-2 rounded-full bg-amber-500" />
+                                <span>Less: Cost of Goods Sold (Cobb Wholesale Transfer ~73%)</span>
+                              </td>
+                              <td className="py-3.5 px-6 text-center whitespace-nowrap">
+                                <span className="px-2.5 py-0.5 rounded-md bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 text-[11px] font-bold">
+                                  COGS (Direct)
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-6 text-right font-bold text-amber-600 dark:text-amber-400 whitespace-nowrap font-mono">
+                                -{formatCurrency(activeMonthData.costOfGoodsSold)}
+                              </td>
+                              <td className="py-3.5 px-6 text-right text-amber-600 dark:text-amber-400 font-mono whitespace-nowrap">
+                                -{activeMonthData.grossSales > 0 ? (activeMonthData.costOfGoodsSold / activeMonthData.grossSales * 100).toFixed(1) : 0}%
+                              </td>
+                            </tr>
+                            <tr className="bg-amber-50/30 dark:bg-amber-950/20 font-bold border-y border-amber-100 dark:border-amber-900/30">
+                              <td className="py-3 px-6 text-amber-950 dark:text-amber-200 whitespace-nowrap flex items-center gap-2.5">
+                                <span className="text-amber-500">↳</span>
+                                <span>Gross Retail Margin Retained (27%)</span>
+                              </td>
+                              <td className="py-3 px-6 text-center whitespace-nowrap">
+                                <span className="text-xs font-bold text-amber-600 dark:text-amber-400">Gross Margin</span>
+                              </td>
+                              <td className="py-3 px-6 text-right font-black text-amber-900 dark:text-amber-200 whitespace-nowrap font-mono">
+                                {formatCurrency(activeMonthData.grossProfit || Math.round(activeMonthData.taxableRevenue * 0.27))}
+                              </td>
+                              <td className="py-3 px-6 text-right text-amber-600 dark:text-amber-300 font-mono whitespace-nowrap">
+                                ~27.0%
+                              </td>
+                            </tr>
+
+                            {/* SECTION 3: FIXED STORE OVERHEADS */}
+                            <tr className="bg-slate-50/70 dark:bg-slate-800/60 font-black text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                              <td colSpan={4} className="py-2.5 px-6">
+                                3. Store Fixed Overheads &amp; Operating Expenses
+                              </td>
+                            </tr>
+                            <tr className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                              <td className="py-3.5 px-6 text-slate-600 dark:text-slate-300 whitespace-nowrap flex items-center gap-2.5 pl-8">
+                                <span>🏢 Store Rent (Pundri Main Market Prime Road)</span>
+                              </td>
+                              <td className="py-3.5 px-6 text-center whitespace-nowrap">
+                                <span className="text-xs text-slate-400 font-mono">Occupancy</span>
+                              </td>
+                              <td className="py-3.5 px-6 text-right font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                                -{formatCurrency(activeMonthData.operatingExpenses?.rent || 40000)}
+                              </td>
+                              <td className="py-3.5 px-6 text-right text-slate-400 font-mono whitespace-nowrap">
+                                {activeMonthData.grossSales > 0 ? ((activeMonthData.operatingExpenses?.rent || 40000) / activeMonthData.grossSales * 100).toFixed(1) : 0}%
+                              </td>
+                            </tr>
+                            <tr className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                              <td className="py-3.5 px-6 text-slate-600 dark:text-slate-300 whitespace-nowrap flex items-center gap-2.5 pl-8">
+                                <span>👥 Staff Payroll, Store Team &amp; Commissions</span>
+                              </td>
+                              <td className="py-3.5 px-6 text-center whitespace-nowrap">
+                                <span className="text-xs text-slate-400 font-mono">Payroll</span>
+                              </td>
+                              <td className="py-3.5 px-6 text-right font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                                -{formatCurrency(activeMonthData.operatingExpenses?.staffSalaries || 45000)}
+                              </td>
+                              <td className="py-3.5 px-6 text-right text-slate-400 font-mono whitespace-nowrap">
+                                {activeMonthData.grossSales > 0 ? ((activeMonthData.operatingExpenses?.staffSalaries || 45000) / activeMonthData.grossSales * 100).toFixed(1) : 0}%
+                              </td>
+                            </tr>
+                            <tr className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                              <td className="py-3.5 px-6 text-slate-600 dark:text-slate-300 whitespace-nowrap flex items-center gap-2.5 pl-8">
+                                <span>⚡ Electricity, Showroom Lighting &amp; Air Conditioning</span>
+                              </td>
+                              <td className="py-3.5 px-6 text-center whitespace-nowrap">
+                                <span className="text-xs text-slate-400 font-mono">Utilities</span>
+                              </td>
+                              <td className="py-3.5 px-6 text-right font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                                -{formatCurrency(activeMonthData.operatingExpenses?.electricity || 15000)}
+                              </td>
+                              <td className="py-3.5 px-6 text-right text-slate-400 font-mono whitespace-nowrap">
+                                {activeMonthData.grossSales > 0 ? ((activeMonthData.operatingExpenses?.electricity || 15000) / activeMonthData.grossSales * 100).toFixed(1) : 0}%
+                              </td>
+                            </tr>
+                            <tr className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                              <td className="py-3.5 px-6 text-slate-600 dark:text-slate-300 whitespace-nowrap flex items-center gap-2.5 pl-8">
+                                <span>🛠 Miscellaneous Operating, POS Software &amp; Upkeep</span>
+                              </td>
+                              <td className="py-3.5 px-6 text-center whitespace-nowrap">
+                                <span className="text-xs text-slate-400 font-mono">Sundry</span>
+                              </td>
+                              <td className="py-3.5 px-6 text-right font-mono text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                                -{formatCurrency(activeMonthData.operatingExpenses?.miscExpenses || 10000)}
+                              </td>
+                              <td className="py-3.5 px-6 text-right text-slate-400 font-mono whitespace-nowrap">
+                                {activeMonthData.grossSales > 0 ? ((activeMonthData.operatingExpenses?.miscExpenses || 10000) / activeMonthData.grossSales * 100).toFixed(1) : 0}%
+                              </td>
+                            </tr>
+                            <tr className="bg-purple-50/30 dark:bg-purple-950/20 font-bold border-y border-purple-100 dark:border-purple-900/30">
+                              <td className="py-3 px-6 text-purple-950 dark:text-purple-200 whitespace-nowrap flex items-center gap-2.5">
+                                <span className="text-purple-500">↳</span>
+                                <span>Total Fixed Store Operating Expenses</span>
+                              </td>
+                              <td className="py-3 px-6 text-center whitespace-nowrap">
+                                <span className="text-xs font-bold text-purple-600 dark:text-purple-400">Total Overheads</span>
+                              </td>
+                              <td className="py-3 px-6 text-right font-black text-rose-600 dark:text-rose-400 whitespace-nowrap font-mono">
+                                -{formatCurrency(activeMonthData.operatingExpenses?.totalExpenses || 110000)}
+                              </td>
+                              <td className="py-3 px-6 text-right text-slate-400 font-mono whitespace-nowrap">
+                                {activeMonthData.grossSales > 0 ? ((activeMonthData.operatingExpenses?.totalExpenses || 110000) / activeMonthData.grossSales * 100).toFixed(1) : 0}%
+                              </td>
+                            </tr>
+
+                            {/* SECTION 4: NET BOTTOM LINE */}
+                            <tr className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white font-black text-base shadow-inner">
+                              <td className="py-5 px-6 whitespace-nowrap">
+                                <div className="flex items-center gap-2.5">
+                                  <Award className="w-5 h-5 text-emerald-200" />
+                                  <div>
+                                    <p className="text-sm font-black text-white">Net Monthly Store Operating Profit</p>
+                                    <p className="text-[11px] font-normal text-emerald-100">
+                                      Owner net income for {activeMonthData.monthName}
+                                    </p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="py-5 px-6 text-center whitespace-nowrap">
+                                <span className="bg-white/20 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-black text-white uppercase tracking-wider">
+                                  Final Bottomline
+                                </span>
+                              </td>
+                              <td className="py-5 px-6 text-right font-black text-white whitespace-nowrap text-xl font-mono">
+                                {formatCurrency(activeMonthData.netStoreProfit)}
+                              </td>
+                              <td className="py-5 px-6 text-right text-emerald-100 font-mono whitespace-nowrap text-sm font-black">
+                                {activeMonthData.profitMarginPct}% Net
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              );
+            })() : <p className="text-slate-400">Loading P&amp;L statement...</p>}
           </div>
         )
       )}

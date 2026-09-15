@@ -16,25 +16,56 @@
   }
 }
 
-/* Global Dark Mode Base & Color Scheme */
+/* Global Dark Mode Base & Color Scheme - Pitch Black Obsidian Theme */
+@variant dark (&:where(.dark, .dark *));
+
 html.dark, .dark, .dark-mode {
   color-scheme: dark;
+  --obsidian-bg: #000000;
+  --obsidian-sidebar: #000000;
+  --obsidian-card: #0f1523;
+  --obsidian-card-hover: #151d30;
+  --obsidian-border: #354259;
+  --obsidian-border-subtle: rgba(255, 255, 255, 0.16);
+  --obsidian-input: #070a12;
+  --obsidian-input-border: #354259;
+
+  /* Remap Tailwind slate and gray tokens in dark mode for high tile differentiation */
+  --color-slate-950: #000000;
+  --color-slate-900: #0f1523;
+  --color-slate-850: #090d16;
+  --color-slate-800: #1a2233;
+  --color-slate-700: #354259;
+  --color-gray-950: #000000;
+  --color-gray-900: #0f1523;
+  --color-gray-800: #1a2233;
 }
 
-/* Custom Scrollbar for Dark Mode */
-.dark-mode ::-webkit-scrollbar {
+html.dark body,
+body.dark,
+body.dark-mode {
+  background-color: #000000 !important;
+  color: #ffffff;
+}
+
+/* Custom Scrollbar for Pitch Black Dark Mode */
+.dark-mode ::-webkit-scrollbar,
+html.dark ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
-.dark-mode ::-webkit-scrollbar-track {
-  background: #030712;
+.dark-mode ::-webkit-scrollbar-track,
+html.dark ::-webkit-scrollbar-track {
+  background: #000000;
 }
-.dark-mode ::-webkit-scrollbar-thumb {
-  background: #1e293b;
+.dark-mode ::-webkit-scrollbar-thumb,
+html.dark ::-webkit-scrollbar-thumb {
+  background: #222226;
   border-radius: 9999px;
 }
-.dark-mode ::-webkit-scrollbar-thumb:hover {
-  background: #334155;
+.dark-mode ::-webkit-scrollbar-thumb:hover,
+html.dark ::-webkit-scrollbar-thumb:hover {
+  background: #333338;
 }
 
 /* Utility to hide scrollbars while retaining touch/wheel scroll */

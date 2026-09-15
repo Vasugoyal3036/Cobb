@@ -1591,7 +1591,7 @@ export default function App() {
   }
 
   return (
-    <div className={`flex h-screen bg-slate-100 ${darkMode ? 'dark' : ''} font-sans transition-colors duration-300 ${darkMode ? 'dark-mode bg-slate-950 text-slate-100' : 'bg-slate-100 text-slate-800'}`}>
+    <div className={`flex h-screen bg-slate-100 ${darkMode ? 'dark' : ''} font-sans transition-colors duration-300 ${darkMode ? 'dark-mode bg-[#000000] text-white' : 'bg-slate-100 text-slate-800'}`}>
       <style>{`
         @keyframes slideIn {
           from {
@@ -1621,224 +1621,310 @@ export default function App() {
           background: #334155;
         }
 
-        /* Premium Custom Dark Mode Overrides */
-        html.dark, .dark-mode {
+        /* PITCH BLACK OBSIDIAN THEME & HIGHLIGHTED TYPOGRAPHY */
+        html.dark, .dark-mode, .dark-mode body, html.dark body, html.dark #root, .dark-mode #root {
           color-scheme: dark !important;
-          background-color: #030712 !important;
-          color: #f3f4f6 !important;
+          background-color: #000000 !important;
+          color: #ffffff !important;
         }
-        .dark-mode .bg-white {
-          background-color: #0b1329 !important;
-          color: #f3f4f6 !important;
-          border-color: #1e293b !important;
-          box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.5) !important;
+        .dark-mode body {
+          background-color: #000000 !important;
         }
+        
+        /* STRONG TILE DIFFERENTIATION: Elevated Obsidian Slate Cards with Crisp Solid Border Line & Specular Rim */
+        .dark-mode .bg-white,
+        .dark-mode [class*="bg-slate-900"],
+        .dark-mode [class*="bg-slate-950"],
+        .dark-mode [class*="bg-gray-900"],
+        .dark-mode [class*="bg-gray-950"],
+        .dark-mode .rounded-2xl.border,
+        .dark-mode .rounded-xl.border,
+        .dark-mode [class*="rounded-2xl"][class*="border"],
+        .dark-mode [class*="rounded-xl"][class*="border"] {
+          background-color: #0f1523 !important;
+          color: #ffffff !important;
+          border: 1.5px solid #354259 !important;
+          box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.16), 0 10px 30px -4px rgba(0, 0, 0, 0.95) !important;
+        }
+        .dark-mode .bg-white:hover,
+        .dark-mode [class*="bg-slate-900"]:hover,
+        .dark-mode .rounded-2xl.border:hover,
+        .dark-mode .rounded-xl.border:hover,
+        .dark-mode [class*="rounded-2xl"][class*="border"]:hover,
+        .dark-mode [class*="rounded-xl"][class*="border"]:hover,
+        .dark-mode .hover\:shadow-md:hover {
+          border-color: #4f6892 !important;
+          box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.28), 0 14px 40px -4px rgba(0, 0, 0, 0.98), 0 0 20px -4px rgba(59, 130, 246, 0.25) !important;
+        }
+
+        /* DEDICATED KPI METRIC TILES (Matching Obsidian Centerpiece from Reference) */
+        .dark-mode .kpi-card-revenue {
+          background: radial-gradient(circle at top left, rgba(16, 185, 129, 0.18) 0%, #0d1522 75%) !important;
+          border: 1.5px solid rgba(16, 185, 129, 0.5) !important;
+          box-shadow: inset 0 1px 0 0 rgba(16, 185, 129, 0.4), 0 10px 30px -4px rgba(0, 0, 0, 0.95) !important;
+        }
+        .dark-mode .kpi-card-revenue:hover {
+          border-color: rgba(52, 211, 153, 0.85) !important;
+          box-shadow: inset 0 1px 0 0 rgba(52, 211, 153, 0.55), 0 14px 40px -4px rgba(0, 0, 0, 0.98), 0 0 25px -4px rgba(16, 185, 129, 0.35) !important;
+        }
+
+        .dark-mode .kpi-card-target {
+          background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.18) 0%, #0d1522 75%) !important;
+          border: 1.5px solid rgba(59, 130, 246, 0.5) !important;
+          box-shadow: inset 0 1px 0 0 rgba(59, 130, 246, 0.4), 0 10px 30px -4px rgba(0, 0, 0, 0.95) !important;
+        }
+        .dark-mode .kpi-card-target:hover {
+          border-color: rgba(96, 165, 250, 0.85) !important;
+          box-shadow: inset 0 1px 0 0 rgba(96, 165, 250, 0.55), 0 14px 40px -4px rgba(0, 0, 0, 0.98), 0 0 25px -4px rgba(59, 130, 246, 0.35) !important;
+        }
+
+        .dark-mode .kpi-card-aov {
+          background: radial-gradient(circle at top left, rgba(168, 85, 247, 0.18) 0%, #0d1522 75%) !important;
+          border: 1.5px solid rgba(168, 85, 247, 0.5) !important;
+          box-shadow: inset 0 1px 0 0 rgba(168, 85, 247, 0.4), 0 10px 30px -4px rgba(0, 0, 0, 0.95) !important;
+        }
+        .dark-mode .kpi-card-aov:hover {
+          border-color: rgba(192, 132, 252, 0.85) !important;
+          box-shadow: inset 0 1px 0 0 rgba(192, 132, 252, 0.55), 0 14px 40px -4px rgba(0, 0, 0, 0.98), 0 0 25px -4px rgba(168, 85, 247, 0.35) !important;
+        }
+
+        .dark-mode .kpi-card-margin {
+          background: radial-gradient(circle at top left, rgba(244, 63, 94, 0.18) 0%, #170d14 75%) !important;
+          border: 1.5px solid rgba(244, 63, 94, 0.5) !important;
+          box-shadow: inset 0 1px 0 0 rgba(244, 63, 94, 0.4), 0 10px 30px -4px rgba(0, 0, 0, 0.95) !important;
+        }
+        .dark-mode .kpi-card-margin:hover {
+          border-color: rgba(251, 113, 133, 0.85) !important;
+          box-shadow: inset 0 1px 0 0 rgba(251, 113, 133, 0.55), 0 14px 40px -4px rgba(0, 0, 0, 0.98), 0 0 25px -4px rgba(244, 63, 94, 0.35) !important;
+        }
+
+        /* RECESSED SUB-TILES, INNER BOXES & CONTAINERS */
         .dark-mode .bg-slate-50, .dark-mode .bg-gray-50 {
-          background-color: #030712 !important;
+          background-color: #000000 !important;
+          color: #ffffff !important;
+        }
+        .dark-mode .bg-slate-100,
+        .dark-mode .bg-gray-100,
+        .dark-mode [class*="bg-slate-100"],
+        .dark-mode .bg-slate-200,
+        .dark-mode .bg-gray-200,
+        .dark-mode [class*="bg-slate-200"],
+        .dark-mode [class*="bg-slate-800"],
+        .dark-mode [class*="bg-slate-850"],
+        .dark-mode [class*="bg-gray-800"] {
+          background-color: #080c14 !important;
           color: #e2e8f0 !important;
-        }
-        .dark-mode .bg-slate-100, .dark-mode .bg-gray-100 {
-          background-color: #070d1e !important;
-          color: #e2e8f0 !important;
-        }
-        .dark-mode .bg-slate-200, .dark-mode .bg-gray-200 {
-          background-color: #162036 !important;
-          color: #e2e8f0 !important;
-        }
-        .dark-mode .bg-slate-300 {
-          background-color: #1e293b !important;
-        }
-        .dark-mode .bg-slate-50\/50, .dark-mode .bg-slate-100\/50 {
-          background-color: rgba(11, 19, 41, 0.5) !important;
+          border-color: #232d3f !important;
         }
         .dark-mode .bg-white\/85, .dark-mode .bg-white\/80, .dark-mode .bg-white\/90 {
-          background-color: rgba(7, 13, 30, 0.85) !important;
-          border-color: #1e293b !important;
+          background-color: rgba(15, 21, 35, 0.96) !important;
+          border-color: #354259 !important;
+          box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.16) !important;
         }
-        /* High-Contrast Headings & Text */
-        .dark-mode .text-slate-900, .dark-mode .text-slate-950, .dark-mode .text-gray-900, .dark-mode .text-black {
+
+        /* HIGHLIGHTED TYPOGRAPHY (Max High Contrast against Pitch Black) */
+        /* Crisp, Pure Radiant White for Headings, Metrics & Key Figures */
+        .dark-mode h1, .dark-mode h2, .dark-mode h3, .dark-mode h4, .dark-mode h5, .dark-mode h6,
+        .dark-mode .text-slate-900, .dark-mode .text-slate-950, .dark-mode .text-gray-900, .dark-mode .text-black,
+        .dark-mode .text-white {
+          color: #ffffff !important;
+        }
+        .dark-mode .font-black, .dark-mode .font-extrabold {
+          color: #ffffff;
+        }
+
+        /* High Visibility Secondary Titles */
+        .dark-mode .text-slate-800, .dark-mode .text-gray-800 {
           color: #f8fafc !important;
         }
-        .dark-mode .text-slate-800, .dark-mode .text-gray-800 {
-          color: #f1f5f9 !important;
-        }
+
+        /* Readable Body Text */
         .dark-mode .text-slate-700, .dark-mode .text-gray-700 {
           color: #e2e8f0 !important;
         }
         .dark-mode .text-slate-650, .dark-mode .text-slate-600, .dark-mode .text-gray-600 {
           color: #cbd5e1 !important;
         }
+
+        /* Highlighted Secondary Labels & Metrics Subtext (Platinum clarity, not dark gray) */
         .dark-mode .text-slate-500, .dark-mode .text-gray-500 {
           color: #94a3b8 !important;
         }
         .dark-mode .text-slate-400, .dark-mode .text-gray-400 {
-          color: #64748b !important;
+          color: #94a3b8 !important;
         }
-        /* Borders & Dividers */
-        .dark-mode .border-slate-100,
-        .dark-mode .border-slate-200,
-        .dark-mode .border-slate-200\/80,
-        .dark-mode .border-slate-300,
-        .dark-mode .border-gray-100,
-        .dark-mode .border-gray-200 {
-          border-color: #1e293b !important;
+
+        /* BOLD SLEEK SOLID BOUNDARY LINES FOR EVERY TILE & DIVIDER */
+        .dark-mode .border,
+        .dark-mode .border-t,
+        .dark-mode .border-b,
+        .dark-mode .border-l,
+        .dark-mode .border-r,
+        .dark-mode [class*="border-slate-"],
+        .dark-mode [class*="border-gray-"] {
+          border-color: #354259 !important;
         }
         .dark-mode .divide-slate-100 > * + *,
-        .dark-mode .divide-slate-200 > * + * {
-          border-color: #1e293b !important;
+        .dark-mode .divide-slate-200 > * + *,
+        .dark-mode .divide-slate-700 > * + *,
+        .dark-mode .divide-slate-800 > * + *,
+        .dark-mode [class*="divide-slate-"] > * + *,
+        .dark-mode [class*="divide-gray-"] > * + * {
+          border-color: #232d3f !important;
         }
-        .dark-mode .divide-slate-100,
-        .dark-mode .divide-slate-200 {
-          border-color: #1e293b !important;
-        }
-        /* Form Inputs & Selects */
+
+        /* Form Inputs, Selects, and Textareas */
         .dark-mode input, .dark-mode select, .dark-mode textarea {
-          background-color: #070d1e !important;
-          border-color: #243452 !important;
-          color: #f8fafc !important;
+          background-color: #070a12 !important;
+          border-color: #3b475c !important;
+          color: #ffffff !important;
         }
         .dark-mode input:focus, .dark-mode select:focus, .dark-mode textarea:focus {
-          border-color: #3b82f6 !important;
-          background-color: #0b1329 !important;
-          box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25) !important;
+          border-color: #a855f7 !important;
+          background-color: #070a12 !important;
+          box-shadow: 0 0 0 2px rgba(168, 85, 247, 0.35) !important;
         }
         .dark-mode select option {
-          background-color: #0b1329 !important;
-          color: #f8fafc !important;
+          background-color: #070a12 !important;
+          color: #ffffff !important;
         }
         .dark-mode input::placeholder, .dark-mode textarea::placeholder {
           color: #64748b !important;
         }
-        /* Tables */
+
+        /* Tables with Bold Sleek Separation Lines */
         .dark-mode table th {
-          background-color: #060b18 !important;
-          color: #cbd5e1 !important;
-          border-bottom: 1px solid #1e293b !important;
+          background-color: #0a0e18 !important;
+          color: #f1f5f9 !important;
+          font-weight: 700 !important;
+          border-bottom: 1.5px solid #3b475c !important;
         }
         .dark-mode table tr {
-          border-color: #1e293b !important;
+          background-color: #111625 !important;
+          border-color: #1e2638 !important;
         }
         .dark-mode table tr:hover {
-          background-color: rgba(30, 41, 59, 0.4) !important;
+          background-color: #161c2e !important;
         }
         .dark-mode table td {
-          border-color: #1e293b !important;
+          border-color: #1e2638 !important;
+          color: #e2e8f0 !important;
         }
+
         /* Hover States */
         .dark-mode .hover\:bg-slate-50:hover,
-        .dark-mode .hover\:bg-slate-100:hover {
-          background-color: #162036 !important;
+        .dark-mode .hover\:bg-slate-100:hover,
+        .dark-mode .hover\:bg-white:hover {
+          background-color: #161c2e !important;
         }
         .dark-mode .hover\:bg-blue-50\/30:hover {
-          background-color: rgba(30, 41, 59, 0.3) !important;
+          background-color: rgba(59, 130, 246, 0.15) !important;
         }
-        .dark-mode .hover\:bg-white:hover {
-          background-color: #1e293b !important;
-        }
-        /* Badges & Status Pills */
-        .dark-mode .bg-blue-50 {
-          background-color: rgba(30, 58, 138, 0.4) !important;
-          color: #60a5fa !important;
-          border-color: rgba(96, 165, 250, 0.25) !important;
-        }
-        .dark-mode .text-blue-600, .dark-mode .text-blue-700, .dark-mode .text-blue-800, .dark-mode .text-blue-900 {
-          color: #60a5fa !important;
-        }
-        .dark-mode .border-blue-200 {
-          border-color: rgba(96, 165, 250, 0.25) !important;
-        }
-        .dark-mode .bg-green-50, .dark-mode .bg-emerald-50 {
-          background-color: rgba(6, 78, 59, 0.45) !important;
+
+        /* LUMINOUS STATUS PILLS & ACCENT HIGHLIGHTS */
+        /* Green / Emerald (Sales, Revenue, Profit, Success) */
+        .dark-mode .bg-green-50, .dark-mode .bg-emerald-50, .dark-mode .bg-emerald-500\/10 {
+          background-color: rgba(16, 185, 129, 0.15) !important;
           color: #34d399 !important;
-          border-color: rgba(52, 211, 153, 0.25) !important;
+          border-color: rgba(52, 211, 153, 0.4) !important;
         }
-        .dark-mode .text-green-600, .dark-mode .text-green-700, .dark-mode .text-emerald-600, .dark-mode .text-emerald-700, .dark-mode .text-emerald-800 {
+        .dark-mode .text-green-600, .dark-mode .text-green-700, .dark-mode .text-emerald-600, .dark-mode .text-emerald-700, .dark-mode .text-emerald-800, .dark-mode .text-emerald-500 {
           color: #34d399 !important;
         }
         .dark-mode .border-emerald-200, .dark-mode .border-green-200 {
-          border-color: rgba(52, 211, 153, 0.25) !important;
+          border-color: rgba(52, 211, 153, 0.4) !important;
         }
-        .dark-mode .bg-red-50, .dark-mode .bg-rose-50 {
-          background-color: rgba(127, 29, 29, 0.45) !important;
-          color: #f87171 !important;
-          border-color: rgba(248, 113, 113, 0.25) !important;
+
+        /* Blue / Sky (Bills, Orders, Units, Scanner) */
+        .dark-mode .bg-blue-50, .dark-mode .bg-sky-50, .dark-mode .bg-blue-500\/10 {
+          background-color: rgba(14, 165, 233, 0.15) !important;
+          color: #38bdf8 !important;
+          border-color: rgba(56, 189, 248, 0.4) !important;
         }
-        .dark-mode .text-red-500, .dark-mode .text-red-600, .dark-mode .text-red-700, .dark-mode .text-red-800, .dark-mode .text-red-900,
-        .dark-mode .text-rose-500, .dark-mode .text-rose-600, .dark-mode .text-rose-700, .dark-mode .text-rose-800 {
-          color: #f87171 !important;
+        .dark-mode .text-blue-600, .dark-mode .text-blue-700, .dark-mode .text-blue-800, .dark-mode .text-blue-900, .dark-mode .text-blue-500 {
+          color: #38bdf8 !important;
         }
-        .dark-mode .border-red-100, .dark-mode .border-red-200, .dark-mode .border-rose-200 {
-          border-color: rgba(248, 113, 113, 0.25) !important;
+        .dark-mode .border-blue-200, .dark-mode .border-sky-200 {
+          border-color: rgba(56, 189, 248, 0.4) !important;
         }
-        .dark-mode .bg-red-100, .dark-mode .bg-rose-100 {
-          background-color: rgba(239, 68, 68, 0.25) !important;
-          color: #f87171 !important;
-        }
-        .dark-mode .bg-amber-50, .dark-mode .bg-yellow-50 {
-          background-color: rgba(120, 53, 4, 0.45) !important;
-          color: #fbbf24 !important;
-          border-color: rgba(251, 191, 36, 0.25) !important;
-        }
-        .dark-mode .text-amber-600, .dark-mode .text-amber-700, .dark-mode .text-amber-800, .dark-mode .text-amber-900 {
-          color: #fbbf24 !important;
-        }
-        .dark-mode .border-amber-200 {
-          border-color: rgba(251, 191, 36, 0.25) !important;
-        }
-        .dark-mode .bg-indigo-50 {
-          background-color: rgba(49, 46, 129, 0.45) !important;
-          color: #818cf8 !important;
-          border-color: rgba(129, 140, 248, 0.25) !important;
-        }
-        .dark-mode .text-indigo-600, .dark-mode .text-indigo-700, .dark-mode .text-indigo-800 {
-          color: #a5b4fc !important;
-        }
-        .dark-mode .border-indigo-200 {
-          border-color: rgba(99, 102, 241, 0.3) !important;
-        }
-        .dark-mode .bg-purple-50 {
-          background-color: rgba(88, 28, 135, 0.45) !important;
+
+        /* Purple / Violet (VIP, UPI, Copilot) */
+        .dark-mode .bg-purple-50, .dark-mode .bg-violet-50, .dark-mode .bg-purple-500\/10 {
+          background-color: rgba(168, 85, 247, 0.16) !important;
           color: #c084fc !important;
-          border-color: rgba(192, 132, 252, 0.25) !important;
+          border-color: rgba(192, 132, 252, 0.4) !important;
         }
-        .dark-mode .text-purple-600, .dark-mode .text-purple-700, .dark-mode .text-purple-800 {
+        .dark-mode .text-purple-600, .dark-mode .text-purple-700, .dark-mode .text-purple-800, .dark-mode .text-purple-500 {
           color: #c084fc !important;
         }
         .dark-mode .border-purple-200 {
-          border-color: rgba(192, 132, 252, 0.25) !important;
+          border-color: rgba(192, 132, 252, 0.4) !important;
         }
+
+        /* Amber / Gold (Target, Warning, Khata) */
+        .dark-mode .bg-amber-50, .dark-mode .bg-yellow-50, .dark-mode .bg-amber-500\/10 {
+          background-color: rgba(245, 158, 11, 0.15) !important;
+          color: #fbbf24 !important;
+          border-color: rgba(251, 191, 36, 0.4) !important;
+        }
+        .dark-mode .text-amber-600, .dark-mode .text-amber-700, .dark-mode .text-amber-800, .dark-mode .text-amber-900, .dark-mode .text-amber-500 {
+          color: #fbbf24 !important;
+        }
+        .dark-mode .border-amber-200 {
+          border-color: rgba(251, 191, 36, 0.4) !important;
+        }
+
+        /* Rose / Red (Loss, Drop trends, Alerts, Top Movers) */
+        .dark-mode .bg-red-50, .dark-mode .bg-rose-50, .dark-mode .bg-rose-500\/10 {
+          background-color: rgba(244, 63, 94, 0.15) !important;
+          color: #fb7185 !important;
+          border-color: rgba(251, 113, 133, 0.4) !important;
+        }
+        .dark-mode .text-red-500, .dark-mode .text-red-600, .dark-mode .text-red-700, .dark-mode .text-rose-500, .dark-mode .text-rose-600, .dark-mode .text-rose-700 {
+          color: #fb7185 !important;
+        }
+        .dark-mode .border-red-100, .dark-mode .border-red-200, .dark-mode .border-rose-200 {
+          border-color: rgba(251, 113, 133, 0.4) !important;
+        }
+
+        /* Indigo (Analytics, Forecasts) */
+        .dark-mode .bg-indigo-50, .dark-mode .bg-indigo-500\/10 {
+          background-color: rgba(99, 102, 241, 0.15) !important;
+          color: #a5b4fc !important;
+          border-color: rgba(165, 180, 252, 0.4) !important;
+        }
+        .dark-mode .text-indigo-600, .dark-mode .text-indigo-700, .dark-mode .text-indigo-800, .dark-mode .text-indigo-500 {
+          color: #a5b4fc !important;
+        }
+        .dark-mode .border-indigo-200 {
+          border-color: rgba(165, 180, 252, 0.4) !important;
+        }
+
         /* Modals & Surfaces */
         .dark-mode .bg-slate-50\/80 {
-          background-color: rgba(11, 19, 41, 0.8) !important;
+          background-color: rgba(0, 0, 0, 0.85) !important;
         }
         .dark-mode .bg-indigo-950, .dark-mode .bg-indigo-900 {
-          background-color: #0b1329 !important;
-          border-color: #1e293b !important;
+          background-color: #111625 !important;
+          border-color: #3b475c !important;
         }
         .dark-mode .from-slate-900, .dark-mode .to-indigo-950 {
           background-image: none !important;
-          background-color: #0b1329 !important;
-          border-color: #1e293b !important;
-        }
-        .dark-mode .bg-slate-900 {
-          background-color: #070d1e !important;
-          border-color: #1e293b !important;
-        }
-        .dark-mode .bg-slate-950 {
-          background-color: #030712 !important;
+          background-color: #111625 !important;
+          border-color: #3b475c !important;
         }
         .dark-mode .dark-toggle-btn {
-          background-color: #162036 !important;
-          border-color: #243452 !important;
+          background-color: #070a12 !important;
+          border-color: #3b475c !important;
           color: #fbbf24 !important;
         }
         .dark-mode .dark-toggle-btn:hover {
-          background-color: #1e293b !important;
+          background-color: #111625 !important;
         }
         .dark-mode .status-badge {
-          background-color: #070d1e !important;
-          border-color: #1e293b !important;
-          color: #e2e8f0 !important;
+          background-color: #070a12 !important;
+          border-color: #3b475c !important;
+          color: #ffffff !important;
         }
       `}</style>
 
@@ -1963,12 +2049,12 @@ export default function App() {
         {/* EOD CASH RECONCILIATION MODAL WITH POCKET KHATA INTEGRATION */}
         {showReconModal && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in">
-            <div className={`rounded-2xl p-6 w-full max-w-md shadow-2xl border ${darkMode ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-800'}`}>
+            <div className={`rounded-2xl p-6 w-full max-w-md shadow-2xl border ${darkMode ? 'bg-[#000000] border-[#1a1a1f] text-white' : 'bg-white border-slate-200 text-slate-800'}`}>
               <div className="flex justify-between items-start mb-2">
                 <h3 className={`text-xl font-black flex items-center gap-2 ${darkMode ? 'text-white' : 'text-slate-900'}`}>
                   <Calculator className="w-6 h-6 text-emerald-500"/> Cash Reconciliation
                 </h3>
-                <button onClick={() => setShowReconModal(false)} className={`p-1.5 rounded-lg ${darkMode ? 'text-slate-400 hover:text-white hover:bg-slate-800' : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'}`}>
+                <button onClick={() => setShowReconModal(false)} className={`p-1.5 rounded-lg ${darkMode ? 'text-slate-400 hover:text-white hover:bg-white/[0.08]' : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'}`}>
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -1986,16 +2072,16 @@ export default function App() {
 
                 return (
                   <div className="space-y-4">
-                    <div className={`p-3.5 rounded-xl border space-y-2 text-xs ${darkMode ? 'bg-slate-950 border-slate-800' : 'bg-slate-50 border-slate-200'}`}>
+                    <div className={`p-3.5 rounded-xl border space-y-2 text-xs ${darkMode ? 'bg-[#000000] border-[#1a1a1f]' : 'bg-slate-50 border-slate-200'}`}>
                       <div className="flex justify-between items-center">
                         <span className="text-slate-400">System Cash Sales:</span>
-                        <span className="font-bold font-mono text-slate-200">{formatCurrency(systemCashSales)}</span>
+                        <span className="font-bold font-mono text-white">{formatCurrency(systemCashSales)}</span>
                       </div>
                       <div className="flex justify-between items-center">
                         <span className="text-amber-400 flex items-center gap-1">☕ Less: Pocket Khata Spent:</span>
                         <span className="font-bold font-mono text-rose-400">- {formatCurrency(pettyCashSpent)}</span>
                       </div>
-                      <div className={`pt-2 border-t flex justify-between items-center text-sm font-black ${darkMode ? 'border-slate-800 text-emerald-400' : 'border-slate-200 text-emerald-600'}`}>
+                      <div className={`pt-2 border-t flex justify-between items-center text-sm font-black ${darkMode ? 'border-[#1a1a1f] text-emerald-400' : 'border-slate-200 text-emerald-600'}`}>
                         <span>Net Expected In Drawer:</span>
                         <span className="font-mono">{formatCurrency(netExpectedCash)}</span>
                       </div>
@@ -2012,7 +2098,7 @@ export default function App() {
                         onChange={e => setCountedCashInput(e.target.value)}
                         placeholder="0.00"
                         className={`w-full p-3.5 text-xl font-bold rounded-xl border focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                          darkMode ? 'bg-slate-950 border-slate-800 text-slate-100 placeholder-slate-600' : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400'
+                          darkMode ? 'bg-[#000000] border-[#1a1a1f] text-white placeholder-slate-500' : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400'
                         }`}
                         autoFocus
                       />
@@ -2042,7 +2128,7 @@ export default function App() {
                         onChange={e => setReconNotes(e.target.value)}
                         placeholder="Explain reason for any variance..."
                         className={`w-full p-2.5 rounded-xl text-xs border h-20 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                          darkMode ? 'bg-slate-950 border-slate-800 text-slate-200 placeholder-slate-600' : 'bg-slate-50 border-slate-200 text-slate-800 placeholder-slate-400'
+                          darkMode ? 'bg-[#000000] border-[#1a1a1f] text-white placeholder-slate-500' : 'bg-slate-50 border-slate-200 text-slate-800 placeholder-slate-400'
                         }`}
                       />
                     </div>
@@ -2050,7 +2136,7 @@ export default function App() {
                     <div className="flex justify-end gap-3 mt-4">
                       <button
                         onClick={() => setShowReconModal(false)}
-                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${darkMode ? 'text-slate-400 hover:bg-slate-800' : 'text-slate-500 hover:bg-slate-100'}`}
+                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-colors ${darkMode ? 'text-slate-400 hover:bg-white/[0.08]' : 'text-slate-500 hover:bg-slate-100'}`}
                       >
                         Cancel
                       </button>
