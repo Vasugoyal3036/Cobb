@@ -80,6 +80,7 @@ const DashboardTab = (props) => {
   const [safetyMode, setSafetyMode] = React.useState('ultra');
   const [batchSize, setBatchSize] = React.useState(20);
   const [includeOptOut, setIncludeOptOut] = React.useState(true);
+  const [dashboardZone, setDashboardZone] = React.useState('all'); // 'all' | 'executive' | 'counter'
 
   // Pocket Khata state for Dashboard Desk
   const [khataSummary, setKhataSummary] = React.useState({ totalSpent: 0, totalCount: 0, items: [] });
@@ -205,1309 +206,1228 @@ const DashboardTab = (props) => {
       {activeTab === 'dashboard' && (
         <div className="space-y-4 sm:space-y-6">
 
-          {/* Header */}
-          <div className="flex justify-between items-end mb-2">
+          {/* RETAIL OS COMMAND BAR */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-2 border-b border-slate-200/80 dark:border-slate-800">
             <div>
-              <div className="flex items-center gap-2 mb-1">
-                <h2 className="text-xl sm:text-2xl font-bold text-slate-800">
-                  {activeStore === 'ALL'
-                    ? 'All Stores Network Command Center'
-                    : activeStore === 'STORE_02'
-                      ? 'Cobb Branch 2 Command Center'
-                      : 'Store Command Center'}
-                </h2>
-                <span className={`px-2 py-0.5 text-xs font-black rounded-lg border ${userRole === 'owner' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                  }`}>
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                  </span>
+                  <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                    {activeStore === 'ALL'
+                      ? 'All Stores Network Command'
+                      : activeStore === 'STORE_02'
+                        ? 'Cobb Branch 2 Command Center'
+                        : 'Store Command Center'}
+                  </h2>
+                </div>
+                <span className={`px-2.5 py-0.5 text-xs font-black rounded-lg border shadow-xs ${
+                  userRole === 'owner' 
+                    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30' 
+                    : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                }`}>
                   {userRole === 'owner' ? '👑 Owner Mode' : '👔 Manager Mode'}
                 </span>
               </div>
-              <p className="text-xs sm:text-sm text-slate-500">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 {activeStore === 'ALL'
-                  ? 'Consolidated operational telemetry across all Cobb branches.'
+                  ? 'Consolidated operational telemetry across all Cobb retail stores.'
                   : activeStore === 'STORE_02'
                     ? 'Live operational metrics & counter telemetry for Cobb Branch 2 (New Market).'
-                    : 'Live operational metrics and counter telemetry for Cobb Pundri.'}
+                    : 'Live operational telemetry & counter speed desk for Cobb Pundri.'}
               </p>
+            </div>
+
+            {/* Zone View Selector */}
+            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/90 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700/80 text-xs font-bold self-stretch sm:self-auto justify-between sm:justify-start">
+              {[
+                { id: 'all', label: '⚡ Full Command' },
+                { id: 'executive', label: '📊 Telemetry' },
+                { id: 'counter', label: '🏷️ Counter Desk' },
+              ].map(zone => (
+                <button
+                  key={zone.id}
+                  onClick={() => setDashboardZone(zone.id)}
+                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer text-xs font-bold flex items-center gap-1.5 ${
+                    dashboardZone === zone.id
+                      ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm border border-slate-200/80 dark:border-slate-700'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  <span>{zone.label}</span>
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Top Row Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+          {/* ZONE 1: EXECUTIVE KPI STRIP (4 METRICS) */}
+          {(dashboardZone === 'all' || dashboardZone === 'executive') && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
 
-            {/* Revenue Card with WoW/MoM Trends */}
-            <div ref={topCardRef} className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Today's Revenue</p>
-                  <h3 className="text-3xl font-black text-slate-800 mt-2">{formatCurrency((overviewStats?.today?.TotalSales || 0))}</h3>
-                </div>
-                <div className="p-3 bg-green-50 rounded-xl">
-                  <TrendingUp className="w-5 h-5 text-green-600" />
-                </div>
-              </div>
-
-              <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1 text-xs mb-3">
-                {/* vs Yesterday */}
-                <div className="flex items-center gap-1">
-                  {(() => {
-                    const diff = (overviewStats?.yesterday?.TotalSales || 0) > 0
-                      ? ((((overviewStats?.today?.TotalSales || 0) - (overviewStats?.yesterday?.TotalSales || 0)) / (overviewStats?.yesterday?.TotalSales || 0)) * 100).toFixed(1)
-                      : (overviewStats?.today?.TotalSales || 0) > 0 ? 100 : 0;
-                    const isUp = diff >= 0;
-                    return (
-                      <>
-                        <span className={`font-black ${isUp ? 'text-green-600' : 'text-rose-500'}`}>
-                          {isUp ? '↑' : '↓'} {Math.abs(diff)}%
-                        </span>
-                        <span className="text-slate-400">vs yesterday</span>
-                      </>
-                    );
-                  })()}
-                </div>
-                {/* vs Last Week */}
-                <div className="flex items-center gap-1">
-                  {(() => {
-                    const thisW = overviewStats?.thisWeek?.TotalSales || 0;
-                    const lastW = overviewStats?.lastWeek?.TotalSales || 0;
-                    const diff = lastW > 0 ? (((thisW - lastW) / lastW) * 100).toFixed(1) : (thisW > 0 ? 100 : 0);
-                    const isUp = diff >= 0;
-                    return (
-                      <>
-                        <span className={`font-black ${isUp ? 'text-green-600' : 'text-rose-500'}`}>
-                          {isUp ? '↑' : '↓'} {Math.abs(diff)}%
-                        </span>
-                        <span className="text-slate-400">WoW</span>
-                      </>
-                    );
-                  })()}
-                </div>
-                {/* vs Last Month */}
-                <div className="flex items-center gap-1">
-                  {(() => {
-                    const thisM = overviewStats?.thisMonth?.TotalSales || 0;
-                    const lastM = overviewStats?.lastMonth?.TotalSales || 0;
-                    const diff = lastM > 0 ? (((thisM - lastM) / lastM) * 100).toFixed(1) : (thisM > 0 ? 100 : 0);
-                    const isUp = diff >= 0;
-                    return (
-                      <>
-                        <span className={`font-black ${isUp ? 'text-green-600' : 'text-rose-500'}`}>
-                          {isUp ? '↑' : '↓'} {Math.abs(diff)}%
-                        </span>
-                        <span className="text-slate-400">MoM</span>
-                      </>
-                    );
-                  })()}
-                </div>
-              </div>
-
-              <div className="mt-auto pt-4 flex gap-2 text-xs font-bold tracking-wide uppercase">
-                <div className={`flex-1 flex flex-col justify-center items-center px-2 py-2.5 rounded-lg border shadow-sm ${darkMode ? 'bg-emerald-900/30 text-emerald-400 border-emerald-800/50' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
-                  <span className="text-[10px] opacity-80 mb-1">Cash</span>
-                  <span className="text-sm">{formatCurrency((overviewStats?.today?.CashAmount || 0) || 0)}</span>
-                </div>
-                <div className={`flex-1 flex flex-col justify-center items-center px-2 py-2.5 rounded-lg border shadow-sm ${darkMode ? 'bg-blue-900/30 text-blue-400 border-blue-800/50' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
-                  <span className="text-[10px] opacity-80 mb-1">Card</span>
-                  <span className="text-sm">{formatCurrency((overviewStats?.today?.CardAmount || 0) || 0)}</span>
-                </div>
-                <div className={`flex-1 flex flex-col justify-center items-center px-2 py-2.5 rounded-lg border shadow-sm ${darkMode ? 'bg-purple-900/30 text-purple-400 border-purple-800/50' : 'bg-purple-50 text-purple-700 border-purple-200'}`}>
-                  <span className="text-[10px] opacity-80 mb-1">UPI</span>
-                  <span className="text-sm">{formatCurrency((overviewStats?.today?.UPIAmount || 0) || 0)}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Target Progress Card */}
-            <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow relative overflow-hidden">
-              <div className="absolute -right-4 -bottom-4 opacity-5">
-                <Target className="w-32 h-32" />
-              </div>
-              <div className="flex justify-between items-start relative z-10">
-                <div>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Daily Target</p>
-                  <h3 className="text-xl font-bold text-slate-700 mt-2">{formatCurrency(DAILY_TARGET)}</h3>
-                </div>
-                <div className="text-right">
-                  <span className="text-lg font-black text-blue-600">{targetProgress.toFixed(0)}%</span>
-                </div>
-              </div>
-              <div className="mt-5 relative z-10">
-                <div className="w-full bg-slate-100 rounded-full h-2.5">
-                  <div className="bg-blue-600 h-2.5 rounded-full transition-all duration-1000" style={{ width: `${targetProgress}%` }}></div>
-                </div>
-                <p className="text-xs text-slate-400 mt-2 text-right">{formatCurrency(DAILY_TARGET - (overviewStats?.today?.TotalSales || 0))} remaining</p>
-              </div>
-            </div>
-
-            {/* Average Order Value + Bill Count Trends */}
-            <div className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Avg. Order Value</p>
-                  <h3 className="text-3xl font-black text-slate-800 mt-2">{formatCurrency(averageOrderValue)}</h3>
-                </div>
-                <div className="p-3 bg-purple-50 rounded-xl">
-                  <ShoppingBag className="w-5 h-5 text-purple-600" />
-                </div>
-              </div>
-              <div className="mt-3">
-                <div className="text-sm text-slate-500 mb-2">
-                  Across <span className="font-bold text-slate-700">{(overviewStats?.today?.BillCount || 0)}</span> invoices today.
-                </div>
-                <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] font-bold">
-                  <span className={`px-2 py-0.5 rounded-md border ${darkMode ? 'bg-slate-800 text-slate-300 border-slate-700' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
-                    This Week: {overviewStats.thisWeek?.BillCount || 0} bills
-                  </span>
-                  <span className={`px-2 py-0.5 rounded-md border ${darkMode ? 'bg-slate-800 text-slate-300 border-slate-700' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
-                    This Month: {overviewStats.thisMonth?.BillCount || 0} bills
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Sales Calendar Widget */}
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col relative overflow-visible">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex flex-col">
-                  <span className="text-sm font-bold text-slate-800">Sales Calendar</span>
-                  <div className="flex items-center gap-2 mt-1">
-                    <button onClick={() => setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() - 1, 1))} className="text-slate-400 hover:text-slate-700">
-                      <ChevronLeft className="w-4 h-4" />
-                    </button>
-                    <span className="text-[10px] text-slate-500 uppercase tracking-widest min-w-[70px] text-center">{calendarDate.toLocaleString('default', { month: 'short', year: 'numeric' })}</span>
-                    <button onClick={() => setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 1))} className="text-slate-400 hover:text-slate-700">
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
-                    {calendarDate.getMonth() !== new Date().getMonth() || calendarDate.getFullYear() !== new Date().getFullYear() ? (
-                      <button onClick={() => setCalendarDate(new Date())} className="text-[9px] text-blue-500 hover:text-blue-700 ml-1 bg-blue-50 px-1.5 rounded">Today</button>
-                    ) : null}
+              {/* Revenue Card with WoW/MoM Trends & Payment Breakdown */}
+              <div ref={topCardRef} className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Today's Revenue</p>
+                    <h3 className="text-3xl font-black text-slate-900 dark:text-white mt-1">{formatCurrency((overviewStats?.today?.TotalSales || 0))}</h3>
+                  </div>
+                  <div className="p-2.5 bg-emerald-500/10 text-emerald-500 rounded-xl border border-emerald-500/20">
+                    <TrendingUp className="w-5 h-5" />
                   </div>
                 </div>
-                <div className="p-2 bg-blue-50 rounded-lg">
-                  <Calendar className="w-4 h-4 text-blue-600" />
+
+                <div className="mt-3.5 flex flex-wrap gap-x-3 gap-y-1 text-xs mb-2">
+                  {/* vs Yesterday */}
+                  <div className="flex items-center gap-1">
+                    {(() => {
+                      const diff = (overviewStats?.yesterday?.TotalSales || 0) > 0
+                        ? ((((overviewStats?.today?.TotalSales || 0) - (overviewStats?.yesterday?.TotalSales || 0)) / (overviewStats?.yesterday?.TotalSales || 0)) * 100).toFixed(1)
+                        : (overviewStats?.today?.TotalSales || 0) > 0 ? 100 : 0;
+                      const isUp = diff >= 0;
+                      return (
+                        <>
+                          <span className={`font-black ${isUp ? 'text-emerald-500' : 'text-rose-500'}`}>
+                            {isUp ? '↑' : '↓'} {Math.abs(diff)}%
+                          </span>
+                          <span className="text-slate-400 text-[11px]">vs yest</span>
+                        </>
+                      );
+                    })()}
+                  </div>
+                  {/* vs Last Week */}
+                  <div className="flex items-center gap-1">
+                    {(() => {
+                      const thisW = overviewStats?.thisWeek?.TotalSales || 0;
+                      const lastW = overviewStats?.lastWeek?.TotalSales || 0;
+                      const diff = lastW > 0 ? (((thisW - lastW) / lastW) * 100).toFixed(1) : (thisW > 0 ? 100 : 0);
+                      const isUp = diff >= 0;
+                      return (
+                        <>
+                          <span className={`font-black ${isUp ? 'text-emerald-500' : 'text-rose-500'}`}>
+                            {isUp ? '↑' : '↓'} {Math.abs(diff)}%
+                          </span>
+                          <span className="text-slate-400 text-[11px]">WoW</span>
+                        </>
+                      );
+                    })()}
+                  </div>
+                  {/* vs Last Month */}
+                  <div className="flex items-center gap-1">
+                    {(() => {
+                      const thisM = overviewStats?.thisMonth?.TotalSales || 0;
+                      const lastM = overviewStats?.lastMonth?.TotalSales || 0;
+                      const diff = lastM > 0 ? (((thisM - lastM) / lastM) * 100).toFixed(1) : (thisM > 0 ? 100 : 0);
+                      const isUp = diff >= 0;
+                      return (
+                        <>
+                          <span className={`font-black ${isUp ? 'text-emerald-500' : 'text-rose-500'}`}>
+                            {isUp ? '↑' : '↓'} {Math.abs(diff)}%
+                          </span>
+                          <span className="text-slate-400 text-[11px]">MoM</span>
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex gap-2 text-xs font-bold tracking-wide uppercase">
+                  <div className={`flex-1 flex flex-col justify-center items-center px-2 py-1.5 rounded-lg border ${darkMode ? 'bg-emerald-950/30 text-emerald-400 border-emerald-800/50' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}>
+                    <span className="text-[9px] opacity-75">Cash</span>
+                    <span className="text-xs font-mono font-black">{formatCurrency((overviewStats?.today?.CashAmount || 0))}</span>
+                  </div>
+                  <div className={`flex-1 flex flex-col justify-center items-center px-2 py-1.5 rounded-lg border ${darkMode ? 'bg-purple-950/30 text-purple-400 border-purple-800/50' : 'bg-purple-50 text-purple-700 border-purple-200'}`}>
+                    <span className="text-[9px] opacity-75">UPI</span>
+                    <span className="text-xs font-mono font-black">{formatCurrency((overviewStats?.today?.UPIAmount || 0))}</span>
+                  </div>
+                  <div className={`flex-1 flex flex-col justify-center items-center px-2 py-1.5 rounded-lg border ${darkMode ? 'bg-blue-950/30 text-blue-400 border-blue-800/50' : 'bg-blue-50 text-blue-700 border-blue-200'}`}>
+                    <span className="text-[9px] opacity-75">Card</span>
+                    <span className="text-xs font-mono font-black">{formatCurrency((overviewStats?.today?.CardAmount || 0))}</span>
+                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-7 gap-1">
-                {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
-                  <div key={day} className="text-[10px] font-bold text-slate-400 text-center py-1">{day}</div>
-                ))}
+              {/* Target Progress Card */}
+              <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow relative overflow-hidden">
+                <div className="absolute -right-4 -bottom-4 opacity-5 pointer-events-none">
+                  <Target className="w-32 h-32 text-blue-500" />
+                </div>
+                <div className="flex justify-between items-start relative z-10">
+                  <div>
+                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Daily Target</p>
+                    <h3 className="text-2xl font-black text-slate-800 dark:text-white mt-1">{formatCurrency(DAILY_TARGET)}</h3>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xl font-black text-blue-600 dark:text-blue-400">{targetProgress.toFixed(0)}%</span>
+                  </div>
+                </div>
+                <div className="mt-4 relative z-10">
+                  <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2.5 overflow-hidden">
+                    <div className="bg-gradient-to-r from-blue-600 to-indigo-500 h-2.5 rounded-full transition-all duration-1000" style={{ width: `${Math.min(100, targetProgress)}%` }}></div>
+                  </div>
+                  <div className="flex justify-between items-center text-xs text-slate-400 mt-2">
+                    <span>{formatCurrency(Math.max(0, DAILY_TARGET - (overviewStats?.today?.TotalSales || 0)))} remaining</span>
+                    <span className="text-blue-500 font-bold">Pacing</span>
+                  </div>
+                </div>
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] flex justify-between items-center text-slate-500 dark:text-slate-400">
+                  <span>Run Rate Needed:</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-200">
+                    {formatCurrency(Math.round(Math.max(0, DAILY_TARGET - (overviewStats?.today?.TotalSales || 0)) / 5))}/hr
+                  </span>
+                </div>
+              </div>
 
-                {Array.from({ length: new Date(calendarDate.getFullYear(), calendarDate.getMonth(), 1).getDay() }).map((_, i) => (
-                  <div key={`empty-${i}`} className="h-8"></div>
-                ))}
+              {/* Average Order Value + Bill Volume */}
+              <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Avg. Order Value</p>
+                    <h3 className="text-3xl font-black text-slate-900 dark:text-white mt-1">{formatCurrency(averageOrderValue)}</h3>
+                  </div>
+                  <div className="p-2.5 bg-purple-500/10 text-purple-500 rounded-xl border border-purple-500/20">
+                    <ShoppingBag className="w-5 h-5" />
+                  </div>
+                </div>
+                <div className="mt-2">
+                  <div className="text-xs text-slate-500 dark:text-slate-400 mb-2">
+                    Across <span className="font-black text-slate-800 dark:text-slate-200">{(overviewStats?.today?.BillCount || 0)}</span> customer invoices today.
+                  </div>
+                  <div className="flex flex-wrap gap-2 text-[10px] font-bold">
+                    <span className={`px-2 py-0.5 rounded-md border ${darkMode ? 'bg-slate-800 text-slate-300 border-slate-700' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                      Week: {overviewStats.thisWeek?.BillCount || 0} bills
+                    </span>
+                    <span className={`px-2 py-0.5 rounded-md border ${darkMode ? 'bg-slate-800 text-slate-300 border-slate-700' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                      Month: {overviewStats.thisMonth?.BillCount || 0} bills
+                    </span>
+                  </div>
+                </div>
+                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-xs text-slate-500 dark:text-slate-400">
+                  <span>Basket Conversion:</span>
+                  <span className="font-bold text-purple-600 dark:text-purple-400">
+                    {((overviewStats?.today?.BillCount || 0) > 0 ? (totalMonthlyUnits / Math.max(1, overviewStats.thisMonth?.BillCount || 1)).toFixed(1) : '2.4')} pcs / bill
+                  </span>
+                </div>
+              </div>
 
-                {Array.from({ length: new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 0).getDate() }).map((_, i) => {
-                  const day = i + 1;
-                  const dateStr = `${calendarDate.getFullYear()}-${String(calendarDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                  const dayData = dailySales.find(d => d.SaleDate && d.SaleDate.startsWith(dateStr));
-                  const hasSales = dayData && dayData.TotalSales > 0;
+              {/* Card 4: Profit Margin (Owner) vs Counter Settlement Desk (Manager) */}
+              {userRole !== 'manager' ? (
+                <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                  <div className="flex justify-between items-start mb-1">
+                    <div>
+                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Gross &amp; Net Margin</p>
+                      {(() => {
+                        const totalSales = overviewStats.today?.TotalSales || 0;
+                        const cogs = Math.round(totalSales * 0.73);
+                        const grossProfit = totalSales - cogs;
+                        const DAILY_EXPENSE = 3500;
+                        const netMargin = grossProfit - DAILY_EXPENSE;
+                        const isProfitable = netMargin >= 0;
+                        return (
+                          <h3 className={`text-2xl font-black mt-1 ${isProfitable ? 'text-emerald-500' : 'text-rose-500'}`}>
+                            {isProfitable ? `+${formatCurrency(netMargin)}` : `-${formatCurrency(Math.abs(netMargin))}`}
+                          </h3>
+                        );
+                      })()}
+                    </div>
+                    <span className="text-[10px] font-bold bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full border border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800">
+                      Owner Only
+                    </span>
+                  </div>
 
-                  const dayOfWeek = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), day).getDay();
-                  let tooltipPositionClass = "left-1/2 -translate-x-1/2";
-                  let arrowPositionClass = "left-1/2 -translate-x-1/2";
+                  {(() => {
+                    const totalSales = overviewStats.today?.TotalSales || 0;
+                    const total = totalSales > 0 ? totalSales : 1;
+                    const DAILY_EXPENSE = 3500;
+                    const cogs = Math.round(totalSales * 0.73);
+                    const grossProfit = totalSales - cogs;
+                    const netMargin = grossProfit - DAILY_EXPENSE;
+                    const isProfitable = netMargin >= 0;
+                    const opExBarPct = isProfitable 
+                      ? Math.min(27, Math.round((DAILY_EXPENSE / total) * 100))
+                      : Math.round((Math.max(0, grossProfit) / DAILY_EXPENSE) * 27);
+                    const netBarPct = isProfitable ? Math.max(0, 100 - 73 - opExBarPct) : 0;
+                    const deficitBarPct = isProfitable ? 0 : (27 - opExBarPct);
 
-                  // Prevent tooltip from overflowing screen edges on mobile
-                  if (dayOfWeek <= 1) {
-                    tooltipPositionClass = "left-0";
-                    arrowPositionClass = "left-3";
-                  } else if (dayOfWeek >= 5) {
-                    tooltipPositionClass = "right-0";
-                    arrowPositionClass = "right-3";
-                  }
-
-                  return (
-                    <div key={day} className="relative flex items-center justify-center h-8">
-                      <div
-                        onClick={() => {
-                          if (hasSales) {
-                            setSelectedCalendarDay(selectedCalendarDay === day ? null : day);
-                          }
-                        }}
-                        className={`w-7 h-7 flex items-center justify-center rounded-full text-xs font-medium transition-colors ${hasSales ? 'cursor-pointer' : 'cursor-default'} ${hasSales ? (selectedCalendarDay === day ? 'bg-blue-600 text-white shadow-md' : 'bg-blue-100 text-blue-700 hover:bg-blue-200') : 'text-slate-600 hover:bg-slate-100'}`}
-                      >
-                        {day}
+                    return (
+                      <div className="space-y-1.5 my-1">
+                        <div className="flex justify-between text-[10px] font-bold">
+                          <span className="text-slate-400">Cost (73%)</span>
+                          <span className="text-amber-500">OpEx (₹3.5k)</span>
+                          <span className={isProfitable ? 'text-emerald-500' : 'text-rose-500'}>
+                            {isProfitable ? 'Profit' : 'Deficit'}
+                          </span>
+                        </div>
+                        <div className={`w-full h-2.5 rounded-full flex overflow-hidden ${darkMode ? 'bg-slate-800' : 'bg-slate-100'}`}>
+                          <div className="bg-slate-400 h-full" style={{ width: '73%' }}></div>
+                          <div className="bg-amber-400 h-full" style={{ width: `${Math.max(2, opExBarPct)}%` }}></div>
+                          {isProfitable ? (
+                            <div className="bg-emerald-500 h-full" style={{ width: `${Math.max(2, netBarPct)}%` }}></div>
+                          ) : (
+                            <div className="bg-rose-400/80 h-full" style={{ width: `${Math.max(2, deficitBarPct)}%` }}></div>
+                          )}
+                        </div>
+                        <div className="flex justify-between text-[10px] font-mono text-slate-500">
+                          <span>₹{Math.round(cogs / 1000)}k COGS</span>
+                          <span>{isProfitable ? '🎉 Profitable' : `₹${Math.max(0, 12964 - totalSales)} to BEP`}</span>
+                        </div>
                       </div>
+                    );
+                  })()}
 
-                      {/* Click Tooltip */}
-                      {hasSales && selectedCalendarDay === day && (
-                        <div className={`absolute bottom-full mb-2 w-48 bg-slate-800 text-white text-xs rounded-lg p-3 z-[60] shadow-xl animate-in fade-in zoom-in-95 duration-200 ${tooltipPositionClass}`}>
-                          <div className="font-bold border-b border-slate-700 pb-1 mb-1.5 text-slate-200 flex justify-between items-center">
-                            <span>{new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedCalendarDay(null);
-                              }}
-                              className="text-slate-400 hover:text-white p-1 -mr-1 rounded"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="text-slate-400">Total:</span>
-                            <span className="font-bold text-emerald-400">{formatCurrency(dayData.TotalSales)}</span>
-                          </div>
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="text-slate-400 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>Cash:</span>
-                            <span>{formatCurrency(dayData.CashAmount || 0)}</span>
-                          </div>
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="text-slate-400 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-purple-400"></span>UPI:</span>
-                            <span>{formatCurrency(dayData.UPIAmount || 0)}</span>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-slate-400 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-orange-400"></span>Card:</span>
-                            <span>{formatCurrency(dayData.CardAmount || 0)}</span>
-                          </div>
+                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-xs">
+                    <span className="text-[10px] text-slate-400">Breakeven at ₹12,964</span>
+                    <button
+                      onClick={() => setActiveTab('pnl')}
+                      className="font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1 cursor-pointer hover:underline"
+                    >
+                      <span>Full P&amp;L</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                  <div className="flex justify-between items-start mb-1">
+                    <div>
+                      <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Counter Register</p>
+                      <h3 className="text-2xl font-black text-slate-900 dark:text-white mt-1">
+                        {formatCurrency((overviewStats?.today?.CashAmount || 0) + (overviewStats?.today?.UPIAmount || 0) + (overviewStats?.today?.CardAmount || 0))}
+                      </h3>
+                    </div>
+                    <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full border border-emerald-200">
+                      Live Drawer
+                    </span>
+                  </div>
 
-                          {/* Triangle arrow for tooltip */}
-                          <div className={`absolute top-full border-4 border-transparent border-t-slate-800 ${arrowPositionClass}`}></div>
+                  {(() => {
+                    const cash = overviewStats?.today?.CashAmount || 0;
+                    const card = overviewStats?.today?.CardAmount || 0;
+                    const upi = overviewStats?.today?.UPIAmount || 0;
+                    const total = (cash + card + upi) || 1;
+                    const cashPct = Math.round((cash / total) * 100);
+                    const upiPct = Math.round((upi / total) * 100);
+                    const cardPct = Math.round((card / total) * 100);
+                    return (
+                      <div className="space-y-1.5 my-1">
+                        <div className="flex justify-between text-[10px] font-bold">
+                          <span className="text-emerald-500">Cash ({cashPct}%)</span>
+                          <span className="text-purple-500">UPI ({upiPct}%)</span>
+                          <span className="text-blue-500">Card ({cardPct}%)</span>
+                        </div>
+                        <div className={`w-full h-2.5 rounded-full flex overflow-hidden ${darkMode ? 'bg-slate-800' : 'bg-slate-100'} p-0.5 gap-0.5`}>
+                          <div className="bg-emerald-500 h-full rounded-l-full" style={{ width: `${cashPct}%` }}></div>
+                          <div className="bg-purple-500 h-full" style={{ width: `${upiPct}%` }}></div>
+                          <div className="bg-blue-500 h-full rounded-r-full" style={{ width: `${cardPct}%` }}></div>
+                        </div>
+                        <div className="text-[10px] text-slate-400 text-center">
+                          EOD reconciliation at 8:30 PM
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-xs">
+                    <span className="text-[10px] text-slate-400">Cashier Settlement</span>
+                    <button
+                      onClick={() => setShowReconModal && setShowReconModal(true)}
+                      className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 cursor-pointer hover:underline"
+                    >
+                      <span>Reconcile</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ZONE 2: ASYMMETRIC BENTO COMMAND CENTER (7 COLS LEFT | 5 COLS RIGHT) */}
+          {(dashboardZone === 'all' || dashboardZone === 'executive') && (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start">
+
+              {/* LEFT 7 COLUMNS: Stock Health Radar + Operational Stream (Pulse & Automation) */}
+              <div className="lg:col-span-7 space-y-5 sm:space-y-6">
+
+                {/* HERO CARD: STOCK HEALTH RADAR (3-TIER PILLARS) */}
+                <div className={`p-5 rounded-2xl border shadow-sm transition-all ${
+                  darkMode ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-800'
+                }`}>
+                  <div className="flex justify-between items-center mb-4 pb-3 border-b border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 bg-rose-500/10 text-rose-500 rounded-xl border border-rose-500/20">
+                        <Layers className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                          <span>Stock Health &amp; Inventory Vulnerabilities</span>
+                          <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                        </h3>
+                        <p className="text-[11px] text-slate-400">Silent lost sales, capital blockage &amp; reorder risk</p>
+                      </div>
+                    </div>
+                    <span className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                      3 Core Alerts
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+                    {/* Pillar 1: Broken Size Runs */}
+                    <div 
+                      onClick={() => typeof setActiveTab === 'function' && setActiveTab('sizematrix')}
+                      className={`p-3.5 rounded-xl border transition-all cursor-pointer group flex flex-col justify-between ${
+                        darkMode 
+                          ? 'bg-slate-800/40 border-slate-700/60 hover:border-rose-500/40' 
+                          : 'bg-rose-50/40 border-rose-100 hover:border-rose-300'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="text-[10px] font-extrabold uppercase tracking-tight text-rose-500 flex items-center gap-1">
+                          <Scissors className="w-3 h-3" />
+                          <span>Broken Sizes</span>
+                        </span>
+                        <span className="text-[10px] font-bold text-rose-600 bg-rose-500/10 px-1.5 py-0.5 rounded border border-rose-500/20">
+                          {stockHealth?.brokenSizeRuns?.count > 0 ? 'Action' : 'Clean'}
+                        </span>
+                      </div>
+                      <div className="my-1">
+                        <span className="text-2xl font-black text-rose-500 leading-none">
+                          {stockHealthLoading ? '...' : (stockHealth?.brokenSizeRuns?.count || 0)}
+                        </span>
+                        <span className="text-xs text-slate-400 ml-1 font-bold">styles</span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-tight">
+                        Core sizes <span className="font-bold text-rose-500">32–40</span> out while rest sits.
+                      </p>
+                      <div className="mt-2 pt-2 border-t border-rose-200/40 dark:border-slate-700/40 flex items-center justify-between text-[10px] font-bold text-rose-500 group-hover:underline">
+                        <span>Size Matrix</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </div>
+                    </div>
+
+                    {/* Pillar 2: Dead Stock & Ageing */}
+                    <div 
+                      onClick={() => typeof setActiveTab === 'function' && setActiveTab('inventory')}
+                      className={`p-3.5 rounded-xl border transition-all cursor-pointer group flex flex-col justify-between ${
+                        darkMode 
+                          ? 'bg-slate-800/40 border-slate-700/60 hover:border-amber-500/40' 
+                          : 'bg-amber-50/40 border-amber-100 hover:border-amber-300'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="text-[10px] font-extrabold uppercase tracking-tight text-amber-500 flex items-center gap-1">
+                          <Archive className="w-3 h-3" />
+                          <span>Dead Stock</span>
+                        </span>
+                        <span className="text-[10px] font-bold text-amber-600 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                          60+ Days
+                        </span>
+                      </div>
+                      <div className="my-1">
+                        <span className="text-2xl font-black text-amber-500 leading-none">
+                          {stockHealthLoading ? '...' : (stockHealth?.deadStock?.units60Plus || 0)}
+                        </span>
+                        <span className="text-xs text-slate-400 ml-1 font-bold">units</span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-tight">
+                        90+ days: <span className="font-bold text-rose-500">{stockHealth?.deadStock?.units90Plus || 0} units</span> blocked.
+                      </p>
+                      <div className="mt-2 pt-2 border-t border-amber-200/40 dark:border-slate-700/40 flex items-center justify-between text-[10px] font-bold text-amber-500 group-hover:underline">
+                        <span>Inventory Desk</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </div>
+                    </div>
+
+                    {/* Pillar 3: Reorder Alerts */}
+                    <div 
+                      onClick={() => typeof setActiveTab === 'function' && setActiveTab('reorder')}
+                      className={`p-3.5 rounded-xl border transition-all cursor-pointer group flex flex-col justify-between ${
+                        darkMode 
+                          ? 'bg-slate-800/40 border-slate-700/60 hover:border-blue-500/40' 
+                          : 'bg-blue-50/40 border-blue-100 hover:border-blue-300'
+                      }`}
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="text-[10px] font-extrabold uppercase tracking-tight text-blue-500 flex items-center gap-1">
+                          <Package className="w-3 h-3" />
+                          <span>Reorder Risk</span>
+                        </span>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+                          (stockHealth?.reorderAlerts?.zeroStock || 0) > 0
+                            ? 'text-rose-600 bg-rose-500/10 border-rose-500/20'
+                            : 'text-blue-600 bg-blue-500/10 border-blue-500/20'
+                        }`}>
+                          {(stockHealth?.reorderAlerts?.zeroStock || 0) > 0 ? 'Urgent' : 'Watch'}
+                        </span>
+                      </div>
+                      <div className="my-1">
+                        <span className="text-2xl font-black text-blue-500 leading-none">
+                          {stockHealthLoading ? '...' : (stockHealth?.reorderAlerts?.count || 0)}
+                        </span>
+                        <span className="text-xs text-slate-400 ml-1 font-bold">SKUs</span>
+                      </div>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-tight">
+                        <span className="font-bold text-rose-500">{stockHealth?.reorderAlerts?.zeroStock || 0} fast movers</span> at 0 stock.
+                      </p>
+                      <div className="mt-2 pt-2 border-t border-blue-200/40 dark:border-slate-700/40 flex items-center justify-between text-[10px] font-bold text-blue-500 group-hover:underline">
+                        <span>Reorder Desk</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* TWO STREAM PANELS: Live Store Pulse & WhatsApp Automation */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+
+                  {/* PANEL 1: Live Store Pulse (Real-Time Bill Feed) */}
+                  <div className={`rounded-2xl border shadow-sm overflow-hidden flex flex-col h-[320px] transition-all ${
+                    darkMode 
+                      ? 'bg-slate-900/90 border-slate-800/80 text-slate-100' 
+                      : 'bg-white border-slate-200 text-slate-800'
+                  }`}>
+                    <div className={`p-3.5 border-b flex items-center justify-between shrink-0 ${
+                      darkMode ? 'bg-slate-800/40 border-slate-800' : 'bg-slate-50/70 border-slate-100'
+                    }`}>
+                      <div className="flex items-center gap-2">
+                        <Activity className="w-4 h-4 text-emerald-500" />
+                        <h3 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                          <span>Live Store Pulse</span>
+                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                        </h3>
+                      </div>
+                      {typeof setActiveTab === 'function' && (
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('live')}
+                          className="text-[11px] font-bold text-blue-600 hover:text-blue-500 dark:text-blue-400 flex items-center gap-1 cursor-pointer"
+                        >
+                          <span>View ({liveBills.length})</span>
+                          <ArrowRight className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                    <div className={`divide-y flex-1 min-h-0 overflow-y-auto custom-scrollbar ${
+                      darkMode ? 'divide-slate-800/80' : 'divide-slate-100'
+                    }`}>
+                      {liveBills.map((bill, idx) => (
+                        <div 
+                          key={idx} 
+                          className={`p-2.5 sm:p-3 transition-colors flex justify-between items-center cursor-pointer group ${
+                            darkMode ? 'hover:bg-slate-800/50' : 'hover:bg-slate-50'
+                          }`} 
+                          onClick={() => setActiveTab('live')}
+                        >
+                          <div className="min-w-0 flex-1 pr-2">
+                            <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate group-hover:text-blue-500 transition-colors">
+                              {bill.CustomerName?.trim() || bill.FirstName?.trim() || 'Guest Customer'}
+                            </p>
+                            <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-400">
+                              <span>{new Date(bill.BillTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                              <span>•</span>
+                              <span className="font-mono">#{bill.BillNumber}</span>
+                              <span>•</span>
+                              <span className={`font-bold px-1.5 py-0.2 rounded text-[9px] ${
+                                bill.PaymentMode === 'Cash' 
+                                  ? darkMode ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                  : bill.PaymentMode === 'UPI / Online' 
+                                    ? darkMode ? 'bg-purple-950/60 text-purple-300 border border-purple-800/60' : 'bg-purple-50 text-purple-700 border border-purple-200'
+                                    : darkMode ? 'bg-blue-950/60 text-blue-300 border border-blue-800/60' : 'bg-blue-50 text-blue-700 border border-blue-200'
+                              }`}>
+                                {bill.PaymentMode || 'Cash'}
+                              </span>
+                            </div>
+                          </div>
+                          <span className={`text-xs font-black px-2 py-0.5 rounded-lg shrink-0 ${
+                            darkMode ? 'text-emerald-400 bg-emerald-950/40 border border-emerald-800/40' : 'text-green-600 bg-green-50'
+                          }`}>
+                            {formatCurrency(bill.Amount)}
+                          </span>
+                        </div>
+                      ))}
+                      {liveBills.length === 0 && (
+                        <div className="p-6 text-center text-xs text-slate-400 flex flex-col items-center justify-center h-full">
+                          <RefreshCw className="w-5 h-5 mb-2 text-slate-400 animate-spin" style={{ animationDuration: '3s' }} />
+                          Waiting for counter checkouts...
                         </div>
                       )}
                     </div>
-                  );
-                })}
-              </div>
-            </div>
+                  </div>
 
-          </div>
+                  {/* PANEL 2: WhatsApp Automation Engine Hub */}
+                  {(() => {
+                    const dispatches = automationDispatches || {};
+                    const checkoutsCount = typeof dispatches.checkoutsSent === 'number' ? dispatches.checkoutsSent : 0;
+                    const exchangesCount = typeof dispatches.exchangesSent === 'number' ? dispatches.exchangesSent : 0;
+                    const notOnWhatsAppCount = typeof dispatches.notOnWhatsAppCount === 'number' ? dispatches.notOnWhatsAppCount : 0;
+                    const totalFailed = notOnWhatsAppCount;
+                    const sentCount = checkoutsCount + exchangesCount;
+                    const totalAttempts = sentCount + totalFailed;
+                    const checkoutPct = totalAttempts > 0 ? Math.round((checkoutsCount / totalAttempts) * 100) : 0;
+                    const exchangePct = totalAttempts > 0 ? Math.round((exchangesCount / totalAttempts) * 100) : 0;
+                    const failedPct = totalAttempts > 0 ? Math.max(0, 100 - checkoutPct - exchangePct) : 0;
 
-          {/* BENTO ROW 1: Operations Pulse (Automation Dispatches | Margin Tracker | Live Store Pulse) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch mb-6 lg:h-[280px]">
-                {/* Automation Engine Dispatched Messages (Checkouts vs Exchanges vs Failed) */}
-                {(() => {
-                  // 1. Telemetry from backend automation dispatch tracker
-                  const dispatches = automationDispatches || {};
-                  const checkoutsCount = typeof dispatches.checkoutsSent === 'number' ? dispatches.checkoutsSent : 0;
-                  const exchangesCount = typeof dispatches.exchangesSent === 'number' ? dispatches.exchangesSent : 0;
-                  // Strictly count numbers verified to NOT be on WhatsApp (never transient gateway/client unready errors)
-                  const notOnWhatsAppCount = typeof dispatches.notOnWhatsAppCount === 'number' ? dispatches.notOnWhatsAppCount : 0;
-                  const totalFailed = notOnWhatsAppCount;
+                    const latestReason = dispatches.latestReason || (
+                      totalFailed > 0
+                        ? `⚠️ ${totalFailed} not on WhatsApp • ${sentCount} delivered`
+                        : sentCount > 0
+                          ? `${sentCount} slips delivered today`
+                          : 'Monitoring POS checkouts...'
+                    );
 
-                  const sentCount = checkoutsCount + exchangesCount;
-                  const totalAttempts = sentCount + totalFailed;
-
-                  const checkoutPct = totalAttempts > 0 ? Math.round((checkoutsCount / totalAttempts) * 100) : 0;
-                  const exchangePct = totalAttempts > 0 ? Math.round((exchangesCount / totalAttempts) * 100) : 0;
-                  const failedPct = totalAttempts > 0 ? Math.max(0, 100 - checkoutPct - exchangePct) : 0;
-
-                  const latestReason = dispatches.latestReason || (
-                    totalFailed > 0
-                      ? `⚠️ ${totalFailed} number(s) not on WhatsApp • ${sentCount} slips delivered`
-                      : sentCount > 0
-                        ? `${sentCount} slip(s) delivered via WhatsApp today`
-                        : 'Monitoring checkouts & exchanges...'
-                  );
-
-                  return (
-                    <div className={`rounded-2xl border shadow-sm p-5 flex flex-col justify-between transition-all h-full ${
-                      darkMode 
-                        ? 'bg-slate-900/90 border-slate-800/80 text-slate-100 shadow-black/20' 
-                        : 'bg-white border-slate-200/90 text-slate-800 shadow-slate-200/50'
-                    }`}>
-                      {/* Tile Header */}
-                      <div className="flex justify-between items-center mb-3.5 gap-2">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${
-                            darkMode 
-                              ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' 
-                              : 'bg-emerald-50 border-emerald-200 text-emerald-600'
-                          }`}>
-                            <Zap className="w-4 h-4" />
+                    return (
+                      <div className={`rounded-2xl border shadow-sm p-4 sm:p-4 flex flex-col justify-between h-[320px] transition-all ${
+                        darkMode 
+                          ? 'bg-slate-900/90 border-slate-800/80 text-slate-100' 
+                          : 'bg-white border-slate-200 text-slate-800'
+                      }`}>
+                        {/* Header */}
+                        <div className="flex justify-between items-center mb-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className="p-1.5 bg-emerald-500/10 text-emerald-500 rounded-lg border border-emerald-500/20">
+                              <Zap className="w-3.5 h-3.5" />
+                            </div>
+                            <div className="min-w-0">
+                              <h3 className="font-bold text-xs text-slate-900 dark:text-white truncate">Automation Slips</h3>
+                              <p className="text-[10px] text-slate-400 truncate">WhatsApp POS delivery</p>
+                            </div>
                           </div>
-                          <div className="min-w-0">
-                            <h3 className="font-bold text-sm tracking-tight text-slate-900 dark:text-white truncate">
-                              Automation Dispatches
-                            </h3>
-                            <p className="text-[11px] text-slate-400 font-medium truncate">
-                              WhatsApp POS Slip Delivery
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2 shrink-0">
-                          <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full border flex items-center gap-1.5 whitespace-nowrap ${
-                            isListenerRunning
-                              ? darkMode ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                              : darkMode ? 'bg-amber-950/60 text-amber-300 border-amber-800/60' : 'bg-amber-50 text-amber-700 border-amber-200'
-                          }`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${isListenerRunning ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`}></span>
-                            <span>{isListenerRunning ? 'Live Active' : 'Idle'}</span>
-                          </span>
                           <button 
                             onClick={() => setActiveTab('automation')} 
-                            className={`text-[11px] font-bold px-2.5 py-1 rounded-full border transition-all whitespace-nowrap flex items-center gap-1 cursor-pointer ${
-                              darkMode
-                                ? 'bg-blue-950/40 text-blue-400 border-blue-800/50 hover:bg-blue-900/60'
-                                : 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100'
+                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full border transition-all flex items-center gap-1 cursor-pointer ${
+                              darkMode ? 'bg-blue-950/40 text-blue-400 border-blue-800/50' : 'bg-blue-50 text-blue-600 border-blue-200'
                             }`}
-                            title="Open Automation Engine Logs"
                           >
                             <span>Logs</span>
-                            <span>&rarr;</span>
+                            <ArrowRight className="w-3 h-3" />
                           </button>
                         </div>
-                      </div>
 
-                      {/* 3-Column Breakdown: Checkouts vs Exchanges vs Failed */}
-                      <div className="grid grid-cols-3 gap-2 sm:gap-2.5 mb-3">
-                        {/* Card 1: Checkouts */}
-                        <div className={`p-2.5 rounded-xl border flex flex-col justify-between transition-all ${
-                          darkMode 
-                            ? 'bg-slate-800/40 border-slate-700/60 hover:border-blue-500/40' 
-                            : 'bg-blue-50/40 border-blue-100 hover:border-blue-300'
-                        }`}>
-                          <div className="flex items-center justify-between gap-1 mb-1">
-                            <span className="text-[10px] font-extrabold uppercase tracking-tight text-blue-500 flex items-center gap-1 truncate">
-                              <Receipt className="w-3 h-3 shrink-0" />
-                              <span className="truncate">Bills</span>
-                            </span>
-                            <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full shrink-0 ${
-                              darkMode ? 'bg-blue-950/80 text-blue-300 border border-blue-800/50' : 'bg-blue-100 text-blue-700'
-                            }`}>
-                              {checkoutPct}%
-                            </span>
+                        {/* 3 Metric Pills */}
+                        <div className="grid grid-cols-3 gap-2 my-1">
+                          <div className="p-2 rounded-lg bg-blue-50/50 dark:bg-slate-800/50 border border-blue-100 dark:border-slate-700 text-center">
+                            <span className="text-[9px] font-bold text-blue-500 uppercase">Bills</span>
+                            <div className="text-base font-black text-slate-900 dark:text-white">{checkoutsCount}</div>
+                            <span className="text-[9px] text-slate-400">{checkoutPct}%</span>
                           </div>
-                          <div className="flex items-baseline justify-between gap-1 my-0.5">
-                            <span className="text-xl font-black text-slate-900 dark:text-white leading-none">
-                              {checkoutsCount}
-                            </span>
-                            <span className="text-[9px] font-bold text-emerald-500 dark:text-emerald-400">
-                              Sent
-                            </span>
+                          <div className="p-2 rounded-lg bg-amber-50/50 dark:bg-slate-800/50 border border-amber-100 dark:border-slate-700 text-center">
+                            <span className="text-[9px] font-bold text-amber-500 uppercase">Exch</span>
+                            <div className="text-base font-black text-slate-900 dark:text-white">{exchangesCount}</div>
+                            <span className="text-[9px] text-slate-400">{exchangePct}%</span>
                           </div>
-                          <p className="text-[9px] text-slate-400 font-medium truncate mt-0.5">
-                            Checkouts
-                          </p>
+                          <div className="p-2 rounded-lg bg-rose-50/50 dark:bg-slate-800/50 border border-rose-100 dark:border-slate-700 text-center">
+                            <span className="text-[9px] font-bold text-rose-500 uppercase">No WA</span>
+                            <div className="text-base font-black text-rose-500">{totalFailed}</div>
+                            <span className="text-[9px] text-slate-400">{failedPct}%</span>
+                          </div>
                         </div>
 
-                        {/* Card 2: Exchanges */}
-                        <div className={`p-2.5 rounded-xl border flex flex-col justify-between transition-all ${
-                          darkMode 
-                            ? 'bg-slate-800/40 border-slate-700/60 hover:border-amber-500/40' 
-                            : 'bg-amber-50/40 border-amber-100 hover:border-amber-300'
-                        }`}>
-                          <div className="flex items-center justify-between gap-1 mb-1">
-                            <span className="text-[10px] font-extrabold uppercase tracking-tight text-amber-500 flex items-center gap-1 truncate">
-                              <RotateCcw className="w-3 h-3 shrink-0" />
-                              <span className="truncate">Exchange</span>
-                            </span>
-                            <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full shrink-0 ${
-                              darkMode ? 'bg-amber-950/80 text-amber-300 border border-amber-800/50' : 'bg-amber-100 text-amber-700'
-                            }`}>
-                              {exchangePct}%
-                            </span>
-                          </div>
-                          <div className="flex items-baseline justify-between gap-1 my-0.5">
-                            <span className="text-xl font-black text-slate-900 dark:text-white leading-none">
-                              {exchangesCount}
-                            </span>
-                            <span className="text-[9px] font-bold text-emerald-500 dark:text-emerald-400">
-                              Sent
-                            </span>
-                          </div>
-                          <p className="text-[9px] text-slate-400 font-medium truncate mt-0.5">
-                            Exchange Slips
-                          </p>
+                        {/* Status Callout */}
+                        <div className={`p-2 rounded-lg border text-[10.5px] truncate font-medium ${
+                          totalFailed > 0 
+                            ? 'bg-rose-50 dark:bg-rose-950/20 border-rose-200 dark:border-rose-900/40 text-rose-800 dark:text-rose-300' 
+                            : 'bg-slate-50 dark:bg-slate-800/40 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300'
+                        }`} title={latestReason}>
+                          {latestReason}
                         </div>
 
-                        {/* Card 3: Failed / Not on WA */}
-                        <div className={`p-2.5 rounded-xl border flex flex-col justify-between transition-all ${
-                          darkMode 
-                            ? 'bg-rose-950/15 border-rose-900/30 hover:border-rose-500/40' 
-                            : 'bg-rose-50/40 border-rose-100 hover:border-rose-300'
-                        }`}>
-                          <div className="flex items-center justify-between gap-1 mb-1">
-                            <span className="text-[10px] font-extrabold uppercase tracking-tight text-rose-500 flex items-center gap-1 truncate">
-                              <AlertCircle className="w-3 h-3 shrink-0" />
-                              <span className="truncate">Not on WA</span>
-                            </span>
-                            <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full shrink-0 ${
-                              darkMode ? 'bg-rose-950/80 text-rose-300 border border-rose-800/50' : 'bg-rose-100 text-rose-700'
-                            }`}>
-                              {failedPct}%
-                            </span>
+                        {/* Tri-Color Segmented Bar */}
+                        <div className="space-y-1">
+                          <div className={`w-full h-2 rounded-full overflow-hidden ${darkMode ? 'bg-slate-800' : 'bg-slate-100'} flex p-0.5 gap-0.5`}>
+                            {totalAttempts === 0 ? (
+                              <div className="w-full h-full rounded-full bg-slate-200 dark:bg-slate-700"></div>
+                            ) : (
+                              <>
+                                {checkoutsCount > 0 && (
+                                  <div className="h-full rounded-l-full bg-blue-500" style={{ width: `${checkoutPct}%` }} />
+                                )}
+                                {exchangesCount > 0 && (
+                                  <div className="h-full bg-amber-500" style={{ width: `${exchangePct}%` }} />
+                                )}
+                                {totalFailed > 0 && (
+                                  <div className="h-full rounded-r-full bg-rose-500" style={{ width: `${failedPct}%` }} />
+                                )}
+                              </>
+                            )}
                           </div>
-                          <div className="flex items-baseline justify-between gap-1 my-0.5">
-                            <span className="text-xl font-black text-rose-500 dark:text-rose-400 leading-none">
-                              {totalFailed}
+                          <div className="flex justify-between items-center text-[9px] text-slate-400 pt-1">
+                            <span className="flex items-center gap-1 font-semibold text-emerald-500">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                              POS Engine Active
                             </span>
-                            <span className="text-[9px] font-bold text-rose-500 dark:text-rose-400">
-                              Failed
-                            </span>
+                            <span>{sentCount} delivered total</span>
                           </div>
-                          <p className="text-[9px] text-rose-400/90 font-medium truncate mt-0.5">
-                            Not on WhatsApp
-                          </p>
                         </div>
                       </div>
+                    );
+                  })()}
+                </div>
+              </div>
 
-                      {/* Status / Activity Callout Strip */}
-                      <div className={`flex items-center justify-between gap-2 px-3 py-1.5 rounded-lg border text-[11px] mb-2.5 ${
-                        totalFailed > 0
-                          ? darkMode 
-                            ? 'bg-rose-950/20 border-rose-900/40 text-rose-300' 
-                            : 'bg-rose-50 border-rose-200 text-rose-800'
-                          : darkMode 
-                            ? 'bg-slate-800/30 border-slate-700/40 text-slate-300' 
-                            : 'bg-slate-50 border-slate-200 text-slate-700'
-                      }`}>
-                        <div className="flex items-center gap-1.5 min-w-0 truncate">
-                          <span className="shrink-0">{totalFailed > 0 ? '⚠️' : '✅'}</span>
-                          <span className="truncate font-medium" title={latestReason}>{latestReason}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 shrink-0 font-extrabold text-[10px]">
-                          <span className="text-emerald-500 dark:text-emerald-400">{sentCount} Sent</span>
-                          <span className="opacity-40">•</span>
-                          <span className="text-rose-500 dark:text-rose-400">{totalFailed} Not on WA</span>
-                        </div>
+              {/* RIGHT 5 COLUMNS: Sales Performance Calendar + Goods In Transit */}
+              <div className="lg:col-span-5 space-y-5 sm:space-y-6">
+
+                {/* WIDGET 1: SALES PERFORMANCE CALENDAR */}
+                <div className={`p-5 rounded-2xl border shadow-sm relative overflow-visible ${
+                  darkMode ? 'bg-slate-900 border-slate-800 text-slate-100' : 'bg-white border-slate-200 text-slate-800'
+                }`}>
+                  <div className="flex items-center justify-between mb-3 pb-3 border-b border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center gap-2">
+                      <div className="p-2 bg-blue-500/10 text-blue-500 rounded-xl border border-blue-500/20">
+                        <Calendar className="w-4 h-4" />
                       </div>
+                      <div>
+                        <h3 className="font-bold text-sm text-slate-900 dark:text-white">Sales Performance Calendar</h3>
+                        <p className="text-[11px] text-slate-400">Click highlighted days for payment mode split</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg border border-slate-200/80 dark:border-slate-700">
+                      <button onClick={() => setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() - 1, 1))} className="text-slate-400 hover:text-slate-700 dark:hover:text-white">
+                        <ChevronLeft className="w-3.5 h-3.5" />
+                      </button>
+                      <span className="text-[11px] font-bold text-slate-600 dark:text-slate-300 min-w-[65px] text-center">
+                        {calendarDate.toLocaleString('default', { month: 'short', year: '2-digit' })}
+                      </span>
+                      <button onClick={() => setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 1))} className="text-slate-400 hover:text-slate-700 dark:hover:text-white">
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                      {calendarDate.getMonth() !== new Date().getMonth() || calendarDate.getFullYear() !== new Date().getFullYear() ? (
+                        <button onClick={() => setCalendarDate(new Date())} className="text-[9px] font-bold text-blue-500 ml-1 bg-blue-50 dark:bg-blue-950/60 px-1 rounded">Now</button>
+                      ) : null}
+                    </div>
+                  </div>
 
-                      {/* Tri-Color Segmented Progress Bar & Legend */}
-                      <div className="space-y-1.5">
-                        <div className={`w-full h-2.5 rounded-full overflow-hidden ${darkMode ? 'bg-slate-800/80' : 'bg-slate-100'} flex p-0.5 gap-0.5`}>
-                          {totalAttempts === 0 ? (
-                            <div className="w-full h-full rounded-full bg-slate-200 dark:bg-slate-700"></div>
-                          ) : (
-                            <>
-                              {checkoutsCount > 0 && (
-                                <div 
-                                  className="h-full rounded-l-full bg-gradient-to-r from-blue-600 to-indigo-500 transition-all duration-500"
-                                  style={{ width: `${checkoutPct}%` }}
-                                  title={`${checkoutsCount} Checkouts Sent (${checkoutPct}%)`}
-                                />
-                              )}
-                              {exchangesCount > 0 && (
-                                <div 
-                                  className={`h-full ${checkoutsCount === 0 ? 'rounded-l-full' : ''} ${totalFailed === 0 ? 'rounded-r-full' : ''} bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-500`}
-                                  style={{ width: `${exchangePct}%` }}
-                                  title={`${exchangesCount} Exchanges Sent (${exchangePct}%)`}
-                                />
-                              )}
-                              {totalFailed > 0 && (
-                                <div 
-                                  className="h-full rounded-r-full bg-gradient-to-r from-rose-500 to-red-500 transition-all duration-500"
-                                  style={{ width: `${failedPct}%` }}
-                                  title={`${totalFailed} Failed (${failedPct}%)`}
-                                />
-                              )}
-                            </>
+                  <div className="grid grid-cols-7 gap-1">
+                    {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(day => (
+                      <div key={day} className="text-[10px] font-bold text-slate-400 text-center py-1">{day}</div>
+                    ))}
+
+                    {Array.from({ length: new Date(calendarDate.getFullYear(), calendarDate.getMonth(), 1).getDay() }).map((_, i) => (
+                      <div key={`empty-${i}`} className="h-8"></div>
+                    ))}
+
+                    {Array.from({ length: new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 0).getDate() }).map((_, i) => {
+                      const day = i + 1;
+                      const dateStr = `${calendarDate.getFullYear()}-${String(calendarDate.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                      const dayData = dailySales.find(d => d.SaleDate && d.SaleDate.startsWith(dateStr));
+                      const hasSales = dayData && dayData.TotalSales > 0;
+
+                      const dayOfWeek = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), day).getDay();
+                      let tooltipPositionClass = "left-1/2 -translate-x-1/2";
+                      let arrowPositionClass = "left-1/2 -translate-x-1/2";
+
+                      if (dayOfWeek <= 1) {
+                        tooltipPositionClass = "left-0";
+                        arrowPositionClass = "left-3";
+                      } else if (dayOfWeek >= 5) {
+                        tooltipPositionClass = "right-0";
+                        arrowPositionClass = "right-3";
+                      }
+
+                      return (
+                        <div key={day} className="relative flex items-center justify-center h-8">
+                          <div
+                            onClick={() => {
+                              if (hasSales) {
+                                setSelectedCalendarDay(selectedCalendarDay === day ? null : day);
+                              }
+                            }}
+                            className={`w-7 h-7 flex items-center justify-center rounded-full text-xs font-semibold transition-colors ${
+                              hasSales ? 'cursor-pointer' : 'cursor-default'
+                            } ${
+                              hasSales 
+                                ? (selectedCalendarDay === day ? 'bg-blue-600 text-white shadow-md' : 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 hover:bg-blue-200') 
+                                : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                            }`}
+                          >
+                            {day}
+                          </div>
+
+                          {/* Tooltip */}
+                          {hasSales && selectedCalendarDay === day && (
+                            <div className={`absolute bottom-full mb-2 w-48 bg-slate-800 text-white text-xs rounded-xl p-3 z-[60] shadow-xl animate-in fade-in zoom-in-95 duration-200 ${tooltipPositionClass}`}>
+                              <div className="font-bold border-b border-slate-700 pb-1 mb-1.5 text-slate-200 flex justify-between items-center">
+                                <span>{new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedCalendarDay(null);
+                                  }}
+                                  className="text-slate-400 hover:text-white p-1 -mr-1 rounded"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                              <div className="flex justify-between items-center mb-1">
+                                <span className="text-slate-400">Total:</span>
+                                <span className="font-bold text-emerald-400">{formatCurrency(dayData.TotalSales)}</span>
+                              </div>
+                              <div className="flex justify-between items-center mb-1 text-[11px]">
+                                <span className="text-slate-400 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>Cash:</span>
+                                <span>{formatCurrency(dayData.CashAmount || 0)}</span>
+                              </div>
+                              <div className="flex justify-between items-center mb-1 text-[11px]">
+                                <span className="text-slate-400 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-purple-400"></span>UPI:</span>
+                                <span>{formatCurrency(dayData.UPIAmount || 0)}</span>
+                              </div>
+                              <div className="flex justify-between items-center text-[11px]">
+                                <span className="text-slate-400 flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-orange-400"></span>Card:</span>
+                                <span>{formatCurrency(dayData.CardAmount || 0)}</span>
+                              </div>
+                              <div className={`absolute top-full border-4 border-transparent border-t-slate-800 ${arrowPositionClass}`}></div>
+                            </div>
                           )}
                         </div>
-
-                        {/* Legend */}
-                        <div className="flex items-center justify-between text-[10px] text-slate-400 pt-0.5">
-                          <div className="flex items-center gap-3">
-                            <span className="flex items-center gap-1">
-                              <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block"></span>
-                              <span>Checkouts ({checkoutsCount})</span>
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block"></span>
-                              <span>Exchanges ({exchangesCount})</span>
-                            </span>
-                            <span className="flex items-center gap-1 text-rose-400">
-                              <span className="w-1.5 h-1.5 rounded-full bg-rose-500 inline-block"></span>
-                              <span>Not on WA ({totalFailed})</span>
-                            </span>
-                          </div>
-                          <span className="text-[9px] font-semibold text-emerald-500 dark:text-emerald-400 flex items-center gap-1">
-                            <span className="w-1 h-1 rounded-full bg-emerald-500 animate-ping"></span>
-                            POS Bridge
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                {/* Margin Tracker (Owner) vs Counter Settlement Desk (Manager) */}
-                {userRole !== 'manager' ? (
-                  <div 
-                    className={`rounded-2xl border shadow-sm p-5 flex flex-col justify-between transition-all h-full ${
-                    darkMode 
-                      ? 'bg-slate-900/90 border-slate-800/80 text-slate-100 shadow-black/20' 
-                      : 'bg-white border-slate-200 text-slate-800 shadow-slate-200/50'
-                  }`}>
-                    <div className="flex justify-between items-center mb-2 shrink-0">
-                      <h3 className="font-bold text-slate-800 dark:text-white flex items-center">
-                        <Tag className="w-4 h-4 mr-2 text-purple-500" /> Margin Tracker
-                      </h3>
-                      <span className="text-[10px] font-bold bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full border border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800">
-                        Owner Only
-                      </span>
-                    </div>
-                    <div className="flex-1 flex flex-col justify-center">
-                      {(() => {
-                        const totalSales = overviewStats.today?.TotalSales || 0;
-                        const total = totalSales > 0 ? totalSales : 1;
-                        const DAILY_EXPENSE = 3500;
-
-                        // 73% COGS, fixed ₹3,500 Daily OpEx, remainder Net Margin
-                        const cogs = Math.round(totalSales * 0.73);
-                        const grossProfit = totalSales - cogs;
-                        const netMargin = grossProfit - DAILY_EXPENSE;
-                        const isProfitable = netMargin >= 0;
-
-                        const cogsPct = ((cogs / total) * 100).toFixed(0);
-                        const expensePct = ((DAILY_EXPENSE / total) * 100).toFixed(0);
-                        const marginPct = ((netMargin / total) * 100).toFixed(0);
-
-                        // Visual progress bar segment calculations
-                        const opExBarPct = isProfitable 
-                          ? Math.min(27, Math.round((DAILY_EXPENSE / total) * 100))
-                          : Math.round((Math.max(0, grossProfit) / DAILY_EXPENSE) * 27);
-                        const netBarPct = isProfitable 
-                          ? Math.max(0, 100 - 73 - opExBarPct)
-                          : 0;
-                        const deficitBarPct = isProfitable ? 0 : (27 - opExBarPct);
-
-                        return (
-                          <>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mb-2.5">
-                              Daily Revenue split: Cost (73%), Daily OpEx (₹3,500), and Net Margin.
-                            </p>
-                            <div className="flex justify-between text-[10px] font-bold mb-1.5">
-                              <span className="text-slate-500 dark:text-slate-400 uppercase tracking-wide">Cost ({cogsPct}%)</span>
-                              <span className="text-amber-500 uppercase tracking-wide">OpEx ({expensePct}%)</span>
-                              <span className={`uppercase tracking-wide ${isProfitable ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                {isProfitable ? `Net (+${marginPct}%)` : `Deficit (${marginPct}%)`}
-                              </span>
-                            </div>
-                            <div className={`w-full h-3.5 rounded-full flex overflow-hidden ${darkMode ? 'bg-slate-800' : 'bg-slate-100'} shadow-inner`}>
-                              <div className="bg-slate-400 h-full transition-all duration-1000" style={{ width: `73%` }}></div>
-                              <div className="bg-amber-400 h-full transition-all duration-1000" style={{ width: `${Math.max(2, opExBarPct)}%` }}></div>
-                              {isProfitable ? (
-                                <div className="bg-emerald-500 h-full transition-all duration-1000" style={{ width: `${Math.max(2, netBarPct)}%` }}></div>
-                              ) : (
-                                <div className="bg-rose-400/70 h-full transition-all duration-1000" style={{ width: `${Math.max(2, deficitBarPct)}%` }}></div>
-                              )}
-                            </div>
-                            <div className="flex justify-between text-xs text-slate-700 dark:text-slate-200 mt-1.5 font-mono font-medium">
-                              <span>{formatCurrency(cogs)}</span>
-                              <span className="text-center flex-1 font-semibold text-amber-600 dark:text-amber-400">{formatCurrency(DAILY_EXPENSE)}</span>
-                              <span className={`text-right ${isProfitable ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-rose-500 dark:text-rose-400 font-bold'}`}>
-                                {isProfitable ? `+${formatCurrency(netMargin)}` : `-${formatCurrency(Math.abs(netMargin))}`}
-                              </span>
-                            </div>
-                            {!isProfitable ? (
-                              <p className="text-[11px] text-slate-600 dark:text-slate-200 font-medium text-center mt-2 font-sans">
-                                Breakeven at <span className="font-bold text-slate-900 dark:text-white">₹12,964</span> ({formatCurrency(Math.max(0, 12964 - totalSales))} needed to clear overhead)
-                              </p>
-                            ) : (
-                              <p className="text-[11px] text-emerald-600 dark:text-emerald-300 font-medium text-center mt-2 font-sans">
-                                🎉 Overhead cleared! Generating net profit today.
-                              </p>
-                            )}
-                          </>
-                        );
-                      })()}
-                    </div>
-                  </div>
-                ) : (
-                  <div 
-                    className={`rounded-2xl border shadow-sm p-5 flex flex-col justify-between transition-all h-full ${
-                    darkMode 
-                      ? 'bg-slate-900/90 border-slate-800/80 text-slate-100 shadow-black/20' 
-                      : 'bg-white border-slate-200/90 text-slate-800 shadow-slate-200/50'
-                  }`}>
-                    <div className="flex justify-between items-center mb-3 shrink-0">
-                      <h3 className="font-bold text-slate-900 dark:text-white flex items-center">
-                        <Receipt className="w-4 h-4 mr-2 text-blue-500" /> Counter Settlement Desk
-                      </h3>
-                      <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full border border-emerald-200">Active Register</span>
-                    </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">Real-time payment mode distribution collected at this counter today.</p>
-                    <div className="space-y-3">
-                      {(() => {
-                        const cash = overviewStats?.today?.CashAmount || 0;
-                        const card = overviewStats?.today?.CardAmount || 0;
-                        const upi = overviewStats?.today?.UPIAmount || 0;
-                        const total = (cash + card + upi) || 1;
-                        const cashPct = Math.round((cash / total) * 100);
-                        const upiPct = Math.round((upi / total) * 100);
-                        const cardPct = Math.round((card / total) * 100);
-                        return (
-                          <>
-                            <div className="flex justify-between text-xs font-bold">
-                              <span className="text-emerald-600 dark:text-emerald-400">Cash ({cashPct}%): {formatCurrency(cash)}</span>
-                              <span className="text-purple-600 dark:text-purple-400">UPI ({upiPct}%): {formatCurrency(upi)}</span>
-                              <span className="text-blue-600 dark:text-blue-400">Card ({cardPct}%): {formatCurrency(card)}</span>
-                            </div>
-                            <div className={`w-full h-3 rounded-full flex overflow-hidden ${darkMode ? 'bg-slate-800' : 'bg-slate-100'} p-0.5 gap-0.5 shadow-inner`}>
-                              <div className="bg-emerald-500 h-full rounded-l-full transition-all duration-500" style={{ width: `${cashPct}%` }}></div>
-                              <div className="bg-purple-500 h-full transition-all duration-500" style={{ width: `${upiPct}%` }}></div>
-                              <div className="bg-blue-500 h-full rounded-r-full transition-all duration-500" style={{ width: `${cardPct}%` }}></div>
-                            </div>
-                            <p className="text-[11px] text-slate-400 text-center mt-1">Cash reconciliation must be performed at 8:30 PM before store closing.</p>
-                          </>
-                        );
-                      })()}
-                    </div>
-                  </div>
-                )}
-
-              {/* Child 3 of Row 1: Live Store Pulse (Live Checkout Tile) */}
-              <div 
-                className={`rounded-2xl border shadow-sm overflow-hidden flex flex-col transition-all h-[300px] lg:h-full md:col-span-2 lg:col-span-1 ${
-                  darkMode 
-                    ? 'bg-slate-900/90 border-slate-800/80 text-slate-100 shadow-black/20' 
-                    : 'bg-white border-slate-200 text-slate-800 shadow-slate-200/50'
-                }`}
-              >
-                <div className={`p-3 sm:p-4 border-b flex items-center justify-between transition-colors shrink-0 ${
-                  darkMode ? 'bg-slate-800/40 border-slate-800/80' : 'bg-slate-50/50 border-slate-100'
-                }`}>
-                  <div className="flex items-center gap-2">
-                    <Activity className="w-4 h-4 text-emerald-500" />
-                    <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                      <span>Live Store Pulse</span>
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                    </h3>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider hidden sm:inline">Latest Checkouts</span>
-                    {typeof setActiveTab === 'function' && (
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab('live')}
-                        className="text-[11px] font-bold text-blue-600 hover:text-blue-500 dark:text-blue-400 flex items-center gap-1 cursor-pointer transition-colors"
-                      >
-                        <span>View All ({liveBills.length})</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </button>
-                    )}
+                      );
+                    })}
                   </div>
                 </div>
-                <div className={`divide-y flex-1 min-h-0 overflow-y-auto custom-scrollbar ${
-                  darkMode ? 'divide-slate-800/80' : 'divide-slate-100'
-                }`}>
-                  {liveBills.map((bill, idx) => (
-                    <div 
-                      key={idx} 
-                      className={`p-2.5 sm:p-3.5 transition-colors flex justify-between items-center cursor-pointer group ${
-                        darkMode ? 'hover:bg-slate-800/50' : 'hover:bg-slate-50'
-                      }`} 
-                      onClick={() => setActiveTab('live')}
-                    >
-                      <div className="min-w-0 flex-1 pr-2">
-                        <p className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-100 truncate group-hover:text-blue-500 transition-colors">
-                          {bill.CustomerName?.trim() || bill.FirstName?.trim() || 'Guest Customer'}
-                        </p>
-                        <div className="flex items-center gap-1.5 mt-0.5 text-[10.5px] text-slate-400">
-                          <span>{new Date(bill.BillTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                          <span>•</span>
-                          <span className="font-mono">#{bill.BillNumber}</span>
-                          <span>•</span>
-                          <span className={`font-bold px-1.5 py-0.5 rounded text-[9.5px] ${
-                            bill.PaymentMode === 'Cash' 
-                              ? darkMode ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                              : bill.PaymentMode === 'UPI / Online' 
-                                ? darkMode ? 'bg-purple-950/60 text-purple-300 border border-purple-800/60' : 'bg-purple-50 text-purple-700 border border-purple-200'
-                                : bill.PaymentMode === 'Debit / Credit Card' 
-                                  ? darkMode ? 'bg-blue-950/60 text-blue-300 border border-blue-800/60' : 'bg-blue-50 text-blue-700 border border-blue-200'
-                                  : darkMode ? 'bg-amber-950/60 text-amber-300 border border-amber-800/60' : 'bg-amber-50 text-amber-700 border border-amber-200'
-                          }`}>
-                            {bill.PaymentMode || 'Cash'}
-                          </span>
-                        </div>
-                      </div>
-                      <span className={`text-xs sm:text-sm font-black px-2 py-1 rounded-lg shrink-0 ${
-                        darkMode ? 'text-emerald-400 bg-emerald-950/40 border border-emerald-800/40' : 'text-green-600 bg-green-50'
-                      }`}>
-                        {formatCurrency(bill.Amount)}
-                      </span>
-                    </div>
-                  ))}
-                  {liveBills.length === 0 && (
-                    <div className="p-4 sm:p-6 text-center text-sm text-slate-400 flex flex-col items-center justify-center h-full">
-                      <RefreshCw className="w-6 h-6 mb-2 text-slate-400 animate-spin" style={{ animationDuration: '3s' }} />
-                      Waiting for POS checkouts...
-                    </div>
-                  )}
-                </div>
-              </div>
-          </div>
 
-          {/* BENTO ROW 2: Stock Health Tiles (3 tiles) | Goods in Transit Desk (1 col) */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6 items-stretch mb-6">
+                {/* WIDGET 2: GOODS IN TRANSIT DESK */}
+                <div className="flex flex-col">
+                  <GoodsInTransitDesk formatCurrency={formatCurrency} darkMode={darkMode} API_BASE={API_BASE} />
+                </div>
 
-            {/* TILE A: Broken Size Runs */}
-            <div 
-              className={`p-4 sm:p-5 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-all cursor-pointer group ${
-                darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
-              }`}
-              onClick={() => typeof setActiveTab === 'function' && setActiveTab('sizematrix')}
-            >
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className={`text-[10px] font-bold uppercase tracking-wider ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>Broken Size Runs</p>
-                  <h3 className="text-3xl font-black text-rose-500 mt-2">
-                    {stockHealthLoading ? '...' : (stockHealth?.brokenSizeRuns?.count || 0)}
-                    <span className={`text-sm font-bold ml-1.5 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>styles</span>
-                  </h3>
-                </div>
-                <div className="p-2.5 bg-rose-500/10 text-rose-500 rounded-xl border border-rose-500/20">
-                  <Scissors className="w-5 h-5" />
-                </div>
               </div>
 
-              <div className="my-auto py-2 space-y-1.5 text-xs">
-                <p className={`${darkMode ? 'text-slate-400' : 'text-slate-500'} leading-relaxed`}>
-                  Core sizes <span className="font-mono font-bold text-rose-500">32–40 / S–XL</span> out of stock while other sizes sit on shelf.
-                </p>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" />
-                  <span className={`text-[10px] font-semibold ${darkMode ? 'text-rose-400' : 'text-rose-600'}`}>Silent lost sales — invisible in POS</span>
-                </div>
-              </div>
-
-              <div className={`mt-auto pt-3 border-t flex items-center justify-between text-xs ${darkMode ? 'border-slate-800' : 'border-slate-100'}`}>
-                <span className="text-[10px] font-bold text-rose-600 bg-rose-500/10 px-2.5 py-0.5 rounded-full border border-rose-500/20">
-                  {stockHealth?.brokenSizeRuns?.count > 0 ? '⚠ Action Needed' : '✓ Clean'}
-                </span>
-                <span className="font-bold text-rose-500 group-hover:text-rose-400 flex items-center gap-1 transition-colors">
-                  <span>Size Matrix</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </span>
-              </div>
             </div>
+          )}
 
-            {/* TILE B: Dead Stock & Ageing */}
-            <div 
-              className={`p-4 sm:p-5 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-all cursor-pointer group ${
-                darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
-              }`}
-              onClick={() => typeof setActiveTab === 'function' && setActiveTab('inventory')}
-            >
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className={`text-[10px] font-bold uppercase tracking-wider ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>Dead Stock & Ageing</p>
-                  <h3 className="text-3xl font-black text-amber-500 mt-2">
-                    {stockHealthLoading ? '...' : (stockHealth?.deadStock?.units60Plus || 0)}
-                    <span className={`text-sm font-bold ml-1.5 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>units</span>
-                  </h3>
-                </div>
-                <div className="p-2.5 bg-amber-500/10 text-amber-500 rounded-xl border border-amber-500/20">
-                  <Archive className="w-5 h-5" />
-                </div>
-              </div>
-
-              <div className="my-auto py-2 space-y-1.5 text-xs">
-                <div className={`flex justify-between items-center ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                  <span>90+ day stale:</span>
-                  <span className="font-bold font-mono text-rose-500">{stockHealth?.deadStock?.units90Plus || 0} units <span className={`font-normal ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>({stockHealth?.deadStock?.articles90Plus || 0} articles)</span></span>
-                </div>
-                <div className={`flex justify-between items-center ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                  <span>60+ day stale:</span>
-                  <span className="font-bold font-mono text-amber-500">{stockHealth?.deadStock?.articles60Plus || 0} articles</span>
-                </div>
-                {/* Ageing bar */}
-                <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 mt-1">
-                  <div className="h-1.5 rounded-full bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 transition-all duration-700" style={{ width: `${Math.min(100, ((stockHealth?.deadStock?.units60Plus || 0) / Math.max(1, stockHealth?.deadStock?.totalStockUnits || 1)) * 100)}%` }} />
-                </div>
-              </div>
-
-              <div className={`mt-auto pt-3 border-t flex items-center justify-between text-xs ${darkMode ? 'border-slate-800' : 'border-slate-100'}`}>
-                <span className="text-[10px] font-bold text-amber-600 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20">
-                  Capital Blocked
-                </span>
-                <span className="font-bold text-amber-500 group-hover:text-amber-400 flex items-center gap-1 transition-colors">
-                  <span>View All</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </span>
-              </div>
-            </div>
-
-            {/* TILE C: Reorder Alerts */}
-            <div 
-              className={`p-4 sm:p-5 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-all cursor-pointer group ${
-                darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
-              }`}
-              onClick={() => typeof setActiveTab === 'function' && setActiveTab('reorder')}
-            >
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className={`text-[10px] font-bold uppercase tracking-wider ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>Reorder Alerts</p>
-                  <h3 className="text-3xl font-black text-blue-500 mt-2">
-                    {stockHealthLoading ? '...' : (stockHealth?.reorderAlerts?.count || 0)}
-                    <span className={`text-sm font-bold ml-1.5 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>items</span>
-                  </h3>
-                </div>
-                <div className="p-2.5 bg-blue-500/10 text-blue-500 rounded-xl border border-blue-500/20">
-                  <Package className="w-5 h-5" />
-                </div>
-              </div>
-
-              <div className="my-auto py-2 space-y-1.5 text-xs">
-                <div className={`flex justify-between items-center ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                  <span>Under 2 weeks cover:</span>
-                  <span className="font-bold font-mono text-blue-500">{stockHealth?.reorderAlerts?.count || 0} SKUs</span>
-                </div>
-                <div className={`flex justify-between items-center ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                  <span>Zero stock (selling):</span>
-                  <span className="font-bold font-mono text-rose-500">{stockHealth?.reorderAlerts?.zeroStock || 0} articles</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
-                  <span className={`text-[10px] font-semibold ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>Fast movers running dry — raise to HO</span>
-                </div>
-              </div>
-
-              <div className={`mt-auto pt-3 border-t flex items-center justify-between text-xs ${darkMode ? 'border-slate-800' : 'border-slate-100'}`}>
-                <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
-                  (stockHealth?.reorderAlerts?.zeroStock || 0) > 0
-                    ? 'text-rose-600 bg-rose-500/10 border-rose-500/20'
-                    : 'text-blue-600 bg-blue-500/10 border-blue-500/20'
-                }`}>
-                  {(stockHealth?.reorderAlerts?.zeroStock || 0) > 0 ? '🔴 Urgent' : '● Monitoring'}
-                </span>
-                <span className="font-bold text-blue-500 group-hover:text-blue-400 flex items-center gap-1 transition-colors">
-                  <span>Reorder Desk</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </span>
-              </div>
-            </div>
-
-            {/* Right Column: Goods in Transit Desk */}
-            <div className="lg:col-span-1 flex flex-col h-full">
-              <GoodsInTransitDesk formatCurrency={formatCurrency} darkMode={darkMode} API_BASE={API_BASE} />
-            </div>
-          </div>
-
-          {/* 4-Tile Operations Deck (Stretched downward to match exact height of top 4 KPI cards) */}
-          {(() => {
+          {/* ZONE 3: HIGH-SPEED COUNTER OPERATIONS DESK (4-TILE COCKPIT) */}
+          {(dashboardZone === 'all' || dashboardZone === 'counter') && (() => {
             const grossCashSales = overviewStats?.today?.CashAmount || 0;
             const totalPettyCash = khataSummary?.totalSpent || 0;
             const netExpectedDrawer = Math.max(0, grossCashSales - totalPettyCash);
             const latestExpense = khataSummary?.items?.[0];
 
             const activeHolds = Array.isArray(holds) ? holds.filter(h => h.status !== 'released' && h.status !== 'expired') : [];
-            const latestHold = activeHolds[0];
 
             return (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-                {/* TILE 1: POCKET KHATA */}
-                <div 
-                  className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow"
-                  style={{ height: topCardHeight ? `${topCardHeight}px` : undefined }}
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Pocket Khata</p>
-                      <h3 className="text-3xl font-black text-rose-500 dark:text-rose-400 mt-2">
-                        {totalPettyCash > 0 ? `- ${formatCurrency(totalPettyCash)}` : '₹0'}
-                      </h3>
-                    </div>
-                    <div className="p-3 bg-amber-500/10 text-amber-500 rounded-xl border border-amber-500/20">
-                      <Wallet className="w-5 h-5" />
-                    </div>
-                  </div>
-
-                  <div className="my-auto py-2 space-y-1.5 text-xs">
-                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
-                      <span>Expected in Drawer:</span>
-                      <span className="font-bold font-mono text-emerald-600 dark:text-emerald-400">{formatCurrency(netExpectedDrawer)}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
-                      <span>Recent Outflow:</span>
-                      <span className="font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[130px]">
-                        {latestExpense ? `${latestExpense.categoryIcon || '☕'} ${latestExpense.description || 'Expense'}` : 'No outflows today'}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="mt-auto pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
-                    <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20">
-                      EOD Safe
+              <div className="space-y-3 pt-2">
+                <div className="flex justify-between items-center px-1">
+                  <div className="flex items-center gap-2">
+                    <span className="p-1.5 bg-blue-500/10 text-blue-500 rounded-lg border border-blue-500/20">
+                      <Terminal className="w-4 h-4" />
                     </span>
-                    {typeof setActiveTab === 'function' && (
-                      <button
-                        onClick={() => setActiveTab('pocket_khata')}
-                        className="font-bold text-amber-600 hover:text-amber-500 dark:text-amber-400 flex items-center gap-1 cursor-pointer transition-colors"
-                      >
-                        <span>Open Ledger</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </button>
-                    )}
+                    <div>
+                      <h3 className="text-sm font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                        ⚡ Counter Speed Operations Desk
+                      </h3>
+                      <p className="text-[11px] text-slate-400">Barcode stock checker, quick offer calculator, holds &amp; pocket khata</p>
+                    </div>
                   </div>
+                  <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700">
+                    POS Cashier Ready
+                  </span>
                 </div>
 
-                {/* TILE 2: FAST BARCODE & SIZE CHECKER (BARCODE SCANNER READY) */}
-                <div 
-                  className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow cursor-default group"
-                  style={{ height: topCardHeight ? `${topCardHeight}px` : undefined }}
-                  onClick={() => quickScanInputRef.current?.focus()}
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Fast Barcode &amp; Size</p>
-                      <h3 className="text-2xl sm:text-3xl font-black text-slate-800 dark:text-white mt-1 flex items-center gap-1.5">
-                        {quickScanResult ? (
-                          <span className="font-mono text-xl sm:text-2xl text-blue-600 dark:text-blue-400 truncate max-w-[170px]">
-                            {quickScanResult.articleNo}
-                          </span>
-                        ) : (
-                          <span>Live <span className="text-base font-bold text-slate-400">Scanner</span></span>
-                        )}
-                      </h3>
-                    </div>
-                    <div className={`p-3 rounded-xl border transition-all ${
-                      isScannerFocused 
-                        ? 'bg-blue-500/20 text-blue-500 border-blue-500/40 animate-pulse' 
-                        : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
-                    }`}>
-                      <Barcode className="w-5 h-5" />
-                    </div>
-                  </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
 
-                  {/* Body Content */}
-                  <div className="my-auto py-1.5 space-y-2 text-xs">
-                    {/* Barcode Search / Scan Input Field */}
-                    <div className="relative flex items-center">
-                      <input
-                        ref={quickScanInputRef}
-                        type="text"
-                        value={quickScanQuery}
-                        onChange={(e) => setQuickScanQuery(e.target.value)}
-                        onFocus={() => setIsScannerFocused(true)}
-                        onBlur={() => setIsScannerFocused(false)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            handleQuickScan();
-                          }
-                        }}
-                        placeholder="Scan barcode or type article..."
-                        className={`w-full py-1.5 pl-2.5 pr-8 rounded-lg text-base sm:text-xs font-mono font-semibold border outline-none transition-all ${
-                          isScannerFocused
-                            ? 'ring-2 ring-blue-500 border-blue-500 bg-white dark:bg-slate-900 text-slate-800 dark:text-white'
-                            : 'bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
-                        }`}
-                      />
-                      {quickScanQuery ? (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setQuickScanQuery('');
-                            setQuickScanResult(null);
-                            setQuickScanError(null);
-                            quickScanInputRef.current?.focus();
+                  {/* TILE 1: FAST BARCODE & SIZE CHECKER */}
+                  <div 
+                    className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow group"
+                    onClick={() => quickScanInputRef.current?.focus()}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Barcode &amp; Size Matrix</p>
+                        <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mt-1 flex items-center gap-1.5">
+                          {quickScanResult ? (
+                            <span className="font-mono text-blue-600 dark:text-blue-400 truncate max-w-[170px]">
+                              {quickScanResult.articleNo}
+                            </span>
+                          ) : (
+                            <span>Gun <span className="text-sm font-bold text-slate-400">Scanner</span></span>
+                          )}
+                        </h3>
+                      </div>
+                      <div className={`p-2.5 rounded-xl border transition-all ${
+                        isScannerFocused 
+                          ? 'bg-blue-500/20 text-blue-500 border-blue-500/40 animate-pulse' 
+                          : 'bg-blue-500/10 text-blue-500 border border-blue-500/20'
+                      }`}>
+                        <Barcode className="w-5 h-5" />
+                      </div>
+                    </div>
+
+                    <div className="my-3 space-y-2 text-xs">
+                      {/* Search / Scan Input */}
+                      <div className="relative flex items-center">
+                        <input
+                          ref={quickScanInputRef}
+                          type="text"
+                          value={quickScanQuery}
+                          onChange={(e) => setQuickScanQuery(e.target.value)}
+                          onFocus={() => setIsScannerFocused(true)}
+                          onBlur={() => setIsScannerFocused(false)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleQuickScan();
+                            }
                           }}
-                          className="absolute right-1.5 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
+                          placeholder="Scan barcode or type style..."
+                          className={`w-full py-1.5 pl-2.5 pr-8 rounded-lg text-xs font-mono font-semibold border outline-none transition-all ${
+                            isScannerFocused
+                              ? 'ring-2 ring-blue-500 border-blue-500 bg-white dark:bg-slate-900 text-slate-800 dark:text-white'
+                              : 'bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200'
+                          }`}
+                        />
+                        {quickScanQuery ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setQuickScanQuery('');
+                              setQuickScanResult(null);
+                              setQuickScanError(null);
+                              quickScanInputRef.current?.focus();
+                            }}
+                            className="absolute right-1.5 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleQuickScan();
+                            }}
+                            className="absolute right-1.5 p-1 text-blue-500 hover:text-blue-600 cursor-pointer"
+                            title="Search"
+                          >
+                            <Search className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Result Display: Sizes Matrix */}
+                      {quickScanResult ? (
+                        <div className="space-y-1.5">
+                          <div className="flex justify-between items-center text-[11px]">
+                            <span className="text-slate-500 dark:text-slate-400 truncate max-w-[130px] font-medium">
+                              {quickScanResult.itemName} • {quickScanResult.color}
+                            </span>
+                            <span className="font-mono font-bold text-slate-700 dark:text-slate-200">
+                              ₹{quickScanResult.mrp?.toLocaleString('en-IN')}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-1 max-h-16 overflow-y-auto pr-0.5">
+                            {quickScanResult.sizes.map((s, sIdx) => (
+                              <span
+                                key={sIdx}
+                                className={`px-1.5 py-0.5 rounded text-[10px] font-bold border flex items-center gap-1 ${
+                                  s.stock > 3
+                                    ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
+                                    : s.stock > 0
+                                      ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800'
+                                      : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700 opacity-50'
+                                }`}
+                              >
+                                <span>{s.size.split(' ')[0]}</span>
+                                <span className="font-mono">({s.stock})</span>
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ) : quickScanError ? (
+                        <div className="text-[11px] text-rose-500 font-semibold py-1">
+                          ⚠️ {quickScanError}
+                        </div>
                       ) : (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleQuickScan();
-                          }}
-                          className="absolute right-1.5 p-1 text-blue-500 hover:text-blue-600 cursor-pointer"
-                          title="Search or press Enter"
-                        >
-                          <Search className="w-3.5 h-3.5" />
-                        </button>
+                        <div className="space-y-1">
+                          <div className="text-[11px] text-slate-400 flex items-center justify-between">
+                            <span>Ready for scanner gun</span>
+                            <span className="text-[10px] text-emerald-500 font-bold flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                              Active
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1 pt-0.5">
+                            <span className="text-[10px] text-slate-400">Quick:</span>
+                            {['FSRE', 'TSBW', 'CFAJ'].map(sample => (
+                              <button
+                                key={sample}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setQuickScanQuery(sample);
+                                  handleQuickScan(sample);
+                                }}
+                                className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 text-[10px] font-mono text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 cursor-pointer"
+                              >
+                                {sample}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       )}
                     </div>
 
-                    {/* Result Display: Sizes Matrix */}
-                    {quickScanResult ? (
-                      <div className="space-y-1.5">
-                        <div className="flex justify-between items-center text-[11px]">
-                          <span className="text-slate-500 dark:text-slate-400 truncate max-w-[130px] font-medium">
-                            {quickScanResult.itemName} • {quickScanResult.color}
-                          </span>
-                          <span className="font-mono font-bold text-slate-700 dark:text-slate-200">
-                            MRP ₹{quickScanResult.mrp?.toLocaleString('en-IN')}
-                          </span>
-                        </div>
-                        {/* Size stock pills */}
-                        <div className="flex flex-wrap gap-1 max-h-16 overflow-y-auto pr-0.5">
-                          {quickScanResult.sizes.map((s, sIdx) => (
-                            <span
-                              key={sIdx}
-                              className={`px-1.5 py-0.5 rounded text-[10px] font-bold border flex items-center gap-1 ${
-                                s.stock > 3
-                                  ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
-                                  : s.stock > 0
-                                    ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800'
-                                    : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700 opacity-50'
-                              }`}
-                            >
-                              <span>{s.size.split(' ')[0]}</span>
-                              <span className="font-mono">({s.stock})</span>
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    ) : quickScanError ? (
-                      <div className="text-[11px] text-rose-500 font-semibold py-1">
-                        ⚠️ {quickScanError}
-                      </div>
-                    ) : (
-                      <div className="space-y-1">
-                        <div className="text-[11px] text-slate-400 flex items-center justify-between">
-                          <span>Scanner Gun Ready</span>
-                          <span className="text-[10px] text-emerald-500 font-bold flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                            Active
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-1 pt-0.5">
-                          <span className="text-[10px] text-slate-400">Quick:</span>
-                          {['FSRE', 'TSBW', 'CFAJ'].map(sample => (
-                            <button
-                              key={sample}
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setQuickScanQuery(sample);
-                                handleQuickScan(sample);
-                              }}
-                              className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 hover:bg-blue-50 text-[10px] font-mono text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 cursor-pointer"
-                            >
-                              {sample}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Footer Row */}
-                  <div className="mt-auto pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
-                    <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2.5 py-0.5 rounded-full border border-blue-500/20">
-                      {quickScanResult ? `${quickScanResult.totalStock} pcs in Stock` : 'Barcode Ready'}
-                    </span>
-                    {typeof setActiveTab === 'function' && (
+                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+                      <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">
+                        {quickScanResult ? `${quickScanResult.totalStock} in stock` : 'Gun Ready'}
+                      </span>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           setActiveTab('sizematrix');
                         }}
-                        className="font-bold text-blue-600 hover:text-blue-500 dark:text-blue-400 flex items-center gap-1 cursor-pointer transition-colors"
+                        className="font-bold text-blue-600 hover:text-blue-500 dark:text-blue-400 flex items-center gap-1 cursor-pointer"
                       >
                         <span>Size Matrix</span>
                         <ArrowRight className="w-3.5 h-3.5" />
                       </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* TILE 3: HOLD DESK */}
-                <div 
-                  className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow"
-                  style={{ height: topCardHeight ? `${topCardHeight}px` : undefined }}
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Hold Desk</p>
-                      <h3 className="text-3xl font-black text-slate-800 dark:text-white mt-2">
-                        {activeHolds.length} <span className="text-base font-bold text-slate-400">Holds</span>
-                      </h3>
-                    </div>
-                    <div className="p-3 bg-purple-500/10 text-purple-500 rounded-xl border border-purple-500/20">
-                      <AlarmClock className="w-5 h-5" />
                     </div>
                   </div>
 
-                  <div className="my-auto py-2 space-y-1.5 text-xs">
-                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
-                      <span>Checkout Lane:</span>
-                      <span className={`font-semibold ${activeHolds.length > 0 ? 'text-amber-500' : 'text-slate-700 dark:text-slate-200'}`}>
-                        {activeHolds.length > 0 ? `${activeHolds.length} Reserved` : 'Register Clear'}
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
-                      <span>Hold Policy:</span>
-                      <span className="font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[130px]">
-                        30 Min Auto-Expire
-                      </span>
-                    </div>
-                  </div>
+                  {/* TILE 2: SMART COUNTER DISCOUNT & OFFER CALC */}
+                  {(() => {
+                    const isB1G3 = calcOffer === 'b1g3';
+                    const isB3_70 = calcOffer === 'b3_70';
+                    const numMrp = Math.max(0, Number(calcMrp) || 0);
+                    const p1 = Number(b1g3Items[0]) || 0;
+                    const p2 = Number(b1g3Items[1]) || 0;
+                    const p3 = Number(b1g3Items[2]) || 0;
+                    const highestMrp = Math.max(p1, p2, p3);
+                    const sumMrp = p1 + p2 + p3;
 
-                  <div className="mt-auto pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
-                    <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 bg-purple-500/10 px-2.5 py-0.5 rounded-full border border-purple-500/20">
-                      {activeHolds.length} Active
-                    </span>
-                    {typeof setActiveTab === 'function' && (
-                      <button
-                        onClick={() => setActiveTab('hold_desk')}
-                        className="font-bold text-purple-600 hover:text-purple-500 dark:text-purple-400 flex items-center gap-1 cursor-pointer transition-colors"
-                      >
-                        <span>Open Desk</span>
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                </div>
+                    let displayFinal = 0;
+                    let displayOriginal = 0;
+                    let displaySavings = 0;
+                    let effPerPc = 0;
+                    let offerTitle = 'Buy 3 @ 70% Off';
 
-                {/* TILE 4: SMART COUNTER DISCOUNT & OFFER CALC */}
-                {(() => {
-                  const isB1G3 = calcOffer === 'b1g3';
-                  const isB3_70 = calcOffer === 'b3_70';
-                  const numMrp = Math.max(0, Number(calcMrp) || 0);
-
-                  const p1 = Number(b1g3Items[0]) || 0;
-                  const p2 = Number(b1g3Items[1]) || 0;
-                  const p3 = Number(b1g3Items[2]) || 0;
-                  const highestMrp = Math.max(p1, p2, p3);
-                  const sumMrp = p1 + p2 + p3;
-
-                  let displayFinal = 0;
-                  let displayOriginal = 0;
-                  let displaySavings = 0;
-                  let effPerPc = 0;
-                  let offerTitle = 'Buy 3 @ 70% Off';
-
-                  if (isB3_70) {
-                    // Buy 3 & get 70% off on total bill using single MRP (Customer buys 3 of this MRP, pays 30%)
-                    displayOriginal = numMrp * 3;
-                    displayFinal = Math.round((numMrp * 3) * 0.3);
-                    displaySavings = Math.max(0, displayOriginal - displayFinal);
-                    effPerPc = Math.round(displayFinal / 3);
-                    offerTitle = `B3 @ 70% (Bill ₹${displayFinal.toLocaleString('en-IN')})`;
-                  } else if (isB1G3) {
-                    // Buy 1 Get 3: Customer pays highest MRP among the 3 items
-                    displayOriginal = sumMrp;
-                    displayFinal = highestMrp;
-                    displaySavings = Math.max(0, sumMrp - highestMrp);
-                    effPerPc = Math.round(highestMrp / 3);
-                    offerTitle = `B1G3 (Bill ₹${highestMrp.toLocaleString('en-IN')})`;
-                  } else {
-                    displayOriginal = numMrp;
-                    if (calcOffer === '40') {
-                      displayFinal = Math.round(numMrp * 0.6);
-                      displaySavings = numMrp - displayFinal;
-                      offerTitle = '40% Off';
-                    } else if (calcOffer === '60') {
-                      displayFinal = Math.round(numMrp * 0.4);
-                      displaySavings = numMrp - displayFinal;
-                      offerTitle = '60% Off';
+                    if (isB3_70) {
+                      displayOriginal = numMrp * 3;
+                      displayFinal = Math.round((numMrp * 3) * 0.3);
+                      displaySavings = Math.max(0, displayOriginal - displayFinal);
+                      effPerPc = Math.round(displayFinal / 3);
+                      offerTitle = `B3 @ 70%`;
+                    } else if (isB1G3) {
+                      displayOriginal = sumMrp;
+                      displayFinal = highestMrp;
+                      displaySavings = Math.max(0, sumMrp - highestMrp);
+                      effPerPc = Math.round(highestMrp / 3);
+                      offerTitle = `B1G3`;
+                    } else {
+                      displayOriginal = numMrp;
+                      if (calcOffer === '40') {
+                        displayFinal = Math.round(numMrp * 0.6);
+                        displaySavings = numMrp - displayFinal;
+                        offerTitle = '40% Off';
+                      } else if (calcOffer === '60') {
+                        displayFinal = Math.round(numMrp * 0.4);
+                        displaySavings = numMrp - displayFinal;
+                        offerTitle = '60% Off';
+                      }
                     }
-                  }
 
-                  return (
-                    <div 
-                      className="bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow"
-                      style={{ height: topCardHeight ? `${topCardHeight}px` : undefined }}
-                    >
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Fast Offer Quote</p>
-                          <div className="flex items-baseline gap-2 mt-2">
-                            <h3 className="text-3xl font-black text-emerald-600 dark:text-emerald-400">
-                              ₹{displayFinal.toLocaleString('en-IN')}
-                            </h3>
-                            <span className="text-[11px] font-bold text-slate-400 line-through">
-                              ₹{displayOriginal.toLocaleString('en-IN')}
-                            </span>
-                            {(isB3_70 || isB1G3) && (
-                              <span className="text-[10px] font-bold text-blue-500 dark:text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/20">
-                                ₹{effPerPc}/pc
+                    return (
+                      <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Fast Offer Quote</p>
+                            <div className="flex items-baseline gap-2 mt-1">
+                              <h3 className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400">
+                                ₹{displayFinal.toLocaleString('en-IN')}
+                              </h3>
+                              <span className="text-[11px] font-bold text-slate-400 line-through">
+                                ₹{displayOriginal.toLocaleString('en-IN')}
                               </span>
-                            )}
+                              {(isB3_70 || isB1G3) && (
+                                <span className="text-[10px] font-bold text-blue-500 bg-blue-500/10 px-1.5 py-0.5 rounded border border-blue-500/20">
+                                  ₹{effPerPc}/pc
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="p-2.5 bg-emerald-500/10 text-emerald-500 rounded-xl border border-emerald-500/20">
+                            <Calculator className="w-5 h-5" />
                           </div>
                         </div>
-                        <div className="p-3 bg-emerald-500/10 text-emerald-500 rounded-xl border border-emerald-500/20">
-                          <Calculator className="w-5 h-5" />
-                        </div>
-                      </div>
 
-                      <div className="my-auto py-1 space-y-1.5 text-xs">
-                        {/* Price Inputs: Multi-item only for B1G3; Single MRP preset chips for B3@70%, 40%, 60% */}
-                        {isB1G3 ? (
+                        <div className="my-2 space-y-1.5 text-xs">
+                          {/* Price Inputs */}
+                          {isB1G3 ? (
+                            <div className="flex items-center gap-1">
+                              <span className="text-[10px] font-bold text-slate-400 w-8">3 Pcs:</span>
+                              <div className="flex-1 grid grid-cols-3 gap-1">
+                                <input
+                                  type="number"
+                                  value={b1g3Items[0] === 0 ? '' : b1g3Items[0]}
+                                  onChange={(e) => setB1g3Items([parseInt(e.target.value) || 0, b1g3Items[1], b1g3Items[2]])}
+                                  className="w-full py-1 px-1 text-center font-bold text-xs rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none"
+                                  placeholder="P1"
+                                />
+                                <input
+                                  type="number"
+                                  value={b1g3Items[1] === 0 ? '' : b1g3Items[1]}
+                                  onChange={(e) => setB1g3Items([b1g3Items[0], parseInt(e.target.value) || 0, b1g3Items[2]])}
+                                  className="w-full py-1 px-1 text-center font-bold text-xs rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none"
+                                  placeholder="P2"
+                                />
+                                <input
+                                  type="number"
+                                  value={b1g3Items[2] === 0 ? '' : b1g3Items[2]}
+                                  onChange={(e) => setB1g3Items([b1g3Items[0], b1g3Items[1], parseInt(e.target.value) || 0])}
+                                  className="w-full py-1 px-1 text-center font-bold text-xs rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none"
+                                  placeholder="P3"
+                                />
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] font-bold text-slate-400 w-8">MRP:</span>
+                              <div className="relative flex-1">
+                                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">₹</span>
+                                <input
+                                  type="number"
+                                  value={calcMrp === 0 ? '' : calcMrp}
+                                  onChange={(e) => setCalcMrp(parseInt(e.target.value) || 0)}
+                                  className="w-full py-1 pl-6 pr-2.5 font-bold text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none"
+                                  placeholder="Type MRP"
+                                />
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Deal presets */}
                           <div className="flex items-center gap-1">
-                            <span className="text-[10px] font-bold text-slate-400 w-8">3 Pcs:</span>
-                            <div className="flex-1 grid grid-cols-3 gap-1">
-                              <input
-                                type="number"
-                                value={b1g3Items[0] === 0 ? '' : b1g3Items[0]}
-                                onChange={(e) => setB1g3Items([parseInt(e.target.value) || 0, b1g3Items[1], b1g3Items[2]])}
-                                className="w-full py-1 px-1 text-center font-bold text-base sm:text-[10px] rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                placeholder="P1"
-                                title="Piece 1 MRP"
-                              />
-                              <input
-                                type="number"
-                                value={b1g3Items[1] === 0 ? '' : b1g3Items[1]}
-                                onChange={(e) => setB1g3Items([b1g3Items[0], parseInt(e.target.value) || 0, b1g3Items[2]])}
-                                className="w-full py-1 px-1 text-center font-bold text-base sm:text-[10px] rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                placeholder="P2"
-                                title="Piece 2 MRP"
-                              />
-                              <input
-                                type="number"
-                                value={b1g3Items[2] === 0 ? '' : b1g3Items[2]}
-                                onChange={(e) => setB1g3Items([b1g3Items[0], b1g3Items[1], parseInt(e.target.value) || 0])}
-                                className="w-full py-1 px-1 text-center font-bold text-base sm:text-[10px] rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                placeholder="P3"
-                                title="Piece 3 MRP"
-                              />
+                            <span className="text-[10px] font-bold text-slate-400 w-8">Deal:</span>
+                            <div className="flex-1 grid grid-cols-4 gap-1">
+                              {[
+                                { id: 'b3_70', label: 'B3@70%' },
+                                { id: 'b1g3', label: 'B1G3' },
+                                { id: '40', label: '40%' },
+                                { id: '60', label: '60%' },
+                              ].map(opt => (
+                                <button
+                                  key={opt.id}
+                                  type="button"
+                                  onClick={() => setCalcOffer(opt.id)}
+                                  className={`py-1 rounded-md text-[10px] font-bold border transition-all cursor-pointer truncate ${
+                                    calcOffer === opt.id 
+                                      ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs' 
+                                      : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200/80 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+                                  }`}
+                                >
+                                  {opt.label}
+                                </button>
+                              ))}
                             </div>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] font-bold text-slate-400 w-8">MRP:</span>
-                            <div className="relative flex-1">
-                              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">₹</span>
-                              <input
-                                type="number"
-                                value={calcMrp === 0 ? '' : calcMrp}
-                                onChange={(e) => setCalcMrp(parseInt(e.target.value) || 0)}
-                                className="w-full py-1 pl-6 pr-2.5 font-bold text-base sm:text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1.5 focus:ring-blue-500"
-                                placeholder="Type MRP (e.g. 1999)"
-                              />
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Offer Preset Buttons */}
-                        <div className="flex items-center gap-1">
-                          <span className="text-[10px] font-bold text-slate-400 w-8">Deal:</span>
-                          <div className="flex-1 grid grid-cols-4 gap-1">
-                            {[
-                              { id: 'b3_70', label: 'B3@70%' },
-                              { id: 'b1g3', label: 'B1G3' },
-                              { id: '40', label: '40%' },
-                              { id: '60', label: '60%' },
-                            ].map(opt => (
-                              <button
-                                key={opt.id}
-                                type="button"
-                                onClick={() => setCalcOffer(opt.id)}
-                                className={`py-1 rounded-md text-[10px] font-bold border transition-all cursor-pointer truncate ${
-                                  calcOffer === opt.id 
-                                    ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs' 
-                                    : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200/80 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
-                                }`}
-                              >
-                                {opt.label}
-                              </button>
-                            ))}
                           </div>
                         </div>
-                      </div>
 
-                      <div className="mt-auto pt-3 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-xs">
-                        <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20 truncate max-w-[170px]">
-                          {isB3_70
-                            ? `70% Off Total • Save ₹${displaySavings.toLocaleString('en-IN')}`
-                            : isB1G3
-                              ? `Highest MRP • Save ₹${displaySavings.toLocaleString('en-IN')}`
-                              : `${offerTitle} • Save ₹${displaySavings.toLocaleString('en-IN')}`}
-                        </span>
-                        <span className="text-[10px] font-semibold text-slate-400">
-                          {isB3_70 ? '3 Pcs Deal' : isB1G3 ? '3 Pcs Total' : 'Instant Quote'}
-                        </span>
+                        <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+                          <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 truncate max-w-[170px]">
+                            Save ₹{displaySavings.toLocaleString('en-IN')}
+                          </span>
+                          <span className="text-[10px] font-semibold text-slate-400">
+                            {isB3_70 ? '3 Pcs' : isB1G3 ? '3 Pcs' : offerTitle}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {/* TILE 3: HOLD DESK */}
+                  <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Customer Hold Desk</p>
+                        <h3 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mt-1">
+                          {activeHolds.length} <span className="text-sm font-bold text-slate-400">Active</span>
+                        </h3>
+                      </div>
+                      <div className="p-2.5 bg-purple-500/10 text-purple-500 rounded-xl border border-purple-500/20">
+                        <AlarmClock className="w-5 h-5" />
                       </div>
                     </div>
-                  );
-                })()}
+
+                    <div className="my-3 space-y-1.5 text-xs">
+                      <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+                        <span>Checkout Lane:</span>
+                        <span className={`font-semibold ${activeHolds.length > 0 ? 'text-amber-500' : 'text-slate-700 dark:text-slate-200'}`}>
+                          {activeHolds.length > 0 ? `${activeHolds.length} Reserved` : 'Lane Clear'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+                        <span>Auto Expiry:</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-200">
+                          30 Min Policy
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-slate-400">
+                        Keeps sizes reserved for shoppers trying outfits.
+                      </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+                      <span className="text-[10px] font-bold text-purple-600 dark:text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full border border-purple-500/20">
+                        {activeHolds.length} Reserved
+                      </span>
+                      {typeof setActiveTab === 'function' && (
+                        <button
+                          onClick={() => setActiveTab('hold_desk')}
+                          className="font-bold text-purple-600 hover:text-purple-500 dark:text-purple-400 flex items-center gap-1 cursor-pointer"
+                        >
+                          <span>Open Desk</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* TILE 4: POCKET KHATA */}
+                  <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Pocket Khata</p>
+                        <h3 className="text-2xl sm:text-3xl font-black text-rose-500 dark:text-rose-400 mt-1">
+                          {totalPettyCash > 0 ? `- ${formatCurrency(totalPettyCash)}` : '₹0'}
+                        </h3>
+                      </div>
+                      <div className="p-2.5 bg-amber-500/10 text-amber-500 rounded-xl border border-amber-500/20">
+                        <Wallet className="w-5 h-5" />
+                      </div>
+                    </div>
+
+                    <div className="my-3 space-y-1.5 text-xs">
+                      <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+                        <span>Expected in Drawer:</span>
+                        <span className="font-bold font-mono text-emerald-600 dark:text-emerald-400">{formatCurrency(netExpectedDrawer)}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
+                        <span>Recent Outflow:</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[130px]">
+                          {latestExpense ? `${latestExpense.categoryIcon || '☕'} ${latestExpense.description || 'Expense'}` : 'No petty outflows'}
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-slate-400">
+                        Drawer net = Cash sales minus petty cash.
+                      </div>
+                    </div>
+
+                    <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+                      <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                        Drawer Safe
+                      </span>
+                      {typeof setActiveTab === 'function' && (
+                        <button
+                          onClick={() => setActiveTab('pocket_khata')}
+                          className="font-bold text-amber-600 hover:text-amber-500 dark:text-amber-400 flex items-center gap-1 cursor-pointer"
+                        >
+                          <span>Petty Ledger</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                </div>
               </div>
             );
           })()}

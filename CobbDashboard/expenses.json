@@ -1,5 +1,18 @@
 [
   {
+    "id": "exp_1789457487644_ebh1",
+    "date": "2026-09-15",
+    "time": "13:01:27",
+    "category": "chai",
+    "categoryLabel": "Chai & Refreshments",
+    "categoryIcon": "☕",
+    "amount": 140,
+    "description": "Tea & refreshments for staff/client",
+    "loggedBy": "Owner / Partner",
+    "storeId": "STORE_01",
+    "createdAt": "2026-09-15T07:31:27.644Z"
+  },
+  {
     "id": "exp_1789392170701_mzhc",
     "date": "2026-09-14",
     "time": "18:52:50",
