@@ -70,7 +70,7 @@ import {
   AlarmClock,
   Network
 } from 'lucide-react';
-import CounterCrossSellAssistant from '../CounterCrossSellAssistant';
+// Stock Health tiles (Broken Size Runs, Dead Stock & Ageing, Reorder Alerts)
 import GoodsInTransitDesk from '../GoodsInTransitDesk';
 
 
@@ -87,6 +87,10 @@ const DashboardTab = (props) => {
 
   // Active holds state for Hold Desk tile
   const [holds, setHolds] = React.useState([]);
+
+  // Stock Health state
+  const [stockHealth, setStockHealth] = React.useState(null);
+  const [stockHealthLoading, setStockHealthLoading] = React.useState(false);
 
   // Fast Counter Offer & Discount Calc state
   const [calcMrp, setCalcMrp] = React.useState(1999);
@@ -176,10 +180,25 @@ const DashboardTab = (props) => {
     }
   };
 
+  const fetchStockHealth = React.useCallback(async () => {
+    try {
+      setStockHealthLoading(true);
+      const res = await axios.get(`${API_BASE}/api/inventory/stock-health?storeId=${activeStore}`);
+      if (res.data) {
+        setStockHealth(res.data);
+      }
+    } catch (e) {
+      console.error('Stock health fetch error:', e);
+    } finally {
+      setStockHealthLoading(false);
+    }
+  }, [API_BASE, activeStore]);
+
   React.useEffect(() => {
     fetchKhataExpenses();
     fetchHolds();
-  }, [fetchKhataExpenses, fetchHolds]);
+    fetchStockHealth();
+  }, [fetchKhataExpenses, fetchHolds, fetchStockHealth]);
 
   return (
     <>
@@ -910,14 +929,147 @@ const DashboardTab = (props) => {
               </div>
           </div>
 
-          {/* BENTO ROW 2: Counter Cross-Sell & Upsell Assistant (2 cols) | Goods in Transit Desk (1 col) */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch mb-6">
-            {/* Left: Counter Cross-Sell & Upsell Assistant */}
-            <div className="lg:col-span-2 flex flex-col h-full">
-              <CounterCrossSellAssistant formatCurrency={formatCurrency} darkMode={darkMode} />
+          {/* BENTO ROW 2: Stock Health Tiles (3 tiles) | Goods in Transit Desk (1 col) */}
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6 items-stretch mb-6">
+
+            {/* TILE A: Broken Size Runs */}
+            <div 
+              className={`p-4 sm:p-5 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-all cursor-pointer group ${
+                darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
+              }`}
+              onClick={() => typeof setActiveTab === 'function' && setActiveTab('sizematrix')}
+            >
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className={`text-[10px] font-bold uppercase tracking-wider ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>Broken Size Runs</p>
+                  <h3 className="text-3xl font-black text-rose-500 mt-2">
+                    {stockHealthLoading ? '...' : (stockHealth?.brokenSizeRuns?.count || 0)}
+                    <span className={`text-sm font-bold ml-1.5 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>styles</span>
+                  </h3>
+                </div>
+                <div className="p-2.5 bg-rose-500/10 text-rose-500 rounded-xl border border-rose-500/20">
+                  <Scissors className="w-5 h-5" />
+                </div>
+              </div>
+
+              <div className="my-auto py-2 space-y-1.5 text-xs">
+                <p className={`${darkMode ? 'text-slate-400' : 'text-slate-500'} leading-relaxed`}>
+                  Core sizes <span className="font-mono font-bold text-rose-500">32–40 / S–XL</span> out of stock while other sizes sit on shelf.
+                </p>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" />
+                  <span className={`text-[10px] font-semibold ${darkMode ? 'text-rose-400' : 'text-rose-600'}`}>Silent lost sales — invisible in POS</span>
+                </div>
+              </div>
+
+              <div className={`mt-auto pt-3 border-t flex items-center justify-between text-xs ${darkMode ? 'border-slate-800' : 'border-slate-100'}`}>
+                <span className="text-[10px] font-bold text-rose-600 bg-rose-500/10 px-2.5 py-0.5 rounded-full border border-rose-500/20">
+                  {stockHealth?.brokenSizeRuns?.count > 0 ? '⚠ Action Needed' : '✓ Clean'}
+                </span>
+                <span className="font-bold text-rose-500 group-hover:text-rose-400 flex items-center gap-1 transition-colors">
+                  <span>Size Matrix</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </span>
+              </div>
             </div>
 
-            {/* Right: Goods in Transit Desk */}
+            {/* TILE B: Dead Stock & Ageing */}
+            <div 
+              className={`p-4 sm:p-5 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-all cursor-pointer group ${
+                darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
+              }`}
+              onClick={() => typeof setActiveTab === 'function' && setActiveTab('inventory')}
+            >
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className={`text-[10px] font-bold uppercase tracking-wider ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>Dead Stock & Ageing</p>
+                  <h3 className="text-3xl font-black text-amber-500 mt-2">
+                    {stockHealthLoading ? '...' : (stockHealth?.deadStock?.units60Plus || 0)}
+                    <span className={`text-sm font-bold ml-1.5 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>units</span>
+                  </h3>
+                </div>
+                <div className="p-2.5 bg-amber-500/10 text-amber-500 rounded-xl border border-amber-500/20">
+                  <Archive className="w-5 h-5" />
+                </div>
+              </div>
+
+              <div className="my-auto py-2 space-y-1.5 text-xs">
+                <div className={`flex justify-between items-center ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  <span>90+ day stale:</span>
+                  <span className="font-bold font-mono text-rose-500">{stockHealth?.deadStock?.units90Plus || 0} units <span className={`font-normal ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>({stockHealth?.deadStock?.articles90Plus || 0} articles)</span></span>
+                </div>
+                <div className={`flex justify-between items-center ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  <span>60+ day stale:</span>
+                  <span className="font-bold font-mono text-amber-500">{stockHealth?.deadStock?.articles60Plus || 0} articles</span>
+                </div>
+                {/* Ageing bar */}
+                <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-1.5 mt-1">
+                  <div className="h-1.5 rounded-full bg-gradient-to-r from-amber-400 via-orange-500 to-rose-500 transition-all duration-700" style={{ width: `${Math.min(100, ((stockHealth?.deadStock?.units60Plus || 0) / Math.max(1, stockHealth?.deadStock?.totalStockUnits || 1)) * 100)}%` }} />
+                </div>
+              </div>
+
+              <div className={`mt-auto pt-3 border-t flex items-center justify-between text-xs ${darkMode ? 'border-slate-800' : 'border-slate-100'}`}>
+                <span className="text-[10px] font-bold text-amber-600 bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20">
+                  Capital Blocked
+                </span>
+                <span className="font-bold text-amber-500 group-hover:text-amber-400 flex items-center gap-1 transition-colors">
+                  <span>View All</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </span>
+              </div>
+            </div>
+
+            {/* TILE C: Reorder Alerts */}
+            <div 
+              className={`p-4 sm:p-5 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-all cursor-pointer group ${
+                darkMode ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'
+              }`}
+              onClick={() => typeof setActiveTab === 'function' && setActiveTab('reorder')}
+            >
+              <div className="flex justify-between items-start">
+                <div>
+                  <p className={`text-[10px] font-bold uppercase tracking-wider ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>Reorder Alerts</p>
+                  <h3 className="text-3xl font-black text-blue-500 mt-2">
+                    {stockHealthLoading ? '...' : (stockHealth?.reorderAlerts?.count || 0)}
+                    <span className={`text-sm font-bold ml-1.5 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>items</span>
+                  </h3>
+                </div>
+                <div className="p-2.5 bg-blue-500/10 text-blue-500 rounded-xl border border-blue-500/20">
+                  <Package className="w-5 h-5" />
+                </div>
+              </div>
+
+              <div className="my-auto py-2 space-y-1.5 text-xs">
+                <div className={`flex justify-between items-center ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  <span>Under 2 weeks cover:</span>
+                  <span className="font-bold font-mono text-blue-500">{stockHealth?.reorderAlerts?.count || 0} SKUs</span>
+                </div>
+                <div className={`flex justify-between items-center ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  <span>Zero stock (selling):</span>
+                  <span className="font-bold font-mono text-rose-500">{stockHealth?.reorderAlerts?.zeroStock || 0} articles</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+                  <span className={`text-[10px] font-semibold ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>Fast movers running dry — raise to HO</span>
+                </div>
+              </div>
+
+              <div className={`mt-auto pt-3 border-t flex items-center justify-between text-xs ${darkMode ? 'border-slate-800' : 'border-slate-100'}`}>
+                <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${
+                  (stockHealth?.reorderAlerts?.zeroStock || 0) > 0
+                    ? 'text-rose-600 bg-rose-500/10 border-rose-500/20'
+                    : 'text-blue-600 bg-blue-500/10 border-blue-500/20'
+                }`}>
+                  {(stockHealth?.reorderAlerts?.zeroStock || 0) > 0 ? '🔴 Urgent' : '● Monitoring'}
+                </span>
+                <span className="font-bold text-blue-500 group-hover:text-blue-400 flex items-center gap-1 transition-colors">
+                  <span>Reorder Desk</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </span>
+              </div>
+            </div>
+
+            {/* Right Column: Goods in Transit Desk */}
             <div className="lg:col-span-1 flex flex-col h-full">
               <GoodsInTransitDesk formatCurrency={formatCurrency} darkMode={darkMode} API_BASE={API_BASE} />
             </div>

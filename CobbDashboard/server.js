@@ -76,6 +76,9 @@ app.use((req, res, next) => {
         '/api/smart-bundles',
         '/api/reports/eod-summary',
         '/api/inventory/reorder-suggestions',
+        '/api/inventory/stock-health',
+        '/api/inventory/broken-sizes',
+        '/api/inventory/dead-stock-aged',
         '/api/loyalty/leaderboard'
     ];
 
@@ -309,6 +312,247 @@ app.get('/api/analytics/monthly-products', async (req, res) => {
         `);
         res.json(result.recordset);
     } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ===================================================================
+// STOCK HEALTH TILES — Dashboard Bento Row 2
+// ===================================================================
+
+// 1. Broken Size Runs — styles where core sizes (32-40) are out but other sizes sit
+app.get('/api/inventory/broken-sizes', async (req, res) => {
+    try {
+        const result = await sql.query(`
+            ;WITH ArticleSizes AS (
+                SELECT
+                    s.article_no AS ArticleNo,
+                    MAX(ISNULL(s.article_name, s.section_name + ' / ' + s.sub_section_name)) AS ArticleName,
+                    MAX(ISNULL(s.section_name, 'Apparel')) AS Category,
+                    ISNULL(s.para2_name, 'Standard') AS Size,
+                    SUM(p.quantity_in_stock) AS SizeStock
+                FROM PMT01106 p WITH (NOLOCK)
+                INNER JOIN SKU_NAMES s WITH (NOLOCK) ON p.product_code = s.product_Code
+                WHERE p.quantity_in_stock >= 0
+                GROUP BY s.article_no, s.para2_name, s.article_name, s.section_name, s.sub_section_name
+            ),
+            ArticleTotals AS (
+                SELECT
+                    ArticleNo,
+                    MAX(ArticleName) AS ArticleName,
+                    MAX(Category) AS Category,
+                    SUM(SizeStock) AS TotalStock,
+                    COUNT(DISTINCT Size) AS TotalSizeCount,
+                    SUM(CASE WHEN Size IN ('30','32','34','36','38','40','S','M','L','XL') AND SizeStock = 0 THEN 1 ELSE 0 END) AS CoreSizesOut,
+                    SUM(CASE WHEN Size IN ('30','32','34','36','38','40','S','M','L','XL') THEN 1 ELSE 0 END) AS CoreSizesTotal,
+                    SUM(CASE WHEN SizeStock > 0 THEN 1 ELSE 0 END) AS SizesInStock,
+                    SUM(CASE WHEN SizeStock = 0 THEN 1 ELSE 0 END) AS SizesOutOfStock
+                FROM ArticleSizes
+                GROUP BY ArticleNo
+                HAVING SUM(SizeStock) > 0
+            )
+            SELECT TOP 100
+                at2.ArticleNo,
+                at2.ArticleName,
+                at2.Category,
+                at2.TotalStock,
+                at2.TotalSizeCount,
+                at2.CoreSizesOut,
+                at2.CoreSizesTotal,
+                at2.SizesInStock,
+                at2.SizesOutOfStock
+            FROM ArticleTotals at2
+            WHERE at2.CoreSizesOut > 0 AND at2.CoreSizesTotal > 0
+            ORDER BY at2.CoreSizesOut DESC, at2.TotalStock DESC
+        `);
+        res.json(result.recordset);
+    } catch (err) {
+        console.error('Broken sizes error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 2. Dead Stock with Ageing — items with stock but no sales in 60+/90+ days
+app.get('/api/inventory/dead-stock-aged', async (req, res) => {
+    try {
+        const result = await sql.query(`
+            ;WITH LastSale AS (
+                SELECT
+                    s.article_no AS ArticleNo,
+                    MAX(m.CM_TIME) AS LastSaleDate
+                FROM CMD01106 d WITH (NOLOCK)
+                JOIN CMM01106 m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
+                JOIN SKU_NAMES s WITH (NOLOCK) ON d.PRODUCT_CODE = s.product_Code
+                WHERE m.CANCELLED = 0
+                GROUP BY s.article_no
+            ),
+            StockSummary AS (
+                SELECT
+                    s.article_no AS ArticleNo,
+                    MAX(ISNULL(s.article_name, s.section_name + ' / ' + s.sub_section_name)) AS ArticleName,
+                    MAX(ISNULL(s.section_name, 'Apparel')) AS Category,
+                    SUM(p.quantity_in_stock) AS TotalStock,
+                    COUNT(DISTINCT s.product_Code) AS SkuCount
+                FROM PMT01106 p WITH (NOLOCK)
+                INNER JOIN SKU_NAMES s WITH (NOLOCK) ON p.product_code = s.product_Code
+                WHERE p.quantity_in_stock > 0
+                GROUP BY s.article_no
+            )
+            SELECT TOP 200
+                ss.ArticleNo,
+                ss.ArticleName,
+                ss.Category,
+                ss.TotalStock,
+                ss.SkuCount,
+                ls.LastSaleDate,
+                CASE WHEN ls.LastSaleDate IS NULL THEN 999
+                     ELSE DATEDIFF(day, ls.LastSaleDate, GETDATE()) END AS DaysSinceLastSale,
+                CASE
+                    WHEN ls.LastSaleDate IS NULL THEN 'never_sold'
+                    WHEN DATEDIFF(day, ls.LastSaleDate, GETDATE()) >= 90 THEN '90plus'
+                    WHEN DATEDIFF(day, ls.LastSaleDate, GETDATE()) >= 60 THEN '60plus'
+                    WHEN DATEDIFF(day, ls.LastSaleDate, GETDATE()) >= 30 THEN '30plus'
+                    ELSE 'active'
+                END AS AgeingBucket
+            FROM StockSummary ss
+            LEFT JOIN LastSale ls ON ss.ArticleNo = ls.ArticleNo
+            WHERE ls.LastSaleDate IS NULL
+               OR DATEDIFF(day, ls.LastSaleDate, GETDATE()) >= 30
+            ORDER BY
+                CASE WHEN ls.LastSaleDate IS NULL THEN 999
+                     ELSE DATEDIFF(day, ls.LastSaleDate, GETDATE()) END DESC,
+                ss.TotalStock DESC
+        `);
+        res.json(result.recordset);
+    } catch (err) {
+        console.error('Dead stock aged error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 3. Stock Health Summary — combined quick-glance data for all 3 dashboard tiles
+app.get('/api/inventory/stock-health', async (req, res) => {
+    try {
+        // Broken Size Runs count
+        const brokenResult = await sql.query(`
+            ;WITH ArticleSizes AS (
+                SELECT
+                    s.article_no AS ArticleNo,
+                    ISNULL(s.para2_name, 'Standard') AS Size,
+                    SUM(p.quantity_in_stock) AS SizeStock
+                FROM PMT01106 p WITH (NOLOCK)
+                INNER JOIN SKU_NAMES s WITH (NOLOCK) ON p.product_code = s.product_Code
+                WHERE p.quantity_in_stock >= 0
+                GROUP BY s.article_no, s.para2_name
+            )
+            SELECT
+                COUNT(DISTINCT ArticleNo) AS BrokenRunCount
+            FROM (
+                SELECT
+                    ArticleNo,
+                    SUM(CASE WHEN Size IN ('30','32','34','36','38','40','S','M','L','XL') AND SizeStock = 0 THEN 1 ELSE 0 END) AS CoreOut,
+                    SUM(CASE WHEN Size IN ('30','32','34','36','38','40','S','M','L','XL') THEN 1 ELSE 0 END) AS CoreTotal,
+                    SUM(SizeStock) AS TotalStock
+                FROM ArticleSizes
+                GROUP BY ArticleNo
+                HAVING SUM(SizeStock) > 0
+                   AND SUM(CASE WHEN Size IN ('30','32','34','36','38','40','S','M','L','XL') AND SizeStock = 0 THEN 1 ELSE 0 END) > 0
+                   AND SUM(CASE WHEN Size IN ('30','32','34','36','38','40','S','M','L','XL') THEN 1 ELSE 0 END) > 0
+            ) x
+        `);
+
+        // Dead stock ageing summary
+        const deadResult = await sql.query(`
+            ;WITH LastSale AS (
+                SELECT
+                    s.article_no AS ArticleNo,
+                    MAX(m.CM_TIME) AS LastSaleDate
+                FROM CMD01106 d WITH (NOLOCK)
+                JOIN CMM01106 m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
+                JOIN SKU_NAMES s WITH (NOLOCK) ON d.PRODUCT_CODE = s.product_Code
+                WHERE m.CANCELLED = 0
+                GROUP BY s.article_no
+            ),
+            StockSummary AS (
+                SELECT
+                    s.article_no AS ArticleNo,
+                    SUM(p.quantity_in_stock) AS TotalStock
+                FROM PMT01106 p WITH (NOLOCK)
+                INNER JOIN SKU_NAMES s WITH (NOLOCK) ON p.product_code = s.product_Code
+                WHERE p.quantity_in_stock > 0
+                GROUP BY s.article_no
+            )
+            SELECT
+                SUM(CASE WHEN DATEDIFF(day, ls.LastSaleDate, GETDATE()) >= 90 OR ls.LastSaleDate IS NULL THEN ss.TotalStock ELSE 0 END) AS Units90Plus,
+                SUM(CASE WHEN DATEDIFF(day, ls.LastSaleDate, GETDATE()) >= 60 OR ls.LastSaleDate IS NULL THEN ss.TotalStock ELSE 0 END) AS Units60Plus,
+                SUM(CASE WHEN DATEDIFF(day, ls.LastSaleDate, GETDATE()) >= 30 OR ls.LastSaleDate IS NULL THEN ss.TotalStock ELSE 0 END) AS Units30Plus,
+                COUNT(CASE WHEN DATEDIFF(day, ls.LastSaleDate, GETDATE()) >= 90 OR ls.LastSaleDate IS NULL THEN 1 END) AS Articles90Plus,
+                COUNT(CASE WHEN DATEDIFF(day, ls.LastSaleDate, GETDATE()) >= 60 OR ls.LastSaleDate IS NULL THEN 1 END) AS Articles60Plus,
+                SUM(ss.TotalStock) AS TotalStockUnits
+            FROM StockSummary ss
+            LEFT JOIN LastSale ls ON ss.ArticleNo = ls.ArticleNo
+            WHERE ls.LastSaleDate IS NULL OR DATEDIFF(day, ls.LastSaleDate, GETDATE()) >= 30
+        `);
+
+        // Reorder alerts — fast movers with < 2 weeks of cover
+        const reorderResult = await sql.query(`
+            ;WITH SalesVelocity AS (
+                SELECT
+                    s.article_no AS ArticleNo,
+                    MAX(ISNULL(s.article_name, s.section_name)) AS ArticleName,
+                    SUM(d.QUANTITY) AS UnitsSold90d,
+                    CAST(SUM(d.QUANTITY) AS FLOAT) / 13.0 AS AvgWeeklySales
+                FROM CMD01106 d WITH (NOLOCK)
+                JOIN CMM01106 m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
+                JOIN SKU_NAMES s WITH (NOLOCK) ON d.PRODUCT_CODE = s.product_Code
+                WHERE m.CANCELLED = 0 AND m.CM_TIME >= DATEADD(day, -90, GETDATE())
+                GROUP BY s.article_no
+                HAVING SUM(d.QUANTITY) > 0
+            ),
+            CurrentStock AS (
+                SELECT
+                    s.article_no AS ArticleNo,
+                    SUM(p.quantity_in_stock) AS CurrentStock
+                FROM PMT01106 p WITH (NOLOCK)
+                JOIN SKU_NAMES s WITH (NOLOCK) ON p.product_code = s.product_Code
+                WHERE p.quantity_in_stock >= 0
+                GROUP BY s.article_no
+            )
+            SELECT
+                COUNT(*) AS ReorderAlertCount,
+                SUM(CASE WHEN ISNULL(cs.CurrentStock, 0) = 0 THEN 1 ELSE 0 END) AS ZeroStockCount,
+                SUM(sv.UnitsSold90d) AS TotalVelocityUnits
+            FROM SalesVelocity sv
+            LEFT JOIN CurrentStock cs ON sv.ArticleNo = cs.ArticleNo
+            WHERE CASE WHEN sv.AvgWeeklySales > 0
+                       THEN ISNULL(cs.CurrentStock, 0) / sv.AvgWeeklySales
+                       ELSE 99 END < 2
+        `);
+
+        const broken = brokenResult.recordset[0] || {};
+        const dead = deadResult.recordset[0] || {};
+        const reorder = reorderResult.recordset[0] || {};
+
+        res.json({
+            brokenSizeRuns: {
+                count: broken.BrokenRunCount || 0
+            },
+            deadStock: {
+                units90Plus: dead.Units90Plus || 0,
+                units60Plus: dead.Units60Plus || 0,
+                units30Plus: dead.Units30Plus || 0,
+                articles90Plus: dead.Articles90Plus || 0,
+                articles60Plus: dead.Articles60Plus || 0,
+                totalStockUnits: dead.TotalStockUnits || 0
+            },
+            reorderAlerts: {
+                count: reorder.ReorderAlertCount || 0,
+                zeroStock: reorder.ZeroStockCount || 0,
+                totalVelocityUnits: reorder.TotalVelocityUnits || 0
+            }
+        });
+    } catch (err) {
+        console.error('Stock health summary error:', err);
         res.status(500).json({ error: err.message });
     }
 });
