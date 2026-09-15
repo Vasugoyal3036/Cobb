@@ -58,6 +58,7 @@ app.use((req, res, next) => {
     const cacheEndpoints = [
         '/api/sales/overview',
         '/api/sales/live',
+        '/api/sales/history',
         '/api/sales/daily-month',
         '/api/analytics/hourly',
         '/api/analytics/monthly-products',
@@ -1246,11 +1247,42 @@ app.get('/api/sales/bill-lookup/:query', async (req, res) => {
     }
 });
 
-app.get('/api/sales/live', async (req, res) => {
+const handleSalesLiveOrHistory = async (req, res) => {
     try {
+        const { date, startDate, endDate, days, search, limit: reqLimit } = req.query;
+        const maxLimit = Math.min(parseInt(reqLimit, 10) || 100, 500);
+
+        let dateClause = 'm.CM_TIME >= CAST(GETDATE() AS DATE)';
+
+        if (date) {
+            const dateStr = String(date).trim().toLowerCase();
+            if (dateStr === 'yesterday') {
+                dateClause = 'CAST(m.CM_TIME AS DATE) = CAST(DATEADD(day, -1, GETDATE()) AS DATE)';
+            } else if (dateStr === 'today') {
+                dateClause = 'm.CM_TIME >= CAST(GETDATE() AS DATE)';
+            } else if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+                dateClause = `CAST(m.CM_TIME AS DATE) = '${dateStr.replace(/'/g, "''")}'`;
+            }
+        } else if (startDate && endDate) {
+            const s = String(startDate).replace(/'/g, "''");
+            const e = String(endDate).replace(/'/g, "''");
+            dateClause = `CAST(m.CM_TIME AS DATE) >= '${s}' AND CAST(m.CM_TIME AS DATE) <= '${e}'`;
+        } else if (days) {
+            const numDays = Math.max(1, Math.min(parseInt(days, 10) || 7, 90));
+            dateClause = `m.CM_TIME >= CAST(DATEADD(day, -${numDays}, GETDATE()) AS DATE)`;
+        } else if (req.path === '/api/sales/history') {
+            // Default for history endpoint if no param: last 7 days
+            dateClause = 'm.CM_TIME >= CAST(DATEADD(day, -7, GETDATE()) AS DATE)';
+        }
+
+        let searchClause = '';
+        if (search && String(search).trim() !== '') {
+            const cleanSearch = String(search).trim().replace(/'/g, "''");
+            searchClause = ` AND (m.CM_NO LIKE '%${cleanSearch}%' OR m.CUSTOMER_CODE LIKE '%${cleanSearch}%' OR c.CUSTOMER_FNAME LIKE '%${cleanSearch}%' OR c.CUSTOMER_LNAME LIKE '%${cleanSearch}%')`;
+        }
+
         const result = await sql.query(`
-            DECLARE @today DATE = CAST(GETDATE() AS DATE);
-            SELECT TOP 50 
+            SELECT TOP ${maxLimit} 
                 m.CM_ID as BillId,
                 m.CM_NO as BillNumber,
                 m.CUSTOMER_CODE as Phone,
@@ -1258,6 +1290,7 @@ app.get('/api/sales/live', async (req, res) => {
                 c.CUSTOMER_FNAME as FirstName,
                 m.NET_AMOUNT as Amount,
                 CONVERT(varchar, m.CM_TIME, 126) as BillTime,
+                CONVERT(varchar, m.CM_TIME, 23) as BillDate,
                 ISNULL(p.CASH_AMOUNT, 0) as CashAmount,
                 ISNULL(p.CC_AMOUNT, 0) - ISNULL(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0), 0) as CardAmount,
                 ISNULL(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0), 0) as UpiAmount
@@ -1265,10 +1298,9 @@ app.get('/api/sales/live', async (req, res) => {
             LEFT JOIN CUSTDYM c WITH (NOLOCK) ON m.CUSTOMER_CODE = c.CUSTOMER_CODE
             LEFT JOIN VW_BILL_PAYMODE p WITH (NOLOCK) ON m.CM_ID = p.MEMO_ID
             LEFT JOIN VW_WL_CASHMEMOLIST w WITH (NOLOCK) ON m.CM_ID = w.MEMO_ID
-            WHERE m.CM_TIME >= @today AND m.CANCELLED = 0
+            WHERE ${dateClause} AND m.CANCELLED = 0${searchClause}
             ORDER BY m.CM_TIME DESC
         `);
-
 
         // Batch fetch items for all returned bills
         const billIds = (result.recordset || []).map(b => b.BillId);
@@ -1327,18 +1359,27 @@ app.get('/api/sales/live', async (req, res) => {
                 paymentMode = 'Debit / Credit Card';
             }
 
+            const billItems = itemsByBill[b.BillId] || [];
+            const totalQty = billItems.reduce((sum, item) => sum + (Number(item.Quantity) || 1), 0);
+
             return {
                 ...b,
                 PaymentMode: paymentMode,
-                Items: itemsByBill[b.BillId] || []
+                TotalQty: totalQty,
+                Items: billItems
             };
         });
 
         res.json(enriched);
     } catch (err) {
+        console.error('Sales live/history error:', err);
         res.status(500).json({ error: err.message });
     }
-});
+};
+
+app.get('/api/sales/live', handleSalesLiveOrHistory);
+app.get('/api/sales/history', handleSalesLiveOrHistory);
+
 
 app.get('/api/sales/bill/:id/items', async (req, res) => {
     const { id } = req.params;

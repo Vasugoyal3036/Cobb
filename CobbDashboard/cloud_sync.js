@@ -30,7 +30,8 @@ const LOCAL_API = process.env.LOCAL_API || `http://localhost:${process.env.PORT 
 
 const endpointsToSync = [
     "/api/sales/overview",
-    "/api/sales/live",
+    { url: "/api/sales/live?days=7", docName: "sales_live" },
+    { url: "/api/sales/history?days=14", docName: "sales_history" },
     "/api/sales/daily-month",
     "/api/analytics/hourly",
     "/api/analytics/monthly-products",
@@ -72,7 +73,7 @@ async function runSyncCycle() {
         const dataConfig = typeof item === 'string' ? {} : (item.data || {});
         
         // Match the frontend SaaS Interceptor naming convention exactly!
-        const docName = url.replace('/api/', '').replace(/\//g, '_');
+        const docName = item.docName || url.split('?')[0].replace('/api/', '').replace(/\//g, '_');
 
         try {
             let response;
