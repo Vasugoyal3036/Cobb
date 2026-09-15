@@ -1,5 +1,31 @@
 [
   {
+    "id": "exp_1789483552786_zdnr",
+    "date": "2026-09-15",
+    "time": "20:15:52",
+    "category": "misc",
+    "categoryLabel": "Miscellaneous Petty Cash",
+    "categoryIcon": "📝",
+    "amount": 30,
+    "description": "Discount",
+    "loggedBy": "Counter Cashier",
+    "storeId": "STORE_01",
+    "createdAt": "2026-09-15T14:45:52.786Z"
+  },
+  {
+    "id": "exp_1789483297407_d25b",
+    "date": "2026-09-15",
+    "time": "20:11:37",
+    "category": "misc",
+    "categoryLabel": "Miscellaneous Petty Cash",
+    "categoryIcon": "📝",
+    "amount": 780,
+    "description": "Deo For Gifting",
+    "loggedBy": "Counter Cashier",
+    "storeId": "STORE_01",
+    "createdAt": "2026-09-15T14:41:37.407Z"
+  },
+  {
     "id": "exp_1789457487644_ebh1",
     "date": "2026-09-15",
     "time": "13:01:27",

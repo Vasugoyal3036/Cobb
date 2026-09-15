@@ -204,9 +204,9 @@ const Layout = ({
           <div>
             <div className="flex items-center gap-3 mb-1">
               <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/30">
-                <span className="text-white font-bold text-lg">C</span>
+                <span className="text-white font-black text-xs tracking-wider">ORS</span>
               </div>
-              <h1 className="text-xl font-bold tracking-wider text-white">COBB ITALY</h1>
+              <h1 className="text-xl font-black tracking-wider text-white">ORS</h1>
             </div>
             <p className={`text-xs font-medium ml-11 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Smart Retail ERP</p>
             <div className="mt-2.5 ml-11 flex items-center gap-1.5 flex-wrap">
@@ -281,10 +281,10 @@ const Layout = ({
                   {isMobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
                 </button>
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center text-white font-black text-xs shadow-sm">
-                    C
+                  <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center text-white font-black text-[10px] shadow-sm">
+                    ORS
                   </div>
-                  <span className="font-extrabold text-xs tracking-wider uppercase">COBB</span>
+                  <span className="font-extrabold text-xs tracking-wider uppercase">ORS</span>
                 </div>
               </div>
 

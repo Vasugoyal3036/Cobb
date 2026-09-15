@@ -112,6 +112,7 @@ function stopBackendServer() {
 function createWindow() {
   const iconPath = path.join(process.env.VITE_PUBLIC, 'favicon.svg');
   win = new BrowserWindow({
+    title: 'ORS',
     width: 1280,
     height: 800,
     minWidth: 1024,

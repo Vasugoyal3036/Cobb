@@ -63,7 +63,7 @@
   },
   "build": {
     "appId": "com.cobb.app",
-    "productName": "Cobb Offline Tool",
+    "productName": "ORS",
     "files": [
       "dist/**/*",
       "dist-electron/**/*"

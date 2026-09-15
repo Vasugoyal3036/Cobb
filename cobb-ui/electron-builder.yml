@@ -1,5 +1,5 @@
 appId: com.cobb.retailcrm
-productName: Cobb Retail CRM
+productName: ORS
 directories:
   output: release/${version}
 files:

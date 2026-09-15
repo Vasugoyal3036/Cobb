@@ -68,6 +68,7 @@ function _() {
 function v() {
 	let t = i.join(process.env.VITE_PUBLIC, "favicon.svg");
 	p = new e({
+		title: "ORS",
 		width: 1280,
 		height: 800,
 		minWidth: 1024,
