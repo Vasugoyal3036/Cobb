@@ -3,7 +3,19 @@ module.exports = {
     {
       name: "cobb-backend",
       script: "server.js",
-      watch: false,
+      watch: ["server.js"],
+      ignore_watch: [
+        "node_modules",
+        "*.log",
+        "*.txt",
+        "*.json",
+        ".wwebjs_auth",
+        "sent_bills.txt",
+        "sent_eod_date.txt",
+        "automation_dispatches.json",
+        "automation_engine.log",
+        "customer_numbers.txt"
+      ],
       env: {
         NODE_ENV: "production"
       }

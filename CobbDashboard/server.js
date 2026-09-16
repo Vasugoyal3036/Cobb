@@ -1427,13 +1427,18 @@ app.get('/api/inventory', async (req, res) => {
 });
 
 // Helper functions for auto-starting background services
-async function startGatewayHelper() {
-    try {
-        const ping = await fetch('http://localhost:3000/status', { signal: AbortSignal.timeout(3000) });
-        if (ping.ok) {
-            return true; // Gateway server is active and running! Let it initialize or handle messages.
-        }
-    } catch (e) { }
+async function startGatewayHelper(forceRestart = false) {
+    if (!forceRestart) {
+        try {
+            const ping = await fetch('http://localhost:3000/status', { signal: AbortSignal.timeout(3000) });
+            if (ping.ok) {
+                const data = await ping.json().catch(() => ({}));
+                if (data.isReady || data.qrCodeUrl) {
+                    return true; // Gateway server is active and running! Let it initialize or handle messages.
+                }
+            }
+        } catch (e) { }
+    }
 
     // Terminate any zombie processes holding port 3000
     try {
@@ -1667,17 +1672,29 @@ app.get('/api/automation/status', (req, res) => {
         const todayStr = getLocalDateString();
         const todayDispatches = allDispatches.filter(d => d.date === todayStr);
 
-        const checkoutsSent = todayDispatches.filter(d => d.reason === 'checkout' && d.status === 'sent').length;
-        const exchangesSent = todayDispatches.filter(d => d.reason === 'exchange' && d.status === 'sent').length;
-        // Strictly count numbers verified to NOT be on WhatsApp
-        const notOnWhatsAppCount = todayDispatches.filter(d => d.status === 'not_on_whatsapp').length;
+        // Deduplicate today's dispatches by unique bill (cmId or billNo) keeping the latest resolved status
+        const uniqueTodayMap = new Map();
+        for (const dispatch of todayDispatches) {
+            const key = (dispatch.cmId || dispatch.billNo || '').trim();
+            if (key) {
+                uniqueTodayMap.set(key, dispatch);
+            } else {
+                uniqueTodayMap.set(`anon_${Math.random()}`, dispatch);
+            }
+        }
+        const resolvedTodayDispatches = Array.from(uniqueTodayMap.values());
+
+        const checkoutsSent = resolvedTodayDispatches.filter(d => d.reason === 'checkout' && d.status === 'sent').length;
+        const exchangesSent = resolvedTodayDispatches.filter(d => d.reason === 'exchange' && d.status === 'sent').length;
+        // Strictly count numbers verified to NOT be on WhatsApp whose latest status is still not_on_whatsapp
+        const notOnWhatsAppCount = resolvedTodayDispatches.filter(d => d.status === 'not_on_whatsapp').length;
         // Ignore any transient gateway unready / 503 reconnecting errors
-        const failedCount = todayDispatches.filter(d => d.status === 'failed' && !d.detail?.includes('503') && !d.detail?.includes('reconnecting')).length;
-        const noPhoneCount = todayDispatches.filter(d => d.status === 'no_phone').length;
+        const failedCount = resolvedTodayDispatches.filter(d => d.status === 'failed' && !d.detail?.includes('503') && !d.detail?.includes('reconnecting')).length;
+        const noPhoneCount = resolvedTodayDispatches.filter(d => d.status === 'no_phone').length;
         const sentCount = checkoutsSent + exchangesSent;
         const totalAttempted = sentCount + notOnWhatsAppCount + noPhoneCount;
 
-        const validTodayEvents = todayDispatches.filter(d => d.status === 'sent' || d.status === 'not_on_whatsapp' || d.status === 'no_phone');
+        const validTodayEvents = resolvedTodayDispatches.filter(d => d.status === 'sent' || d.status === 'not_on_whatsapp' || d.status === 'no_phone');
 
         let latestReason = 'Monitoring checkouts & exchanges...';
         if (validTodayEvents.length > 0) {
@@ -3556,8 +3573,22 @@ app.listen(PORT, () => {
         try {
             const ping = await fetch('http://localhost:3000/status', { signal: AbortSignal.timeout(3000) });
             if (ping.ok) {
-                // Gateway server is active on port 3000 — do NOT kill it while it's initializing or pairing!
-                consecutiveGatewayFailures = 0;
+                const data = await ping.json().catch(() => ({}));
+                if (data.isReady || data.qrCodeUrl) {
+                    consecutiveGatewayFailures = 0;
+                } else {
+                    consecutiveGatewayFailures++;
+                    if (consecutiveGatewayFailures >= 18) { // 3 minutes stuck unready without QR code
+                        console.log('[SUPERVISOR] WhatsApp Client unready for >3m. Auto-restarting gateway process...');
+                        gatewayLogs.push(`[${new Date().toLocaleTimeString()}] [SUPERVISOR] Gateway stuck — restarting process...`);
+                        consecutiveGatewayFailures = 0;
+                        if (gatewayProcess) {
+                            try { spawn('taskkill', ['/PID', gatewayProcess.pid.toString(), '/F', '/T'], { windowsHide: true }); } catch (err) {}
+                            gatewayProcess = null;
+                        }
+                        await startGatewayHelper(true);
+                    }
+                }
             } else {
                 throw new Error('status not ok');
             }
@@ -3572,7 +3603,7 @@ app.listen(PORT, () => {
                     try { spawn('taskkill', ['/PID', gatewayProcess.pid.toString(), '/F', '/T'], { windowsHide: true }); } catch (err) {}
                     gatewayProcess = null;
                 }
-                await startGatewayHelper();
+                await startGatewayHelper(true);
             }
         }
 

@@ -70,5 +70,89 @@
     "reason": "checkout",
     "status": "sent",
     "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-09-15T20:56:26.952731",
+    "date": "2026-09-15",
+    "time": "08:56 PM",
+    "billNo": "STST27-00650   ",
+    "cmId": "ST01127000STST27-00650",
+    "customerName": "Naveen Soni",
+    "phone": "9896435202",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-09-16T18:01:32.371516",
+    "date": "2026-09-16",
+    "time": "06:01 PM",
+    "billNo": "STST27-00651   ",
+    "cmId": "ST01127000STST27-00651",
+    "customerName": "Ramesh Chand",
+    "phone": "7082048007",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-09-16T18:02:30.209478",
+    "date": "2026-09-16",
+    "time": "06:02 PM",
+    "billNo": "STST27-00652   ",
+    "cmId": "ST01127000STST27-00652",
+    "customerName": "Anu",
+    "phone": "9253878534",
+    "reason": "checkout",
+    "status": "not_on_whatsapp",
+    "detail": "Phone number is not registered on WhatsApp"
+  },
+  {
+    "timestamp": "2026-09-16T18:01:40.739508",
+    "date": "2026-09-16",
+    "time": "06:01 PM",
+    "billNo": "STST27-00653   ",
+    "cmId": "ST01127000STST27-00653",
+    "customerName": "Sohan Lal Barsana",
+    "phone": "7876223108",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-09-16T18:01:43.760038",
+    "date": "2026-09-16",
+    "time": "06:01 PM",
+    "billNo": "STST27-00654   ",
+    "cmId": "ST01127000STST27-00654",
+    "customerName": "Deepak Ghai Pundri",
+    "phone": "9996475858",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-09-16T18:01:43.937695",
+    "date": "2026-09-16",
+    "time": "06:01 PM",
+    "billNo": "STST27-00655   ",
+    "cmId": "ST01127000STST27-00655",
+    "customerName": "Jaipal Pilni",
+    "phone": "8607411435",
+    "reason": "exchange",
+    "status": "sent",
+    "detail": "Official Exchange Slip sent"
+  },
+  {
+    "timestamp": "2026-09-16T18:08:36.458671",
+    "date": "2026-09-16",
+    "time": "06:08 PM",
+    "billNo": "STST27-00656   ",
+    "cmId": "ST01127000STST27-00656",
+    "customerName": "Geeta Kaushik",
+    "phone": "9253334850",
+    "reason": "exchange",
+    "status": "sent",
+    "detail": "Official Exchange Slip sent"
   }
 ]

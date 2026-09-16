@@ -279,6 +279,24 @@ function formatWhatsAppNumber(number) {
     return clean;
 }
 
+function isUnregisteredError(err) {
+    if (!err) return false;
+    const msg = String(err?.message || err || '').toLowerCase();
+    return msg.includes('no lid') ||
+           msg.includes('wid error') ||
+           msg.includes('not-authorized') ||
+           msg.includes('invalid jid') ||
+           msg.includes('no-such-user') ||
+           msg.includes('not registered') ||
+           msg.includes('unregistered') ||
+           msg.includes('not-registered') ||
+           msg.includes('no user') ||
+           msg.includes('user not found') ||
+           msg.includes('marked as unregistered') ||
+           msg.includes('invalid number') ||
+           msg.includes('cannot read properties of undefined');
+}
+
 async function dispatchMessage(number, message, mediaPath) {
     const formattedNumber = formatWhatsAppNumber(number);
     if (!formattedNumber || formattedNumber.length < 10) {
@@ -296,14 +314,26 @@ async function dispatchMessage(number, message, mediaPath) {
                 console.log(`[SENT] Media dispatched to ${chatId}`);
                 return { success: true, type: 'media' };
             } catch (mediaErr) {
+                if (isUnregisteredError(mediaErr)) {
+                    console.log(`[SKIPPED] ${chatId} is not on WhatsApp.`);
+                    return { success: false, skipped: true, error: 'Phone number is not registered on WhatsApp.' };
+                }
                 console.warn(`[WARN] Media dispatch failed for ${chatId}, falling back to text:`, mediaErr.message);
             }
         }
     }
 
-    await client.sendMessage(chatId, message);
-    console.log(`[SENT] Text dispatched to ${chatId}`);
-    return { success: true, type: 'text' };
+    try {
+        await client.sendMessage(chatId, message);
+        console.log(`[SENT] Text dispatched to ${chatId}`);
+        return { success: true, type: 'text' };
+    } catch (textErr) {
+        if (isUnregisteredError(textErr)) {
+            console.log(`[SKIPPED] ${chatId} is not on WhatsApp.`);
+            return { success: false, skipped: true, error: 'Phone number is not registered on WhatsApp.' };
+        }
+        throw textErr;
+    }
 }
 
 async function flushOutbox() {
@@ -369,6 +399,9 @@ app.post('/send', async (req, res) => {
         }
         return res.json(result);
     } catch (err) {
+        if (isUnregisteredError(err)) {
+            return res.status(400).json({ success: false, skipped: true, error: 'Phone number is not registered on WhatsApp.' });
+        }
         console.error(`[ERROR] Primary send failed to ${number}:`, err.message || err);
         try {
             const formattedNumber = formatWhatsAppNumber(number);
@@ -378,15 +411,8 @@ app.post('/send', async (req, res) => {
             return res.json({ success: true, type: 'fallback' });
         } catch (fallbackErr) {
             console.error(`[ERROR] Fallback send failed to ${number}:`, fallbackErr.message || fallbackErr);
-            const errStr = String(fallbackErr?.message || fallbackErr || '').toLowerCase();
-            
-            const isTrulyUnregistered = errStr.includes('wid error') || 
-                                        errStr.includes('not-authorized') || 
-                                        errStr.includes('invalid jid') ||
-                                        errStr.includes('no-such-user');
-
-            if (isTrulyUnregistered) {
-                return res.status(400).json({ error: 'Phone number is invalid or not registered on WhatsApp.' });
+            if (isUnregisteredError(fallbackErr)) {
+                return res.status(400).json({ success: false, skipped: true, error: 'Phone number is invalid or not registered on WhatsApp.' });
             }
             return res.status(500).json({ error: `WhatsApp gateway dispatch error: ${fallbackErr.message || fallbackErr}` });
         }

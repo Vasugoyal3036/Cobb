@@ -74,7 +74,23 @@ def record_dispatch_event(bill_no, cm_id, customer_name, phone, reason, status, 
                     events = json.load(f)
             except Exception:
                 events = []
-        events.append(event)
+
+        # Update existing record in-place if present, otherwise append
+        updated = False
+        target_cm = str(cm_id or '').strip()
+        target_bill = str(bill_no or '').strip()
+        if target_cm or target_bill:
+            for idx in reversed(range(len(events))):
+                ev_cm = str(events[idx].get('cmId') or '').strip()
+                ev_bill = str(events[idx].get('billNo') or '').strip()
+                if (target_cm and ev_cm == target_cm) or (target_bill and ev_bill == target_bill):
+                    events[idx] = event
+                    updated = True
+                    break
+
+        if not updated:
+            events.append(event)
+
         if len(events) > 500:
             events = events[-500:]
         with open(DISPATCHES_FILE, 'w', encoding='utf-8') as f:
