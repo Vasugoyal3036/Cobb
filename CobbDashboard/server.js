@@ -1736,12 +1736,23 @@ app.get('/api/automation/status', (req, res) => {
     }
 });
 
+function formatWhatsAppNumber(phone) {
+    if (!phone) return '';
+    let digits = String(phone).replace(/[^0-9]/g, '').replace(/^0+/, '');
+    if (digits.length === 10) return `91${digits}`;
+    if (digits.length === 12 && digits.startsWith('91')) return digits;
+    if (digits.length > 10) return `91${digits.slice(-10)}`;
+    return digits;
+}
+
 app.post('/api/whatsapp/send', async (req, res) => {
     const { phone, message } = req.body;
     if (!phone || !message) return res.status(400).json({ error: 'Phone and message required.' });
 
-    const formattedPhone = String(phone).replace(/[^0-9]/g, '');
-    const finalPhone = formattedPhone.length === 10 ? `91${formattedPhone}` : formattedPhone;
+    const finalPhone = formatWhatsAppNumber(phone);
+    if (!finalPhone || finalPhone.length < 10) {
+        return res.status(400).json({ error: 'Invalid phone number format.' });
+    }
 
     try {
         const response = await fetch('http://localhost:3000/send', {
@@ -1772,7 +1783,10 @@ app.post('/api/whatsapp/send', async (req, res) => {
 app.post('/api/automation/send-test', async (req, res) => {
     const { phone, customerName } = req.body;
     if (!phone) return res.status(400).json({ error: 'Phone number is required.' });
-    const formattedPhone = String(phone).replace(/[^0-9]/g, '').length === 10 ? `91${String(phone).replace(/[^0-9]/g, '')}` : String(phone).replace(/[^0-9]/g, '');
+    const formattedPhone = formatWhatsAppNumber(phone);
+    if (!formattedPhone || formattedPhone.length < 10) {
+        return res.status(400).json({ error: 'Invalid phone number format.' });
+    }
     const messageText = `Hello *${customerName || 'Test Customer'}*! 👋\n\nThank you for shopping at *Cobb Pundri* today. We hope you loved our latest collection and had a wonderful experience with us! ✨\n\n-----------------------------------\n📍 *Store Location:*\nhttps://maps.app.goo.gl/HxgE1M25h32oWY2H9?g_st=ac\n\n⭐ *Leave us a review:*\nhttps://search.google.com/local/writereview?placeid=ChIJHfCBR58ZDjkRpBbB9EV-Zew\n-----------------------------------\n\nStay connected with our latest drops:\n📸 *Instagram:* https://www.instagram.com/cobbpundri\n👍 *Facebook:* https://www.facebook.com/share/14ra4KrNJa3/\n\nWarm Regards,\n*Parbhat Goyal*\nCobb Pundri`;
 
     try {
@@ -1841,13 +1855,12 @@ async function syncBilledCustomerGroup() {
         `);
 
         result.recordset.forEach(row => {
-            const rawPhone = String(row.Phone || '').replace(/[^0-9]/g, '');
-            if (rawPhone.length >= 10) {
-                const formattedPhone = rawPhone.length === 10 ? `91${rawPhone}` : rawPhone;
+            const formattedPhone = formatWhatsAppNumber(row.Phone);
+            if (formattedPhone && formattedPhone.length >= 10) {
                 const name = (row.CustomerName || '').trim() || 'Valued Customer';
 
                 group[formattedPhone] = {
-                    phone: rawPhone,
+                    phone: formattedPhone.slice(-10),
                     formattedPhone: formattedPhone,
                     customerName: name,
                     totalBills: row.TotalBills || 1,

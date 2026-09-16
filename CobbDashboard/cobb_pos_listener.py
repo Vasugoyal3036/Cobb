@@ -82,6 +82,20 @@ def record_dispatch_event(bill_no, cm_id, customer_name, phone, reason, status, 
     except Exception as e:
         log_engine(f"[DISPATCH RECORD ERROR] {e}")
 
+def normalize_phone_number(raw_phone):
+    """Sanitizes and formats phone numbers to standard 91XXXXXXXXXX format."""
+    if not raw_phone:
+        return ""
+    digits = ''.join(filter(str.isdigit, str(raw_phone)))
+    digits = digits.lstrip('0')
+    if len(digits) == 10:
+        return f"91{digits}"
+    if len(digits) == 12 and digits.startswith('91'):
+        return digits
+    if len(digits) > 10:
+        return f"91{digits[-10:]}"
+    return digits
+
 def send_daily_closing_digest(cursor, target_date=None, label_suffix=""):
     """Compiles and sends the store owner closing digest to all configured numbers."""
     try:
@@ -178,23 +192,24 @@ def send_daily_closing_digest(cursor, target_date=None, label_suffix=""):
             f"• Tax (GST) Collected: *₹{tax_collected:,}*\n\n"
             f"💳 *COLLECTIONS BREAKDOWN:*\n"
             f"• 💵 Cash in Drawer: *₹{cash:,}*\n"
-            f"• 📱 UPI / Online: *₹{upi:,}*\n"
-            f"• 💳 Card (POS Swipe): *₹{card:,}*\n\n"
-            f"🔄 *EXCHANGES & REPLACEMENTS:*\n"
+            f"• 💳 Debit/Credit Cards: *₹{card:,}*\n"
+            f"• 📱 UPI / Digital: *₹{upi:,}*\n\n"
+            f"🔄 *CUSTOMER EXCHANGES:*\n"
             f"• Exchange Bills Handled: *{exch_bills}*\n"
-            f"• Total Returned Merchandise: *₹{exch_value:,}*\n"
-            f"• Net Upsell Collected: *{upsell_sign}₹{exch_upsell:,}*\n\n"
-            f"🏆 *TOP PERFORMING CATEGORY:*\n"
-            f"• Best Seller: *{top_cat_name}* ({top_cat_units} units sold)\n"
+            f"• Replacement Value: *₹{exch_value:,}*\n"
+            f"• Net Exchange Upsell: *{upsell_sign}₹{exch_upsell:,}*\n\n"
+            f"🏆 *TOP PERFORMING SECTION:*\n"
+            f"• Category: *{top_cat_name}*\n"
+            f"• Units Moved: *{top_cat_units} items*\n\n"
             f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
             f"✨ Automated EOD Store Intelligence System"
         )
 
         delivered_count = 0
         for num in EOD_RECIPIENTS:
-            clean_phone = ''.join(filter(str.isdigit, str(num)))
-            if len(clean_phone) == 10:
-                clean_phone = f"91{clean_phone}"
+            clean_phone = normalize_phone_number(num)
+            if not clean_phone:
+                continue
             try:
                 r = requests.post(WHATSAPP_SERVER_URL, json={'number': clean_phone, 'message': msg}, headers={'Content-Type': 'application/json'}, timeout=15)
                 if r.status_code == 200:
@@ -234,9 +249,9 @@ def get_db_connection():
 
 def send_whatsapp_message(phone_number, customer_name):
     """Sends standard post-purchase thank you message for regular sales bills."""
-    clean_phone = ''.join(filter(str.isdigit, str(phone_number)))
-    if len(clean_phone) == 10:
-        clean_phone = f"91{clean_phone}"
+    clean_phone = normalize_phone_number(phone_number)
+    if not clean_phone or len(clean_phone) < 10:
+        return {'status': 'no_phone', 'detail': 'Invalid phone number format'}
 
     message_text = (
         f"Hello *{customer_name or 'Valued Customer'}*! 👋\n\n"
@@ -280,9 +295,9 @@ def send_whatsapp_message(phone_number, customer_name):
 
 def send_exchange_whatsapp_slip(phone_number, customer_name, bill_no, bill_time, net_amount, returned_items, replacement_items):
     """Sends official digital exchange slip for product exchanges."""
-    clean_phone = ''.join(filter(str.isdigit, str(phone_number)))
-    if len(clean_phone) == 10:
-        clean_phone = f"91{clean_phone}"
+    clean_phone = normalize_phone_number(phone_number)
+    if not clean_phone or len(clean_phone) < 10:
+        return {'status': 'no_phone', 'detail': 'Invalid phone number format'}
     display_mobile = clean_phone[-10:] if len(clean_phone) >= 10 else clean_phone
 
     cust_name = str(customer_name or 'Valued Customer').strip()
@@ -534,25 +549,28 @@ def run_listener():
                     is_exchange = len(returned_items) > 0
                     success = False
 
-                    if not phone or len(str(phone).strip()) < 10:
+                    clean_phone = normalize_phone_number(phone)
+                    display_phone = clean_phone[-10:] if len(clean_phone) >= 10 else str(phone or '')
+
+                    if not clean_phone or len(clean_phone) < 10:
                         log_engine(f"[SKIPPED] No valid phone attached to bill #{bill_no}")
                         record_dispatch_event(bill_no, cm_id_str, name, phone, 'exchange' if is_exchange else 'checkout', 'no_phone', 'No valid phone attached to invoice')
                         success = True
                     elif is_exchange:
-                        log_engine(f"[NEW EXCHANGE DETECTED] Bill #{bill_no} | Phone: {phone} | Returned: {len(returned_items)} | Replaced: {len(replacement_items)}")
-                        res = send_exchange_whatsapp_slip(phone, name, bill_no, bill_time, amount, returned_items, replacement_items)
+                        log_engine(f"[NEW EXCHANGE DETECTED] Bill #{bill_no} | Phone: {clean_phone} | Returned: {len(returned_items)} | Replaced: {len(replacement_items)}")
+                        res = send_exchange_whatsapp_slip(clean_phone, name, bill_no, bill_time, amount, returned_items, replacement_items)
                         if res.get('status') == 'client_not_ready':
                             log_engine(f"[GATEWAY WAITING] WhatsApp Client is reconnecting. Will retry Bill #{bill_no} once gateway is ready.")
                             break
-                        record_dispatch_event(bill_no, cm_id_str, name, phone, 'exchange', res['status'], res['detail'])
+                        record_dispatch_event(bill_no, cm_id_str, name, display_phone, 'exchange', res['status'], res['detail'])
                         success = res['status'] in ('sent', 'not_on_whatsapp')
                     else:
-                        log_engine(f"[NEW BILL DETECTED] Bill #{bill_no} | Rs.{amount} | Phone: {phone}")
-                        res = send_whatsapp_message(phone, name)
+                        log_engine(f"[NEW BILL DETECTED] Bill #{bill_no} | Rs.{amount} | Phone: {clean_phone}")
+                        res = send_whatsapp_message(clean_phone, name)
                         if res.get('status') == 'client_not_ready':
                             log_engine(f"[GATEWAY WAITING] WhatsApp Client is reconnecting. Will retry Bill #{bill_no} once gateway is ready.")
                             break
-                        record_dispatch_event(bill_no, cm_id_str, name, phone, 'checkout', res['status'], res['detail'])
+                        record_dispatch_event(bill_no, cm_id_str, name, display_phone, 'checkout', res['status'], res['detail'])
                         success = res['status'] in ('sent', 'not_on_whatsapp')
 
                     if success:
@@ -562,8 +580,7 @@ def run_listener():
                             with open(SENT_BILLS_FILE, 'a') as f:
                                 f.write(cm_id_str + "\n")
                             # Add phone to our local database for marketing if on whatsapp
-                            if phone and len(str(phone).strip()) >= 10 and (res.get('status') == 'sent' if 'res' in locals() and isinstance(res, dict) else False):
-                                clean_phone = ''.join(filter(str.isdigit, str(phone)))
+                            if clean_phone and len(clean_phone) >= 10 and (res.get('status') == 'sent' if 'res' in locals() and isinstance(res, dict) else False):
                                 customer_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "customer_numbers.txt")
                                 with open(customer_file, 'a') as cf:
                                     cf.write(clean_phone + "\n")
