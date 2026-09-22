@@ -502,7 +502,7 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                         const totalSales = overviewStats.today?.TotalSales || 0;
                         const cogs = Math.round(totalSales * 0.73);
                         const grossProfit = totalSales - cogs;
-                        const DAILY_EXPENSE = 3500;
+                        const DAILY_EXPENSE = 4000;
                         const netMargin = grossProfit - DAILY_EXPENSE;
                         const isProfitable = netMargin >= 0;
                         return (
@@ -520,7 +520,8 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                   {(() => {
                     const totalSales = overviewStats.today?.TotalSales || 0;
                     const total = totalSales > 0 ? totalSales : 1;
-                    const DAILY_EXPENSE = 3500;
+                    const DAILY_EXPENSE = 4000;
+                    const bep = Math.round(DAILY_EXPENSE / 0.27);
                     const cogs = Math.round(totalSales * 0.73);
                     const grossProfit = totalSales - cogs;
                     const netMargin = grossProfit - DAILY_EXPENSE;
@@ -535,7 +536,7 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                       <div className="space-y-1.5 my-1">
                         <div className="flex justify-between text-[11px] font-semibold">
                           <span className="text-slate-400">Cost (73%)</span>
-                          <span className="text-amber-400">OpEx (₹3.5k)</span>
+                          <span className="text-amber-400">OpEx (₹4k)</span>
                           <span className={isProfitable ? 'text-emerald-400' : 'text-rose-400'}>
                             {isProfitable ? 'Profit' : 'Deficit'}
                           </span>
@@ -551,14 +552,14 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                         </div>
                         <div className="flex justify-between text-[11px] font-mono text-slate-400">
                           <span>₹{Math.round(cogs / 1000)}k COGS</span>
-                          <span>{isProfitable ? '🎉 Profitable' : `₹${Math.max(0, 12964 - totalSales)} to BEP`}</span>
+                          <span>{isProfitable ? '🎉 Profitable' : `₹${Math.max(0, bep - totalSales)} to BEP`}</span>
                         </div>
                       </div>
                     );
                   })()}
 
                   <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex justify-between items-center text-xs">
-                    <span className="text-xs text-slate-400 font-medium">Breakeven at ₹12,964</span>
+                    <span className="text-xs text-slate-400 font-medium">Breakeven at ₹14,815</span>
                     <button
                       onClick={() => setActiveTab('pnl')}
                       className="font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer transition-colors"
