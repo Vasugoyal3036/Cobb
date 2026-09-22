@@ -3593,6 +3593,205 @@ function startCloudSyncHelper() {
     return true;
 }
 
+// --- PILLAR 2: INBOUND WHATSAPP ALERTS & CONCIERGE BRIDGE ---
+const inboundAlerts = [];
+
+app.post('/api/whatsapp/inbound-alert', (req, res) => {
+    const { phone, message, type } = req.body || {};
+    const alert = {
+        id: Date.now(),
+        phone: phone || 'Unknown',
+        message: message || '',
+        type: type || 'general',
+        timestamp: new Date().toISOString(),
+        status: 'unread'
+    };
+    inboundAlerts.unshift(alert);
+    if (inboundAlerts.length > 100) inboundAlerts.pop();
+    console.log(`[INBOUND ALERT] Logged ${type} from ${phone}: "${message}"`);
+    res.json({ success: true, alert });
+});
+
+app.get('/api/whatsapp/inbound-alerts', (req, res) => {
+    res.json(inboundAlerts);
+});
+
+app.post('/api/whatsapp/inbound-alerts/mark-read', (req, res) => {
+    const { id } = req.body || {};
+    const target = inboundAlerts.find(a => a.id === id);
+    if (target) target.status = 'read';
+    res.json({ success: true });
+});
+
+// --- PILLAR 2: GOOGLE REVIEW BOOSTER DISPATCHER ---
+app.post('/api/review-booster/send', async (req, res) => {
+    const { phone, customerName } = req.body || {};
+    if (!phone) return res.status(400).json({ error: 'Phone number required' });
+    const name = customerName || 'Valued Customer';
+    const message = `✨ Hello *${name}*! 👋\n\nThank you for shopping at *Cobb Apparels* today! 🛍️\n\nHow was your in-store experience? We would love your rating:\n\n⭐ *Reply 5* for Excellent\n⭐ *Reply 4* for Good\n⭐ *Reply 1-3* for Suggestions\n\nYour feedback helps us continuously improve! 🙏`;
+    try {
+        const formatted = String(phone).replace(/[^0-9]/g, '');
+        const finalPhone = formatted.length === 10 ? `91${formatted}` : formatted;
+        await fetch('http://localhost:3000/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ number: finalPhone, message })
+        });
+        res.json({ success: true, message: 'Review booster dispatched' });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- PILLAR 2: BIRTHDAY & ANNIVERSARY GREETINGS SCHEDULER ---
+app.get('/api/crm/anniversaries-today', async (req, res) => {
+    try {
+        const today = new Date();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+
+        const result = await sql.query(`
+            SELECT TOP 50
+                CUSTOMER_CODE AS Phone,
+                ISNULL(CUSTOMER_FNAME, '') + ' ' + ISNULL(CUSTOMER_LNAME, '') AS CustomerName,
+                DOB,
+                ANNIVERSARY
+            FROM CUSTDYM WITH (NOLOCK)
+            WHERE (
+                (DOB IS NOT NULL AND FORMAT(DOB, 'MM-dd') = '${month}-${day}')
+                OR
+                (ANNIVERSARY IS NOT NULL AND FORMAT(ANNIVERSARY, 'MM-dd') = '${month}-${day}')
+            )
+            AND CUSTOMER_CODE IS NOT NULL AND LEN(CUSTOMER_CODE) >= 10
+        `);
+        res.json(result.recordset || []);
+    } catch (e) {
+        res.json([]);
+    }
+});
+
+app.post('/api/crm/dispatch-wishes', async (req, res) => {
+    const { phone, customerName, occasion } = req.body || {};
+    if (!phone) return res.status(400).json({ error: 'Phone required' });
+    const isBirthday = occasion === 'birthday' || !occasion;
+    const emoji = isBirthday ? '🎂🎉' : '💍💐';
+    const title = isBirthday ? 'Happy Birthday' : 'Happy Anniversary';
+    const code = isBirthday ? `COBB-BDAY-${new Date().getFullYear()}` : `COBB-CELEB-${new Date().getFullYear()}`;
+    const message = `${emoji} *${title} from Cobb Apparels!* ${emoji}\n\nDear *${customerName || 'Valued Customer'}*,\n\nMay your special day be filled with joy and success! To celebrate with you, enjoy an exclusive *Flat 15% OFF* on your next visit.\n\n🎟️ *VIP Promo Code:* *${code}*\n⏳ _Valid for 7 days in-store._\n\nWe look forward to styling you! 👔✨`;
+
+    try {
+        const formatted = String(phone).replace(/[^0-9]/g, '');
+        const finalPhone = formatted.length === 10 ? `91${formatted}` : formatted;
+        await fetch('http://localhost:3000/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ number: finalPhone, message })
+        });
+        res.json({ success: true, code });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+// --- PILLAR 7: UNIFIED SYSTEM HEALTH WATCHDOG API ---
+app.get('/api/system/health', async (req, res) => {
+    let dbStatus = 'healthy';
+    let dbLatencyMs = 0;
+    try {
+        const dbStart = Date.now();
+        await sql.query('SELECT 1 AS ping');
+        dbLatencyMs = Date.now() - dbStart;
+    } catch (e) {
+        dbStatus = 'degraded';
+    }
+
+    let waStatus = 'offline';
+    let waDetails = {};
+    try {
+        const waPing = await fetch('http://localhost:3000/status', { signal: AbortSignal.timeout(2000) });
+        if (waPing.ok) {
+            waDetails = await waPing.json();
+            waStatus = waDetails.isReady ? 'healthy' : (waDetails.qrCodeUrl ? 'awaiting_qr' : 'connecting');
+        }
+    } catch (e) {
+        waStatus = 'offline';
+    }
+
+    const listenerStatus = (pythonProcess && pythonProcess.exitCode === null) ? 'healthy' : 'offline';
+    const syncStatus = (cloudSyncProcess && !cloudSyncProcess.killed) ? 'healthy' : 'idle';
+
+    const overallHealthy = dbStatus === 'healthy' && waStatus === 'healthy' && listenerStatus === 'healthy';
+
+    res.json({
+        overall: overallHealthy ? 'healthy' : (waStatus === 'awaiting_qr' ? 'needs_qr_scan' : 'attention_required'),
+        uptimeSeconds: Math.floor(process.uptime()),
+        timestamp: new Date().toISOString(),
+        services: {
+            database: { status: dbStatus, latencyMs: dbLatencyMs, name: 'Microsoft SQL Server' },
+            whatsapp: { status: waStatus, isReady: !!waDetails.isReady, qrAvailable: !!waDetails.qrCodeUrl, qrUrl: waDetails.qrCodeUrl, name: 'WhatsApp Gateway' },
+            posListener: { status: listenerStatus, name: 'POS Receipt Auto-Listener' },
+            cloudSync: { status: syncStatus, name: 'Firebase Cloud Sync' }
+        },
+        inboundAlertsCount: inboundAlerts.filter(a => a.status === 'unread').length
+    });
+});
+
+app.post('/api/system/restart-service', async (req, res) => {
+    const { service } = req.body || {};
+    try {
+        if (service === 'whatsapp') {
+            if (gatewayProcess) {
+                try { spawn('taskkill', ['/PID', gatewayProcess.pid.toString(), '/F', '/T'], { windowsHide: true }); } catch (e) {}
+                gatewayProcess = null;
+            }
+            await startGatewayHelper(true);
+            return res.json({ success: true, message: 'WhatsApp Gateway restarted.' });
+        }
+        if (service === 'posListener') {
+            if (pythonProcess) {
+                try { spawn('taskkill', ['/PID', pythonProcess.pid.toString(), '/F', '/T'], { windowsHide: true }); } catch (e) {}
+                pythonProcess = null;
+            }
+            startAutomationHelper();
+            return res.json({ success: true, message: 'POS Listener restarted.' });
+        }
+        if (service === 'cloudSync') {
+            if (cloudSyncProcess) {
+                try { cloudSyncProcess.kill(); } catch (e) {}
+                cloudSyncProcess = null;
+            }
+            startCloudSyncHelper();
+            return res.json({ success: true, message: 'Cloud Sync restarted.' });
+        }
+        res.status(400).json({ error: 'Unknown service: ' + service });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// --- PILLAR 7: DATABASE BACKUP API ---
+app.post('/api/system/backup-now', async (req, res) => {
+    try {
+        const backupScript = path.join(__dirname, 'scripts', 'backup_db.js');
+        if (!fs.existsSync(backupScript)) {
+            return res.status(404).json({ error: 'Backup script not found' });
+        }
+        const child = spawn('node', [backupScript], { cwd: __dirname, shell: false, windowsHide: true });
+        let output = '';
+        child.stdout.on('data', d => { output += d.toString(); });
+        child.stderr.on('data', d => { output += d.toString(); });
+        child.on('close', code => {
+            if (code === 0) {
+                res.json({ success: true, message: 'Database backup generated successfully', output });
+            } else {
+                res.status(500).json({ error: 'Backup script failed with code ' + code, output });
+            }
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 const PORT = 5000;
 app.listen(PORT, () => {
     console.log(`CRM Backend running on http://localhost:${PORT}`);
@@ -3686,6 +3885,13 @@ app.listen(PORT, () => {
         } catch (eodErr) {
             /* ignore */
         }
+
+        // 5. Automated Daily Nightly Database Backup (Runs once after 23:00)
+        try {
+            await checkAndAutoNightlyBackup();
+        } catch (backupErr) {
+            /* ignore */
+        }
     }, 10000);
 
     // --- AUTOMATIC EOD CLOSING DISPATCH & RECOVERY ENGINE ---
@@ -3775,6 +3981,20 @@ app.listen(PORT, () => {
             }
         } catch (err) {
             console.error('[AUTO EOD CHECK ERROR]:', err.message);
+        }
+    }
+
+    let lastBackupDate = '';
+    async function checkAndAutoNightlyBackup() {
+        const now = new Date();
+        const todayStr = now.toISOString().split('T')[0];
+        if (now.getHours() >= 23 && lastBackupDate !== todayStr) {
+            lastBackupDate = todayStr;
+            const backupScript = path.join(__dirname, 'scripts', 'backup_db.js');
+            if (fs.existsSync(backupScript)) {
+                console.log(`[SUPERVISOR] Executing scheduled nightly database backup for ${todayStr}...`);
+                spawn('node', [backupScript], { cwd: __dirname, shell: false, windowsHide: true, stdio: 'ignore' });
+            }
         }
     }
 });

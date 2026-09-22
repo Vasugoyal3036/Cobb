@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import SetupWizardModal from './SetupWizardModal';
+import SystemHealthModal from './SystemHealthModal';
+import PwaInstallBanner from './PwaInstallBanner';
 import {
   LineChart,
   MessageCircle,
@@ -154,6 +157,22 @@ const Layout = ({
   const { role: contextRole, switchRole, activeStore, switchStore, user } = useAuth();
   const currentRole = contextRole || propUserRole || 'owner';
   const [showSetupModal, setShowSetupModal] = useState(false);
+  const [showHealthModal, setShowHealthModal] = useState(false);
+  const [healthStatus, setHealthStatus] = useState({ overall: 'healthy', inboundAlertsCount: 0 });
+
+  useEffect(() => {
+    const fetchHealth = async () => {
+      try {
+        const res = await axios.get(`${API_BASE}/api/system/health`);
+        setHealthStatus(res.data || { overall: 'healthy' });
+      } catch (e) {
+        setHealthStatus({ overall: 'attention_required', inboundAlertsCount: 0 });
+      }
+    };
+    fetchHealth();
+    const interval = setInterval(fetchHealth, 15000);
+    return () => clearInterval(interval);
+  }, [API_BASE]);
 
   // Filter navigation items based on role (RBAC)
   // Store Manager only sees operational counter tools; hides P&L, GST, Automation, Broadcast, Competitor Intel
@@ -337,6 +356,26 @@ const Layout = ({
                 >
                   {darkMode ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5 text-slate-600" />}
                 </button>
+
+                {/* System Health Watchdog Button */}
+                <button
+                  type="button"
+                  onClick={() => setShowHealthModal(true)}
+                  className={`p-1.5 rounded-xl border shrink-0 cursor-pointer flex items-center justify-center relative ${
+                    darkMode ? 'bg-[#0e1320] border-[#1c2436]' : 'bg-slate-100 border-slate-200'
+                  }`}
+                  title="System Watchdog & Health Telemetry"
+                >
+                  <div className="relative flex h-2 w-2">
+                    {healthStatus.overall === 'healthy' && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>}
+                    <span className={`relative inline-flex rounded-full h-2 w-2 ${
+                      healthStatus.overall === 'healthy' ? 'bg-emerald-500' : healthStatus.overall === 'needs_qr_scan' ? 'bg-amber-500' : 'bg-rose-500'
+                    }`}></span>
+                  </div>
+                  {healthStatus.inboundAlertsCount > 0 && (
+                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full animate-pulse"></span>
+                  )}
+                </button>
               </div>
             </div>
 
@@ -509,25 +548,66 @@ const Layout = ({
                 {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
               </button>
 
-              {/* Systems status badge */}
-              <div className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-full border shadow-xs cursor-help shrink-0 ${
-                darkMode
-                  ? 'bg-[#0b0f19] border-[#1e2638] text-white'
-                  : 'bg-slate-100 border-slate-200 text-slate-600'
-              }`} title="Automation Engine Status">
+              {/* Interactive Systems status badge */}
+              <button
+                type="button"
+                onClick={() => setShowHealthModal(true)}
+                className={`flex items-center space-x-2 px-2.5 py-1.5 rounded-xl border shadow-xs cursor-pointer shrink-0 transition-all ${
+                  darkMode
+                    ? 'bg-[#0b0f19] hover:bg-[#141b2b] border-[#1e2638] text-white'
+                    : 'bg-slate-100 hover:bg-slate-200/80 border-slate-200 text-slate-700'
+                }`}
+                title="System Health, Watchdog & Disaster Backups (Click to open)"
+              >
                 <div className="relative flex h-2 w-2">
-                  {(isGatewayRunning && isListenerRunning) && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>}
-                  <span className={`relative inline-flex rounded-full h-2 w-2 ${isGatewayRunning && isListenerRunning ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+                  {healthStatus.overall === 'healthy' && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>}
+                  <span className={`relative inline-flex rounded-full h-2 w-2 ${
+                    healthStatus.overall === 'healthy' ? 'bg-emerald-500' : healthStatus.overall === 'needs_qr_scan' ? 'bg-amber-500' : 'bg-rose-500'
+                  }`}></span>
                 </div>
-                <span className={`text-[10px] font-bold uppercase tracking-wider ${darkMode ? 'text-slate-300' : 'text-slate-500'}`}>
-                  {isGatewayRunning && isListenerRunning ? 'Active' : 'Offline'}
+                <span className={`text-[10.5px] font-bold uppercase tracking-wider ${
+                  healthStatus.overall === 'healthy' ? 'text-emerald-400' : healthStatus.overall === 'needs_qr_scan' ? 'text-amber-400' : 'text-rose-400'
+                }`}>
+                  {healthStatus.overall === 'healthy' ? 'Systems Healthy' : healthStatus.overall === 'needs_qr_scan' ? 'Scan QR' : 'Attention'}
                 </span>
-              </div>
+                {healthStatus.inboundAlertsCount > 0 && (
+                  <span className="px-1.5 py-0.2 text-[9px] font-black rounded-full bg-rose-500 text-white animate-pulse">
+                    {healthStatus.inboundAlertsCount}
+                  </span>
+                )}
+              </button>
             </div>
           </div>
         </header>
 
         <div className={activeTab === 'copilot' ? 'p-0 sm:p-6 lg:p-8 max-w-7xl mx-auto' : 'p-3 sm:p-6 lg:p-8 max-w-7xl mx-auto'}>
+          {/* Multi-Store Executive HQ Mode Banner */}
+          {activeStore === 'ALL' && (
+            <div className="mb-5 p-4 rounded-2xl bg-gradient-to-r from-blue-950/70 via-indigo-950/60 to-purple-950/70 border border-blue-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xl backdrop-blur-md">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-blue-600 text-white font-black text-xs flex items-center justify-center shadow-lg shadow-blue-500/30 shrink-0">
+                  HQ
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-black text-white text-xs tracking-wider uppercase">Multi-Store Executive HQ Mode Active</h4>
+                    <span className="px-2 py-0.5 rounded text-[9px] font-extrabold bg-blue-500/20 text-blue-300 border border-blue-500/40 uppercase">Consolidated</span>
+                  </div>
+                  <p className="text-[11px] text-slate-300 mt-0.5">Aggregating real-time POS revenue, inventory velocity & customer intelligence across all Cobb outlets.</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowHealthModal(true)}
+                  className="px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-600/40 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Activity className="w-3.5 h-3.5 text-blue-400" />
+                  <span>Network Health</span>
+                </button>
+              </div>
+            </div>
+          )}
 
           {children}
         </div>
@@ -543,7 +623,16 @@ const Layout = ({
         }}
       />
 
+      {/* System Health & DevOps Watchdog Modal */}
+      <SystemHealthModal
+        isOpen={showHealthModal}
+        onClose={() => setShowHealthModal(false)}
+        API_BASE={API_BASE}
+        darkMode={darkMode}
+      />
 
+      {/* Progressive Web App Install Banner */}
+      <PwaInstallBanner darkMode={darkMode} />
     </>
   );
 };

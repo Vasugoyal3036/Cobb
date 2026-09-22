@@ -192,6 +192,8 @@ async function initWhatsApp(isFresh = false) {
             startWatchdog();
         });
 
+        const inboundCooldown = new Map();
+
         client.on('ready', () => {
             clearWatchdog();
             isClientReady = true;
@@ -200,6 +202,106 @@ async function initWhatsApp(isFresh = false) {
             isReconnecting = false;
             console.log('[WHATSAPP] Client is ONLINE and ready to dispatch messages!');
             flushOutbox();
+        });
+
+        // --- INBOUND TWO-WAY WHATSAPP CONCIERGE & REVIEW ROUTER ---
+        client.on('message', async (msg) => {
+            try {
+                // Ignore broadcast statuses, group chats, or our own messages
+                if (!msg || msg.fromMe || !msg.from || msg.from.includes('@g.us') || msg.from === 'status@broadcast') {
+                    return;
+                }
+
+                const rawBody = (msg.body || '').trim();
+                if (!rawBody) return;
+                const lower = rawBody.toLowerCase();
+                const phone = msg.from.replace('@c.us', '');
+                const cleanPhone = phone.startsWith('91') && phone.length === 12 ? phone.slice(2) : phone;
+
+                console.log(`[WHATSAPP INBOUND] From ${cleanPhone}: "${rawBody}"`);
+
+                // Anti-spam cooldown: max 1 automated reply per 4 seconds to the same phone
+                const now = Date.now();
+                if (inboundCooldown.has(phone) && now - inboundCooldown.get(phone) < 4000) {
+                    return;
+                }
+                inboundCooldown.set(phone, now);
+
+                // 1. Loyalty Points / Tier Balance
+                if (lower === '1' || lower.includes('point') || lower.includes('loyalty') || lower.includes('balance') || lower.includes('coins')) {
+                    try {
+                        const res = await fetch(`http://localhost:5000/api/loyalty/customer/${cleanPhone}`, { signal: AbortSignal.timeout(4000) });
+                        if (res.ok) {
+                            const cust = await res.json();
+                            const reply = `🏆 *Cobb VIP Loyalty Status*\n\nHello *${cust.customerName || 'Valued Customer'}*! 👋\n\n✨ *Tier:* ${cust.tier || 'Silver'}\n⭐ *Available Points:* ${Number(cust.points || 0).toLocaleString('en-IN')} pts\n💰 *Cash Value:* ₹${Number(cust.pointsValue || 0).toLocaleString('en-IN')}\n🛍️ *Total Store Visits:* ${cust.totalVisits || 1}\n\n👉 Show your phone at the billing counter to redeem points on your next purchase!\n\n_Reply 2 for active offers • Reply 3 for store location_`;
+                            await client.sendMessage(msg.from, reply);
+                            return;
+                        }
+                    } catch (e) {}
+
+                    await client.sendMessage(msg.from, `🏆 *Cobb VIP Loyalty*\n\nThank you for reaching out! To redeem points at checkout, simply quote your registered mobile number: *${cleanPhone}*.\n\n_Reply 2 for today's active offers_`);
+                    return;
+                }
+
+                // 2. Active In-Store Offers
+                if (lower === '2' || lower.includes('offer') || lower.includes('deal') || lower.includes('discount') || lower.includes('sale') || lower.includes('scheme')) {
+                    const reply = `🏷️ *Today's In-Store Cobb Specials*\n\n✨ *Buy 2 Get 1 FREE* on selected shirts & casual tees\n✨ *Flat 20% OFF* on premium Italian-fit suits & blazers\n✨ *Additional 5% OFF* on all bills above ₹4,999!\n\n📍 _Offers valid exclusively in-store today._\n\n_Reply 1 for points • Reply 3 for store location_`;
+                    await client.sendMessage(msg.from, reply);
+                    return;
+                }
+
+                // 3. Store Timings & Location
+                if (lower === '3' || lower.includes('timing') || lower.includes('location') || lower.includes('address') || lower.includes('map') || lower.includes('open') || lower.includes('time')) {
+                    const reply = `📍 *Cobb Apparels Flagship Store*\n\n🕒 *Hours:* 10:30 AM – 9:30 PM (Open all 7 days)\n📍 *Address:* Cobb Apparels Store, Main Market\n🗺️ *Google Maps:* https://maps.google.com/?q=Cobb+Apparels\n👔 *Collections:* Men's Suits, Blazers, Formal Shirts, Chinos, Denim & Winterwear\n\nWe look forward to welcoming you! 🛍️`;
+                    await client.sendMessage(msg.from, reply);
+                    return;
+                }
+
+                // 4. Positive Google Review (4 or 5 Stars)
+                if (['5', '5 star', '5 stars', '4', '4 star', '4 stars', 'excellent', 'great', 'superb', 'best'].some(k => lower === k || lower.startsWith(k))) {
+                    const reply = `🌟 *Thank you so much for the 5-Star rating!* 🙏\n\nYour feedback means everything to our local team. Would you mind taking 15 seconds to share your review on our Google Maps page?\n\n⭐ *Tap here to review:* https://g.page/r/cobb-store/review\n\nThank you for being part of the Cobb family! 👔`;
+                    await client.sendMessage(msg.from, reply);
+                    return;
+                }
+
+                // 5. Customer Grievance (1 to 3 Stars)
+                if (['1', '1 star', '2', '2 star', '3', '3 star', 'bad', 'poor', 'worst', 'issue', 'complaint'].some(k => lower === k || lower.startsWith(k))) {
+                    const reply = `🙏 *We sincerely apologize for falling short of your expectations.*\n\nYour feedback has been logged with highest priority for our Store Manager. We will look into this right away.\n\nThank you for helping us improve our service.`;
+                    await client.sendMessage(msg.from, reply);
+
+                    // Forward to CRM backend for staff alert
+                    try {
+                        await fetch('http://localhost:5000/api/whatsapp/inbound-alert', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ phone: cleanPhone, message: rawBody, type: 'grievance' })
+                        });
+                    } catch (e) {}
+                    return;
+                }
+
+                // 6. Help / Counter Support
+                if (lower === '4' || lower.includes('help') || lower.includes('support') || lower.includes('call') || lower.includes('manager')) {
+                    const reply = `🛎️ *Store Counter Alerted*\n\nOur store representative has received your request and will follow up shortly.\n\n_Reply 1: Points | 2: Offers | 3: Location_`;
+                    await client.sendMessage(msg.from, reply);
+                    try {
+                        await fetch('http://localhost:5000/api/whatsapp/inbound-alert', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ phone: cleanPhone, message: rawBody, type: 'support_request' })
+                        });
+                    } catch (e) {}
+                    return;
+                }
+
+                // 7. Generic Greeting
+                if (['hi', 'hello', 'hey', 'namaste', 'start', 'cobb', 'menu', 'help'].some(k => lower.includes(k))) {
+                    const reply = `👋 *Welcome to Cobb Retail Concierge!*\n\nHow can we help you today? Please reply with a number:\n\n1️⃣ Check *Loyalty Points & Tier*\n2️⃣ View *Today's In-Store Offers*\n3️⃣ Check *Store Timings & Address*\n4️⃣ Contact *Store Counter / Manager*\n\n_Cobb Apparels — Redefining Fashion_`;
+                    await client.sendMessage(msg.from, reply);
+                }
+            } catch (inboundErr) {
+                console.error('[WHATSAPP INBOUND ERROR]:', inboundErr.message);
+            }
         });
 
         client.on('auth_failure', async (msg) => {

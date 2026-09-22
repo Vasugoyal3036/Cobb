@@ -171,7 +171,7 @@ axios.get = async (url, config) => {
          if (docSnap.exists()) {
             let data = docSnap.data();
             // Unwrap arrays if the sync agent wrapped them
-            if (data.items !== undefined && Object.keys(data).length <= 2) { 
+            if (data && Array.isArray(data.items)) { 
                 data = data.items; 
             }
             return { data, status: 200, statusText: 'OK' };

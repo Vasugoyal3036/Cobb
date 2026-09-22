@@ -53,6 +53,8 @@ const endpointsToSync = [
     "/api/broadcast/group",
     "/api/smart-bundles",
     "/api/reports/eod-summary",
+    "/api/system/health",
+    "/api/crm/anniversaries-today",
     { url: "/api/ai/demand-forecasts", method: "POST", data: { refresh: true } }
 ];
 
@@ -69,7 +71,7 @@ async function runSyncCycle() {
     for (const item of endpointsToSync) {
         // Support both string URL and object config
         const url = typeof item === 'string' ? item : item.url;
-        const method = typeof item === 'string' ? 'GET' : item.method;
+        const method = (typeof item === 'object' && item.method) ? item.method : 'GET';
         const dataConfig = typeof item === 'string' ? {} : (item.data || {});
         
         // Match the frontend SaaS Interceptor naming convention exactly!
