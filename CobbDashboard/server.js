@@ -2275,8 +2275,8 @@ async function generateEodSummaryReport(targetDate = null, labelSuffix = null) {
         -- 2. Payment Modes
         SELECT 
             ISNULL(SUM(p.CASH_AMOUNT), 0) as Cash,
-            ISNULL(SUM(p.CC_AMOUNT), 0) as Card,
-            ISNULL(SUM(w.UPI + w.[Paytm QR] + w.Paytm + w.[PAYTM UPI] + w.RazorpayUPI), 0) as UPI
+            ISNULL(SUM(p.CC_AMOUNT), 0) - ISNULL(SUM(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0)), 0) as Card,
+            ISNULL(SUM(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0)), 0) as UPI
         FROM CMM01106 m WITH (NOLOCK)
         LEFT JOIN VW_BILL_PAYMODE p WITH (NOLOCK) ON m.CM_ID = p.MEMO_ID AND p.XN_TYPE = 'SLS'
         LEFT JOIN VW_WL_CASHMEMOLIST w WITH (NOLOCK) ON m.CM_ID = w.MEMO_ID
