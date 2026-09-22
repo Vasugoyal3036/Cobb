@@ -75,6 +75,33 @@ function cleanStaleLocksAndCaches() {
     }
 }
 
+async function killBrowserProcesses() {
+    clearWatchdog();
+    isClientReady = false;
+
+    // 1. Terminate current client's Puppeteer browser tree if active
+    if (client) {
+        try {
+            if (client.pupBrowser) {
+                const pid = client.pupBrowser.process()?.pid;
+                if (pid) {
+                    try { execSync(`taskkill /PID ${pid} /T /F 2>NUL`, { windowsHide: true }); } catch (e) {}
+                }
+            }
+            await client.destroy().catch(() => {});
+        } catch (e) {}
+        client = null;
+    }
+
+    // 2. Kill any orphaned Chromium/Puppeteer processes holding the session locks
+    try {
+        execSync('powershell -WindowStyle Hidden -Command "Get-CimInstance Win32_Process | Where-Object { ($_.CommandLine -match \'session-cobb-pos-session\' -or ($_.ExecutablePath -match \'puppeteer\' -and $_.ProcessId -ne $PID)) } | Invoke-CimMethod -MethodName Terminate"', { windowsHide: true });
+    } catch (e) {}
+
+    // Brief cooldown for Windows file handle release
+    await new Promise(r => setTimeout(r, 600));
+}
+
 function clearWatchdog() {
     if (watchdogTimer) {
         clearTimeout(watchdogTimer);
@@ -87,143 +114,142 @@ function startWatchdog() {
     // 120-second watchdog: If neither 'ready' nor 'qr' fires after 2 minutes,
     // Chromium might have hung on boot. Safely reboot Chromium WITHOUT wiping the session.
     watchdogTimer = setTimeout(async () => {
-        console.warn('[WATCHDOG] WhatsApp Web initialization taking >120s. Restarting browser process while preserving session...');
-        try {
-            if (client) await client.destroy().catch(() => {});
-        } catch (e) {}
+        console.warn('[WATCHDOG] WhatsApp Web initialization taking >120s. Safely rebooting browser process while preserving session...');
+        await killBrowserProcesses();
         cleanStaleLocksAndCaches();
         initWhatsApp(false); // ALWAYS preserve saved session tokens!
     }, 120000);
 }
 
 let isReconnecting = false;
+let isInitializing = false;
 
-function initWhatsApp(isFresh = false) {
+async function initWhatsApp(isFresh = false) {
+    if (isInitializing) {
+        console.log('[WHATSAPP] Initialization already in progress. Skipping redundant call.');
+        return;
+    }
+    isInitializing = true;
     clearWatchdog();
     isClientReady = false;
     currentQrCodeUrl = null;
 
-    cleanStaleLocksAndCaches();
+    try {
+        await killBrowserProcesses();
+        cleanStaleLocksAndCaches();
 
-    console.log(`[WHATSAPP] Initializing WhatsApp Client (${isFresh ? 'Fresh Session' : 'Saved LocalAuth'})...`);
+        console.log(`[WHATSAPP] Initializing WhatsApp Client (${isFresh ? 'Fresh Session' : 'Saved LocalAuth'})...`);
 
-    client = new Client({
-        authStrategy: new LocalAuth({
-            clientId: clientId,
-            dataPath: sessionPath
-        }),
-        puppeteer: {
-            headless: true,
-            args: [
-                '--no-sandbox',
-                '--disable-setuid-sandbox',
-                '--disable-dev-shm-usage',
-                '--disable-accelerated-2d-canvas',
-                '--no-first-run',
-                '--no-zygote',
-                '--disable-gpu',
-                '--disable-extensions',
-                '--disable-session-crashed-bubble',
-                '--no-default-browser-check',
-                '--disable-background-networking',
-                '--disable-component-update',
-                '--disable-blink-features=AutomationControlled',
-                '--disable-renderer-backgrounding',
-                '--disable-background-timer-throttling',
-                '--disable-backgrounding-occluded-windows'
-            ],
-            timeout: 120000
-        },
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'
-    });
+        client = new Client({
+            authStrategy: new LocalAuth({
+                clientId: clientId,
+                dataPath: sessionPath
+            }),
+            puppeteer: {
+                headless: true,
+                args: [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-accelerated-2d-canvas',
+                    '--no-first-run',
+                    '--no-zygote',
+                    '--disable-gpu',
+                    '--disable-extensions',
+                    '--disable-session-crashed-bubble',
+                    '--no-default-browser-check',
+                    '--disable-background-networking',
+                    '--disable-component-update',
+                    '--disable-blink-features=AutomationControlled',
+                    '--disable-renderer-backgrounding',
+                    '--disable-background-timer-throttling',
+                    '--disable-backgrounding-occluded-windows'
+                ],
+                timeout: 120000
+            },
+            userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'
+        });
 
-    startWatchdog();
-
-    client.on('qr', (qr) => {
-        clearWatchdog();
-        reconnectAttempts = 0;
-        isReconnecting = false;
-        try {
-            currentQrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" + encodeURIComponent(qr);
-            isClientReady = false;
-            console.log('[WHATSAPP] Fresh QR Code generated. Ready for scan.');
-        } catch (err) {
-            console.error('[WHATSAPP] QR Generation Error:', err);
-        }
-    });
-
-    client.on('authenticated', () => {
-        console.log('[WHATSAPP] Scanned successfully! Authenticating session...');
-        reconnectAttempts = 0;
-        isReconnecting = false;
         startWatchdog();
-    });
 
-    client.on('ready', () => {
-        clearWatchdog();
-        isClientReady = true;
-        currentQrCodeUrl = null;
-        reconnectAttempts = 0;
-        isReconnecting = false;
-        console.log('[WHATSAPP] Client is ONLINE and ready to dispatch messages!');
-        flushOutbox();
-    });
-
-    client.on('auth_failure', async (msg) => {
-        clearWatchdog();
-        console.error('[WHATSAPP] Authentication failure:', msg);
-        isClientReady = false;
-        try {
-            if (client) await client.destroy().catch(() => {});
-        } catch (e) {}
-        console.log('[WHATSAPP] Auth revoked by WhatsApp servers. Clearing stale tokens and requesting new QR code...');
-        try {
-            if (fs.existsSync(sessionPath)) {
-                fs.rmSync(sessionPath, { recursive: true, force: true });
+        client.on('qr', (qr) => {
+            clearWatchdog();
+            reconnectAttempts = 0;
+            isReconnecting = false;
+            try {
+                currentQrCodeUrl = "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" + encodeURIComponent(qr);
+                isClientReady = false;
+                console.log('[WHATSAPP] Fresh QR Code generated. Ready for scan.');
+            } catch (err) {
+                console.error('[WHATSAPP] QR Generation Error:', err);
             }
-        } catch (e) {}
-        initWhatsApp(true);
-    });
+        });
 
-    client.on('disconnected', (reason) => {
-        clearWatchdog();
-        console.log('[WHATSAPP] Session disconnected:', reason);
-        isClientReady = false;
-        scheduleReconnect();
-    });
+        client.on('authenticated', () => {
+            console.log('[WHATSAPP] Scanned successfully! Authenticating session...');
+            reconnectAttempts = 0;
+            isReconnecting = false;
+            startWatchdog();
+        });
 
-    client.initialize().catch(err => {
+        client.on('ready', () => {
+            clearWatchdog();
+            isClientReady = true;
+            currentQrCodeUrl = null;
+            reconnectAttempts = 0;
+            isReconnecting = false;
+            console.log('[WHATSAPP] Client is ONLINE and ready to dispatch messages!');
+            flushOutbox();
+        });
+
+        client.on('auth_failure', async (msg) => {
+            clearWatchdog();
+            console.error('[WHATSAPP] Authentication failure:', msg);
+            isClientReady = false;
+            console.log('[WHATSAPP] Auth revoked by WhatsApp servers. Clearing stale tokens and requesting new QR code...');
+            await killBrowserProcesses();
+            try {
+                if (fs.existsSync(sessionPath)) {
+                    fs.rmSync(sessionPath, { recursive: true, force: true });
+                }
+            } catch (e) {}
+            initWhatsApp(true);
+        });
+
+        client.on('disconnected', (reason) => {
+            clearWatchdog();
+            console.log('[WHATSAPP] Session disconnected:', reason);
+            isClientReady = false;
+            scheduleReconnect();
+        });
+
+        await client.initialize();
+    } catch (err) {
         clearWatchdog();
         console.error('[WHATSAPP] Client initialization error:', err.message);
         scheduleReconnect();
-    });
+    } finally {
+        isInitializing = false;
+    }
 }
 
 function scheduleReconnect() {
     if (isReconnecting) return;
     isReconnecting = true;
     reconnectAttempts++;
-    // Exponential backoff capped at 60s. NEVER wipe the session on max attempts!
-    // When internet recovers (e.g. overnight broadband drops), the saved LocalAuth logs right back in.
-    const delay = Math.min(reconnectAttempts * 10000, 60000);
+    // Exponential backoff capped at 30s. NEVER wipe the session on reconnect!
+    const delay = Math.min(reconnectAttempts * 5000, 30000);
     console.log(`[WHATSAPP] Scheduling reconnect attempt ${reconnectAttempts} in ${delay/1000}s (preserving session)...`);
     setTimeout(async () => {
-        try {
-            if (client) await client.destroy().catch(() => {});
-        } catch (e) {}
-        cleanStaleLocksAndCaches();
         isReconnecting = false;
-        initWhatsApp(false); // ALWAYS preserve saved session!
+        await initWhatsApp(false); // ALWAYS preserve saved session!
     }, delay);
 }
 
 // Graceful shutdown hooks
 const cleanExit = async () => {
     console.log('[WHATSAPP] Graceful shutdown triggered. Closing browser session cleanly...');
-    clearWatchdog();
-    try {
-        if (client) await client.destroy().catch(() => {});
-    } catch (e) {}
+    await killBrowserProcesses();
     process.exit(0);
 };
 
@@ -239,6 +265,8 @@ app.get('/status', (req, res) => {
     });
 });
 
+
+
 // One-click force reset endpoint
 app.post('/reset', async (req, res) => {
     console.log('[WHATSAPP] Reset requested via API. Rebuilding session...');
@@ -246,14 +274,12 @@ app.post('/reset', async (req, res) => {
     try {
         isClientReady = false;
         currentQrCodeUrl = null;
-        if (client) {
-            await client.destroy().catch(() => {});
-        }
+        await killBrowserProcesses();
         if (fs.existsSync(sessionPath)) {
             fs.rmSync(sessionPath, { recursive: true, force: true });
         }
         res.json({ success: true, message: 'WhatsApp session wiped. Generating new QR code...' });
-        setTimeout(() => initWhatsApp(true), 1000);
+        setTimeout(() => initWhatsApp(true), 500);
     } catch (err) {
         console.error('[WHATSAPP] Reset error:', err);
         res.status(500).json({ error: err.message });
@@ -328,6 +354,7 @@ async function dispatchMessage(number, message, mediaPath) {
         console.log(`[SENT] Text dispatched to ${chatId}`);
         return { success: true, type: 'text' };
     } catch (textErr) {
+        console.error(`[DEBUG SEND ERROR for ${chatId}]:`, textErr);
         if (isUnregisteredError(textErr)) {
             console.log(`[SKIPPED] ${chatId} is not on WhatsApp.`);
             return { success: false, skipped: true, error: 'Phone number is not registered on WhatsApp.' };
@@ -380,7 +407,15 @@ app.post('/send', async (req, res) => {
                 timer,
                 resolve: (result) => {
                     clearTimeout(timer);
-                    if (!res.headersSent) res.json(result);
+                    if (!res.headersSent) {
+                        if (result && result.skipped) {
+                            res.status(400).json(result);
+                        } else if (result && result.success) {
+                            res.json(result);
+                        } else {
+                            res.status(500).json(result || { error: 'Dispatch failed' });
+                        }
+                    }
                     resolve();
                 },
                 reject: (err) => {
@@ -413,6 +448,10 @@ app.post('/send', async (req, res) => {
             console.error(`[ERROR] Fallback send failed to ${number}:`, fallbackErr.message || fallbackErr);
             if (isUnregisteredError(fallbackErr)) {
                 return res.status(400).json({ success: false, skipped: true, error: 'Phone number is invalid or not registered on WhatsApp.' });
+            }
+            if (fallbackErr.message && (fallbackErr.message.includes('detached Frame') || fallbackErr.message.includes('Session closed') || fallbackErr.message.includes('Target closed'))) {
+                console.error('[WHATSAPP] Detected detached frame or closed session! Safely scheduling client recovery...');
+                scheduleReconnect();
             }
             return res.status(500).json({ error: `WhatsApp gateway dispatch error: ${fallbackErr.message || fallbackErr}` });
         }

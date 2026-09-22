@@ -241,6 +241,196 @@ def send_daily_closing_digest(cursor, target_date=None, label_suffix=""):
         print(f"[{time.strftime('%X')}] [EOD REPORT GENERATION ERROR] {e}", flush=True)
         return False
 
+def is_eod_already_sent(target_date_str):
+    """Checks whether the EOD digest for target_date_str has already been sent."""
+    if os.path.exists(SENT_EOD_FILE):
+        try:
+            with open(SENT_EOD_FILE, 'r', encoding='utf-8') as f:
+                return f.read().strip() == target_date_str
+        except Exception:
+            pass
+    return False
+
+def record_eod_sent(target_date_str):
+    """Persists the successfully dispatched EOD date to sent_eod_date.txt."""
+    try:
+        with open(SENT_EOD_FILE, 'w', encoding='utf-8') as f:
+            f.write(target_date_str)
+        return True
+    except Exception as e:
+        log_engine(f"[SENT EOD LOG ERROR] {e}")
+        return False
+
+def trigger_eod_closing_dispatch(cursor, label_suffix=" (Store Closing Digest)"):
+    """
+    Executes the store closing digest dispatch.
+    First tries the CRM backend endpoint for detailed drawer/petty-cash reconciliation,
+    and falls back to direct SQL execution + port 3000 WhatsApp sender.
+    """
+    now = time.localtime()
+    today_str = time.strftime('%Y-%m-%d', now)
+
+    if is_eod_already_sent(today_str):
+        log_engine(f"[EOD CLOSING] EOD digest for {today_str} was already dispatched today.")
+        return True
+
+    # Verify bills exist today
+    try:
+        cursor.execute("SELECT COUNT(CM_ID) FROM CMM01106 WITH (NOLOCK) WHERE CM_TIME >= CAST(GETDATE() AS DATE) AND CANCELLED = 0")
+        b_count = cursor.fetchone()[0] or 0
+        if b_count == 0:
+            log_engine(f"[EOD CLOSING] 0 bills punched today ({today_str}). Skipping EOD dispatch.")
+            return False
+    except Exception as err:
+        log_engine(f"[EOD CLOSING CHECK ERROR] {err}")
+        return False
+
+    log_engine(f"[EOD CLOSING DISPATCH] Initiating EOD Store Closing digest for {today_str} ({b_count} bills)...")
+
+    # 1. Attempt dispatch via CRM Backend (includes petty cash & drawer reconciliation)
+    sent_via_crm = False
+    try:
+        res = requests.post(
+            'http://localhost:5000/api/reports/eod-summary/send',
+            json={'date': today_str},
+            headers={'Content-Type': 'application/json'},
+            timeout=8
+        )
+        if res.status_code == 200 and res.json().get('success'):
+            sent_via_crm = True
+            log_engine(f"[EOD CLOSING] Successfully dispatched comprehensive EOD digest via CRM Backend.")
+    except Exception as crm_err:
+        log_engine(f"[EOD CLOSING CRM FALLBACK] CRM API unreachable ({crm_err}). Falling back to direct database query...")
+
+    if not sent_via_crm:
+        # 2. Fallback to direct SQL query & direct port 3000 dispatch
+        if send_daily_closing_digest(cursor, label_suffix=label_suffix):
+            record_eod_sent(today_str)
+            return True
+        else:
+            log_engine(f"[EOD CLOSING ERROR] Direct EOD send failed.")
+            return False
+    else:
+        record_eod_sent(today_str)
+        return True
+
+_wnd_proc_ref = None
+
+def setup_windows_shutdown_watcher(cursor):
+    """
+    Spawns a native Win32 message loop on Windows to intercept system shutdown/restart/logoff
+    events (WM_QUERYENDSESSION / WM_ENDSESSION). Guarantees that when the cashier or staff
+    shuts down the counter PC in the evening, the EOD digest is dispatched before Windows turns off.
+    """
+    if os.name != 'nt':
+        return None
+
+    try:
+        import ctypes
+        from ctypes import wintypes
+        import threading
+
+        user32 = ctypes.windll.user32
+        kernel32 = ctypes.windll.kernel32
+
+        user32.ShutdownBlockReasonCreate.argtypes = [wintypes.HWND, wintypes.LPCWSTR]
+        user32.ShutdownBlockReasonCreate.restype = wintypes.BOOL
+        user32.ShutdownBlockReasonDestroy.argtypes = [wintypes.HWND]
+        user32.ShutdownBlockReasonDestroy.restype = wintypes.BOOL
+
+        WNDPROC = ctypes.WINFUNCTYPE(ctypes.c_longlong, wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM)
+
+        class WNDCLASSW(ctypes.Structure):
+            _fields_ = [
+                ('style', wintypes.UINT),
+                ('lpfnWndProc', WNDPROC),
+                ('cbClsExtra', ctypes.c_int),
+                ('cbWndExtra', ctypes.c_int),
+                ('hInstance', wintypes.HINSTANCE),
+                ('hIcon', wintypes.HICON),
+                ('hCursor', wintypes.HICON),
+                ('hbrBackground', wintypes.HBRUSH),
+                ('lpszMenuName', wintypes.LPCWSTR),
+                ('lpszClassName', wintypes.LPCWSTR),
+            ]
+
+        user32.RegisterClassW.argtypes = [ctypes.POINTER(WNDCLASSW)]
+        user32.RegisterClassW.restype = wintypes.ATOM
+
+        user32.CreateWindowExW.argtypes = [
+            wintypes.DWORD, wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.DWORD,
+            ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int,
+            wintypes.HWND, wintypes.HMENU, wintypes.HINSTANCE, wintypes.LPVOID
+        ]
+        user32.CreateWindowExW.restype = wintypes.HWND
+
+        user32.DefWindowProcW.argtypes = [wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM]
+        user32.DefWindowProcW.restype = ctypes.c_longlong
+
+        user32.GetMessageW.argtypes = [ctypes.POINTER(wintypes.MSG), wintypes.HWND, wintypes.UINT, wintypes.UINT]
+        user32.GetMessageW.restype = wintypes.BOOL
+
+        user32.DispatchMessageW.argtypes = [ctypes.POINTER(wintypes.MSG)]
+        user32.DispatchMessageW.restype = ctypes.c_longlong
+
+        WM_QUERYENDSESSION = 0x0011
+        WM_ENDSESSION = 0x0016
+
+        def on_shutdown_event(hwnd):
+            now = time.localtime()
+            # Store closing shutdown window: 8:00 PM (20:00) onwards
+            if now.tm_hour >= 20:
+                log_engine(f"[SHUTDOWN HOOK] Windows system shutdown detected at {now.tm_hour}:{now.tm_min:02d}. Holding shutdown to dispatch EOD digest...")
+                try:
+                    user32.ShutdownBlockReasonCreate(hwnd, "Dispatching Cobb Store EOD Closing Digest via WhatsApp...")
+                    trigger_eod_closing_dispatch(cursor, label_suffix=" (Store Closing Digest)")
+                except Exception as ex:
+                    log_engine(f"[SHUTDOWN HOOK ERROR] {ex}")
+                finally:
+                    try:
+                        user32.ShutdownBlockReasonDestroy(hwnd)
+                    except Exception:
+                        pass
+                    log_engine(f"[SHUTDOWN HOOK] Shutdown block released. Allowing system shutdown.")
+
+        def py_wnd_proc(hwnd, msg, wparam, lparam):
+            if msg == WM_QUERYENDSESSION:
+                on_shutdown_event(hwnd)
+                return 1
+            elif msg == WM_ENDSESSION:
+                return 0
+            return user32.DefWindowProcW(hwnd, msg, wparam, lparam)
+
+        global _wnd_proc_ref
+        _wnd_proc_ref = WNDPROC(py_wnd_proc)
+
+        def message_pump_loop():
+            try:
+                cls = WNDCLASSW()
+                cls.lpfnWndProc = _wnd_proc_ref
+                cls.lpszClassName = 'CobbPosShutdownWatcher'
+                cls.hInstance = kernel32.GetModuleHandleW(None)
+                user32.RegisterClassW(ctypes.byref(cls))
+
+                hwnd = user32.CreateWindowExW(
+                    0, cls.lpszClassName, 'CobbPosWatcher', 0, 0, 0, 0, 0, None, None, cls.hInstance, None
+                )
+                log_engine(f"[SHUTDOWN WATCHER] Native Windows shutdown watcher active (HWND: {hwnd}).")
+
+                msg = wintypes.MSG()
+                while user32.GetMessageW(ctypes.byref(msg), 0, 0, 0) > 0:
+                    user32.DispatchMessageW(ctypes.byref(msg))
+            except Exception as pump_err:
+                log_engine(f"[SHUTDOWN WATCHER ERROR] {pump_err}")
+
+        t = threading.Thread(target=message_pump_loop, name="Win32ShutdownWatcher", daemon=True)
+        t.start()
+        return t
+    except Exception as e:
+        log_engine(f"[SHUTDOWN WATCHER INIT ERROR] {e}")
+        return None
+
+
 def get_db_connection():
     available_drivers = [d for d in pyodbc.drivers() if 'SQL Server' in d]
     if not available_drivers:
@@ -293,10 +483,15 @@ def send_whatsapp_message(phone_number, customer_name):
 
     try:
         response = requests.post(WHATSAPP_SERVER_URL, json=payload, headers=headers, timeout=15)
-        if response.status_code == 200:
+        try:
+            res_data = response.json()
+        except Exception:
+            res_data = {}
+
+        if response.status_code == 200 and res_data.get('success') is True:
             log_engine(f"[SUCCESS] Regular Bill sent to {clean_phone} ({customer_name})")
             return {'status': 'sent', 'detail': 'Digital bill & review link sent'}
-        elif response.status_code == 400 and 'not registered' in response.text.lower():
+        elif res_data.get('skipped') or 'not registered' in response.text.lower() or 'no lid' in response.text.lower():
             log_engine(f"[SKIPPED] {clean_phone} is not on WhatsApp. Marking as processed.")
             return {'status': 'not_on_whatsapp', 'detail': 'Phone number is not registered on WhatsApp'}
         elif response.status_code == 503 or 'reconnecting' in response.text.lower() or 'not ready' in response.text.lower():
@@ -389,10 +584,15 @@ def send_exchange_whatsapp_slip(phone_number, customer_name, bill_no, bill_time,
 
     try:
         response = requests.post(WHATSAPP_SERVER_URL, json=payload, headers=headers, timeout=15)
-        if response.status_code == 200:
+        try:
+            res_data = response.json()
+        except Exception:
+            res_data = {}
+
+        if response.status_code == 200 and res_data.get('success') is True:
             log_engine(f"[EXCHANGE SUCCESS] Sent slip to {clean_phone} ({cust_name}) for Bill #{bill_no}")
             return {'status': 'sent', 'detail': 'Official Exchange Slip sent'}
-        elif response.status_code == 400 and 'not registered' in response.text.lower():
+        elif res_data.get('skipped') or 'not registered' in response.text.lower() or 'no lid' in response.text.lower():
             log_engine(f"[SKIPPED] {clean_phone} is not on WhatsApp. Marking as processed.")
             return {'status': 'not_on_whatsapp', 'detail': 'Phone number is not registered on WhatsApp'}
         elif response.status_code == 503 or 'reconnecting' in response.text.lower() or 'not ready' in response.text.lower():
@@ -465,20 +665,20 @@ def run_listener():
         except Exception as rec_err:
             print(f"[{time.strftime('%X')}] [RECOVERY ERROR] {rec_err}", flush=True)
 
-    # 2. Windows Shutdown / Logoff Hook (Detects shutdown near 8:00 PM or store closing)
+    # 2. Windows Shutdown / Logoff Hook (Native Win32 Message Loop + OS signals)
+    setup_windows_shutdown_watcher(cursor)
+
     def on_exit(sig=None, frame=None):
         now = time.localtime()
-        cur_today = time.strftime('%Y-%m-%d', now)
-        # If shutdown happens near 8:00 PM (anytime from 7:30 PM onwards) and today's digest wasn't sent yet
-        if (now.tm_hour > 19 or (now.tm_hour == 19 and now.tm_min >= 30)) and last_eod_date != cur_today:
-            print(f"[{time.strftime('%X')}] [SHUTDOWN DETECTED] Counter PC shutdown detected at {now.tm_hour}:{now.tm_min:02d}. Dispatching EOD digest now...", flush=True)
+        # Only check/dispatch EOD during evening closing hours (8:30 PM / 20:30 onwards)
+        if (now.tm_hour > 20 or (now.tm_hour == 20 and now.tm_min >= 30)):
+            log_engine(f"[PROCESS EXIT DETECTED] Process termination detected at {now.tm_hour}:{now.tm_min:02d}. Checking for unsent EOD digest...")
             try:
-                if send_daily_closing_digest(cursor, label_suffix=" (Store Closing Digest)"):
-                    with open(SENT_EOD_FILE, 'w') as f:
-                        f.write(cur_today)
+                trigger_eod_closing_dispatch(cursor, label_suffix=" (Store Closing Digest)")
             except Exception as e:
-                print(f"[{time.strftime('%X')}] [SHUTDOWN EOD ERROR] {e}", flush=True)
-        sys.exit(0)
+                log_engine(f"[EXIT EOD ERROR] {e}")
+        if sig is not None:
+            sys.exit(0)
 
     try:
         signal.signal(signal.SIGINT, on_exit)
@@ -489,18 +689,45 @@ def run_listener():
 
     while True:
         try:
-            # 1. Check for Scheduled 9:00 PM Store Closing Digest (if PC is on)
+            # 1. Check for Scheduled Store Closing Digest or Evening Inactivity
             now = time.localtime()
             today_str = time.strftime('%Y-%m-%d', now)
-            if now.tm_hour >= 21 and last_eod_date != today_str:
-                print(f"[{time.strftime('%X')}] [9:00 PM CLOSING] Clock reached 9:00 PM. Generating and sending automated EOD digest to owners...", flush=True)
-                if send_daily_closing_digest(cursor, label_suffix=" (Store Closing Digest)"):
-                    last_eod_date = today_str
-                    try:
-                        with open(SENT_EOD_FILE, 'w') as f:
-                            f.write(today_str)
-                    except Exception as file_err:
-                        print(f"[{time.strftime('%X')}] [SENT EOD LOG ERROR] {file_err}", flush=True)
+
+            # Evening Closing Schedule:
+            # - Trigger A: 9:30 PM (21:30) Scheduled Closing
+            # - Trigger B: Inactivity from 8:45 PM (20:45) onward: If bills exist and no new bill for >= 25 mins
+            is_night_schedule = (now.tm_hour > 21 or (now.tm_hour == 21 and now.tm_min >= 30))
+            is_closing_inactivity = (now.tm_hour > 20 or (now.tm_hour == 20 and now.tm_min >= 45))
+
+            if (is_night_schedule or is_closing_inactivity) and not is_eod_already_sent(today_str):
+                try:
+                    cursor.execute("""
+                        SELECT 
+                            COUNT(CM_ID),
+                            DATEDIFF(minute, MAX(CM_TIME), GETDATE())
+                        FROM CMM01106 WITH (NOLOCK) 
+                        WHERE CM_TIME >= CAST(GETDATE() AS DATE) AND CANCELLED = 0
+                    """)
+                    act_row = cursor.fetchone()
+                    t_count = act_row[0] or 0
+                    mins_since = act_row[1] if act_row[1] is not None else 999
+
+                    if t_count > 0:
+                        should_send = False
+                        reason = ""
+                        if is_night_schedule:
+                            should_send = True
+                            reason = f"9:30 PM night closing schedule ({now.tm_hour}:{now.tm_min:02d})"
+                        elif is_closing_inactivity and mins_since >= 25:
+                            should_send = True
+                            reason = f"Evening inactivity ({mins_since}m quiet since last bill at {now.tm_hour}:{now.tm_min:02d})"
+
+                        if should_send:
+                            log_engine(f"[{reason.upper()}] Triggering automated EOD closing digest for {today_str} ({t_count} bills)...")
+                            if trigger_eod_closing_dispatch(cursor, label_suffix=" (Store Closing Digest)"):
+                                last_eod_date = today_str
+                except Exception as sched_err:
+                    log_engine(f"[SCHEDULED CLOSING CHECK ERROR] {sched_err}")
 
             # 2. Query all bills in the last 2 days
             query = """
@@ -518,6 +745,7 @@ def run_listener():
             for bill in bills:
                 cm_id, bill_no, bill_time, cust_code, name, amount, phone = bill
                 cm_id_str = str(cm_id).strip()
+                res = None  # Reset per bill to prevent stale state leak
 
                 if cm_id_str not in sent_ids:
                     # Check items for this bill to determine if it is an exchange or regular purchase
@@ -596,7 +824,7 @@ def run_listener():
                             with open(SENT_BILLS_FILE, 'a') as f:
                                 f.write(cm_id_str + "\n")
                             # Add phone to our local database for marketing if on whatsapp
-                            if clean_phone and len(clean_phone) >= 10 and (res.get('status') == 'sent' if 'res' in locals() and isinstance(res, dict) else False):
+                            if clean_phone and len(clean_phone) >= 10 and (res.get('status') == 'sent' if res and isinstance(res, dict) else False):
                                 customer_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "customer_numbers.txt")
                                 with open(customer_file, 'a') as cf:
                                     cf.write(clean_phone + "\n")

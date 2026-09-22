@@ -93,9 +93,13 @@ const DashboardTab = (props) => {
   // Active holds state for Hold Desk tile
   const [holds, setHolds] = React.useState([]);
 
-  // Stock Health state
+  // Stock Health state (retained for sidebar tabs)
   const [stockHealth, setStockHealth] = React.useState(null);
   const [stockHealthLoading, setStockHealthLoading] = React.useState(false);
+
+  // Today's Top-Selling Articles for Live Intelligence Ribbon
+  const [todayTopArticles, setTodayTopArticles] = React.useState([]);
+  const [todayTopArticlesLoading, setTodayTopArticlesLoading] = React.useState(false);
 
   // Fast Counter Offer & Discount Calc state
   const [calcMrp, setCalcMrp] = React.useState(1999);
@@ -230,11 +234,24 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
     }
   }, [API_BASE, activeStore]);
 
+  const fetchTodayTopArticles = React.useCallback(async () => {
+    try {
+      setTodayTopArticlesLoading(true);
+      const res = await axios.get(`${API_BASE}/api/analytics/today-top-articles`);
+      if (Array.isArray(res.data)) setTodayTopArticles(res.data);
+    } catch (e) {
+      console.error('Today top articles fetch error:', e);
+    } finally {
+      setTodayTopArticlesLoading(false);
+    }
+  }, [API_BASE]);
+
   React.useEffect(() => {
     fetchKhataExpenses();
     fetchHolds();
     fetchStockHealth();
-  }, [fetchKhataExpenses, fetchHolds, fetchStockHealth]);
+    fetchTodayTopArticles();
+  }, [fetchKhataExpenses, fetchHolds, fetchStockHealth, fetchTodayTopArticles]);
 
   return (
     <>
@@ -638,65 +655,86 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                           </span>
                         </h3>
                       </div>
-                      {typeof setActiveTab === 'function' && (
-                        <button
-                          type="button"
-                          onClick={() => setActiveTab('live')}
-                          className={`text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors ${
-                            darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-500'
-                          }`}
-                        >
-                          <span>View ({liveBills.length})</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
-                        </button>
-                      )}
+                      {typeof setActiveTab === 'function' && (() => {
+                        const today = new Date();
+                        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+                        const todayCount = (Array.isArray(liveBills) ? liveBills : []).filter(b => {
+                          const bDate = b.BillDate ? b.BillDate.trim() : (b.BillTime ? b.BillTime.slice(0, 10) : '');
+                          return bDate === todayStr;
+                        }).length;
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab('live')}
+                            className={`text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors ${
+                              darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-500'
+                            }`}
+                          >
+                            <span>View ({todayCount > 0 ? todayCount : liveBills.length})</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </button>
+                        );
+                      })()}
                     </div>
                     <div className={`divide-y flex-1 min-h-0 overflow-y-auto custom-scrollbar ${
                       darkMode ? 'divide-[#1a2336]' : 'divide-slate-100'
                     }`}>
-                      {liveBills.map((bill, idx) => (
-                        <div 
-                          key={idx} 
-                          className={`p-2.5 sm:p-3 transition-colors flex justify-between items-center cursor-pointer group ${
-                            darkMode ? 'hover:bg-[#151c2e]' : 'hover:bg-slate-50'
-                          }`} 
-                          onClick={() => setActiveTab('live')}
-                        >
-                          <div className="min-w-0 flex-1 pr-2">
-                            <p className={`text-xs font-bold truncate group-hover:text-blue-400 transition-colors ${
-                              darkMode ? 'text-slate-100' : 'text-slate-800'
-                            }`}>
-                              {bill.CustomerName?.trim() || bill.FirstName?.trim() || 'Guest Customer'}
-                            </p>
-                            <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-slate-400">
-                              <span className="font-mono">{new Date(bill.BillTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                              <span>•</span>
-                              <span className="font-mono text-slate-300">#{bill.BillNumber}</span>
-                              <span>•</span>
-                              <span className={`font-mono font-semibold px-2 py-0.5 rounded text-[10px] ${
-                                bill.PaymentMode === 'Cash' 
-                                  ? darkMode ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                  : bill.PaymentMode === 'UPI / Online' 
-                                    ? darkMode ? 'bg-purple-950/60 text-purple-300 border border-purple-800/60' : 'bg-purple-50 text-purple-700 border border-purple-200'
-                                    : darkMode ? 'bg-blue-950/60 text-blue-300 border border-blue-800/60' : 'bg-blue-50 text-blue-700 border border-blue-200'
-                              }`}>
-                                {bill.PaymentMode || 'Cash'}
-                              </span>
+                      {(() => {
+                        const today = new Date();
+                        const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+                        const todayBills = (Array.isArray(liveBills) ? liveBills : []).filter(b => {
+                          const bDate = b.BillDate ? b.BillDate.trim() : (b.BillTime ? b.BillTime.slice(0, 10) : '');
+                          return bDate === todayStr;
+                        });
+                        const displayBills = todayBills.length > 0 ? todayBills : (Array.isArray(liveBills) ? liveBills.slice(0, 10) : []);
+
+                        if (displayBills.length === 0) {
+                          return (
+                            <div className="p-6 text-center text-xs text-slate-400 flex flex-col items-center justify-center h-full">
+                              <RefreshCw className="w-5 h-5 mb-2 text-slate-400 animate-spin" style={{ animationDuration: '3s' }} />
+                              Waiting for counter checkouts...
                             </div>
+                          );
+                        }
+
+                        return displayBills.map((bill, idx) => (
+                          <div 
+                            key={idx} 
+                            className={`p-2.5 sm:p-3 transition-colors flex justify-between items-center cursor-pointer group ${
+                              darkMode ? 'hover:bg-[#151c2e]' : 'hover:bg-slate-50'
+                            }`} 
+                            onClick={() => setActiveTab('live')}
+                          >
+                            <div className="min-w-0 flex-1 pr-2">
+                              <p className={`text-xs font-bold truncate group-hover:text-blue-400 transition-colors ${
+                                darkMode ? 'text-slate-100' : 'text-slate-800'
+                              }`}>
+                                {bill.CustomerName?.trim() || bill.FirstName?.trim() || 'Guest Customer'}
+                              </p>
+                              <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-slate-400">
+                                <span className="font-mono">{new Date(bill.BillTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                <span>•</span>
+                                <span className="font-mono text-slate-300">#{bill.BillNumber}</span>
+                                <span>•</span>
+                                <span className={`font-mono font-semibold px-2 py-0.5 rounded text-[10px] ${
+                                  bill.PaymentMode === 'Cash' 
+                                    ? darkMode ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                    : bill.PaymentMode === 'UPI / Online' 
+                                      ? darkMode ? 'bg-purple-950/60 text-purple-300 border border-purple-800/60' : 'bg-purple-50 text-purple-700 border border-purple-200'
+                                      : darkMode ? 'bg-blue-950/60 text-blue-300 border border-blue-800/60' : 'bg-blue-50 text-blue-700 border border-blue-200'
+                                }`}>
+                                  {bill.PaymentMode || 'Cash'}
+                                </span>
+                              </div>
+                            </div>
+                            <span className={`text-xs font-mono font-black px-2.5 py-1 rounded-lg shrink-0 ${
+                              darkMode ? 'text-emerald-400 bg-emerald-950/40 border border-emerald-800/40' : 'text-emerald-700 bg-emerald-50 border border-emerald-200'
+                            }`}>
+                              {formatCurrency(bill.Amount)}
+                            </span>
                           </div>
-                          <span className={`text-xs font-mono font-black px-2.5 py-1 rounded-lg shrink-0 ${
-                            darkMode ? 'text-emerald-400 bg-emerald-950/40 border border-emerald-800/40' : 'text-emerald-700 bg-emerald-50 border border-emerald-200'
-                          }`}>
-                            {formatCurrency(bill.Amount)}
-                          </span>
-                        </div>
-                      ))}
-                      {liveBills.length === 0 && (
-                        <div className="p-6 text-center text-xs text-slate-400 flex flex-col items-center justify-center h-full">
-                          <RefreshCw className="w-5 h-5 mb-2 text-slate-400 animate-spin" style={{ animationDuration: '3s' }} />
-                          Waiting for counter checkouts...
-                        </div>
-                      )}
+                        ));
+                      })()}
                     </div>
                   </div>
 
@@ -840,245 +878,245 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                   })()}
                 </div>
 
-                {/* ROW 2: EXPANDED STOCK HEALTH & INVENTORY VULNERABILITIES DECK */}
+                {/* ROW 2: LIVE STORE INTELLIGENCE RIBBON — 4 Compact Tiles */}
                 {(() => {
-                  const brokenCount = stockHealth?.brokenSizeRuns?.count || 0;
-                  const units90 = stockHealth?.deadStock?.units90Plus || 0;
-                  const units60 = stockHealth?.deadStock?.units60Plus || 0;
-                  const totalStock = stockHealth?.deadStock?.totalStockUnits || 1;
-                  const reorderCount = stockHealth?.reorderAlerts?.count || 0;
-                  const zeroStockCount = stockHealth?.reorderAlerts?.zeroStock || 0;
+                  // --- Hourly Rush data ---
+                  const hourlyData = Array.isArray(hourlySales) ? hourlySales : [];
+                  const maxHourlyRev = Math.max(1, ...hourlyData.map(h => h.TotalRevenue || 0));
+                  const peakHour = hourlyData.length > 0 ? hourlyData.reduce((best, h) => (h.TotalRevenue || 0) > (best.TotalRevenue || 0) ? h : best, hourlyData[0]) : null;
+                  const storeHours = [10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21];
+                  const hourMap = Object.fromEntries(hourlyData.map(h => [h.SaleHour, h]));
 
-                  // Ageing breakdown percentages
-                  const deadPct = totalStock > 0 ? Math.min(100, Math.round((units90 / totalStock) * 100)) : 0;
-                  const ageingPct = totalStock > 0 ? Math.min(100 - deadPct, Math.round(((units60 - units90) / totalStock) * 100)) : 0;
-                  const activePct = Math.max(0, 100 - deadPct - ageingPct);
+                  // --- Today's Bills derived metrics ---
+                  const today = new Date();
+                  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+                  const todayBills = (Array.isArray(liveBills) ? liveBills : []).filter(b => {
+                    const d = b.BillDate ? b.BillDate.trim() : (b.BillTime ? b.BillTime.slice(0, 10) : '');
+                    return d === todayStr;
+                  });
+                  const totalItems = todayBills.reduce((s, b) => s + (b.TotalQty || 0), 0);
+                  const avgItemsPerBill = todayBills.length > 0 ? (totalItems / todayBills.length).toFixed(1) : '0';
+                  const totalCash = todayBills.reduce((s, b) => s + (b.CashAmount || 0), 0);
+                  const totalDigital = todayBills.reduce((s, b) => s + (b.UpiAmount || 0) + (b.CardAmount || 0), 0);
+                  const totalCollection = totalCash + totalDigital;
+                  const digitalPct = totalCollection > 0 ? Math.round((totalDigital / totalCollection) * 100) : 0;
+
+                  // --- VIP detection: today's shoppers who are also in VIP list ---
+                  const vipList = Array.isArray(vips) ? vips : [];
+                  const vipPhoneMap = Object.fromEntries(vipList.map(v => [v.Phone?.trim(), v]));
+                  const todayVips = todayBills
+                    .filter(b => vipPhoneMap[b.Phone?.trim()])
+                    .map(b => ({ ...b, vipData: vipPhoneMap[b.Phone?.trim()] }))
+                    .slice(0, 3);
 
                   return (
-                    <div className={`p-5 rounded-2xl border shadow-sm transition-all ${
-                      darkMode ? 'bg-[#0e1320] border-[#1c2436] text-slate-100' : 'bg-white border-slate-200 text-slate-800'
-                    }`}>
-                      {/* Header */}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3.5 border-b border-slate-100 dark:border-[#1c2436]">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <div className={`p-2 rounded-xl border ${
-                            darkMode ? 'bg-rose-500/15 text-rose-400 border-rose-500/30' : 'bg-rose-50 text-rose-600 border-rose-200'
-                          }`}>
-                            <Layers className="w-4 h-4" />
+                    <div className="space-y-4">
+                      {/* LONG TILE 1: HOURLY SALES VELOCITY & PEAK RUSH */}
+                      <div 
+                        onClick={() => typeof setActiveTab === 'function' && setActiveTab('hourly')}
+                        className={`p-4 rounded-2xl border transition-all cursor-pointer group hover:border-indigo-500/50 ${
+                          darkMode ? 'bg-[#0e1320] border-[#1c2436] text-slate-100' : 'bg-white border-slate-200 text-slate-800'
+                        }`}
+                      >
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-[#1c2436]">
+                          <div className="flex items-center gap-2.5">
+                            <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                              <BarChart3 className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
+                                <span>Hourly Rush Curve &amp; Floor Velocity</span>
+                                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                              </h3>
+                              <p className="text-[11px] text-slate-400">
+                                Live sales distribution across store opening hours
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <h3 className={`font-bold text-sm uppercase tracking-wider flex items-center gap-2 ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-                              <span>Stock Health &amp; Inventory Vulnerabilities</span>
-                              <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                            </h3>
-                            <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                              Silent lost sales, capital blockage &amp; stockout alerts across catalog
-                            </p>
+
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-[11px] font-bold text-indigo-400">
+                              <Zap className="w-3.5 h-3.5" />
+                              <span>{peakHour ? `${peakHour.SaleHour > 12 ? peakHour.SaleHour - 12 : peakHour.SaleHour}${peakHour.SaleHour >= 12 ? ' PM' : ' AM'} Peak` : 'Live Tracking'}</span>
+                            </div>
+                            <div className="flex items-center gap-1 text-[11px] font-bold text-indigo-400 group-hover:underline">
+                              <span>Full Heatmap</span>
+                              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                            </div>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
-                          <button 
-                            onClick={fetchStockHealth}
-                            disabled={stockHealthLoading}
-                            className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
-                              darkMode ? 'bg-[#121829] text-slate-300 border-[#1c2436] hover:text-white hover:border-[#28354f]' : 'bg-slate-100 text-slate-600 border-slate-200 hover:text-slate-900'
-                            }`}
-                            title="Refresh stock health metrics"
-                          >
-                            <RefreshCw className={`w-3.5 h-3.5 ${stockHealthLoading ? 'animate-spin' : ''}`} />
-                          </button>
-                          <span className={`text-xs font-bold px-3 py-1 rounded-full border ${
-                            zeroStockCount > 0 || units90 > 0
-                              ? darkMode ? 'bg-rose-950/40 text-rose-300 border-rose-800/50' : 'bg-rose-50 text-rose-600 border-rose-200'
-                              : darkMode ? 'bg-emerald-950/40 text-emerald-300 border-emerald-800/50' : 'bg-emerald-50 text-emerald-600 border-emerald-200'
-                          }`}>
-                            {zeroStockCount > 0 ? `${zeroStockCount} Fast Movers at 0 Stock` : 'Catalog Healthy'}
-                          </span>
+                        {/* Banner Content Grid */}
+                        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mt-3.5 items-center">
+                          {/* Left Stats Block (4 cols) */}
+                          <div className="md:col-span-4 grid grid-cols-3 md:grid-cols-1 gap-2">
+                            <div className="p-2 rounded-xl bg-slate-900/40 border border-slate-800/60 flex items-center justify-between">
+                              <span className="text-[10px] text-slate-400 font-bold uppercase">Basket Depth</span>
+                              <div className="text-right">
+                                <span className="text-sm font-black font-mono text-cyan-400">{avgItemsPerBill}</span>
+                                <span className="text-[9px] text-slate-500 ml-1">pcs/bill</span>
+                              </div>
+                            </div>
+
+                            <div className="p-2 rounded-xl bg-slate-900/40 border border-slate-800/60 flex items-center justify-between">
+                              <span className="text-[10px] text-slate-400 font-bold uppercase">Digital Share</span>
+                              <div className="text-right">
+                                <span className="text-sm font-black font-mono text-emerald-400">{digitalPct}%</span>
+                                <span className="text-[9px] text-slate-500 ml-1">UPI/Card</span>
+                              </div>
+                            </div>
+
+                            <div className="p-2 rounded-xl bg-slate-900/40 border border-slate-800/60 flex items-center justify-between">
+                              <span className="text-[10px] text-slate-400 font-bold uppercase">Floor Volume</span>
+                              <div className="text-right">
+                                <span className="text-sm font-black font-mono text-amber-400">{totalItems}</span>
+                                <span className="text-[9px] text-slate-500 ml-1">pcs ({todayBills.length} bills)</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Right Sparkline Bar Chart (8 cols) */}
+                          <div className="md:col-span-8 flex flex-col justify-end">
+                            <div className="h-16 flex items-end gap-1.5 px-2 pt-2 bg-slate-900/30 rounded-xl border border-slate-800/50">
+                              {storeHours.map(hour => {
+                                const match = hourMap[hour];
+                                const rev = match ? match.TotalRevenue || 0 : 0;
+                                const heightPct = maxHourlyRev > 0 ? Math.max(10, Math.round((rev / maxHourlyRev) * 100)) : 10;
+                                const isPeak = peakHour && peakHour.SaleHour === hour && rev > 0;
+                                return (
+                                  <div key={hour} className="flex-1 flex flex-col items-center h-full justify-end group/bar relative">
+                                    <div 
+                                      style={{ height: `${heightPct}%` }}
+                                      className={`w-full rounded-t transition-all ${
+                                        isPeak 
+                                          ? 'bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.6)]' 
+                                          : rev > 0 
+                                            ? 'bg-indigo-500 group-hover/bar:bg-indigo-400' 
+                                            : 'bg-slate-700/20'
+                                      }`}
+                                    />
+                                    {rev > 0 && (
+                                      <div className="absolute -top-7 hidden group-hover/bar:flex flex-col items-center z-20 pointer-events-none">
+                                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-slate-800 text-white border border-slate-700 whitespace-nowrap font-mono shadow-md">
+                                          ₹{rev.toLocaleString('en-IN')}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                            <div className="flex justify-between items-center text-[10px] text-slate-500 font-mono mt-1.5 px-2">
+                              <span>10 AM</span>
+                              <span>12 PM</span>
+                              <span>2 PM</span>
+                              <span>4 PM</span>
+                              <span>6 PM</span>
+                              <span>8 PM</span>
+                              <span>9 PM</span>
+                            </div>
+                          </div>
                         </div>
                       </div>
 
-                      {/* 3 Interactive Deep-Dive Cards */}
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 my-4">
-
-                        {/* Pillar 1: Broken Size Runs */}
-                        <div 
-                          onClick={() => typeof setActiveTab === 'function' && setActiveTab('sizematrix')}
-                          className={`p-4 rounded-xl border transition-all cursor-pointer group flex flex-col justify-between ${
-                            darkMode 
-                              ? 'bg-[#121829] border-[#1c2436] hover:border-rose-500/50' 
-                              : 'bg-rose-50/40 border-rose-100 hover:border-rose-300'
-                          }`}
-                        >
-                          <div>
-                            <div className="flex justify-between items-start mb-2">
-                              <span className="text-[10px] font-extrabold uppercase tracking-wider text-rose-400 flex items-center gap-1">
-                                <Scissors className="w-3.5 h-3.5" />
-                                <span>Broken Size Runs</span>
-                              </span>
-                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
-                                brokenCount > 0
-                                  ? darkMode ? 'bg-rose-950/60 text-rose-300 border-rose-800/60' : 'bg-rose-100 text-rose-700 border-rose-200'
-                                  : darkMode ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/60' : 'bg-emerald-100 text-emerald-700 border-emerald-200'
-                              }`}>
-                                {brokenCount > 0 ? 'Lost Sales Risk' : 'Healthy'}
-                              </span>
-                            </div>
-
-                            <div className="my-2">
-                              <span className="text-3xl sm:text-4xl font-black font-mono text-rose-400 leading-none">
-                                {stockHealthLoading ? '...' : brokenCount}
-                              </span>
-                              <span className={`text-xs ml-1.5 font-bold ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>styles affected</span>
-                            </div>
-
-                            <p className={`text-xs leading-relaxed mt-1 ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                              Core sizes <span className="font-bold text-rose-400">32–40</span> missing while fringe sizes (XS, 44+) sit idle.
-                            </p>
-
-                            <div className={`mt-3 p-2.5 rounded-lg text-xs border ${
-                              darkMode ? 'bg-[#0a0f1a] border-[#1c2436] text-slate-300' : 'bg-white/80 border-rose-100 text-slate-600'
-                            }`}>
-                              💡 <strong>Action:</strong> Refill core sizes from nearby stores via Save-the-Sale or raise warehouse indent.
-                            </div>
-                          </div>
-
-                          <div className="mt-3.5 pt-2.5 border-t border-rose-200/40 dark:border-[#1c2436] flex items-center justify-between text-xs font-bold text-rose-400 group-hover:underline">
-                            <span>Open Size Matrix Heatmap</span>
-                            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-                          </div>
-                        </div>
-
-                        {/* Pillar 2: Dead Stock & Capital Ageing */}
-                        <div 
-                          onClick={() => typeof setActiveTab === 'function' && setActiveTab('inventory')}
-                          className={`p-4 rounded-xl border transition-all cursor-pointer group flex flex-col justify-between ${
-                            darkMode 
-                              ? 'bg-[#121829] border-[#1c2436] hover:border-amber-500/50' 
-                              : 'bg-amber-50/40 border-amber-100 hover:border-amber-300'
-                          }`}
-                        >
-                          <div>
-                            <div className="flex justify-between items-start mb-2">
-                              <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-400 flex items-center gap-1">
-                                <Archive className="w-3.5 h-3.5" />
-                                <span>Dead Stock &amp; Ageing</span>
-                              </span>
-                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
-                                units90 > 0
-                                  ? darkMode ? 'bg-amber-950/60 text-amber-300 border-amber-800/60' : 'bg-amber-100 text-amber-700 border-amber-200'
-                                  : darkMode ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/60' : 'bg-emerald-100 text-emerald-700 border-emerald-200'
-                              }`}>
-                                60+ Days
-                              </span>
-                            </div>
-
-                            <div className="my-2">
-                              <span className="text-3xl sm:text-4xl font-black font-mono text-amber-400 leading-none">
-                                {stockHealthLoading ? '...' : (stockHealth?.deadStock?.units60Plus || 0)}
-                              </span>
-                              <span className={`text-xs ml-1.5 font-bold ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>units ageing</span>
-                            </div>
-
-                            <p className={`text-xs leading-relaxed mt-1 ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                              Critical 90+ days: <span className="font-bold text-rose-400">{units90} units</span> blocked on floor.
-                            </p>
-
-                            <div className={`mt-3 p-2.5 rounded-lg text-xs border ${
-                              darkMode ? 'bg-[#0a0f1a] border-[#1c2436] text-slate-300' : 'bg-white/80 border-amber-100 text-slate-600'
-                            }`}>
-                              💡 <strong>Action:</strong> Pair with fast-moving shirts for Smart Bundles (B1G3 / B3@70%) to liquidate cash.
-                            </div>
-                          </div>
-
-                          <div className="mt-3.5 pt-2.5 border-t border-amber-200/40 dark:border-[#1c2436] flex items-center justify-between text-xs font-bold text-amber-400 group-hover:underline">
-                            <span>Open Inventory Desk</span>
-                            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-                          </div>
-                        </div>
-
-                        {/* Pillar 3: Fast Mover Reorder Alerts */}
-                        <div 
-                          onClick={() => typeof setActiveTab === 'function' && setActiveTab('reorder')}
-                          className={`p-4 rounded-xl border transition-all cursor-pointer group flex flex-col justify-between ${
-                            darkMode 
-                              ? 'bg-[#121829] border-[#1c2436] hover:border-blue-500/50' 
-                              : 'bg-blue-50/40 border-blue-100 hover:border-blue-300'
-                          }`}
-                        >
-                          <div>
-                            <div className="flex justify-between items-start mb-2">
-                              <span className="text-[10px] font-extrabold uppercase tracking-wider text-blue-400 flex items-center gap-1">
-                                <Package className="w-3.5 h-3.5" />
-                                <span>Reorder Alerts</span>
-                              </span>
-                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
-                                zeroStockCount > 0
-                                  ? darkMode ? 'bg-rose-950/60 text-rose-300 border-rose-800/60' : 'bg-rose-100 text-rose-700 border-rose-200'
-                                  : darkMode ? 'bg-blue-950/60 text-blue-300 border-blue-800/60' : 'bg-blue-100 text-blue-700 border-blue-200'
-                              }`}>
-                                {zeroStockCount > 0 ? 'Urgent' : 'Watch'}
-                              </span>
-                            </div>
-
-                            <div className="my-2">
-                              <span className="text-3xl sm:text-4xl font-black font-mono text-blue-400 leading-none">
-                                {stockHealthLoading ? '...' : reorderCount}
-                              </span>
-                              <span className={`text-xs ml-1.5 font-bold ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>SKUs low cover</span>
-                            </div>
-
-                            <p className={`text-xs leading-relaxed mt-1 ${darkMode ? 'text-slate-300' : 'text-slate-600'}`}>
-                              <span className="font-bold text-rose-400">{zeroStockCount} fast movers</span> completely at 0 stock.
-                            </p>
-
-                            <div className={`mt-3 p-2.5 rounded-lg text-xs border ${
-                              darkMode ? 'bg-[#0a0f1a] border-[#1c2436] text-slate-300' : 'bg-white/80 border-blue-100 text-slate-600'
-                            }`}>
-                              💡 <strong>Action:</strong> 1-tap raise restock requisition to Head Office Central Warehouse.
-                            </div>
-                          </div>
-
-                          <div className="mt-3.5 pt-2.5 border-t border-blue-200/40 dark:border-[#1c2436] flex items-center justify-between text-xs font-bold text-blue-400 group-hover:underline">
-                            <span>Open Reorder Desk</span>
-                            <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
-                          </div>
-                        </div>
-
-                      </div>
-
-                      {/* Bottom: Ageing Spectrum & Catalog Health Status */}
-                      <div className={`pt-3 border-t flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs ${
-                        darkMode ? 'border-[#1c2436] text-slate-400' : 'border-slate-100 text-slate-500'
+                      {/* LONG TILE 2: TODAY'S TOP MOVERS & VIP SHOPPER RADAR */}
+                      <div className={`p-4 rounded-2xl border transition-all ${
+                        darkMode ? 'bg-[#0e1320] border-[#1c2436] text-slate-100' : 'bg-white border-slate-200 text-slate-800'
                       }`}>
-                        <div className="flex items-center gap-3 flex-wrap">
-                          <span className="font-bold uppercase tracking-wider text-[10px] text-slate-400">Catalog Ageing:</span>
-                          <div className="flex items-center gap-1.5">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                            <span className="font-mono">Active (&lt;60d): ~{activePct}%</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="w-2 h-2 rounded-full bg-amber-500" />
-                            <span className="font-mono">Slow (60-90d): ~{ageingPct}%</span>
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="w-2 h-2 rounded-full bg-rose-500" />
-                            <span className="font-mono">Dead (90d+): ~{deadPct}%</span>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => typeof setActiveTab === 'function' && setActiveTab('smart_bundles')}
-                            className={`px-3 py-1.5 rounded-lg border font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer ${
-                              darkMode 
-                                ? 'bg-purple-950/40 text-purple-300 border-purple-800/50 hover:bg-purple-900/50' 
-                                : 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100'
-                            }`}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* Sub-Panel 1: Top Moving Articles */}
+                          <div 
+                            onClick={() => typeof setActiveTab === 'function' && setActiveTab('monthly_products')}
+                            className="cursor-pointer group flex flex-col justify-between"
                           >
-                            <Sparkles className="w-3.5 h-3.5" />
-                            <span>Create Smart Bundle</span>
-                          </button>
+                            <div>
+                              <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-slate-100 dark:border-[#1c2436]">
+                                <span className="text-[11px] font-black uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                                  <Flame className="w-3.5 h-3.5" />
+                                  Today's Best Sellers
+                                </span>
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                  Top Velocity
+                                </span>
+                              </div>
+
+                              <div className="space-y-1.5">
+                                {todayTopArticlesLoading ? (
+                                  <div className="py-4 text-center text-xs text-slate-500">Loading movers...</div>
+                                ) : todayTopArticles.length > 0 ? (
+                                  todayTopArticles.slice(0, 3).map((item, idx) => (
+                                    <div key={idx} className="flex items-center justify-between text-xs py-1.5 px-2.5 rounded-xl bg-slate-900/30 border border-slate-800/40 hover:border-emerald-500/30 transition-all">
+                                      <div className="min-w-0 pr-2">
+                                        <p className="font-bold truncate text-[11px] text-slate-200">{item.ArticleName || item.ArticleNo}</p>
+                                        <p className="text-[10px] text-slate-500 truncate">{item.ArticleNo} • {item.Category}</p>
+                                      </div>
+                                      <div className="text-right shrink-0">
+                                        <span className="text-[11px] font-black font-mono text-emerald-400 px-2 py-0.5 rounded bg-emerald-500/15">
+                                          {item.UnitsSold} sold
+                                        </span>
+                                      </div>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <div className="py-4 text-center text-xs text-slate-500">No multi-unit articles recorded yet today</div>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="mt-3 pt-2 border-t border-slate-200/40 dark:border-[#1c2436] flex items-center justify-between text-[11px] font-bold text-emerald-400 group-hover:underline">
+                              <span>View Product Catalog Breakdown</span>
+                              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                            </div>
+                          </div>
+
+                          {/* Sub-Panel 2: VIP Shopper Radar */}
+                          <div 
+                            onClick={() => typeof setActiveTab === 'function' && setActiveTab('customer_insights')}
+                            className="cursor-pointer group flex flex-col justify-between md:border-l md:border-slate-800/60 md:pl-4"
+                          >
+                            <div>
+                              <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-slate-100 dark:border-[#1c2436]">
+                                <span className="text-[11px] font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+                                  <Crown className="w-3.5 h-3.5" />
+                                  VIP Shoppers In-Store
+                                </span>
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                                  {todayVips.length} VIP Visits
+                                </span>
+                              </div>
+
+                              <div className="space-y-1.5">
+                                {todayVips.length > 0 ? (
+                                  todayVips.map((vip, idx) => (
+                                    <div key={idx} className="flex items-center justify-between text-xs py-1.5 px-2.5 rounded-xl bg-slate-900/30 border border-slate-800/40 hover:border-amber-500/30 transition-all">
+                                      <div className="min-w-0 pr-2">
+                                        <p className="font-bold truncate text-[11px] text-slate-200">{vip.CustomerName || vip.FirstName || 'Customer'}</p>
+                                        <p className="text-[10px] text-slate-500 font-mono">Today's Bill: ₹{vip.Amount?.toLocaleString('en-IN')}</p>
+                                      </div>
+                                      <span className={`text-[10px] font-black px-2 py-0.5 rounded border ${
+                                        vip.vipData?.loyaltyTier === 'Platinum' 
+                                          ? 'bg-purple-500/15 text-purple-300 border-purple-500/30'
+                                          : vip.vipData?.loyaltyTier === 'Gold'
+                                            ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                                            : 'bg-slate-500/15 text-slate-300 border-slate-500/30'
+                                      }`}>
+                                        {vip.vipData?.loyaltyTier || 'VIP'}
+                                      </span>
+                                    </div>
+                                  ))
+                                ) : (
+                                  <div className="py-4 text-center text-xs text-slate-500">
+                                    General footfall active today — no VIP tier visits yet
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="mt-3 pt-2 border-t border-slate-200/40 dark:border-[#1c2436] flex items-center justify-between text-[11px] font-bold text-amber-400 group-hover:underline">
+                              <span>Customer Loyalty Profiles</span>
+                              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>

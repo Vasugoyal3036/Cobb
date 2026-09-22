@@ -57,7 +57,6 @@ const globalApiCache = new GlobalNodeCache({ stdTTL: 300 }); // 5 minutes cache 
 app.use((req, res, next) => {
     const cacheEndpoints = [
         '/api/sales/overview',
-        '/api/sales/live',
         '/api/sales/history',
         '/api/sales/daily-month',
         '/api/analytics/hourly',
@@ -1290,59 +1289,76 @@ const handleSalesLiveOrHistory = async (req, res) => {
                 c.CUSTOMER_FNAME as FirstName,
                 m.NET_AMOUNT as Amount,
                 CONVERT(varchar, m.CM_TIME, 126) as BillTime,
-                CONVERT(varchar, m.CM_TIME, 23) as BillDate,
-                ISNULL(p.CASH_AMOUNT, 0) as CashAmount,
-                ISNULL(p.CC_AMOUNT, 0) - ISNULL(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0), 0) as CardAmount,
-                ISNULL(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0), 0) as UpiAmount
+                CONVERT(varchar, m.CM_TIME, 23) as BillDate
             FROM CMM01106 m WITH (NOLOCK)
             LEFT JOIN CUSTDYM c WITH (NOLOCK) ON m.CUSTOMER_CODE = c.CUSTOMER_CODE
-            LEFT JOIN VW_BILL_PAYMODE p WITH (NOLOCK) ON m.CM_ID = p.MEMO_ID
-            LEFT JOIN VW_WL_CASHMEMOLIST w WITH (NOLOCK) ON m.CM_ID = w.MEMO_ID
             WHERE ${dateClause} AND m.CANCELLED = 0${searchClause}
             ORDER BY m.CM_TIME DESC
         `);
 
-        // Batch fetch items for all returned bills
-        const billIds = (result.recordset || []).map(b => b.BillId);
+        const bills = result.recordset || [];
+        const billIds = bills.map(b => b.BillId);
+
+        let paymodesByBill = {};
         let itemsByBill = {};
+
         if (billIds.length > 0) {
-            try {
-                const idList = billIds.map(id => `'${String(id).replace(/'/g, "''")}'`).join(',');
-                const itemsResult = await sql.query(`
-                    SELECT 
-                        d.CM_ID as BillId,
-                        d.ARTICLE_NO as ArticleNo,
-                        d.ARTICLE_NAME as ArticleName,
-                        d.QUANTITY as Quantity,
-                        d.NET as NetPrice,
-                        ISNULL(d.PARA1_NAME, 'Standard') as Color,
-                        ISNULL(d.PARA2_NAME, 'Standard') as Size,
-                        ISNULL(d.SECTION_NAME, 'Apparel') as Category
-                    FROM VW_CASHMEMO_PRINT_DET d WITH (NOLOCK)
-                    WHERE d.CM_ID IN (${idList})
-                    ORDER BY d.CM_ID, d.NET DESC
-                `);
-                for (const item of itemsResult.recordset) {
-                    if (!itemsByBill[item.BillId]) itemsByBill[item.BillId] = [];
-                    itemsByBill[item.BillId].push({
-                        ArticleNo: item.ArticleNo,
-                        ArticleName: item.ArticleName,
-                        Quantity: item.Quantity,
-                        NetPrice: item.NetPrice,
-                        Color: item.Color,
-                        Size: item.Size,
-                        Category: item.Category
-                    });
-                }
-            } catch (itemErr) {
-                console.error('Failed to batch-fetch bill items:', itemErr.message);
+            const idList = billIds.map(id => `'${String(id).replace(/'/g, "''")}'`).join(',');
+            
+            const payPromise = sql.query(`
+                SELECT 
+                    p.MEMO_ID as BillId,
+                    ISNULL(p.CASH_AMOUNT, 0) as CashAmount,
+                    ISNULL(p.CC_AMOUNT, 0) - ISNULL(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0), 0) as CardAmount,
+                    ISNULL(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0), 0) as UpiAmount
+                FROM VW_BILL_PAYMODE p WITH (NOLOCK)
+                LEFT JOIN VW_WL_CASHMEMOLIST w WITH (NOLOCK) ON p.MEMO_ID = w.MEMO_ID
+                WHERE p.MEMO_ID IN (${idList})
+            `).catch(err => {
+                console.error('Paymode query error:', err.message);
+                return { recordset: [] };
+            });
+
+            const itemsPromise = sql.query(`
+                SELECT 
+                    A.CM_ID as BillId,
+                    D.ARTICLE_NO as ArticleNo,
+                    D.ARTICLE_NAME as ArticleName,
+                    A.QUANTITY as Quantity,
+                    A.NET as NetPrice,
+                    ISNULL(P1.PARA1_NAME, 'Standard') as Color,
+                    ISNULL(P2.PARA2_NAME, 'Standard') as Size,
+                    ISNULL(F.SECTION_NAME, 'Apparel') as Category
+                FROM CMD01106 A WITH (NOLOCK)
+                JOIN SKU C WITH (NOLOCK) ON A.PRODUCT_CODE = C.PRODUCT_CODE
+                JOIN ARTICLE D WITH (NOLOCK) ON C.ARTICLE_CODE = D.ARTICLE_CODE
+                LEFT JOIN SECTIOND E WITH (NOLOCK) ON D.SUB_SECTION_CODE = E.SUB_SECTION_CODE
+                LEFT JOIN SECTIONM F WITH (NOLOCK) ON E.SECTION_CODE = F.SECTION_CODE
+                LEFT JOIN PARA1 P1 WITH (NOLOCK) ON C.PARA1_CODE = P1.PARA1_CODE
+                LEFT JOIN PARA2 P2 WITH (NOLOCK) ON C.PARA2_CODE = P2.PARA2_CODE
+                WHERE A.CM_ID IN (${idList})
+                ORDER BY A.CM_ID, A.NET DESC
+            `).catch(err => {
+                console.error('Items query error:', err.message);
+                return { recordset: [] };
+            });
+
+            const [payRes, itemsRes] = await Promise.all([payPromise, itemsPromise]);
+
+            for (const p of (payRes.recordset || [])) {
+                paymodesByBill[p.BillId] = p;
+            }
+            for (const item of (itemsRes.recordset || [])) {
+                if (!itemsByBill[item.BillId]) itemsByBill[item.BillId] = [];
+                itemsByBill[item.BillId].push(item);
             }
         }
 
-        const enriched = result.recordset.map(b => {
-            const cash = b.CashAmount || 0;
-            const card = b.CardAmount > 0 ? b.CardAmount : 0;
-            const upi = b.UpiAmount || 0;
+        const enriched = bills.map(b => {
+            const pay = paymodesByBill[b.BillId] || {};
+            const cash = pay.CashAmount || 0;
+            const card = (pay.CardAmount || 0) > 0 ? pay.CardAmount : 0;
+            const upi = pay.UpiAmount || 0;
 
             let paymentMode = 'Cash';
             if (upi > 0 && cash === 0 && card === 0) {
@@ -1364,6 +1380,9 @@ const handleSalesLiveOrHistory = async (req, res) => {
 
             return {
                 ...b,
+                CashAmount: cash,
+                CardAmount: card,
+                UpiAmount: upi,
                 PaymentMode: paymentMode,
                 TotalQty: totalQty,
                 Items: billItems
@@ -1631,7 +1650,7 @@ app.get('/api/gateway/status', async (req, res) => {
         isRunning: isRunning,
         isReady: isReady,
         qrCodeUrl: qrCodeUrl,
-        logs: gatewayLogs
+        logs: gatewayLogs.slice(-100)
     });
 });
 
@@ -2153,6 +2172,38 @@ app.get('/api/analytics/top-movers', async (req, res) => {
                 { Size: "XXL", TotalUnitsSold: 90, TotalRevenue: 135000 }
             ]
         });
+    }
+});
+
+// Today's Best-Selling Articles (Live Store Intelligence Ribbon)
+app.get('/api/analytics/today-top-articles', async (req, res) => {
+    try {
+        await connectDB();
+        const result = await sql.query(`
+            SELECT TOP 5
+                RTRIM(d.ARTICLE_NO) as ArticleNo,
+                MAX(RTRIM(d.ARTICLE_NAME)) as ArticleName,
+                MAX(RTRIM(ISNULL(f.SECTION_NAME, 'General'))) as Category,
+                SUM(a.QUANTITY) as UnitsSold,
+                ISNULL(SUM(a.NET), 0) as Revenue
+            FROM CMD01106 a WITH (NOLOCK)
+            JOIN CMM01106 b WITH (NOLOCK) ON b.CM_ID = a.CM_ID
+            JOIN SKU c WITH (NOLOCK) ON a.PRODUCT_CODE = c.PRODUCT_CODE
+            JOIN ARTICLE d WITH (NOLOCK) ON c.ARTICLE_CODE = d.ARTICLE_CODE
+            LEFT JOIN SECTIOND e WITH (NOLOCK) ON d.SUB_SECTION_CODE = e.SUB_SECTION_CODE
+            LEFT JOIN SECTIONM f WITH (NOLOCK) ON e.SECTION_CODE = f.SECTION_CODE
+            WHERE b.CANCELLED = 0
+              AND a.QUANTITY > 0
+              AND d.ARTICLE_NO IS NOT NULL
+              AND LEN(RTRIM(d.ARTICLE_NO)) > 1
+              AND b.CM_TIME >= CAST(GETDATE() AS DATE)
+            GROUP BY RTRIM(d.ARTICLE_NO)
+            ORDER BY SUM(a.QUANTITY) DESC
+        `);
+        res.json(result.recordset || []);
+    } catch (err) {
+        console.error('Today Top Articles Error:', err.message);
+        res.json([]);
     }
 });
 
@@ -3578,9 +3629,9 @@ app.listen(PORT, () => {
                     consecutiveGatewayFailures = 0;
                 } else {
                     consecutiveGatewayFailures++;
-                    if (consecutiveGatewayFailures >= 18) { // 3 minutes stuck unready without QR code
-                        console.log('[SUPERVISOR] WhatsApp Client unready for >3m. Auto-restarting gateway process...');
-                        gatewayLogs.push(`[${new Date().toLocaleTimeString()}] [SUPERVISOR] Gateway stuck — restarting process...`);
+                    if (consecutiveGatewayFailures >= 6) { // 60 seconds stuck unready without QR code
+                        console.log('[SUPERVISOR] WhatsApp Client unready for >60s. Auto-restarting gateway process...');
+                        gatewayLogs.push(`[${new Date().toLocaleTimeString()}] [SUPERVISOR] Gateway stuck — auto-restarting cleanly...`);
                         consecutiveGatewayFailures = 0;
                         if (gatewayProcess) {
                             try { spawn('taskkill', ['/PID', gatewayProcess.pid.toString(), '/F', '/T'], { windowsHide: true }); } catch (err) {}
@@ -3661,11 +3712,40 @@ app.listen(PORT, () => {
                 } catch (e) {}
             }
 
-            // 1. Evening Closing Window: 9:00 PM (21:00) if PC is on
-            const isEveningWindow = (hour >= 21);
-            if (isEveningWindow && lastSentDate !== todayStr) {
-                console.log(`[AUTO EOD] 9:00 PM closing trigger active at ${hour}:${String(minute).padStart(2, '0')} for ${todayStr}. Auto-dispatching EOD digest to owners...`);
-                await dispatchEodReport(todayStr, ' (Store Closing Digest)');
+            // 1. Evening Closing Triggers:
+            // Trigger A: 8:30 PM Scheduled Closing (if PC is still running)
+            // Trigger B: Smart Evening Inactivity (from 7:45 PM onwards): If store has bills today and no new bills for >25 mins
+            const isEveningSchedule = (hour > 20 || (hour === 20 && minute >= 30));
+            const isClosingInactivity = (hour > 19 || (hour === 19 && minute >= 45));
+
+            if (lastSentDate !== todayStr && (isEveningSchedule || isClosingInactivity)) {
+                await connectDB();
+                const activityQuery = await sql.query(`
+                    SELECT 
+                        COUNT(CM_ID) as billCount,
+                        DATEDIFF(minute, MAX(CM_TIME), GETDATE()) as minutesSinceLastBill
+                    FROM CMM01106 WITH (NOLOCK) 
+                    WHERE CM_TIME >= CAST(GETDATE() AS DATE) AND CANCELLED = 0
+                `);
+                const { billCount, minutesSinceLastBill } = activityQuery.recordset[0] || { billCount: 0, minutesSinceLastBill: 999 };
+
+                if (billCount > 0) {
+                    let shouldDispatch = false;
+                    let triggerReason = '';
+
+                    if (isEveningSchedule) {
+                        shouldDispatch = true;
+                        triggerReason = `8:30 PM scheduled closing trigger (${hour}:${String(minute).padStart(2, '0')})`;
+                    } else if (isClosingInactivity && minutesSinceLastBill >= 25) {
+                        shouldDispatch = true;
+                        triggerReason = `Evening inactivity trigger (${minutesSinceLastBill}m quiet since last bill at ${hour}:${String(minute).padStart(2, '0')})`;
+                    }
+
+                    if (shouldDispatch) {
+                        console.log(`[AUTO EOD] ${triggerReason} active for ${todayStr} (${billCount} bills). Auto-dispatching EOD digest to owners...`);
+                        await dispatchEodReport(todayStr, ' (Store Closing Digest)');
+                    }
+                }
             }
 
             // 2. Morning / Power-On Recovery: Between 9:00 AM and 1:00 PM
@@ -3698,3 +3778,52 @@ app.listen(PORT, () => {
         }
     }
 });
+
+// --- GRACEFUL PROCESS TERMINATION / WINDOWS SHUTDOWN HOOK ---
+async function handleProcessTermination(signal) {
+    console.log(`[PROCESS TERMINATION] Received ${signal}. Checking for unsent evening EOD digest...`);
+    try {
+        const now = new Date();
+        const hour = now.getHours();
+        const minute = now.getMinutes();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const todayStr = `${year}-${month}-${day}`;
+
+        // Evening closing window: 6:00 PM (18:00) onwards
+        if (hour >= 18) {
+            const sentFilePath = path.join(__dirname, 'sent_eod_date.txt');
+            let lastSentDate = '';
+            if (fs.existsSync(sentFilePath)) {
+                try { lastSentDate = fs.readFileSync(sentFilePath, 'utf8').trim(); } catch (e) {}
+            }
+            if (lastSentDate !== todayStr) {
+                console.log(`[PROCESS TERMINATION] Evening shutdown at ${hour}:${String(minute).padStart(2, '0')}. Dispatching EOD digest for ${todayStr}...`);
+                await dispatchEodReport(todayStr, ' (Store Closing Digest)');
+            }
+        }
+    } catch (e) {
+        console.error('[PROCESS TERMINATION EOD ERROR]:', e.message);
+    }
+}
+
+process.on('SIGTERM', async () => {
+    await handleProcessTermination('SIGTERM');
+    process.exit(0);
+});
+process.on('SIGINT', async () => {
+    await handleProcessTermination('SIGINT');
+    process.exit(0);
+});
+process.on('SIGBREAK', async () => {
+    await handleProcessTermination('SIGBREAK');
+    process.exit(0);
+});
+process.on('message', async (msg) => {
+    if (msg === 'shutdown') {
+        await handleProcessTermination('pm2:shutdown');
+        process.exit(0);
+    }
+});
+

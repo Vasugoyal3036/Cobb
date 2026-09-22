@@ -167,14 +167,14 @@ const LiveBillsTab = (props) => {
       // Search query
       if (searchQuery.trim() !== '') {
         const q = searchQuery.toLowerCase().trim();
-        const billNoMatch = bill.BillNumber?.toLowerCase().includes(q);
-        const customerMatch = bill.CustomerName?.toLowerCase().includes(q) || bill.FirstName?.toLowerCase().includes(q);
-        const phoneMatch = bill.Phone?.toLowerCase().includes(q);
+        const billNoMatch = bill.BillNumber?.toLowerCase()?.includes(q);
+        const customerMatch = bill.CustomerName?.toLowerCase()?.includes(q) || bill.FirstName?.toLowerCase()?.includes(q);
+        const phoneMatch = bill.Phone?.toLowerCase()?.includes(q);
         const itemMatch = (bill.Items || []).some(item => 
-          item.ArticleName?.toLowerCase().includes(q) || 
-          item.ArticleNo?.toLowerCase().includes(q) ||
-          item.Color?.toLowerCase().includes(q) ||
-          item.Size?.toLowerCase().includes(q)
+          item.ArticleName?.toLowerCase()?.includes(q) || 
+          item.ArticleNo?.toLowerCase()?.includes(q) ||
+          item.Color?.toLowerCase()?.includes(q) ||
+          item.Size?.toLowerCase()?.includes(q)
         );
         if (!billNoMatch && !customerMatch && !phoneMatch && !itemMatch) return false;
       }
