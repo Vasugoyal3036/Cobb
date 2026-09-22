@@ -3918,39 +3918,22 @@ app.listen(PORT, () => {
                 } catch (e) {}
             }
 
-            // 1. Evening Closing Triggers:
-            // Trigger A: 8:30 PM Scheduled Closing (if PC is still running)
-            // Trigger B: Smart Evening Inactivity (from 7:45 PM onwards): If store has bills today and no new bills for >25 mins
+            // 1. Evening Closing Trigger:
+            // Scheduled Closing: 8:30 PM onwards (if PC is still running)
             const isEveningSchedule = (hour > 20 || (hour === 20 && minute >= 30));
-            const isClosingInactivity = (hour > 19 || (hour === 19 && minute >= 45));
 
-            if (lastSentDate !== todayStr && (isEveningSchedule || isClosingInactivity)) {
+            if (lastSentDate !== todayStr && isEveningSchedule) {
                 await connectDB();
                 const activityQuery = await sql.query(`
-                    SELECT 
-                        COUNT(CM_ID) as billCount,
-                        DATEDIFF(minute, MAX(CM_TIME), GETDATE()) as minutesSinceLastBill
+                    SELECT COUNT(CM_ID) as billCount
                     FROM CMM01106 WITH (NOLOCK) 
                     WHERE CM_TIME >= CAST(GETDATE() AS DATE) AND CANCELLED = 0
                 `);
-                const { billCount, minutesSinceLastBill } = activityQuery.recordset[0] || { billCount: 0, minutesSinceLastBill: 999 };
+                const { billCount } = activityQuery.recordset[0] || { billCount: 0 };
 
                 if (billCount > 0) {
-                    let shouldDispatch = false;
-                    let triggerReason = '';
-
-                    if (isEveningSchedule) {
-                        shouldDispatch = true;
-                        triggerReason = `8:30 PM scheduled closing trigger (${hour}:${String(minute).padStart(2, '0')})`;
-                    } else if (isClosingInactivity && minutesSinceLastBill >= 25) {
-                        shouldDispatch = true;
-                        triggerReason = `Evening inactivity trigger (${minutesSinceLastBill}m quiet since last bill at ${hour}:${String(minute).padStart(2, '0')})`;
-                    }
-
-                    if (shouldDispatch) {
-                        console.log(`[AUTO EOD] ${triggerReason} active for ${todayStr} (${billCount} bills). Auto-dispatching EOD digest to owners...`);
-                        await dispatchEodReport(todayStr, ' (Store Closing Digest)');
-                    }
+                    console.log(`[AUTO EOD] 8:30 PM scheduled closing trigger (${hour}:${String(minute).padStart(2, '0')}) active for ${todayStr} (${billCount} bills). Auto-dispatching EOD digest to owners...`);
+                    await dispatchEodReport(todayStr, ' (Store Closing Digest)');
                 }
             }
 
