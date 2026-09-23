@@ -17,6 +17,8 @@ import HoldDeskTab from './components/tabs/HoldDeskTab';
 import SaveTheSaleTab from './components/tabs/SaveTheSaleTab';
 import LookbookStudioTab from './components/tabs/LookbookStudioTab';
 import ChatbotTab from './components/tabs/ChatbotTab';
+import BarcodeGeneratorTab from './components/tabs/BarcodeGeneratorTab';
+import MultiStoreMatrixTab from './components/tabs/MultiStoreMatrixTab';
 import FloatingCopilot from './components/FloatingCopilot';
 import { fetchWithOfflineFallback, subscribeToData } from './utils/offlineDb';
 
@@ -2031,6 +2033,16 @@ export default function App() {
             {/* 15. COBB RETAIL AI COPILOT / CHATBOT */}
             {activeTab === 'copilot' && (
               <ChatbotTab API_BASE={API_BASE} darkMode={darkMode} onNavigateTab={(tab) => setActiveTab(tab)} />
+            )}
+
+            {/* 16. BARCODE FACTORY */}
+            {activeTab === 'barcode_factory' && (
+              <BarcodeGeneratorTab darkMode={darkMode} />
+            )}
+
+            {/* 17. MULTI-STORE MATRIX */}
+            {activeTab === 'multistore' && (
+              <MultiStoreMatrixTab darkMode={darkMode} formatCurrency={(v) => `₹${Number(v).toLocaleString('en-IN')}`} />
             )}
 
             {/* FLOATING AI COPILOT ON-SCREEN WIDGET (Active across all tabs) */}

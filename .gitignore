@@ -28,3 +28,4 @@ find_b*.js
 reconciliations.json
 scratch/
 CobbDashboard/backups/
+CobbDashboard/.env
