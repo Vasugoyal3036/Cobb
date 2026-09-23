@@ -76,7 +76,7 @@ import {
 const navigationItems = [
   {
     category: "AI & Intelligence", items: [
-      { id: "copilot", label: "Cobb AI Copilot", icon: Sparkles, colorClass: "text-blue-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-blue-500/15 text-blue-400 font-bold border-l-2 border-blue-500" },
+      { id: "copilot", label: "✨ Cobb AI Copilot", icon: Sparkles, colorClass: "text-purple-400 hover:bg-purple-950/40 hover:text-white font-semibold", activeColorClass: "bg-gradient-to-r from-purple-600/30 via-indigo-600/20 to-transparent text-purple-200 font-bold border-l-3 border-purple-500 shadow-md shadow-purple-500/20" },
     ]
   },
   {
@@ -401,6 +401,20 @@ const Layout = ({
               <div className="flex items-center gap-1.5 shrink-0">
                 <button
                   type="button"
+                  onClick={() => setActiveTab('copilot')}
+                  className={`px-2 py-1.5 rounded-xl font-bold text-[10px] transition-all shadow-xs cursor-pointer flex items-center gap-1 shrink-0 ${
+                    activeTab === 'copilot'
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white'
+                  }`}
+                  title="Open Cobb AI Copilot"
+                >
+                  <Sparkles className="w-3 h-3" />
+                  <span>AI Copilot</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => setShowReconModal(true)}
                   className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-[10px] transition-all shadow-xs cursor-pointer flex items-center gap-1 shrink-0"
                   title="EOD Cash Register Reconciliation"
@@ -517,6 +531,23 @@ const Layout = ({
               >
                 <Send className="w-3.5 h-3.5" />
                 <span>EOD Report</span>
+              </button>
+
+              {/* Cobb AI Copilot Direct Workspace Button */}
+              <button
+                type="button"
+                onClick={() => setActiveTab('copilot')}
+                className={`px-3 py-1.5 rounded-xl font-bold text-xs transition-all shadow-xs cursor-pointer flex items-center gap-1.5 shrink-0 border ${
+                  activeTab === 'copilot'
+                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-purple-400 shadow-md shadow-purple-500/30 ring-1 ring-purple-400'
+                    : darkMode
+                      ? 'bg-purple-950/40 hover:bg-purple-900/60 text-purple-300 border-purple-800/60'
+                      : 'bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200'
+                }`}
+                title="Open Cobb AI Copilot Workspace (or press Ctrl+K)"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-purple-400 animate-pulse" />
+                <span>Cobb AI Copilot</span>
               </button>
 
               {/* Database & Store Setup Button */}

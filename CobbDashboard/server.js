@@ -132,6 +132,14 @@ process.on('unhandledRejection', (reason, promise) => {
 connectDB();
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const getAiModel = (overrideModel) => {
+    const target = overrideModel || process.env.GEMINI_MODEL || 'gemini-3.6-flash';
+    try {
+        return genAI.getGenerativeModel({ model: target });
+    } catch (e) {
+        return genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
+    }
+};
 
 const multer = require('multer');
 const uploadsDir = path.join(__dirname, 'uploads');
@@ -739,7 +747,7 @@ app.post('/api/ai/demand-forecasts', async (req, res) => {
     }
 
     try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const model = getAiModel();
 
         const prompt = `
         You are an expert menswear retail strategist exclusively for a "Cobb Italy" (Cobb Apparels) franchise store in Haryana.
@@ -796,7 +804,7 @@ app.post('/api/ai/demand-forecasts', async (req, res) => {
 app.post('/api/ai/persona', async (req, res) => {
     const { purchases } = req.body;
     try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const model = getAiModel();
         const prompt = `
         Analyze the following recent clothing purchases from a male customer at a menswear store:
         "${purchases}"
@@ -835,7 +843,7 @@ app.post('/api/ai/persona', async (req, res) => {
 app.post('/api/ai/outfit-matcher', async (req, res) => {
     const { deadStockItem } = req.body;
     try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const model = getAiModel();
         const prompt = `
         You are an expert fashion stylist for Cobb Pundri menswear.
         We have this slow-moving item in our inventory: "${deadStockItem}".
@@ -858,7 +866,7 @@ app.post('/api/ai/outfit-matcher', async (req, res) => {
 app.post('/api/ai/smart-coordinate', async (req, res) => {
     const { items, customerName } = req.body;
     try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const model = getAiModel();
         const prompt = `
         You are an expert fashion stylist for Cobb Pundri menswear.
         Customer ${customerName || 'Valued Customer'} just bought these items: ${items.join(', ')}.
@@ -879,7 +887,7 @@ app.post('/api/ai/smart-coordinate', async (req, res) => {
 app.post('/api/ai/campaign-builder', async (req, res) => {
     const { event, audience } = req.body;
     try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const model = getAiModel();
         const prompt = `
         You are the Marketing Director for Cobb Pundri, a premium menswear franchise in Haryana.
         
@@ -904,7 +912,7 @@ app.post('/api/ai/campaign-builder', async (req, res) => {
 app.post('/api/campaigns/generate', async (req, res) => {
     const { customerName, pastPurchases, type, sizes } = req.body;
     try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const model = getAiModel();
 
         let objective = "";
         if (type === 'cross-sell') {
@@ -2829,7 +2837,7 @@ app.post('/api/ai/vm-audit', upload.array('images', 5), async (req, res) => {
             return res.status(400).json({ error: "No image files provided." });
         }
 
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const model = getAiModel();
 
         const parts = [];
         
@@ -3000,7 +3008,7 @@ app.get('/api/ai/trend-forecast', async (req, res) => {
         `);
         const salesItems = salesRes.recordset.map(i => `${i.ArticleName} (${i.Category}) - ${i.TotalUnitsSold} sold`).join(', ');
 
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const model = getAiModel();
         
         const currentDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
@@ -3050,7 +3058,7 @@ app.post('/api/ai/whatsapp-draft', async (req, res) => {
     try {
         const { customerName, pastPurchases, stylePreferences } = req.body;
         
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const model = getAiModel();
         
         const prompt = `You are an expert retail marketer. Write a highly personalized, short WhatsApp message (max 3 sentences) for a customer named ${customerName}.
 Their past purchases include: ${pastPurchases}.
@@ -3076,7 +3084,7 @@ app.post('/api/ai/competitor-intel', upload.single('image'), async (req, res) =>
         const base64Image = imageBuffer.toString('base64');
         const mimeType = req.file.mimetype;
 
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const model = getAiModel();
 
         const prompt = `You are a Retail Pricing Strategist. Analyze this image of a competitor's promotional flyer or advertisement.
 Extract their discount strategy, and propose a counter-strategy for Cobb (our store) that matches or beats their offer while protecting our margins (we have an average 45% margin).

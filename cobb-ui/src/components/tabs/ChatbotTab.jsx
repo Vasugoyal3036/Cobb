@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Send,
   Bot,
@@ -24,17 +25,27 @@ import {
   ChevronRight,
   Search,
   Boxes,
-  Tag
+  Tag,
+  ExternalLink,
+  Percent,
+  Clock,
+  MessageCircle,
+  Key,
+  X,
+  ShieldCheck
 } from 'lucide-react';
 
 const STORAGE_KEY = 'cobb_copilot_messages_v2';
 
 const QUICK_PROMPTS = [
+  { label: "🏷️ Buy 3 Get 70%", query: "buy 3 get 70% on mrp 2499", icon: Percent, color: "text-amber-600 bg-amber-50 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800" },
+  { label: "⏳ Active Holds", query: "what items are currently on hold", icon: Clock, color: "text-indigo-600 bg-indigo-50 dark:bg-indigo-950/60 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800" },
+  { label: "📱 WhatsApp Promo", query: "draft whatsapp promo message for buy 3 get 70%", icon: MessageCircle, color: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800" },
   { label: "👔 Full Sleeve Shirts", query: "how many full sleeves shirt are present", icon: Shirt, color: "text-blue-600 bg-blue-50 dark:bg-blue-950/60 dark:text-blue-300 border-blue-200 dark:border-blue-800" },
   { label: "📏 Size 40 Shirts", query: "size 40 shirts in stock", icon: Shirt, color: "text-sky-600 bg-sky-50 dark:bg-sky-950/60 dark:text-sky-300 border-sky-200 dark:border-sky-800" },
   { label: "🚚 Goods In Transit", query: "what parcels are in transit from head office", icon: Truck, color: "text-violet-600 bg-violet-50 dark:bg-violet-950/60 dark:text-violet-300 border-violet-200 dark:border-violet-800" },
   { label: "💰 Today's Sales & UPI", query: "what is today's total sales and UPI split", icon: TrendingUp, color: "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800" },
-  { label: "🚨 Low Stock Alerts", query: "which items are low on stock", icon: AlertTriangle, color: "text-amber-600 bg-amber-50 dark:bg-amber-950/60 dark:text-amber-300 border-amber-200 dark:border-amber-800" },
+  { label: "🚨 Low Stock Alerts", query: "which items are low on stock", icon: AlertTriangle, color: "text-rose-600 bg-rose-50 dark:bg-rose-950/60 dark:text-rose-300 border-rose-200 dark:border-rose-800" },
   { label: "👑 Top VIP Customers", query: "who are our top VIP customers", icon: Users, color: "text-purple-600 bg-purple-50 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200 dark:border-purple-800" },
   { label: "💤 Dead Stock (60d)", query: "show dead stock items", icon: Package, color: "text-rose-600 bg-rose-50 dark:bg-rose-950/60 dark:text-rose-300 border-rose-200 dark:border-rose-800" },
 ];
@@ -71,6 +82,72 @@ export default function ChatbotTab({ API_BASE = 'http://localhost:5000', darkMod
   const [expandedSqlId, setExpandedSqlId] = useState(null);
   const [isListening, setIsListening] = useState(false);
   const [activeSpeechId, setActiveSpeechId] = useState(null);
+  const [engineStatus, setEngineStatus] = useState({
+    geminiActive: false,
+    statusText: '⚡ Local Retail Engine',
+    model: 'gemini-2.5-flash'
+  });
+  const [showKeyModal, setShowKeyModal] = useState(false);
+  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [savingKey, setSavingKey] = useState(false);
+  const [keyFeedback, setKeyFeedback] = useState(null);
+
+  // Check backend engine status
+  const refreshEngineStatus = () => {
+    fetch(`${API_BASE}/api/ai/chat/status`)
+      .then(r => r.json())
+      .then(d => {
+        if (d && d.success) {
+          setEngineStatus(d);
+        }
+      })
+      .catch(() => {});
+  };
+
+  useEffect(() => {
+    refreshEngineStatus();
+  }, [API_BASE]);
+
+  const handleSaveApiKey = async () => {
+    if (!apiKeyInput.trim()) return;
+    setSavingKey(true);
+    setKeyFeedback(null);
+    try {
+      const res = await fetch(`${API_BASE}/api/ai/chat/key`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey: apiKeyInput.trim() })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setKeyFeedback({ success: true, message: data.message || 'Gemini AI connected successfully!' });
+        refreshEngineStatus();
+        setTimeout(() => setShowKeyModal(false), 1600);
+      } else {
+        setKeyFeedback({ success: false, message: data.error || 'Failed to validate key.' });
+      }
+    } catch (e) {
+      setKeyFeedback({ success: false, message: e.message });
+    } finally {
+      setSavingKey(false);
+    }
+  };
+
+  const handleClearApiKey = async () => {
+    setSavingKey(true);
+    setKeyFeedback(null);
+    try {
+      await fetch(`${API_BASE}/api/ai/chat/key`, { method: 'DELETE' });
+      setApiKeyInput('');
+      setKeyFeedback({ success: true, message: 'Reverted to Fast Local Retail Engine.' });
+      refreshEngineStatus();
+      setTimeout(() => setShowKeyModal(false), 1200);
+    } catch (e) {
+      setKeyFeedback({ success: false, message: e.message });
+    } finally {
+      setSavingKey(false);
+    }
+  };
 
   // Suggestions state
   const [suggestions, setSuggestions] = useState([]);
@@ -265,10 +342,14 @@ export default function ChatbotTab({ API_BASE = 'http://localhost:5000', darkMod
 
   const executeAction = (action) => {
     if (!action) return;
-    if (action.type === 'NAVIGATE' && onNavigateTab) {
+    if (action.type === 'LINK' && action.url) {
+      window.open(action.url, '_blank', 'noopener,noreferrer');
+    } else if ((action.type === 'NAVIGATE' || action.type === 'NAVIGATE_TAB') && onNavigateTab) {
       onNavigateTab(action.target || action.tab);
-    } else if (action.type === 'QUERY') {
+    } else if (action.type === 'QUERY' && action.query) {
       handleSend(action.query);
+    } else if (action.type === 'COPY' && action.text) {
+      navigator.clipboard.writeText(action.text);
     }
   };
 
@@ -306,18 +387,51 @@ export default function ChatbotTab({ API_BASE = 'http://localhost:5000', darkMod
           <div className="min-w-0">
             <div className="flex items-center space-x-2 flex-wrap">
               <h2 className="text-sm sm:text-lg font-bold truncate">Cobb AI Copilot</h2>
-              <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1 animate-pulse"></span>
-                Live DB Connected
-              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  setKeyFeedback(null);
+                  setShowKeyModal(true);
+                }}
+                className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border transition-all cursor-pointer hover:scale-105 ${
+                  engineStatus.geminiActive
+                    ? 'bg-purple-100 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border-purple-300 dark:border-purple-800 hover:bg-purple-200'
+                    : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-300 dark:border-emerald-800 hover:bg-emerald-200'
+                }`}
+                title="Click to configure Gemini API Key"
+              >
+                <span className={`w-1.5 h-1.5 rounded-full mr-1.5 ${engineStatus.geminiActive ? 'bg-purple-500 animate-pulse' : 'bg-emerald-500 animate-pulse'}`}></span>
+                {engineStatus.geminiActive ? (engineStatus.statusText || '🧠 Gemini AI Mode') : '⚡ Local Retail Engine'}
+              </button>
             </div>
             <p className="text-[10px] sm:text-xs text-slate-400 truncate">
-              MSSQL Stock, Sizes, Goods In Transit & Sales Intelligence
+              MSSQL Stock, Sizes, Goods In Transit, Offers & Marketing Intelligence
             </p>
           </div>
         </div>
 
         <div className="flex items-center space-x-1.5 shrink-0">
+          <button
+            type="button"
+            onClick={() => {
+              setKeyFeedback(null);
+              setShowKeyModal(true);
+            }}
+            className={`flex items-center space-x-1.5 px-2.5 py-1.5 text-xs font-semibold rounded-lg border transition-all cursor-pointer shadow-xs ${
+              engineStatus.geminiActive
+                ? darkMode 
+                  ? 'border-purple-800 bg-purple-950/60 hover:bg-purple-900/60 text-purple-300' 
+                  : 'border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700'
+                : darkMode 
+                  ? 'border-indigo-800 bg-indigo-950/60 hover:bg-indigo-900/60 text-indigo-300' 
+                  : 'border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700'
+            }`}
+            title="Configure Google Gemini API Key"
+          >
+            <Key className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">{engineStatus.geminiActive ? 'Gemini Key' : 'Connect Gemini'}</span>
+          </button>
+
           <button
             onClick={clearChat}
             className={`flex items-center space-x-1 px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-all cursor-pointer ${
@@ -481,10 +595,18 @@ export default function ChatbotTab({ API_BASE = 'http://localhost:5000', darkMod
                       <button
                         key={actIdx}
                         onClick={() => executeAction(act)}
-                        className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer hover:scale-102"
+                        className={`px-3 py-1.5 rounded-xl font-semibold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer hover:scale-102 ${
+                          act.type === 'LINK'
+                            ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
+                            : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                        }`}
                       >
                         <span>{act.label}</span>
-                        <ChevronRight className="w-3.5 h-3.5" />
+                        {act.type === 'LINK' ? (
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        ) : (
+                          <ChevronRight className="w-3.5 h-3.5" />
+                        )}
                       </button>
                     ))}
                   </div>
@@ -684,6 +806,152 @@ export default function ChatbotTab({ API_BASE = 'http://localhost:5000', darkMod
           </div>
         </div>
       </div>
+
+      {/* Gemini AI Key Setup Modal rendered into document.body to avoid clipping */}
+      {showKeyModal && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-in fade-in duration-150">
+          <div className={`w-full max-w-lg rounded-2xl shadow-2xl border p-5 sm:p-6 transition-all ${
+            darkMode ? 'bg-slate-900 border-slate-700 text-slate-100' : 'bg-white border-slate-200 text-slate-800'
+          }`}>
+            <div className="flex items-center justify-between pb-3 border-b border-slate-200/60 dark:border-slate-800">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-sm">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold">Google Gemini AI Engine</h3>
+                  <p className="text-[11px] text-slate-400">Ask ANY custom question across your live store database</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowKeyModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Current Engine Status Banner */}
+            <div className={`mt-4 p-3 rounded-xl border flex items-start space-x-2.5 ${
+              engineStatus.geminiActive
+                ? 'bg-purple-500/10 border-purple-500/30 text-purple-300'
+                : 'bg-indigo-500/10 border-indigo-500/30 text-indigo-300'
+            }`}>
+              <ShieldCheck className="w-5 h-5 shrink-0 mt-0.5" />
+              <div className="text-xs">
+                <p className="font-semibold">
+                  {engineStatus.geminiActive
+                    ? `${engineStatus.model || 'Gemini 3.6 Flash'} is Active & Connected`
+                    : 'Fast Local Retail MSSQL Mode Active'}
+                </p>
+                <p className="text-[11px] mt-0.5 text-slate-400">
+                  {engineStatus.geminiActive
+                    ? 'You can now ask ANY open-ended question in plain English. Gemini dynamically generates safe SQL queries directly against your live MSSQL tables.'
+                    : 'Connect your free Google Gemini API key below to unlock open questions, custom business questions, fashion matching, and ad-hoc analytics.'}
+                </p>
+              </div>
+            </div>
+
+            {/* Input Field */}
+            <div className="mt-4">
+              <label className="block text-xs font-semibold text-slate-300 mb-1.5 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Key className="w-3.5 h-3.5 text-purple-400" />
+                  Gemini API Key:
+                </span>
+                <span className="text-[10px] text-slate-400 font-normal">Starts with AIzaSy...</span>
+              </label>
+              <input
+                type="password"
+                value={apiKeyInput}
+                onChange={(e) => setApiKeyInput(e.target.value)}
+                placeholder="AIzaSy..."
+                className={`w-full px-3.5 py-2.5 rounded-xl font-mono text-xs border outline-none transition-all ${
+                  darkMode
+                    ? 'bg-slate-800/80 border-slate-700 text-slate-100 focus:border-purple-500 focus:ring-1 focus:ring-purple-500'
+                    : 'bg-slate-50 border-slate-300 text-slate-800 focus:border-purple-600 focus:ring-1 focus:ring-purple-600'
+                }`}
+              />
+            </div>
+
+            {/* Feedback notification */}
+            {keyFeedback && (
+              <div className={`mt-3 p-2.5 rounded-xl text-xs font-medium border flex items-center space-x-2 ${
+                keyFeedback.success
+                  ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
+                  : 'bg-rose-500/15 border-rose-500/30 text-rose-300'
+              }`}>
+                {keyFeedback.success ? <Check className="w-4 h-4 shrink-0" /> : <AlertTriangle className="w-4 h-4 shrink-0" />}
+                <span>{keyFeedback.message}</span>
+              </div>
+            )}
+
+            {/* Free key links */}
+            <div className="mt-4 p-3 rounded-xl bg-slate-800/40 dark:bg-slate-800/60 border border-slate-700/60 text-xs space-y-2">
+              <p className="font-semibold text-[11px] text-slate-300 uppercase tracking-wider">How to get a key in 15 seconds (100% Free):</p>
+              <div className="flex flex-col gap-1.5 text-[11px]">
+                <a
+                  href="https://aistudio.google.com/app/apikey"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-purple-400 hover:text-purple-300 flex items-center gap-1 hover:underline"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>1. Get free Gemini API Key at Google AI Studio (No credit card required)</span>
+                </a>
+                <a
+                  href="https://console.developers.google.com/apis/api/generativelanguage.googleapis.com/overview?project=1010797128815"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-indigo-400 hover:text-indigo-300 flex items-center gap-1 hover:underline"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>2. Or Enable Generative Language API on project cobb-store (1010797128815)</span>
+                </a>
+              </div>
+            </div>
+
+            {/* Action buttons */}
+            <div className="mt-5 flex items-center justify-between pt-3 border-t border-slate-200/60 dark:border-slate-800">
+              {engineStatus.geminiActive ? (
+                <button
+                  type="button"
+                  disabled={savingKey}
+                  onClick={handleClearApiKey}
+                  className="px-3 py-2 text-xs font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-xl transition-all cursor-pointer border border-rose-500/20"
+                >
+                  Disconnect Gemini
+                </button>
+              ) : <div />}
+
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setShowKeyModal(false)}
+                  className="px-3 py-2 text-xs font-medium rounded-xl border border-slate-700 hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition-all cursor-pointer"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  disabled={savingKey || !apiKeyInput.trim()}
+                  onClick={handleSaveApiKey}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer flex items-center gap-1.5 ${
+                    apiKeyInput.trim() && !savingKey
+                      ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-purple-500/25'
+                      : 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                  }`}
+                >
+                  {savingKey && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+                  <span>{savingKey ? 'Validating...' : 'Save & Connect'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
