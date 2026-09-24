@@ -126,6 +126,7 @@ const navigationItems = [
   {
     category: "System", items: [
       { id: "automation", label: "Automation Engine", icon: Terminal },
+      { id: "sync_status", label: "Cloud Sync Status", icon: Database, colorClass: "text-blue-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-blue-500/15 text-blue-400 font-bold border-l-2 border-blue-500" },
     ]
   }
 ];
@@ -198,7 +199,8 @@ const Layout = ({
     'dormant',
     'copilot',
     'barcode_factory',
-    'multistore'
+    'multistore',
+    'sync_status'
   ];
 
   

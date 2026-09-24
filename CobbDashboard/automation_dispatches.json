@@ -958,5 +958,17 @@
     "reason": "checkout",
     "status": "sent",
     "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-09-24T12:38:41.114665",
+    "date": "2026-09-24",
+    "time": "12:38 PM",
+    "billNo": "STST27-00724   ",
+    "cmId": "ST01127000STST27-00724",
+    "customerName": "Gp",
+    "phone": "8529000203",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
   }
 ]

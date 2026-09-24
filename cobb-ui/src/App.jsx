@@ -20,6 +20,7 @@ import ChatbotTab from './components/tabs/ChatbotTab';
 import BarcodeGeneratorTab from './components/tabs/BarcodeGeneratorTab';
 import MultiStoreMatrixTab from './components/tabs/MultiStoreMatrixTab';
 import AlterationsTab from './components/tabs/AlterationsTab';
+import SyncStatusTab from './components/tabs/SyncStatusTab';
 import FloatingCopilot from './components/FloatingCopilot';
 import { fetchWithOfflineFallback, subscribeToData } from './utils/offlineDb';
 
@@ -2049,6 +2050,11 @@ export default function App() {
             {/* 18. ALTERATIONS DESK */}
             {activeTab === 'alterations' && (
               <AlterationsTab darkMode={darkMode} activeStore={activeStore} formatCurrency={formatCurrency} />
+            )}
+
+            {/* 19. CLOUD SYNC STATUS */}
+            {activeTab === 'sync_status' && (
+              <SyncStatusTab darkMode={darkMode} />
             )}
 
             {/* FLOATING AI COPILOT ON-SCREEN WIDGET (Active across all tabs) */}
