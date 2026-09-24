@@ -73,6 +73,7 @@ import {
   Network,
   Truck
 } from 'lucide-react';
+import { THEMES } from './DashboardBackground';
 
 const navigationItems = [
   {
@@ -148,6 +149,8 @@ const Layout = ({
   handleGenerateEodReport,
   darkMode,
   setDarkMode,
+  dashTheme,
+  setDashTheme,
   isGatewayRunning,
   isListenerRunning,
   userRole: propUserRole,
@@ -158,6 +161,7 @@ const Layout = ({
   const currentRole = contextRole || propUserRole || 'owner';
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [showHealthModal, setShowHealthModal] = useState(false);
+  const [showThemePicker, setShowThemePicker] = useState(false);
   const [healthStatus, setHealthStatus] = useState({ overall: 'healthy', inboundAlertsCount: 0 });
 
   useEffect(() => {
@@ -270,11 +274,51 @@ const Layout = ({
           <div className="pb-4"></div>
         </nav>
 
-        {/* Bottom Post Button & Profile (X Style) */}
-        <div className="mt-auto p-4 space-y-4">
+        {/* Bottom Post Button, Theme Picker & Profile (X Style) */}
+        <div className="mt-auto p-4 space-y-3">
           <button className={`w-full py-3.5 rounded-full font-black text-sm tracking-wide shadow-lg transition-transform hover:scale-[1.02] active:scale-95 ${darkMode ? 'bg-white text-black shadow-white/10' : 'bg-[#0f1419] text-white shadow-black/10'}`}>
             Post Update
           </button>
+
+          {/* Theme Picker */}
+          {darkMode && (
+            <div className="relative">
+              <button
+                onClick={() => setShowThemePicker(p => !p)}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-full text-xs font-semibold transition-all ${showThemePicker ? 'bg-white/10 text-white' : 'text-slate-500 hover:bg-white/[0.06] hover:text-slate-300'}`}
+              >
+                <span className="text-base">🎨</span>
+                <span>Dashboard Theme</span>
+                <span className="ml-auto text-[10px] opacity-60">({THEMES.find(t => t.key === dashTheme)?.label || 'Custom'})</span>
+              </button>
+
+              {showThemePicker && (
+                <div className={`absolute bottom-10 left-0 right-0 rounded-2xl p-3 z-50 border shadow-2xl space-y-1.5 ${
+                  darkMode ? 'bg-[#111318] border-white/10 shadow-black/60' : 'bg-white border-slate-200'
+                }`}>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 px-1 mb-2">Choose Theme</p>
+                  {THEMES.map(t => (
+                    <button
+                      key={t.key}
+                      onClick={() => { setDashTheme(t.key); setShowThemePicker(false); }}
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium transition-all ${
+                        dashTheme === t.key
+                          ? 'bg-white/10 text-white ring-1 ring-white/20'
+                          : 'text-slate-400 hover:bg-white/[0.05] hover:text-white'
+                      }`}
+                    >
+                      <span
+                        className="w-5 h-5 rounded-full shrink-0 border border-white/10"
+                        style={{ background: `linear-gradient(135deg, ${t.color}, ${t.accent})` }}
+                      />
+                      {t.label}
+                      {dashTheme === t.key && <span className="ml-auto text-[10px] text-white/50">✓ Active</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
           
           <div className={`flex items-center gap-3 p-2.5 rounded-full cursor-pointer transition-colors ${darkMode ? 'hover:bg-white/10' : 'hover:bg-slate-200/50'}`}>
             <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border ${darkMode ? 'bg-gradient-to-tr from-slate-800 to-slate-700 border-white/20' : 'bg-gradient-to-tr from-slate-200 to-slate-300 border-slate-300'}`}>

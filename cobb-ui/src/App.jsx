@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import DashboardBackground, { getThemeCardCSS } from './components/DashboardBackground';
 import { useToast } from './context/ToastContext';
 import InventoryTab from './components/tabs/InventoryTab';
 import CustomerProfileModal from './components/CustomerProfileModal';
@@ -212,6 +213,11 @@ export default function App() {
   let [dormant, setDormant] = useState(() => getLocalCache('dormant', [])); if (!Array.isArray(dormant)) dormant = [];
 
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
+  const [dashTheme, setDashTheme] = useState(() => localStorage.getItem('dashTheme') || 'noise-grain');
+
+  useEffect(() => {
+    localStorage.setItem('dashTheme', dashTheme);
+  }, [dashTheme]);
 
   useEffect(() => {
     localStorage.setItem('theme', darkMode ? 'dark' : 'light');
@@ -1593,17 +1599,7 @@ export default function App() {
   return (
     <div className={`flex h-screen ${darkMode ? 'dark' : ''} font-sans transition-colors duration-300 overflow-hidden relative ${darkMode ? 'dark-mode text-white' : 'bg-slate-50 text-slate-800'}`}>
       
-      {/* Noise Grain + Color Wash Background (Option 7) */}
-      {darkMode && (
-        <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-          {/* Deep teal-to-purple color wash */}
-          <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, #050d14 0%, #080510 50%, #0a0614 100%)' }} />
-          {/* Subtle color accent pools */}
-          <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 80% 50% at 20% 0%, rgba(20,80,100,0.35) 0%, transparent 60%), radial-gradient(ellipse 60% 50% at 80% 100%, rgba(60,20,90,0.3) 0%, transparent 60%)' }} />
-          {/* CSS Noise grain overlay */}
-          <div className="absolute inset-0 opacity-[0.18]" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`, backgroundRepeat: 'repeat', backgroundSize: '256px 256px' }} />
-        </div>
-      )}
+      {darkMode && <DashboardBackground theme={dashTheme} />}
       <style>{`
         @keyframes slideIn {
           from {
@@ -1700,35 +1696,7 @@ export default function App() {
           background-color: transparent !important;
         }
         
-        /* NOISE GRAIN GLASS CARDS: slightly warmer tint to match grain aesthetic */
-        .dark-mode .bg-white,
-        .dark-mode [class*="bg-slate-900"],
-        .dark-mode [class*="bg-slate-950"],
-        .dark-mode [class*="bg-gray-900"],
-        .dark-mode [class*="bg-gray-950"],
-        .dark-mode .rounded-2xl.border,
-        .dark-mode .rounded-xl.border,
-        .dark-mode [class*="rounded-2xl"][class*="border"],
-        .dark-mode [class*="rounded-xl"][class*="border"] {
-          background-color: rgba(12, 14, 18, 0.6) !important;
-          backdrop-filter: blur(28px) saturate(130%) !important;
-          -webkit-backdrop-filter: blur(28px) saturate(130%) !important;
-          border-radius: 1.5rem !important;
-          color: #ffffff !important;
-          border: 1px solid rgba(255, 255, 255, 0.07) !important;
-          box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.04) !important;
-        }
-        .dark-mode .bg-white:hover,
-        .dark-mode [class*="bg-slate-900"]:hover,
-        .dark-mode .rounded-2xl.border:hover,
-        .dark-mode .rounded-xl.border:hover,
-        .dark-mode [class*="rounded-2xl"][class*="border"]:hover,
-        .dark-mode [class*="rounded-xl"][class*="border"]:hover,
-        .dark-mode .hover\:shadow-md:hover {
-          background-color: rgba(45, 45, 48, 0.55) !important;
-          border-color: rgba(255, 255, 255, 0.2) !important;
-          box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.08) !important;
-        }
+        ${getThemeCardCSS(dashTheme)}
 
         /* MONOCHROME KPI METRIC TILES */
         .dark-mode .kpi-card-revenue,
@@ -1997,6 +1965,8 @@ export default function App() {
         handleGenerateEodReport={handleGenerateEodReport}
         darkMode={darkMode}
         setDarkMode={setDarkMode}
+        dashTheme={dashTheme}
+        setDashTheme={setDashTheme}
         isGatewayRunning={isGatewayRunning}
         isListenerRunning={isListenerRunning}
         API_BASE={API_BASE}
