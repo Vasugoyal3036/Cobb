@@ -8,19 +8,14 @@ import LiveBillsTab from './components/tabs/LiveBillsTab';
 import AutomationEngineTab from './components/tabs/AutomationEngineTab';
 import CampaignBuilderTab from './components/tabs/CampaignBuilderTab';
 import ReorderTab from './components/tabs/ReorderTab';
-import DenominationTab from './components/tabs/DenominationTab';
 import LoyaltyTab from './components/tabs/LoyaltyTab';
 import ExchangeTab from './components/tabs/ExchangeTab';
 import PocketKhataTab from './components/tabs/PocketKhataTab';
-import ShelfTalkerStudioTab from './components/tabs/ShelfTalkerStudioTab';
 import HoldDeskTab from './components/tabs/HoldDeskTab';
 import SaveTheSaleTab from './components/tabs/SaveTheSaleTab';
-import LookbookStudioTab from './components/tabs/LookbookStudioTab';
 import ChatbotTab from './components/tabs/ChatbotTab';
-import BarcodeGeneratorTab from './components/tabs/BarcodeGeneratorTab';
 import MultiStoreMatrixTab from './components/tabs/MultiStoreMatrixTab';
 import AlterationsTab from './components/tabs/AlterationsTab';
-import SyncStatusTab from './components/tabs/SyncStatusTab';
 import GoodsInTransitTab from './components/tabs/GoodsInTransitTab';
 import FloatingCopilot from './components/FloatingCopilot';
 import { fetchWithOfflineFallback, subscribeToData } from './utils/offlineDb';
@@ -1973,10 +1968,7 @@ export default function App() {
               <ReorderTab {...appState} />
             )}
 
-            {/* NIGHT CLOSING DENOMINATION */}
-            {activeTab === 'denomination' && (
-              <DenominationTab {...appState} />
-            )}
+
 
             {/* NO-APP CUSTOMER LOYALTY */}
             {activeTab === 'loyalty' && (
@@ -1984,7 +1976,7 @@ export default function App() {
             )}
 
             {/* 6. AI CAMPAIGN BUILDER */}
-            {['campaigns', 'vm_auditor', 'smart_bundles'].includes(activeTab) && (
+            {['vm_auditor', 'smart_bundles'].includes(activeTab) && (
               <CampaignBuilderTab {...appState} />
             )}
 
@@ -2013,10 +2005,7 @@ export default function App() {
               <PocketKhataTab {...appState} />
             )}
 
-            {/* 11. LUXURY SHELF TALKER & RACK SIGNAGE STUDIO */}
-            {activeTab === 'shelf_talkers' && (
-              <ShelfTalkerStudioTab {...appState} />
-            )}
+
 
             {/* 12. HOLD & RESERVE DESK */}
             {activeTab === 'hold_desk' && (
@@ -2028,20 +2017,14 @@ export default function App() {
               <SaveTheSaleTab darkMode={darkMode} />
             )}
 
-            {/* 14. VIP LOOKBOOK & WHATSAPP STYLIST STUDIO */}
-            {activeTab === 'lookbook_studio' && (
-              <LookbookStudioTab API_BASE={API_BASE} darkMode={darkMode} />
-            )}
+
 
             {/* 15. COBB RETAIL AI COPILOT / CHATBOT */}
             {activeTab === 'copilot' && (
               <ChatbotTab API_BASE={API_BASE} darkMode={darkMode} onNavigateTab={(tab) => setActiveTab(tab)} />
             )}
 
-            {/* 16. BARCODE FACTORY */}
-            {activeTab === 'barcode_factory' && (
-              <BarcodeGeneratorTab darkMode={darkMode} />
-            )}
+
 
             {/* 17. MULTI-STORE MATRIX */}
             {activeTab === 'multistore' && (
@@ -2053,10 +2036,7 @@ export default function App() {
               <AlterationsTab darkMode={darkMode} activeStore={activeStore} formatCurrency={formatCurrency} />
             )}
 
-            {/* 19. CLOUD SYNC STATUS */}
-            {activeTab === 'sync_status' && (
-              <SyncStatusTab darkMode={darkMode} />
-            )}
+
 
             {/* 20. GOODS IN TRANSIT */}
             {activeTab === 'transit' && (
