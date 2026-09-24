@@ -180,9 +180,9 @@ const ExecutiveKpiStrip = ({
           </div>
         </div>
 
-        <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex justify-between items-center text-xs text-slate-400">
+        <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex justify-between items-center text-xs text-slate-500 dark:text-slate-400">
           <span className="font-medium">Basket Conversion:</span>
-          <span className="font-bold text-purple-400 font-mono">
+          <span className="font-bold text-purple-600 dark:text-purple-400 font-mono">
             {((overviewStats?.today?.BillCount || 0) > 0 ? (totalMonthlyUnits / Math.max(1, overviewStats.thisMonth?.BillCount || 1)).toFixed(1) : '2.4')} pcs / bill
           </span>
         </div>
@@ -204,7 +204,7 @@ const ExecutiveKpiStrip = ({
                 const netMargin = grossProfit - DAILY_EXPENSE;
                 const isProfitable = netMargin >= 0;
                 return (
-                  <h3 className={`text-3xl sm:text-4xl font-black font-mono tracking-tight mt-1 ${isProfitable ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  <h3 className={`text-3xl sm:text-4xl font-black font-mono tracking-tight mt-1 ${isProfitable ? 'text-emerald-500 dark:text-emerald-400' : 'text-rose-500 dark:text-rose-400'}`}>
                     {isProfitable ? `+${formatCurrency(netMargin)}` : `-${formatCurrency(Math.abs(netMargin))}`}
                   </h3>
                 );
@@ -233,9 +233,9 @@ const ExecutiveKpiStrip = ({
             return (
               <div className="space-y-1.5 my-1">
                 <div className="flex justify-between text-[11px] font-semibold">
-                  <span className="text-slate-400">Cost (73%)</span>
-                  <span className="text-amber-400">OpEx (₹4k)</span>
-                  <span className={isProfitable ? 'text-emerald-400' : 'text-rose-400'}>
+                  <span className="text-slate-500 dark:text-slate-400">Cost (73%)</span>
+                  <span className="text-amber-500 dark:text-amber-400">OpEx (₹4k)</span>
+                  <span className={isProfitable ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}>
                     {isProfitable ? 'Profit' : 'Deficit'}
                   </span>
                 </div>

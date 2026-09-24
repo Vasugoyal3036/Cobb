@@ -76,15 +76,15 @@ import { THEMES } from './DashboardBackground';
 const navigationItems = [
   {
     category: "AI & Intelligence", items: [
-      { id: "copilot", label: "✨ Cobb AI Copilot", icon: Sparkles, colorClass: "text-purple-400 hover:bg-purple-950/40 hover:text-white font-semibold", activeColorClass: "bg-gradient-to-r from-purple-600/30 via-indigo-600/20 to-transparent text-purple-200 font-bold border-l-3 border-purple-500 shadow-md shadow-purple-500/20" },
+      { id: "copilot", label: "✨ Cobb AI Copilot", icon: Sparkles, colorClass: "text-purple-600 dark:text-purple-400 hover:bg-purple-950/40 hover:text-white font-semibold", activeColorClass: "bg-gradient-to-r from-purple-600/30 via-indigo-600/20 to-transparent text-purple-700 dark:text-purple-200 font-bold border-l-3 border-purple-500 shadow-md shadow-purple-500/20" },
     ]
   },
   {
     category: "Overview & P&L", items: [
       { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { id: "multistore", label: "Multi-Store Matrix", icon: Network, colorClass: "text-blue-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-blue-500/15 text-blue-400 font-bold border-l-2 border-blue-500" },
-      { id: "pnl", label: "Sales & P&L Statement", icon: DollarSign, colorClass: "text-green-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-green-500/15 text-green-400 font-bold border-l-2 border-green-500" },
-      { id: "gst", label: "GST & Tax Summary", icon: FileText, colorClass: "text-emerald-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-emerald-500/15 text-emerald-400 font-bold border-l-2 border-emerald-500" },
+      { id: "multistore", label: "Multi-Store Matrix", icon: Network, colorClass: "text-blue-600 dark:text-blue-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-blue-500/15 text-blue-600 dark:text-blue-400 font-bold border-l-2 border-blue-500" },
+      { id: "pnl", label: "Sales & P&L Statement", icon: DollarSign, colorClass: "text-green-600 dark:text-green-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-green-500/15 text-green-600 dark:text-green-400 font-bold border-l-2 border-green-500" },
+      { id: "gst", label: "GST & Tax Summary", icon: FileText, colorClass: "text-emerald-600 dark:text-emerald-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold border-l-2 border-emerald-500" },
       { id: "analytics", label: "Visual Rush Chart", icon: Clock },
       { id: "monthly", label: "Monthly Products", icon: Calendar },
     ]
@@ -92,27 +92,27 @@ const navigationItems = [
 
   {
     category: "Operations", items: [
-      { id: "live", label: "Transactions & Bills", icon: Receipt, colorClass: "text-blue-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-blue-500/15 text-blue-400 font-bold border-l-2 border-blue-500" },
-      { id: "pocket_khata", label: "Pocket Khata (Expenses)", icon: Wallet, colorClass: "text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-400 font-bold border-l-2 border-amber-500" },
-      { id: "hold_desk", label: "Hold & Reserve Desk", icon: AlarmClock, colorClass: "text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-400 font-bold border-l-2 border-amber-500" },
-      { id: "save_the_sale", label: "Save-The-Sale Network", icon: Network, colorClass: "text-emerald-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-emerald-500/15 text-emerald-400 font-bold border-l-2 border-emerald-500" },
-      { id: "returns", label: "Product Exchanges", icon: RotateCcw, colorClass: "text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-400 font-bold border-l-2 border-amber-500" },
-      { id: "alterations", label: "Alteration Desk", icon: Scissors, colorClass: "text-indigo-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-indigo-500/15 text-indigo-400 font-bold border-l-2 border-indigo-500" },
-      { id: "topmovers", label: "Top Movers & Size Demand", icon: Flame, colorClass: "text-rose-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-rose-500/15 text-rose-400 font-bold border-l-2 border-rose-500" },
-      { id: "sizematrix", label: "Size Matrix Heatmap", icon: Grid, colorClass: "text-blue-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-blue-500/15 text-blue-400 font-bold border-l-2 border-blue-500" },
-      { id: "transit", label: "Goods In Transit", icon: Truck, colorClass: "text-orange-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-orange-500/15 text-orange-400 font-bold border-l-2 border-orange-500" },
+      { id: "live", label: "Transactions & Bills", icon: Receipt, colorClass: "text-blue-600 dark:text-blue-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-blue-500/15 text-blue-600 dark:text-blue-400 font-bold border-l-2 border-blue-500" },
+      { id: "pocket_khata", label: "Pocket Khata (Expenses)", icon: Wallet, colorClass: "text-amber-600 dark:text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold border-l-2 border-amber-500" },
+      { id: "hold_desk", label: "Hold & Reserve Desk", icon: AlarmClock, colorClass: "text-amber-600 dark:text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold border-l-2 border-amber-500" },
+      { id: "save_the_sale", label: "Save-The-Sale Network", icon: Network, colorClass: "text-emerald-600 dark:text-emerald-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold border-l-2 border-emerald-500" },
+      { id: "returns", label: "Product Exchanges", icon: RotateCcw, colorClass: "text-amber-600 dark:text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold border-l-2 border-amber-500" },
+      { id: "alterations", label: "Alteration Desk", icon: Scissors, colorClass: "text-indigo-600 dark:text-indigo-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 font-bold border-l-2 border-indigo-500" },
+      { id: "topmovers", label: "Top Movers & Size Demand", icon: Flame, colorClass: "text-rose-600 dark:text-rose-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-rose-500/15 text-rose-600 dark:text-rose-400 font-bold border-l-2 border-rose-500" },
+      { id: "sizematrix", label: "Size Matrix Heatmap", icon: Grid, colorClass: "text-blue-600 dark:text-blue-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-blue-500/15 text-blue-600 dark:text-blue-400 font-bold border-l-2 border-blue-500" },
+      { id: "transit", label: "Goods In Transit", icon: Truck, colorClass: "text-orange-600 dark:text-orange-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-orange-500/15 text-orange-600 dark:text-orange-400 font-bold border-l-2 border-orange-500" },
       { id: "deadstock", label: "Inventory", icon: Package },
-      { id: "reorder", label: "Warehouse Reorder", icon: ClipboardList, colorClass: "text-blue-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-blue-500/15 text-blue-400 font-bold border-l-2 border-blue-500" },
-      { id: "smart_bundles", label: "Smart Bundling", icon: Percent, colorClass: "text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-400 font-bold border-l-2 border-amber-500" },
-      { id: "competitor_intel", label: "Competitor Intel", icon: Target, colorClass: "text-red-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-red-500/15 text-red-400 font-bold border-l-2 border-red-500" },
+      { id: "reorder", label: "Warehouse Reorder", icon: ClipboardList, colorClass: "text-blue-600 dark:text-blue-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-blue-500/15 text-blue-600 dark:text-blue-400 font-bold border-l-2 border-blue-500" },
+      { id: "smart_bundles", label: "Smart Bundling", icon: Percent, colorClass: "text-amber-600 dark:text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold border-l-2 border-amber-500" },
+      { id: "competitor_intel", label: "Competitor Intel", icon: Target, colorClass: "text-red-600 dark:text-red-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-red-500/15 text-red-600 dark:text-red-400 font-bold border-l-2 border-red-500" },
     ]
   },
   {
     category: "Marketing & CRM", items: [
-      { id: "loyalty", label: "Loyalty & Points", icon: Crown, colorClass: "text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-400 font-bold border-l-2 border-amber-500" },
-      { id: "broadcast", label: "Mass Offer Broadcast", icon: Send, colorClass: "text-emerald-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-emerald-500/15 text-emerald-400 font-bold border-l-2 border-emerald-500" },
-      { id: "wardrobe", label: "Wardrobe Profiler", icon: Shirt, colorClass: "text-purple-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-purple-500/15 text-purple-400 font-bold border-l-2 border-purple-500" },
-      { id: "retention", label: "Retention Radar", icon: Activity, colorClass: "text-rose-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-rose-500/15 text-rose-400 font-bold border-l-2 border-rose-500" },
+      { id: "loyalty", label: "Loyalty & Points", icon: Crown, colorClass: "text-amber-600 dark:text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold border-l-2 border-amber-500" },
+      { id: "broadcast", label: "Mass Offer Broadcast", icon: Send, colorClass: "text-emerald-600 dark:text-emerald-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold border-l-2 border-emerald-500" },
+      { id: "wardrobe", label: "Wardrobe Profiler", icon: Shirt, colorClass: "text-purple-600 dark:text-purple-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-purple-500/15 text-purple-600 dark:text-purple-400 font-bold border-l-2 border-purple-500" },
+      { id: "retention", label: "Retention Radar", icon: Activity, colorClass: "text-rose-600 dark:text-rose-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-rose-500/15 text-rose-600 dark:text-rose-400 font-bold border-l-2 border-rose-500" },
       { id: "vip", label: "VIP Profiles", icon: Users },
       { id: "dormant", label: "Dormant Clients", icon: AlertCircle },
     ]
