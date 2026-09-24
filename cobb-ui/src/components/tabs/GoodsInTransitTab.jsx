@@ -99,6 +99,47 @@ const GoodsInTransitTab = ({ darkMode }) => {
             View Challan <ChevronRight className="w-4 h-4" />
           </button>
         </div>
+
+        {/* COMPOSITION BREAKDOWN TILE */}
+        <div className={`mt-5 pt-5 border-t border-dashed ${darkMode ? 'border-slate-700' : 'border-slate-300'}`}>
+          <h3 className={`text-xs font-black uppercase tracking-wider mb-4 flex items-center gap-2 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+            <Package className="w-4 h-4" /> Dispatch Composition
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {Object.entries(
+              mockChallanItems.reduce((acc, item) => {
+                if (!acc[item.desc]) acc[item.desc] = {};
+                if (!acc[item.desc][item.p1]) acc[item.desc][item.p1] = {};
+                if (!acc[item.desc][item.p1][item.p2]) acc[item.desc][item.p1][item.p2] = 0;
+                acc[item.desc][item.p1][item.p2] += item.qty;
+                return acc;
+              }, {})
+            ).map(([category, colors]) => (
+              <div key={category} className={`p-4 rounded-xl border ${darkMode ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+                <div className="flex justify-between items-center mb-3">
+                  <h4 className={`font-bold text-sm ${darkMode ? 'text-blue-400' : 'text-blue-700'}`}>{category}</h4>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${darkMode ? 'bg-slate-800 text-slate-300' : 'bg-white border text-slate-500'}`}>
+                    {Object.values(colors).reduce((sum, sizes) => sum + Object.values(sizes).reduce((s, q) => s + q, 0), 0)} pcs
+                  </span>
+                </div>
+                <div className="space-y-2.5">
+                  {Object.entries(colors).map(([color, sizes]) => (
+                    <div key={color} className="text-sm">
+                      <span className={`font-semibold inline-block min-w-[80px] ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>{color}</span>
+                      <div className="flex flex-wrap gap-1.5 mt-1.5 ml-2">
+                        {Object.entries(sizes).map(([size, qty]) => (
+                          <span key={size} className={`px-2 py-0.5 rounded text-xs font-mono border ${darkMode ? 'bg-slate-800 border-slate-700 text-slate-400' : 'bg-white border-slate-200 text-slate-600'}`}>
+                            {size} <span className="text-emerald-500 font-bold ml-1">x{qty}</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* 2. HO INWARD VELOCITY CARD */}
