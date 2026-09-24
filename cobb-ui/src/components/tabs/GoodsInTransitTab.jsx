@@ -13,7 +13,9 @@ const baseMockData = [
   { code: '0080992017', article: 'CFVN10422', desc: 'CASUAL FULL SL', p1: 'SKY BLUE', p2: '38 (97 CM.)', p3: 'NA', qty: 1, uom: 'PCS', mrp: 2999 },
 ];
 
-const mockChallanItems = [...baseMockData, ...baseMockData, ...baseMockData, ...baseMockData, ...baseMockData];
+const mockChallanItems = Array.from({ length: 201 }).map((_, idx) => ({
+  ...baseMockData[idx % baseMockData.length],
+}));
 
 const GoodsInTransitTab = ({ darkMode }) => {
   const [selectedChallan, setSelectedChallan] = useState(null);
