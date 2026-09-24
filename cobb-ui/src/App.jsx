@@ -2016,8 +2016,7 @@ export default function App() {
             />
 
 
-
-        <CustomerProfileModal {...appState} />
+        {!['vip', 'dormant'].includes(activeTab) && <CustomerProfileModal {...appState} />}
 
         {/* EOD CASH RECONCILIATION MODAL WITH POCKET KHATA INTEGRATION */}
         {showReconModal && (
