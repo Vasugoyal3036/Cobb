@@ -70,7 +70,7 @@ export default function DashboardBackground({ theme }) {
     <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
       <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, #050d14 0%, #080510 50%, #0a0614 100%)' }} />
       <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 80% 50% at 20% 0%, rgba(20,80,100,0.35) 0%, transparent 60%), radial-gradient(ellipse 60% 50% at 80% 100%, rgba(60,20,90,0.3) 0%, transparent 60%)' }} />
-      <div className="absolute inset-0 opacity-[0.18]" style={{ backgroundImage: NOISE_SVG, backgroundRepeat: 'repeat', backgroundSize: '256px 256px' }} />
+      <div className="absolute inset-0 opacity-[0.18] hidden md:block" style={{ backgroundImage: NOISE_SVG, backgroundRepeat: 'repeat', backgroundSize: '256px 256px' }} />
     </div>
   );
 }
