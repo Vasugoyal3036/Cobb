@@ -250,6 +250,68 @@ const LiveBillsTab = (props) => {
     }
   };
 
+  // Helper to print a neat thermal-style receipt
+  const handlePrintBill = (bill) => {
+    const items = billItemsCache[bill.BillId] || bill.Items || [];
+    const printWindow = window.open('', '_blank', 'width=400,height=600');
+    
+    const itemsHtml = items.map(i => `
+      <tr>
+        <td style="padding: 4px 0; border-bottom: 1px dashed #ccc;">${i.ArticleName}<br><small>${i.ArticleNo} | Size: ${i.Size || 'Std'}</small></td>
+        <td style="padding: 4px 0; border-bottom: 1px dashed #ccc; text-align: center;">${i.Quantity || 1}</td>
+        <td style="padding: 4px 0; border-bottom: 1px dashed #ccc; text-align: right;">₹${i.NetPrice}</td>
+      </tr>
+    `).join('');
+
+    const html = `
+      <html>
+        <head>
+          <title>Invoice #${bill.BillNumber.trim()}</title>
+          <style>
+            body { font-family: monospace; padding: 20px; max-width: 300px; margin: 0 auto; color: #000; }
+            h2 { text-align: center; margin-bottom: 5px; font-size: 18px; }
+            p { text-align: center; margin-top: 0; font-size: 12px; }
+            table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 15px; }
+            th { text-align: left; border-bottom: 2px solid #000; padding-bottom: 5px; }
+            .total { margin-top: 15px; text-align: right; font-weight: bold; font-size: 14px; border-top: 2px solid #000; padding-top: 10px; }
+            .footer { margin-top: 30px; text-align: center; font-size: 10px; border-top: 1px dashed #ccc; padding-top: 10px; }
+          </style>
+        </head>
+        <body>
+          <h2>COBB APPARELS</h2>
+          <p>Retail Invoice</p>
+          <div style="font-size: 12px; margin-top: 20px;">
+            <div><strong>Bill No:</strong> ${bill.BillNumber.trim()}</div>
+            <div><strong>Date:</strong> ${bill.BillDate || bill.BillTime?.slice(0, 10)}</div>
+            <div><strong>Customer:</strong> ${bill.CustomerName?.trim() || 'Guest'}</div>
+            <div><strong>Phone:</strong> ${bill.Phone || '-'}</div>
+            <div><strong>Mode:</strong> ${bill.PaymentMode}</div>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th style="text-align: center;">Qty</th>
+                <th style="text-align: right;">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemsHtml}
+            </tbody>
+          </table>
+          <div class="total">Total: ₹${bill.Amount}</div>
+          <div class="footer">Thank you for shopping with us!<br>Visit again!</div>
+          <script>
+            window.onload = function() { window.print(); window.close(); }
+          </script>
+        </body>
+      </html>
+    `;
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
+
   // Pre-fill WhatsApp message with bill details
   const openWhatsAppBill = (bill) => {
     if (!bill.Phone) return;
@@ -694,6 +756,22 @@ const LiveBillsTab = (props) => {
                                     <span>WhatsApp Bill</span>
                                   </button>
                                 )}
+
+                                {/* Print Invoice */}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handlePrintBill(bill);
+                                  }}
+                                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 border cursor-pointer ${
+                                    darkMode
+                                      ? 'bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border-rose-500/30'
+                                      : 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200'
+                                  }`}
+                                >
+                                  <Receipt className="w-3.5 h-3.5" />
+                                  <span>Print Bill</span>
+                                </button>
 
                                 {/* Alteration Slip */}
                                 <button
