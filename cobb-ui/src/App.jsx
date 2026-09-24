@@ -1591,7 +1591,19 @@ export default function App() {
   }
 
   return (
-    <div className={`flex h-screen bg-slate-100 ${darkMode ? 'dark' : ''} font-sans transition-colors duration-300 ${darkMode ? 'dark-mode bg-[#000000] text-white' : 'bg-slate-100 text-slate-800'}`}>
+    <div className={`flex h-screen ${darkMode ? 'dark' : ''} font-sans transition-colors duration-300 overflow-hidden relative ${darkMode ? 'dark-mode text-white' : 'bg-slate-50 text-slate-800'}`}>
+      
+      {/* Noise Grain + Color Wash Background (Option 7) */}
+      {darkMode && (
+        <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+          {/* Deep teal-to-purple color wash */}
+          <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, #050d14 0%, #080510 50%, #0a0614 100%)' }} />
+          {/* Subtle color accent pools */}
+          <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 80% 50% at 20% 0%, rgba(20,80,100,0.35) 0%, transparent 60%), radial-gradient(ellipse 60% 50% at 80% 100%, rgba(60,20,90,0.3) 0%, transparent 60%)' }} />
+          {/* CSS Noise grain overlay */}
+          <div className="absolute inset-0 opacity-[0.18]" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`, backgroundRepeat: 'repeat', backgroundSize: '256px 256px' }} />
+        </div>
+      )}
       <style>{`
         @keyframes slideIn {
           from {
@@ -1602,6 +1614,63 @@ export default function App() {
             transform: translateY(0);
             opacity: 1;
           }
+        }
+
+        /* AURORA ANIMATIONS */
+        .aurora-blob {
+          position: absolute;
+          border-radius: 50%;
+          filter: blur(100px);
+          opacity: 0.55;
+          animation-timing-function: ease-in-out;
+          animation-iteration-count: infinite;
+          animation-direction: alternate;
+        }
+        .aurora-blob-1 {
+          width: 60%; height: 60%;
+          top: -20%; left: -15%;
+          background: radial-gradient(circle, rgba(99, 102, 241, 0.8), transparent 70%);
+          animation: aurora1 12s infinite alternate ease-in-out;
+        }
+        .aurora-blob-2 {
+          width: 50%; height: 50%;
+          bottom: -20%; right: -10%;
+          background: radial-gradient(circle, rgba(168, 85, 247, 0.7), transparent 70%);
+          animation: aurora2 15s infinite alternate ease-in-out;
+        }
+        .aurora-blob-3 {
+          width: 45%; height: 45%;
+          top: 30%; left: 30%;
+          background: radial-gradient(circle, rgba(14, 165, 233, 0.5), transparent 70%);
+          animation: aurora3 18s infinite alternate ease-in-out;
+        }
+        .aurora-blob-4 {
+          width: 35%; height: 35%;
+          bottom: 10%; left: 10%;
+          background: radial-gradient(circle, rgba(236, 72, 153, 0.4), transparent 70%);
+          animation: aurora4 20s infinite alternate ease-in-out;
+        }
+        @keyframes aurora1 {
+          0%   { transform: translate(0, 0) scale(1); }
+          33%  { transform: translate(8%, 12%) scale(1.08); }
+          66%  { transform: translate(-5%, 6%) scale(0.95); }
+          100% { transform: translate(10%, -8%) scale(1.05); }
+        }
+        @keyframes aurora2 {
+          0%   { transform: translate(0, 0) scale(1); }
+          33%  { transform: translate(-10%, -8%) scale(1.1); }
+          66%  { transform: translate(5%, -12%) scale(0.92); }
+          100% { transform: translate(-8%, 10%) scale(1.06); }
+        }
+        @keyframes aurora3 {
+          0%   { transform: translate(0, 0) scale(1) rotate(0deg); }
+          50%  { transform: translate(-15%, 8%) scale(1.15) rotate(20deg); }
+          100% { transform: translate(12%, -10%) scale(0.9) rotate(-15deg); }
+        }
+        @keyframes aurora4 {
+          0%   { transform: translate(0, 0) scale(1); }
+          40%  { transform: translate(20%, -15%) scale(1.2); }
+          100% { transform: translate(-10%, 10%) scale(0.85); }
         }
         .animate-slide-in {
           animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -1621,17 +1690,17 @@ export default function App() {
           background: #334155;
         }
 
-        /* PITCH BLACK OBSIDIAN THEME & HIGHLIGHTED TYPOGRAPHY */
+        /* WALLPAPER GLASS THEME: transparent root so image shows through */
         html.dark, .dark-mode, .dark-mode body, html.dark body, html.dark #root, .dark-mode #root {
           color-scheme: dark !important;
-          background-color: #000000 !important;
+          background-color: transparent !important;
           color: #ffffff !important;
         }
         .dark-mode body {
-          background-color: #000000 !important;
+          background-color: transparent !important;
         }
         
-        /* STRONG TILE DIFFERENTIATION: Elevated Obsidian Slate Cards with Crisp Solid Border Line & Specular Rim */
+        /* NOISE GRAIN GLASS CARDS: slightly warmer tint to match grain aesthetic */
         .dark-mode .bg-white,
         .dark-mode [class*="bg-slate-900"],
         .dark-mode [class*="bg-slate-950"],
@@ -1641,10 +1710,13 @@ export default function App() {
         .dark-mode .rounded-xl.border,
         .dark-mode [class*="rounded-2xl"][class*="border"],
         .dark-mode [class*="rounded-xl"][class*="border"] {
-          background-color: #0f1523 !important;
+          background-color: rgba(12, 14, 18, 0.6) !important;
+          backdrop-filter: blur(28px) saturate(130%) !important;
+          -webkit-backdrop-filter: blur(28px) saturate(130%) !important;
+          border-radius: 1.5rem !important;
           color: #ffffff !important;
-          border: 1.5px solid #354259 !important;
-          box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.16), 0 10px 30px -4px rgba(0, 0, 0, 0.95) !important;
+          border: 1px solid rgba(255, 255, 255, 0.07) !important;
+          box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.04) !important;
         }
         .dark-mode .bg-white:hover,
         .dark-mode [class*="bg-slate-900"]:hover,
@@ -1653,54 +1725,35 @@ export default function App() {
         .dark-mode [class*="rounded-2xl"][class*="border"]:hover,
         .dark-mode [class*="rounded-xl"][class*="border"]:hover,
         .dark-mode .hover\:shadow-md:hover {
-          border-color: #4f6892 !important;
-          box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.28), 0 14px 40px -4px rgba(0, 0, 0, 0.98), 0 0 20px -4px rgba(59, 130, 246, 0.25) !important;
+          background-color: rgba(45, 45, 48, 0.55) !important;
+          border-color: rgba(255, 255, 255, 0.2) !important;
+          box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.08) !important;
         }
 
-        /* DEDICATED KPI METRIC TILES (Apple/Bloomberg Enterprise Precision Standards) */
-        .dark-mode .kpi-card-revenue {
-          background: radial-gradient(circle at 12% 0%, rgba(16, 185, 129, 0.09) 0%, #0b0f19 80%) !important;
-          border: 1px solid rgba(16, 185, 129, 0.28) !important;
-          box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.08), 0 8px 24px -4px rgba(0, 0, 0, 0.8) !important;
-        }
-        .dark-mode .kpi-card-revenue:hover {
-          border-color: rgba(52, 211, 153, 0.55) !important;
-          box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12), 0 12px 32px -4px rgba(0, 0, 0, 0.9), 0 0 20px -4px rgba(16, 185, 129, 0.2) !important;
-        }
-
-        .dark-mode .kpi-card-target {
-          background: radial-gradient(circle at 12% 0%, rgba(59, 130, 246, 0.09) 0%, #0b0f19 80%) !important;
-          border: 1px solid rgba(59, 130, 246, 0.28) !important;
-          box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.08), 0 8px 24px -4px rgba(0, 0, 0, 0.8) !important;
-        }
-        .dark-mode .kpi-card-target:hover {
-          border-color: rgba(96, 165, 250, 0.55) !important;
-          box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12), 0 12px 32px -4px rgba(0, 0, 0, 0.9), 0 0 20px -4px rgba(59, 130, 246, 0.2) !important;
-        }
-
-        .dark-mode .kpi-card-aov {
-          background: radial-gradient(circle at 12% 0%, rgba(168, 85, 247, 0.09) 0%, #0b0f19 80%) !important;
-          border: 1px solid rgba(168, 85, 247, 0.28) !important;
-          box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.08), 0 8px 24px -4px rgba(0, 0, 0, 0.8) !important;
-        }
-        .dark-mode .kpi-card-aov:hover {
-          border-color: rgba(192, 132, 252, 0.55) !important;
-          box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12), 0 12px 32px -4px rgba(0, 0, 0, 0.9), 0 0 20px -4px rgba(168, 85, 247, 0.2) !important;
-        }
-
+        /* MONOCHROME KPI METRIC TILES */
+        .dark-mode .kpi-card-revenue,
+        .dark-mode .kpi-card-target,
+        .dark-mode .kpi-card-aov,
         .dark-mode .kpi-card-margin {
-          background: radial-gradient(circle at 12% 0%, rgba(244, 63, 94, 0.09) 0%, #0f0d14 80%) !important;
-          border: 1px solid rgba(244, 63, 94, 0.28) !important;
-          box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.08), 0 8px 24px -4px rgba(0, 0, 0, 0.8) !important;
+          background: rgba(30, 30, 32, 0.45) !important;
+          border: 1px solid rgba(255, 255, 255, 0.1) !important;
+          backdrop-filter: blur(40px) saturate(150%) !important;
+          -webkit-backdrop-filter: blur(40px) saturate(150%) !important;
+          border-radius: 1.5rem !important;
+          box-shadow: 0 4px 24px 0 rgba(0, 0, 0, 0.4), inset 0 1px 0 0 rgba(255, 255, 255, 0.05) !important;
         }
+        .dark-mode .kpi-card-revenue:hover,
+        .dark-mode .kpi-card-target:hover,
+        .dark-mode .kpi-card-aov:hover,
         .dark-mode .kpi-card-margin:hover {
-          border-color: rgba(251, 113, 133, 0.55) !important;
-          box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.12), 0 12px 32px -4px rgba(0, 0, 0, 0.9), 0 0 20px -4px rgba(244, 63, 94, 0.2) !important;
+          background: rgba(45, 45, 48, 0.55) !important;
+          border-color: rgba(255, 255, 255, 0.2) !important;
+          box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.08) !important;
         }
 
         /* RECESSED SUB-TILES, INNER BOXES & CONTAINERS */
         .dark-mode .bg-slate-50, .dark-mode .bg-gray-50 {
-          background-color: #000000 !important;
+          background-color: transparent !important;
           color: #ffffff !important;
         }
         .dark-mode .bg-slate-100,
@@ -1712,14 +1765,16 @@ export default function App() {
         .dark-mode [class*="bg-slate-800"],
         .dark-mode [class*="bg-slate-850"],
         .dark-mode [class*="bg-gray-800"] {
-          background-color: #080c14 !important;
+          background-color: rgba(255, 255, 255, 0.02) !important;
+          border-radius: 1rem !important;
           color: #e2e8f0 !important;
-          border-color: #232d3f !important;
+          border-color: rgba(255, 255, 255, 0.05) !important;
         }
         .dark-mode .bg-white\/85, .dark-mode .bg-white\/80, .dark-mode .bg-white\/90 {
-          background-color: rgba(15, 21, 35, 0.96) !important;
-          border-color: #354259 !important;
-          box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.16) !important;
+          background-color: rgba(255, 255, 255, 0.04) !important;
+          border-color: rgba(255, 255, 255, 0.08) !important;
+          backdrop-filter: blur(24px) !important;
+          -webkit-backdrop-filter: blur(24px) !important;
         }
 
         /* HIGHLIGHTED TYPOGRAPHY (Max High Contrast against Pitch Black) */

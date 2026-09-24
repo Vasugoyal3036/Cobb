@@ -28,6 +28,7 @@ import {
   BarChart3,
   Search,
   X,
+  MoreHorizontal,
   UserCheck,
   ShoppingBag,
   Sparkles,
@@ -215,31 +216,20 @@ const Layout = ({
         />
       )}
 
-      {/* Sidebar Navigation - Obsidian Black Theme */}
-      <div className={`fixed lg:static inset-y-0 left-0 w-64 ${darkMode ? 'bg-[#000000] border-[#2e3342]' : 'bg-slate-950 border-slate-800'} text-slate-300 flex flex-col shadow-xl z-40 border-r transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
-        <div className={`p-6 border-b ${darkMode ? 'border-[#2e3342]' : 'border-slate-800'} flex justify-between items-center`}>
+      {/* Sidebar Navigation - Glassmorphism Floating Theme */}
+      <div className={`fixed lg:static inset-y-0 left-0 w-64 lg:m-4 lg:h-[calc(100vh-32px)] lg:rounded-[2rem] flex flex-col z-40 transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} ${darkMode ? 'bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] shadow-[0_8px_32px_0_rgba(0,0,0,0.36)]' : 'bg-white/80 backdrop-blur-xl border border-slate-200/50 shadow-[0_8px_30px_rgb(0,0,0,0.04)]'}`}>
+        <div className={`p-6 flex justify-between items-center`}>
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/30">
-                <span className="text-white font-black text-xs tracking-wider">ORS</span>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border ${darkMode ? 'bg-black border-white/20' : 'bg-white border-slate-200 shadow-sm'}`}>
+                <span className={`font-black text-xs tracking-wider ${darkMode ? 'text-white' : 'text-slate-900'}`}>X</span>
               </div>
-              <h1 className="text-xl font-black tracking-wider text-white">ORS</h1>
-            </div>
-            <p className={`text-xs font-medium ml-11 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Smart Retail ERP</p>
-            <div className="mt-2.5 ml-11 flex items-center gap-1.5 flex-wrap">
-              <span className="px-2 py-0.5 text-[9px] font-black rounded-md bg-blue-500/20 text-blue-300 border border-blue-500/30 uppercase tracking-wide">
-                {AVAILABLE_STORES.find(s => s.id === activeStore)?.shortName || 'Pundri'}
-              </span>
-              <span className={`px-2 py-0.5 text-[9px] font-black rounded-md border uppercase tracking-wide ${
-                currentRole === 'owner' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-              }`}>
-                {currentRole === 'owner' ? '👑 Owner' : '👔 Manager'}
-              </span>
+              <h1 className={`text-xl font-black tracking-wider ${darkMode ? 'text-white' : 'text-slate-900'}`}>COBB</h1>
             </div>
           </div>
           <button
             onClick={() => setIsMobileMenuOpen(false)}
-            className="lg:hidden text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-900"
+            className={`lg:hidden p-1 rounded-full ${darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}
           >
             <X className="w-5 h-5" />
           </button>
@@ -253,36 +243,63 @@ const Layout = ({
                 const Icon = item.icon;
                 const isActive = activeTab === item.id;
 
+                const baseColorText = item.colorClass ? item.colorClass.split(' ')[0] : (darkMode ? 'text-blue-400' : 'text-blue-600');
+                const baseColorBg = baseColorText.replace('text-', 'bg-').replace('-400', '-500/15').replace('-600', '-500/15').replace('-500', '-500/15');
+
                 const normalColor = darkMode
-                  ? (item.colorClass ? `${item.colorClass.split(' ')[0]} hover:bg-white/[0.06] hover:text-white rounded-xl font-medium` : "text-slate-300 hover:bg-white/[0.06] hover:text-white rounded-xl font-medium")
-                  : (item.colorClass || "text-slate-600 hover:bg-slate-100 hover:text-slate-900 rounded-lg font-medium");
+                  ? "text-slate-400 hover:bg-white/[0.08] hover:text-white rounded-full font-medium"
+                  : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900 rounded-full font-medium";
 
                 const activeColor = darkMode
-                  ? "border border-blue-500/40 bg-gradient-to-r from-blue-600/25 via-blue-600/15 to-transparent text-white font-bold rounded-xl shadow-[0_2px_12px_rgba(37,99,235,0.25)]"
-                  : (item.activeColorClass || "bg-blue-600/10 text-blue-600 font-bold border-l-3 border-blue-600 rounded-lg");
+                  ? `${baseColorBg} ${baseColorText} font-bold rounded-full shadow-[inset_0_0_12px_rgba(255,255,255,0.05)] border border-white/[0.05]`
+                  : `${baseColorBg.replace('/15', '/10')} ${baseColorText.replace('-400', '-700')} font-bold rounded-full border border-black/5 shadow-sm`;
 
                 return (
                   <button
                     key={item.id}
                     onClick={() => { setActiveTab(item.id); setSearchQuery(''); setIsMobileMenuOpen(false); }}
-                    className={`w-full flex items-center px-3.5 py-2 transition-all duration-200 cursor-pointer relative group text-xs ${isActive ? activeColor : normalColor}`}
+                    className={`w-full flex items-center px-4 py-2.5 transition-all duration-200 cursor-pointer relative group text-[13px] ${isActive ? activeColor : normalColor}`}
                   >
-                    <Icon className={`w-4 h-4 mr-3 transition-colors shrink-0 ${isActive ? "text-blue-400" : "opacity-75 group-hover:opacity-100"}`} />
-                    <span className="truncate">{item.label}</span>
+                    <Icon className={`w-[18px] h-[18px] mr-4 transition-colors shrink-0 ${isActive ? "" : `opacity-70 group-hover:opacity-100 ${baseColorText}`}`} />
+                    <span className="truncate tracking-wide">{item.label}</span>
                   </button>
                 );
               })}
             </div>
           ))}
-          <div className="pb-8"></div>
+          <div className="pb-4"></div>
         </nav>
+
+        {/* Bottom Post Button & Profile (X Style) */}
+        <div className="mt-auto p-4 space-y-4">
+          <button className={`w-full py-3.5 rounded-full font-black text-sm tracking-wide shadow-lg transition-transform hover:scale-[1.02] active:scale-95 ${darkMode ? 'bg-white text-black shadow-white/10' : 'bg-[#0f1419] text-white shadow-black/10'}`}>
+            Post Update
+          </button>
+          
+          <div className={`flex items-center gap-3 p-2.5 rounded-full cursor-pointer transition-colors ${darkMode ? 'hover:bg-white/10' : 'hover:bg-slate-200/50'}`}>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border ${darkMode ? 'bg-gradient-to-tr from-slate-800 to-slate-700 border-white/20' : 'bg-gradient-to-tr from-slate-200 to-slate-300 border-slate-300'}`}>
+               <span className={`text-xs font-black ${darkMode ? 'text-white' : 'text-slate-800'}`}>
+                 {currentRole === 'owner' ? 'OW' : 'MG'}
+               </span>
+            </div>
+            <div className="flex-1 min-w-0">
+               <p className={`text-sm font-bold truncate leading-tight ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+                 {currentRole === 'owner' ? 'Store Owner' : 'Store Manager'}
+               </p>
+               <p className={`text-xs truncate ${darkMode ? 'text-slate-500' : 'text-slate-500'}`}>
+                 @cobb_{AVAILABLE_STORES.find(s => s.id === activeStore)?.shortName?.toLowerCase() || 'pundri'}
+               </p>
+            </div>
+            <MoreHorizontal className={`w-5 h-5 shrink-0 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`} />
+          </div>
+        </div>
       </div>
 
       {/* Main Content Area */}
-      <div className={`flex-1 overflow-auto relative min-w-0 pb-20 lg:pb-0 transition-colors duration-200 ${darkMode ? 'bg-[#080b12] text-white' : 'bg-slate-50 text-slate-800'}`}>
+      <div className={`flex-1 overflow-auto relative min-w-0 pb-20 lg:pb-0 transition-colors duration-200 lg:my-4 lg:mr-4 lg:rounded-[2rem] border ${darkMode ? 'bg-[#0f1115] border-white/[0.05] shadow-[inset_0_0_40px_rgba(0,0,0,0.5)]' : 'bg-white border-slate-200/50 shadow-sm'}`}>
 
         {/* Top Navbar */}
-        <header className={`backdrop-blur-md px-3.5 sm:px-6 lg:px-8 py-2.5 sm:py-3 border-b sticky top-0 z-30 transition-colors ${darkMode ? 'bg-[#080b12]/95 border-[#1c2436] text-white' : 'bg-white/95 border-slate-200 text-slate-800'}`}>
+        <header className={`backdrop-blur-md px-3.5 sm:px-6 lg:px-8 py-2.5 sm:py-3 border-b sticky top-0 z-30 transition-colors lg:rounded-t-[2rem] ${darkMode ? 'bg-[#0f1115]/80 border-[#1c2436] text-white' : 'bg-white/80 border-slate-200 text-slate-800'}`}>
 
           {/* MOBILE / PHONE HEADER (lg:hidden) — Split into two distinct pieces */}
           <div className="flex lg:hidden flex-col gap-2 w-full">
