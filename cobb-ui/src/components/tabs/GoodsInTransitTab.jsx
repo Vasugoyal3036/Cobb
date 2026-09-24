@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Truck, Package, RotateCw, ExternalLink, ChevronRight, CheckCircle2, Box, X } from 'lucide-react';
 
-const mockChallanItems = [
+const baseMockData = [
   { code: '0082012204', article: 'FPSAF2426', desc: 'TROUSER- FORMAL', p1: 'DARK GRAY', p2: '32 (81 CM.)', p3: 'NA', qty: 1, uom: 'PCS', mrp: 2999 },
   { code: '0082014316', article: 'FPSAF2426', desc: 'TROUSER- FORMAL', p1: 'GREY', p2: '40 (1.02 MTR.)', p3: 'NA', qty: 1, uom: 'PCS', mrp: 2999 },
   { code: '0082013300', article: 'FPSAF2426', desc: 'TROUSER- FORMAL', p1: 'GREY', p2: '32 (81 CM.)', p3: 'NA', qty: 1, uom: 'PCS', mrp: 2999 },
@@ -12,6 +12,8 @@ const mockChallanItems = [
   { code: '0081845855', article: 'CFAJ34036', desc: 'CASUAL FULL SL', p1: 'LEMON 25', p2: '38 (97 CM.)', p3: 'NA', qty: 1, uom: 'PCS', mrp: 2699 },
   { code: '0080992017', article: 'CFVN10422', desc: 'CASUAL FULL SL', p1: 'SKY BLUE', p2: '38 (97 CM.)', p3: 'NA', qty: 1, uom: 'PCS', mrp: 2999 },
 ];
+
+const mockChallanItems = [...baseMockData, ...baseMockData, ...baseMockData, ...baseMockData, ...baseMockData];
 
 const GoodsInTransitTab = ({ darkMode }) => {
   const [selectedChallan, setSelectedChallan] = useState(null);
