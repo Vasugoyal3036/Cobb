@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Scissors, Search, Plus, Calendar, User, Phone, CheckCircle, Clock } from 'lucide-react';
-import { collection, query, orderBy, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { Scissors, Search, Plus, Calendar, User, Phone, CheckCircle, Clock, Trash2 } from 'lucide-react';
+import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../../utils/firebase';
 import AlterationSlipModal from '../AlterationSlipModal';
 
@@ -37,6 +37,17 @@ export default function AlterationsTab({ darkMode, activeStore = 'DEMO_STORE_001
       await updateDoc(docRef, { status: 'Completed' });
     } catch (err) {
       console.error('Error updating status:', err);
+    }
+  };
+
+  const deleteSlip = async (slipId) => {
+    if (!window.confirm("Are you sure you want to delete this alteration slip?")) return;
+    try {
+      const targetStore = activeStore === 'ALL' ? 'DEMO_STORE_001' : activeStore;
+      const docRef = doc(db, `stores/${targetStore}/alterations`, slipId);
+      await deleteDoc(docRef);
+    } catch (err) {
+      console.error('Error deleting slip:', err);
     }
   };
 
@@ -156,14 +167,22 @@ export default function AlterationsTab({ darkMode, activeStore = 'DEMO_STORE_001
                       )}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      {slip.status !== 'Completed' && (
+                      <div className="flex items-center justify-end gap-3">
+                        {slip.status !== 'Completed' && (
+                          <button 
+                            onClick={() => markCompleted(slip.id)}
+                            className="text-xs font-bold text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 hover:underline"
+                          >
+                            Complete
+                          </button>
+                        )}
                         <button 
-                          onClick={() => markCompleted(slip.id)}
-                          className="text-xs font-bold text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 hover:underline"
+                          onClick={() => deleteSlip(slip.id)}
+                          className="text-xs font-bold text-red-500 hover:text-red-400 dark:text-rose-500 hover:underline flex items-center gap-1"
                         >
-                          Mark Completed
+                          <Trash2 size={14} /> Delete
                         </button>
-                      )}
+                      </div>
                     </td>
                   </tr>
                 ))
