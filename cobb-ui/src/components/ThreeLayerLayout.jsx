@@ -11,6 +11,7 @@ const ThreeLayerLayout = ({
   searchQuery,
   setSearchQuery,
   searchPlaceholder = "Search...",
+  headerAction,
   renderMasterItem,
   onItemClick,
   selectedItem,
@@ -42,16 +43,21 @@ const ThreeLayerLayout = ({
         
         {/* Header */}
         <div className={`p-5 border-b ${darkMode ? 'border-[#232e47] bg-slate-900/50' : 'border-slate-100 bg-slate-50/50'}`}>
-          <div className="flex items-center gap-3 mb-4">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg ${iconColorClass}`}>
-              {Icon && <Icon className="w-5 h-5" />}
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg ${iconColorClass}`}>
+                {Icon && <Icon className="w-5 h-5" />}
+              </div>
+              <div>
+                <h2 className={`text-lg font-black tracking-tight leading-tight ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+                  {title}
+                </h2>
+                <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{items.length} total items</p>
+              </div>
             </div>
-            <div>
-              <h2 className={`text-lg font-black tracking-tight leading-tight ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-                {title}
-              </h2>
-              <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{items.length} total items</p>
-            </div>
+            {headerAction && (
+              <div>{headerAction}</div>
+            )}
           </div>
 
           <div className="relative w-full">

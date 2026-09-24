@@ -667,7 +667,7 @@ const Layout = ({
         </header>
 
         <div className={
-          ['copilot', 'transit', 'vip', 'dormant', 'inventory', 'reorder', 'loyalty'].includes(activeTab)
+          ['copilot', 'transit', 'vip', 'dormant', 'inventory', 'reorder', 'loyalty', 'smart_bundles'].includes(activeTab)
             ? 'p-0 sm:p-4 lg:p-6 mx-auto w-full h-full' 
             : 'p-3 sm:p-6 lg:p-8 max-w-7xl mx-auto'
         }>
