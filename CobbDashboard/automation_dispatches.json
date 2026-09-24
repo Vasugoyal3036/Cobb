@@ -982,5 +982,17 @@
     "reason": "checkout",
     "status": "sent",
     "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-09-24T16:03:30.304828",
+    "date": "2026-09-24",
+    "time": "04:03 PM",
+    "billNo": "STST27-00726   ",
+    "cmId": "ST01127000STST27-00726",
+    "customerName": "Sourav",
+    "phone": "8950929603",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
   }
 ]
