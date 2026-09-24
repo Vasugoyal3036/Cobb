@@ -208,7 +208,7 @@ const setLocalCache = (key, val) => {
 export default function App() {
   const { user, role, activeStore, switchStore, switchRole } = useAuth();
   const currentRole = role || user?.role || 'owner';
-  const [showSetup, setShowSetup] = useState(false);
+  const [showSetup, setShowSetup] = useState(true); // Force true for SaaS preview
 
   let [vips, setVips] = useState(() => getLocalCache('vips', [])); if (!Array.isArray(vips)) vips = [];
   let [dormant, setDormant] = useState(() => getLocalCache('dormant', [])); if (!Array.isArray(dormant)) dormant = [];

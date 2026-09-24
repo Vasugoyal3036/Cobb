@@ -1018,5 +1018,17 @@
     "reason": "checkout",
     "status": "sent",
     "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-09-24T18:39:21.000551",
+    "date": "2026-09-24",
+    "time": "06:39 PM",
+    "billNo": "STST27-00729   ",
+    "cmId": "ST01127000STST27-00729",
+    "customerName": "Sagar",
+    "phone": "8607535213",
+    "reason": "checkout",
+    "status": "not_on_whatsapp",
+    "detail": "Phone number is not registered on WhatsApp"
   }
 ]
