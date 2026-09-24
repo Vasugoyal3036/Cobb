@@ -1006,5 +1006,17 @@
     "reason": "checkout",
     "status": "sent",
     "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-09-24T16:59:54.900093",
+    "date": "2026-09-24",
+    "time": "04:59 PM",
+    "billNo": "STST27-00728   ",
+    "cmId": "ST01127000STST27-00728",
+    "customerName": "Vikas",
+    "phone": "7082496567",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
   }
 ]

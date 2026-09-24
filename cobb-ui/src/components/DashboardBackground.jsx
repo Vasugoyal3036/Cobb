@@ -6,9 +6,9 @@ export default function DashboardBackground({ theme }) {
   if (theme === 'mesh-gradient') {
     return (
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 bg-[#050505]">
-        <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-indigo-600/20 blur-[120px]" />
-        <div className="absolute top-[40%] -right-[10%] w-[40%] h-[60%] rounded-full bg-rose-600/10 blur-[120px]" />
-        <div className="absolute bottom-[-20%] left-[20%] w-[60%] h-[50%] rounded-full bg-blue-600/15 blur-[120px]" />
+        <div className="absolute -top-[20%] -left-[10%] w-[50%] h-[50%] rounded-full bg-indigo-600/20 blur-[60px] md:blur-[120px]" />
+        <div className="absolute top-[40%] -right-[10%] w-[40%] h-[60%] rounded-full bg-rose-600/10 blur-[60px] md:blur-[120px]" />
+        <div className="absolute bottom-[-20%] left-[20%] w-[60%] h-[50%] rounded-full bg-blue-600/15 blur-[60px] md:blur-[120px]" />
       </div>
     );
   }
@@ -95,6 +95,15 @@ export function getThemeCardCSS(theme) {
         border-color: rgba(59, 130, 246, 0.7) !important;
         box-shadow: 0 0 30px 0 rgba(59, 130, 246, 0.25), inset 0 0 20px 0 rgba(168, 85, 247, 0.15) !important;
       }
+      @media (max-width: 768px) {
+        .dark-mode .bg-white, .dark-mode [class*="bg-slate-900"], .dark-mode [class*="bg-slate-950"],
+        .dark-mode [class*="bg-gray-900"], .dark-mode [class*="bg-gray-950"],
+        .dark-mode .rounded-2xl.border, .dark-mode .rounded-xl.border,
+        .dark-mode [class*="rounded-2xl"][class*="border"], .dark-mode [class*="rounded-xl"][class*="border"] {
+          backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+          background-color: #0b0c10 !important;
+        }
+      }
     `;
   }
   if (theme === 'monochrome') {
@@ -108,6 +117,15 @@ export function getThemeCardCSS(theme) {
         border-radius: 1.5rem !important; color: #ffffff !important;
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
         box-shadow: 0 4px 24px 0 rgba(0, 0, 0, 0.4), inset 0 1px 0 0 rgba(255, 255, 255, 0.05) !important;
+      }
+      @media (max-width: 768px) {
+        .dark-mode .bg-white, .dark-mode [class*="bg-slate-900"], .dark-mode [class*="bg-slate-950"],
+        .dark-mode [class*="bg-gray-900"], .dark-mode [class*="bg-gray-950"],
+        .dark-mode .rounded-2xl.border, .dark-mode .rounded-xl.border,
+        .dark-mode [class*="rounded-2xl"][class*="border"], .dark-mode [class*="rounded-xl"][class*="border"] {
+          backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+          background-color: #1a1a1c !important;
+        }
       }
     `;
   }
@@ -129,6 +147,15 @@ export function getThemeCardCSS(theme) {
     .dark-mode .hover\\:shadow-md:hover {
       background-color: rgba(18, 20, 26, 0.7) !important;
       border-color: rgba(255, 255, 255, 0.12) !important;
+    }
+    @media (max-width: 768px) {
+      .dark-mode .bg-white, .dark-mode [class*="bg-slate-900"], .dark-mode [class*="bg-slate-950"],
+      .dark-mode [class*="bg-gray-900"], .dark-mode [class*="bg-gray-950"],
+      .dark-mode .rounded-2xl.border, .dark-mode .rounded-xl.border,
+      .dark-mode [class*="rounded-2xl"][class*="border"], .dark-mode [class*="rounded-xl"][class*="border"] {
+        backdrop-filter: none !important; -webkit-backdrop-filter: none !important;
+        background-color: #12141a !important;
+      }
     }
   `;
 }
