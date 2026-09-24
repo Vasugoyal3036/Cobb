@@ -1018,5 +1018,29 @@
     "reason": "checkout",
     "status": "sent",
     "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-09-24T19:22:09.275618",
+    "date": "2026-09-24",
+    "time": "07:22 PM",
+    "billNo": "STST27-00730   ",
+    "cmId": "ST01127000STST27-00730",
+    "customerName": "Nafe Singh",
+    "phone": "9996966092",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-09-24T19:26:34.384307",
+    "date": "2026-09-24",
+    "time": "07:26 PM",
+    "billNo": "STST27-00731   ",
+    "cmId": "ST01127000STST27-00731",
+    "customerName": "Daler Singh Habri",
+    "phone": "9996619066",
+    "reason": "exchange",
+    "status": "sent",
+    "detail": "Official Exchange Slip sent"
   }
 ]
