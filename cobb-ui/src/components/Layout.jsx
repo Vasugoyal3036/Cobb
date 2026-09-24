@@ -70,7 +70,7 @@ import {
   Wallet,
   AlarmClock,
   Network,
-  Music
+  Truck
 } from 'lucide-react';
 
 const navigationItems = [
@@ -101,6 +101,7 @@ const navigationItems = [
       { id: "topmovers", label: "Top Movers & Size Demand", icon: Flame, colorClass: "text-rose-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-rose-500/15 text-rose-400 font-bold border-l-2 border-rose-500" },
       { id: "sizematrix", label: "Size Matrix Heatmap", icon: Grid, colorClass: "text-blue-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-blue-500/15 text-blue-400 font-bold border-l-2 border-blue-500" },
       { id: "barcode_factory", label: "Barcode Factory", icon: Barcode, colorClass: "text-emerald-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-emerald-500/15 text-emerald-400 font-bold border-l-2 border-emerald-500" },
+      { id: "transit", label: "Goods In Transit", icon: Truck, colorClass: "text-orange-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-orange-500/15 text-orange-400 font-bold border-l-2 border-orange-500" },
       { id: "deadstock", label: "Inventory", icon: Package },
       { id: "reorder", label: "Warehouse Reorder", icon: ClipboardList, colorClass: "text-blue-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-blue-500/15 text-blue-400 font-bold border-l-2 border-blue-500" },
       { id: "denomination", label: "Night Closing", icon: Wallet, colorClass: "text-emerald-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-emerald-500/15 text-emerald-400 font-bold border-l-2 border-emerald-500" },
@@ -200,7 +201,8 @@ const Layout = ({
     'copilot',
     'barcode_factory',
     'multistore',
-    'sync_status'
+    'sync_status',
+    'transit'
   ];
 
   

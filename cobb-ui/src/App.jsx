@@ -21,6 +21,7 @@ import BarcodeGeneratorTab from './components/tabs/BarcodeGeneratorTab';
 import MultiStoreMatrixTab from './components/tabs/MultiStoreMatrixTab';
 import AlterationsTab from './components/tabs/AlterationsTab';
 import SyncStatusTab from './components/tabs/SyncStatusTab';
+import GoodsInTransitTab from './components/tabs/GoodsInTransitTab';
 import FloatingCopilot from './components/FloatingCopilot';
 import { fetchWithOfflineFallback, subscribeToData } from './utils/offlineDb';
 
@@ -2055,6 +2056,11 @@ export default function App() {
             {/* 19. CLOUD SYNC STATUS */}
             {activeTab === 'sync_status' && (
               <SyncStatusTab darkMode={darkMode} />
+            )}
+
+            {/* 20. GOODS IN TRANSIT */}
+            {activeTab === 'transit' && (
+              <GoodsInTransitTab darkMode={darkMode} />
             )}
 
             {/* FLOATING AI COPILOT ON-SCREEN WIDGET (Active across all tabs) */}
