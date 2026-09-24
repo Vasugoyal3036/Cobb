@@ -5,6 +5,7 @@ import InventoryTab from './components/tabs/InventoryTab';
 import CustomerProfileModal from './components/CustomerProfileModal';
 import DashboardTab from './components/tabs/DashboardTab';
 import CustomerInsightsTab from './components/tabs/CustomerInsightsTab';
+import CompetitorIntelTab from './components/tabs/CompetitorIntelTab';
 import LiveBillsTab from './components/tabs/LiveBillsTab';
 import AutomationEngineTab from './components/tabs/AutomationEngineTab';
 import CampaignBuilderTab from './components/tabs/CampaignBuilderTab';
@@ -1959,8 +1960,13 @@ export default function App() {
             )}
 
             {/* 9. VIP & DORMANT */}
-            {['customerinsights', 'vip', 'dormant', 'competitor_intel'].includes(activeTab) && (
+            {['customerinsights', 'vip', 'dormant'].includes(activeTab) && (
               <CustomerInsightsTab {...appState} />
+            )}
+
+            {/* COMPETITOR INTEL */}
+            {activeTab === 'competitor_intel' && (
+              <CompetitorIntelTab {...appState} />
             )}
 
             {/* 10. POCKET KHATA (COUNTER PETTY CASH & EXPENSE JOURNAL) */}
