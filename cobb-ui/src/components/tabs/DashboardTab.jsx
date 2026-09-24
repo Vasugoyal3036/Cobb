@@ -80,6 +80,7 @@ import ExecutiveKpiStrip from '../dashboard/ExecutiveKpiStrip';
 import LivePulseFeed from '../dashboard/LivePulseFeed';
 import WhatsAppAutomationWidget from '../dashboard/WhatsAppAutomationWidget';
 import QuickToolsWidget from '../dashboard/QuickToolsWidget';
+import AlterationSlipModal from '../AlterationSlipModal';
 
 const DashboardTab = (props) => {
   const { userRole, activeStore, totalMonthlyUnits, totalMonthlyRevenue, maxHourlyRevenue, averageOrderValue, DAILY_TARGET, targetProgress, API_BASE, vips, setVips, dormant, setDormant, darkMode, setDarkMode, overviewStats, setOverviewStats, returnsData, setReturnsData, smartCoordinate, setSmartCoordinate, showCoordinateModal, setShowCoordinateModal, vmImages, setVmImages, vmImageUrls, setVmImageUrls, vmAuditResult, setVmAuditResult, isAuditing, setIsAuditing, vmError, setVmError, bundles, setBundles, isLoadingBundles, setIsLoadingBundles, publishedBundles, setPublishedBundles, handleVmUpload, fetchTrendForecast, handleCompUpload, fetchBundles, globalCustomers, setGlobalCustomers, isSearchingCustomers, setIsSearchingCustomers, liveBills, setLiveBills, inventory, setInventory, deadStock, setDeadStock, hourlySales, setHourlySales, dailySales, setDailySales, monthlyProducts, setMonthlyProducts, gstSummary, setGstSummary, gstRateSlab, setGstRateSlab, gstCopied, setGstCopied, sizeMatrix, setSizeMatrix, wardrobeProfiles, setWardrobeProfiles, pnlData, setPnlData, retentionData, setRetentionData, reconData, setReconData, countedCashInput, setCountedCashInput, reconNotes, setReconNotes, showReconModal, setShowReconModal, showEodModal, setShowEodModal, eodSummaryText, setEodSummaryText, eodCopied, setEodCopied, isMobileMenuOpen, setIsMobileMenuOpen, matrixCategoryFilter, setMatrixCategoryFilter, isListenerRunning, setIsListenerRunning, isTogglingListener, setIsTogglingListener, listenerLogs, setListenerLogs, automationDispatches, isGatewayRunning, setIsGatewayRunning, isTogglingGateway, setIsTogglingGateway, isGatewayReady, setIsGatewayReady, gatewayQr, setGatewayQr, gatewayLogs, setGatewayLogs, testPhone, setTestPhone, testMsg, setTestMsg, isSendingTestWa, setIsSendingTestWa, broadcastGroup, setBroadcastGroup, broadcastGroupCount, setBroadcastGroupCount, broadcastStatus, setBroadcastStatus, broadcastMsg, setBroadcastMsg, isStartingBroadcast, setIsStartingBroadcast, isSyncingGroup, setIsSyncingGroup, groupSearchQuery, setGroupSearchQuery, topMoversData, setTopMoversData, activeTab, setActiveTab, activeConsole, setActiveConsole, searchQuery, setSearchQuery, selectedCustomer, setSelectedCustomer, customerHistory, setCustomerHistory, loadingHistory, setLoadingHistory, customerPersona, setCustomerPersona, loadingPersona, setLoadingPersona, aiMessageType, setAiMessageType, generatedMsg, setGeneratedMsg, isGenerating, setIsGenerating, generateWhatsAppDraft, activeOutfitMatch, setActiveOutfitMatch, outfitPitch, setOutfitPitch, isGeneratingOutfit, setIsGeneratingOutfit, campaignEvent, setCampaignEvent, campaignAudience, setCampaignAudience, campaignDraft, setCampaignDraft, isGeneratingCampaign, setIsGeneratingCampaign, openProductType, setOpenProductType, openMonth, setOpenMonth, selectedCalendarDay, setSelectedCalendarDay, expandedBillId, setExpandedBillId, billItemsCache, setBillItemsCache, loadingBillItems, setLoadingBillItems, handleKeyDown, toggleBillExpansion, fetchAutomationStatus, toggleListener, toggleGateway, handleSendTestWhatsApp, handleSyncBroadcastGroup, handleStartBroadcast, handleStopBroadcast, handleExportGroupCsv, openCustomerCard, handleGenerateAI, handleGenerateOutfitMatch, handleGenerateCampaign, handleSaveReconciliation, handleGenerateEodReport, handleMasterRestock, formatCurrency, MASTER_CATEGORIES, classifySubCategory, handleGlobalSearch, renderLogLine, persona, handleGenerateSmartCoordinate, trendForecast, isForecasting, compImage, compImageUrl, compIntelResult, isAnalyzingComp, compError } = props;
@@ -108,6 +109,9 @@ const DashboardTab = (props) => {
   const [calcMrp, setCalcMrp] = React.useState(1999);
   const [calcOffer, setCalcOffer] = React.useState('b3_70');
   const [b1g3Items, setB1g3Items] = React.useState([1700, 1800, 1900]);
+  
+  // Alteration Slip Modal state
+  const [showAlterationModal, setShowAlterationModal] = React.useState(false);
 
   // P&L Selected Month State
   const [selectedPnlMonth, setSelectedPnlMonth] = React.useState('current');
@@ -463,6 +467,8 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                   darkMode={darkMode}
                   todayTopArticlesLoading={todayTopArticlesLoading}
                   todayTopArticles={todayTopArticles}
+                  setShowAlterationModal={setShowAlterationModal}
+                  activeStore={activeStore}
                 />
               </div>
 
@@ -539,10 +545,10 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                             } ${
                               hasSales 
                                 ? (selectedCalendarDay === day 
-                                    ? 'bg-purple-600 text-white shadow-md' 
+                                    ? 'bg-blue-500 text-white shadow-xl shadow-blue-500/30 border border-blue-400 scale-105 font-black' 
                                     : darkMode 
-                                      ? 'bg-purple-950/60 text-purple-300 border border-purple-700/60 hover:bg-purple-900/60' 
-                                      : 'bg-blue-100 text-blue-700 hover:bg-blue-200') 
+                                      ? 'bg-blue-500/20 text-white font-bold border border-blue-500/40 hover:bg-blue-500/30 shadow-md shadow-[#0a0f1a]' 
+                                      : 'bg-blue-100 text-blue-900 font-bold border border-blue-300 hover:bg-blue-200 shadow-sm') 
                                 : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60'
                             }`}
                           >
@@ -624,6 +630,7 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
             setB1g3Items={setB1g3Items}
             formatCurrency={formatCurrency}
             darkMode={darkMode}
+            setShowAlterationModal={setShowAlterationModal}
           />
         </div>
       )}
@@ -2573,7 +2580,12 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
         );
       })()}
 
-
+      <AlterationSlipModal
+        isOpen={showAlterationModal}
+        onClose={() => setShowAlterationModal(false)}
+        darkMode={darkMode}
+        storeId={activeStore}
+      />
     </>
   );
 };

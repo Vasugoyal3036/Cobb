@@ -19,6 +19,7 @@ import LookbookStudioTab from './components/tabs/LookbookStudioTab';
 import ChatbotTab from './components/tabs/ChatbotTab';
 import BarcodeGeneratorTab from './components/tabs/BarcodeGeneratorTab';
 import MultiStoreMatrixTab from './components/tabs/MultiStoreMatrixTab';
+import AlterationsTab from './components/tabs/AlterationsTab';
 import FloatingCopilot from './components/FloatingCopilot';
 import { fetchWithOfflineFallback, subscribeToData } from './utils/offlineDb';
 
@@ -2043,6 +2044,11 @@ export default function App() {
             {/* 17. MULTI-STORE MATRIX */}
             {activeTab === 'multistore' && (
               <MultiStoreMatrixTab darkMode={darkMode} formatCurrency={(v) => `₹${Number(v).toLocaleString('en-IN')}`} />
+            )}
+
+            {/* 18. ALTERATIONS DESK */}
+            {activeTab === 'alterations' && (
+              <AlterationsTab darkMode={darkMode} activeStore={activeStore} formatCurrency={formatCurrency} />
             )}
 
             {/* FLOATING AI COPILOT ON-SCREEN WIDGET (Active across all tabs) */}

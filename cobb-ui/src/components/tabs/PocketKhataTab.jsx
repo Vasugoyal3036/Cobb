@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 import { useToast } from '../../context/ToastContext';
+import AlterationSlipModal from '../AlterationSlipModal';
 
 export default function PocketKhataTab(props) {
   const {
@@ -37,6 +38,7 @@ export default function PocketKhataTab(props) {
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [showAlterationModal, setShowAlterationModal] = useState(false);
   const [summary, setSummary] = useState({
     date: new Date().toISOString().split('T')[0],
     totalSpent: 0,
@@ -152,6 +154,18 @@ export default function PocketKhataTab(props) {
         </div>
 
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowAlterationModal(true)}
+            className={`p-2 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold ${
+              darkMode 
+                ? 'bg-amber-500/15 border-amber-500/30 text-amber-400 hover:bg-amber-500/25' 
+                : 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100 shadow-xs'
+            }`}
+            title="Create Alteration Slip"
+          >
+            <Scissors className="w-3.5 h-3.5" />
+            <span>Alteration Slip</span>
+          </button>
           <button
             onClick={fetchExpenses}
             className={`p-2 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold ${
@@ -493,6 +507,12 @@ export default function PocketKhataTab(props) {
         </div>
 
       </div>
+
+      <AlterationSlipModal
+        isOpen={showAlterationModal}
+        onClose={() => setShowAlterationModal(false)}
+        darkMode={darkMode}
+      />
     </div>
   );
 }

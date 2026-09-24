@@ -25,8 +25,10 @@ import {
   ExternalLink,
   ChevronLeft,
   ChevronRight,
-  AlertCircle
+  AlertCircle,
+  Scissors
 } from 'lucide-react';
+import AlterationSlipModal from '../AlterationSlipModal';
 
 const LiveBillsTab = (props) => {
   const {
@@ -71,6 +73,9 @@ const LiveBillsTab = (props) => {
   const [copiedBillId, setCopiedBillId] = useState(null);
   const [copiedSummaryId, setCopiedSummaryId] = useState(null);
   const [lastFetchedAt, setLastFetchedAt] = useState(null);
+  
+  const [showAlterationModal, setShowAlterationModal] = useState(false);
+  const [alterationInitialData, setAlterationInitialData] = useState(null);
 
   // Fetch transactions from backend
   const fetchBills = useCallback(async (filterType = dateFilter, selectedCustomDate = customDate) => {
@@ -690,6 +695,30 @@ const LiveBillsTab = (props) => {
                                   </button>
                                 )}
 
+                                {/* Alteration Slip */}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const currentItems = billItemsCache[bill.BillId] || bill.Items || [];
+                                    const mainItem = currentItems.length > 0 ? currentItems[0] : null;
+                                    setAlterationInitialData({
+                                      CustomerName: bill.CustomerName,
+                                      Phone: bill.Phone,
+                                      Category: mainItem?.Category || 'Trouser',
+                                      Quantity: '1'
+                                    });
+                                    setShowAlterationModal(true);
+                                  }}
+                                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 border cursor-pointer ${
+                                    darkMode
+                                      ? 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border-amber-500/30'
+                                      : 'bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200'
+                                  }`}
+                                >
+                                  <Scissors className="w-3.5 h-3.5" />
+                                  <span>Alteration Slip</span>
+                                </button>
+
                                 {/* Copy Summary */}
                                 <button
                                   onClick={() => {
@@ -842,6 +871,13 @@ const LiveBillsTab = (props) => {
           </table>
         </div>
       </div>
+
+      <AlterationSlipModal 
+        isOpen={showAlterationModal}
+        onClose={() => setShowAlterationModal(false)}
+        initialData={alterationInitialData}
+        darkMode={darkMode}
+      />
     </div>
   );
 };

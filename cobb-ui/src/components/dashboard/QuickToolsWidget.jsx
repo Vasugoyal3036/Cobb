@@ -1,5 +1,5 @@
 import React from 'react';
-import { Terminal, Barcode, Search, X, Calculator, AlarmClock, Wallet, ArrowRight } from 'lucide-react';
+import { Terminal, Barcode, Search, X, Calculator, AlarmClock, Wallet, ArrowRight, Scissors, Plus } from 'lucide-react';
 
 const QuickToolsWidget = ({
   dashboardZone,
@@ -24,7 +24,8 @@ const QuickToolsWidget = ({
   b1g3Items,
   setB1g3Items,
   formatCurrency,
-  darkMode
+  darkMode,
+  setShowAlterationModal
 }) => {
   if (dashboardZone !== 'all' && dashboardZone !== 'counter') {
     return null;

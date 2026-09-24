@@ -1,5 +1,7 @@
-import React from 'react';
-import { BarChart3, Zap, ArrowRight, Flame, Crown } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { BarChart3, Zap, ArrowRight, Flame, Crown, Scissors, Plus } from 'lucide-react';
+import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { db } from '../../utils/firebase';
 
 const LivePulseFeed = ({
   hourlySales,
@@ -8,8 +10,28 @@ const LivePulseFeed = ({
   setActiveTab,
   darkMode,
   todayTopArticlesLoading,
-  todayTopArticles
+  todayTopArticles,
+  setShowAlterationModal,
+  activeStore = 'DEMO_STORE_001'
 }) => {
+  const [recentAlterations, setRecentAlterations] = useState([]);
+
+  useEffect(() => {
+    const targetStore = activeStore === 'ALL' ? 'DEMO_STORE_001' : activeStore;
+    const alterationsRef = collection(db, `stores/${targetStore}/alterations`);
+    const q = query(alterationsRef, orderBy('createdAt', 'desc'), limit(3));
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const slips = [];
+      snapshot.forEach((doc) => {
+        slips.push({ id: doc.id, ...doc.data() });
+      });
+      setRecentAlterations(slips);
+    });
+
+    return () => unsubscribe();
+  }, [activeStore]);
+
   // --- Hourly Rush data ---
   const hourlyData = Array.isArray(hourlySales) ? hourlySales : [];
   const maxHourlyRev = Math.max(1, ...hourlyData.map(h => h.TotalRevenue || 0));
@@ -199,52 +221,52 @@ const LivePulseFeed = ({
             </div>
           </div>
 
-          {/* Sub-Panel 2: VIP Shopper Radar */}
+          {/* Sub-Panel 2: Alteration Desk */}
           <div 
-            onClick={() => typeof setActiveTab === 'function' && setActiveTab('customer_insights')}
-            className="cursor-pointer group flex flex-col justify-between md:border-l md:border-slate-800/60 md:pl-4"
+            onClick={() => setShowAlterationModal?.(true)}
+            className="cursor-pointer group flex flex-col justify-between md:border-l md:border-slate-800/60 md:pl-4 hover:bg-slate-50 dark:hover:bg-[#151a26] rounded-xl transition-colors p-2 -m-2"
           >
             <div>
               <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-slate-100 dark:border-[#1c2436]">
-                <span className="text-[11px] font-black uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-                  <Crown className="w-3.5 h-3.5" />
-                  VIP Shoppers In-Store
+                <span className="text-[11px] font-black uppercase tracking-wider text-indigo-500 dark:text-indigo-400 flex items-center gap-1.5">
+                  <Scissors className="w-3.5 h-3.5" />
+                  Alteration Desk
                 </span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                  {todayVips.length} VIP Visits
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 border border-indigo-500/20">
+                  {recentAlterations.length} Recent
                 </span>
               </div>
 
-              <div className="space-y-1.5">
-                {todayVips.length > 0 ? (
-                  todayVips.map((vip, idx) => (
-                    <div key={idx} className="flex items-center justify-between text-xs py-1.5 px-2.5 rounded-xl bg-slate-900/30 border border-slate-800/40 hover:border-amber-500/30 transition-all">
+              <div className="space-y-1.5 mt-2">
+                {recentAlterations.length > 0 ? (
+                  recentAlterations.map((slip, idx) => (
+                    <div key={idx} className="flex items-center justify-between text-xs py-1.5 px-2.5 rounded-xl bg-slate-900/30 border border-slate-800/40 hover:border-indigo-500/30 transition-all">
                       <div className="min-w-0 pr-2">
-                        <p className="font-bold truncate text-[11px] text-slate-200">{vip.CustomerName || vip.FirstName || 'Customer'}</p>
-                        <p className="text-[10px] text-slate-500 font-mono">Today's Bill: ₹{vip.Amount?.toLocaleString('en-IN')}</p>
+                        <p className="font-bold truncate text-[11px] text-slate-200">{slip.customerName || 'Customer'}</p>
+                        <p className="text-[10px] text-slate-500 font-mono">
+                          {slip.category} x {slip.quantity}
+                        </p>
                       </div>
                       <span className={`text-[10px] font-black px-2 py-0.5 rounded border ${
-                        vip.vipData?.loyaltyTier === 'Platinum' 
-                          ? 'bg-purple-500/15 text-purple-300 border-purple-500/30'
-                          : vip.vipData?.loyaltyTier === 'Gold'
-                            ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
-                            : 'bg-slate-500/15 text-slate-300 border-slate-500/30'
+                        slip.status === 'Completed' 
+                          ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                          : 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30'
                       }`}>
-                        {vip.vipData?.loyaltyTier || 'VIP'}
+                        {slip.status || 'Pending'}
                       </span>
                     </div>
                   ))
                 ) : (
-                  <div className="py-4 text-center text-xs text-slate-500">
-                    General footfall active today — no VIP tier visits yet
+                  <div className="py-4 text-center text-xs text-slate-500 dark:text-slate-400">
+                    No recent alteration slips. Create one below.
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="mt-3 pt-2 border-t border-slate-200/40 dark:border-[#1c2436] flex items-center justify-between text-[11px] font-bold text-amber-400 group-hover:underline">
-              <span>Customer Loyalty Profiles</span>
-              <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+            <div className="mt-3 pt-2 border-t border-slate-200/40 dark:border-[#1c2436] flex items-center justify-between text-[11px] font-bold text-indigo-500 dark:text-indigo-400 group-hover:underline">
+              <span>Create New Slip</span>
+              <Plus className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform" />
             </div>
           </div>
         </div>
