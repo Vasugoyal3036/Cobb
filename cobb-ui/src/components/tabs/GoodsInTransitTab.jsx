@@ -183,15 +183,15 @@ const GoodsInTransitTab = ({ darkMode }) => {
               <h2 className={`text-2xl font-black ${darkMode ? 'text-white' : 'text-slate-900'}`}>Challan No : {selectedChallan}</h2>
             </div>
 
-            <div className="p-4 overflow-x-auto">
+            <div className="p-4">
               <div className="flex justify-between items-end mb-2 px-1">
                 <span className={`text-xs font-semibold ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Purchase/Challan Details</span>
                 <button className="text-blue-500 text-xs font-semibold hover:underline">Show/Hide Columns</button>
               </div>
               
-              <div className={`rounded-lg border overflow-hidden ${darkMode ? 'border-slate-700' : 'border-slate-300'}`}>
-                <table className="w-full text-sm text-left">
-                  <thead className={`text-xs uppercase font-bold border-b ${darkMode ? 'bg-slate-800/80 text-blue-300 border-slate-700' : 'bg-blue-50 text-blue-800 border-slate-300'}`}>
+              <div className={`rounded-lg border overflow-y-auto overflow-x-auto max-h-[50vh] custom-scrollbar ${darkMode ? 'border-slate-700' : 'border-slate-300'}`}>
+                <table className="w-full text-sm text-left whitespace-nowrap">
+                  <thead className={`text-xs uppercase font-bold sticky top-0 z-10 border-b ${darkMode ? 'bg-slate-800 text-blue-300 border-slate-700' : 'bg-blue-50 text-blue-800 border-slate-300'}`}>
                     <tr>
                       <th className="px-4 py-3 border-r border-slate-700/50">Item Code</th>
                       <th className="px-4 py-3 border-r border-slate-700/50">Article No.</th>
