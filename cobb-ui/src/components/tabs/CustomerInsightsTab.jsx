@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  LineChart,
   MessageCircle,
   Users,
   AlertCircle,
@@ -122,7 +121,7 @@ const CustomerInsightsTab = (props) => {
             <div className="bg-white/80 backdrop-blur-md p-5 rounded-2xl border border-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex items-center justify-between hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300">
               <div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Bronze Tier</p>
-                <p className="text-2xl font-black text-slate-800 tracking-tight">&lt; ₹5K</p>
+                <p className="text-2xl font-black text-slate-800 tracking-tight">&lt; â‚¹5K</p>
               </div>
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-orange-50 to-orange-100 flex items-center justify-center border border-orange-200/50 shadow-inner">
                 <span className="text-lg font-black text-orange-600">{(vips || []).filter(c => c.LifetimeSpend < 5000 && c.TotalBills < 10).length}</span>
@@ -131,7 +130,7 @@ const CustomerInsightsTab = (props) => {
             <div className="bg-white/80 backdrop-blur-md p-5 rounded-2xl border border-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex items-center justify-between hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300">
               <div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Silver Tier</p>
-                <p className="text-2xl font-black text-slate-800 tracking-tight">₹5K - ₹20K</p>
+                <p className="text-2xl font-black text-slate-800 tracking-tight">â‚¹5K - â‚¹20K</p>
               </div>
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center border border-slate-300/50 shadow-inner">
                 <span className="text-lg font-black text-slate-600">{(vips || []).filter(c => c.LifetimeSpend >= 5000 && c.LifetimeSpend < 20000 && c.TotalBills < 10).length}</span>
@@ -140,7 +139,7 @@ const CustomerInsightsTab = (props) => {
             <div className="bg-white/80 backdrop-blur-md p-5 rounded-2xl border border-white shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex items-center justify-between hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300">
               <div>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Gold Tier</p>
-                <p className="text-2xl font-black text-slate-800 tracking-tight">₹20K - ₹50K</p>
+                <p className="text-2xl font-black text-slate-800 tracking-tight">â‚¹20K - â‚¹50K</p>
               </div>
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-50 to-yellow-100 flex items-center justify-center border border-yellow-200/50 shadow-inner">
                 <span className="text-lg font-black text-yellow-600">{(vips || []).filter(c => c.LifetimeSpend >= 20000 && c.LifetimeSpend < 50000 && c.TotalBills < 10).length}</span>
@@ -152,7 +151,7 @@ const CustomerInsightsTab = (props) => {
               </div>
               <div className="relative z-10">
                 <p className="text-[10px] font-bold text-blue-200 uppercase tracking-widest mb-1 flex items-center gap-1"><Sparkles className="w-3 h-3" /> Diamond Tier</p>
-                <p className="text-2xl font-black text-white tracking-tight">₹50K+ or 10+ Visits</p>
+                <p className="text-2xl font-black text-white tracking-tight">â‚¹50K+ or 10+ Visits</p>
               </div>
               <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30 relative z-10 shadow-inner">
                 <span className="text-lg font-black text-white">{(vips || []).filter(c => (c.LifetimeSpend >= 50000) || (c.TotalBills >= 10)).length}</span>
@@ -205,7 +204,7 @@ const CustomerInsightsTab = (props) => {
                             </span>
                             {customer.nextTier && (
                               <p className="text-[9px] text-slate-400 mt-0.5 font-normal">
-                                ₹{formatCurrency(customer.spendToNextTier)} to {customer.nextTier}
+                                â‚¹{formatCurrency(customer.spendToNextTier)} to {customer.nextTier}
                               </p>
                             )}
                           </div>
@@ -271,99 +270,6 @@ const CustomerInsightsTab = (props) => {
         </div>
       )}
 
-
-{activeTab === 'trend_forecast' && (
-            <div className="p-4 sm:p-6 lg:p-8 min-h-screen bg-slate-50 space-y-8 animate-in fade-in duration-500">
-              {/* TREND FORECAST PAGE */}
-              <div className="border-b border-slate-200 pb-5 flex justify-between items-center">
-                <div>
-                  <h3 className="text-2xl font-bold text-slate-800 flex items-center">
-                    <LineChart className="w-6 h-6 mr-3 text-indigo-600" /> AI Fashion Trend Forecaster
-                  </h3>
-                  <p className="text-sm text-slate-500 mt-2">Predict upcoming seasonal demands based on market analysis and past performance.</p>
-                </div>
-                <button onClick={fetchTrendForecast} className="bg-white border border-slate-200 px-4 py-2 rounded-xl text-sm font-bold text-slate-600 shadow-sm flex items-center gap-2 hover:bg-slate-50 cursor-pointer">
-                  <Sparkles className={`w-4 h-4 ${isForecasting ? 'animate-spin' : 'text-indigo-500'}`} /> {isForecasting ? 'Forecasting...' : 'Generate AI Forecast'}
-                </button>
-              </div>
-
-              {isForecasting ? (
-                <div className="flex flex-col items-center justify-center py-24 text-slate-400">
-                  <LineChart className="w-10 h-10 animate-bounce mb-4 text-indigo-400" />
-                  <p className="font-bold">Analyzing fashion trends and cross-referencing sales data...</p>
-                </div>
-              ) : trendForecast ? (
-                <div className="space-y-6">
-                  <div className="bg-indigo-50 text-indigo-800 p-4 rounded-xl border border-indigo-100 flex justify-between items-center">
-                    <h4 className="font-black text-lg">Forecast for: {trendForecast.season}</h4>
-                    <span className="text-xs font-bold uppercase tracking-wider bg-white px-2 py-1 rounded text-indigo-600">High Confidence</span>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    {trendForecast.trends.map((trend, idx) => (
-                      <div key={idx} className="bg-slate-800/40 backdrop-blur-xl border border-slate-700/50 rounded-[2rem] p-8 shadow-[0_8px_30px_rgb(0,0,0,0.2)] flex flex-col justify-between group hover:shadow-[0_8px_30px_rgb(0,0,0,0.4)] transition-all">
-                        
-                        <div>
-                          <div className="flex justify-between items-start mb-6">
-                            <span className="text-[10px] font-black uppercase text-indigo-300 tracking-wider bg-indigo-900/50 backdrop-blur-sm border border-indigo-700/50 px-3 py-1.5 rounded-full">{trend.category}</span>
-                            <div className="bg-emerald-900/30 backdrop-blur-sm border border-emerald-800/50 px-4 py-2 rounded-2xl text-center shadow-sm">
-                              <span className="block text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-0.5">Demand Surge</span>
-                              <span className="block text-xl font-black text-emerald-400">{trend.predictedDemandSurge}</span>
-                            </div>
-                          </div>
-                          
-                          <h4 className="text-3xl font-black text-white tracking-tight">{trend.trendName}</h4>
-                          
-                          {/* Confidence Score Gauge */}
-                          <div className="mt-5 mb-8">
-                            <div className="flex justify-between items-end mb-2">
-                              <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">AI Confidence</span>
-                              <span className="text-sm font-black text-indigo-400">{trend.confidenceScore}%</span>
-                            </div>
-                            <div className="w-full bg-slate-700/50 rounded-full h-2 overflow-hidden">
-                              <div className="bg-gradient-to-r from-indigo-500 to-indigo-400 h-2 rounded-full" style={{ width: `${trend.confidenceScore}%` }}></div>
-                            </div>
-                          </div>
-                          
-                          <div className="p-5 bg-slate-900/50 backdrop-blur-md border border-slate-700/50 rounded-2xl shadow-sm">
-                            <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center">
-                              <Tag className="w-3 h-3 mr-1.5 text-slate-400" /> High-Margin Catalog Matches
-                            </span>
-                            <ul className="space-y-4">
-                              {trend.suggestedItems?.map((item, i) => (
-                                <li key={i} className="flex justify-between items-center border-b border-slate-700/50 pb-3 last:border-0 last:pb-0">
-                                  <div className="flex-1 pr-4">
-                                    <p className="text-sm font-bold text-slate-200 leading-tight">{item.name}</p>
-                                  </div>
-                                  <div className="text-right shrink-0">
-                                    <p className="text-sm font-black text-white">{item.suggestedPrice}</p>
-                                    <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider">{item.estimatedMargin} Margin</p>
-                                  </div>
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        </div>
-                        
-                        <div className="mt-8">
-                          <button className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-2xl transition-colors text-sm flex justify-center items-center shadow-lg shadow-indigo-600/20">
-                            Auto-Draft Purchase Order
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-slate-50 rounded-2xl border border-slate-200 border-dashed py-16 text-center text-slate-400">
-                  <LineChart className="w-12 h-12 mx-auto mb-4 text-slate-300" />
-                  <p className="font-bold text-slate-600">No Forecast Generated</p>
-                  <p className="text-sm mt-1">Click "Generate AI Forecast" to view upcoming trends.</p>
-                </div>
-            )}
-            </div>
-
-)}
 
 {activeTab === 'competitor_intel' && (
             <div className="p-4 sm:p-6 lg:p-8 min-h-screen bg-slate-50 space-y-8 animate-in fade-in duration-500">

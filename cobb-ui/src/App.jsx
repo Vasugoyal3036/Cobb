@@ -241,59 +241,10 @@ export default function App() {
   const [smartCoordinate, setSmartCoordinate] = useState({ data: null, loading: false, itemText: '' });
   const [showCoordinateModal, setShowCoordinateModal] = useState(false);
 
-  // VM Auditor State
-  let [vmImages, setVmImages] = useState([]); if (!Array.isArray(vmImages)) vmImages = [];
-  let [vmImageUrls, setVmImageUrls] = useState([]); if (!Array.isArray(vmImageUrls)) vmImageUrls = [];
-  const [vmAuditResult, setVmAuditResult] = useState(null);
-  const [isAuditing, setIsAuditing] = useState(false);
-  const [vmError, setVmError] = useState('');
-
   // Smart Bundling State
   let [bundles, setBundles] = useState(() => getLocalCache('bundles', [])); if (!Array.isArray(bundles)) bundles = [];
   const [isLoadingBundles, setIsLoadingBundles] = useState(false);
   const [publishedBundles, setPublishedBundles] = useState(new Set());
-
-  const handleVmUpload = async (files) => {
-    if (!files || files.length === 0) return;
-    const fileArray = Array.from(files);
-    setVmImages(fileArray);
-    setVmImageUrls(fileArray.map(f => URL.createObjectURL(f)));
-    setVmAuditResult(null);
-    setVmError('');
-    setIsAuditing(true);
-
-    const formData = new FormData();
-    fileArray.forEach(file => {
-      formData.append('images', file);
-    });
-
-    try {
-      const res = await axios.post(`${API_BASE}/api/ai/vm-audit`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      setVmAuditResult(res.data);
-    } catch (err) {
-      console.error(err);
-      setVmError(err.response?.data?.error || 'Audit request failed. Please try again.');
-    } finally {
-      setIsAuditing(false);
-    }
-  };
-
-  const [trendForecast, setTrendForecast] = useState(null);
-  const [isForecasting, setIsForecasting] = useState(false);
-
-  const fetchTrendForecast = async () => {
-    setIsForecasting(true);
-    try {
-      const res = await axios.get(`${API_BASE}/api/ai/trend-forecast`);
-      setTrendForecast(res.data);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsForecasting(false);
-    }
-  };
 
   const [compImage, setCompImage] = useState(null);
   const [compImageUrl, setCompImageUrl] = useState('');
@@ -1397,24 +1348,12 @@ export default function App() {
     setSmartCoordinate: typeof setSmartCoordinate !== 'undefined' ? setSmartCoordinate : undefined,
     showCoordinateModal: typeof showCoordinateModal !== 'undefined' ? showCoordinateModal : undefined,
     setShowCoordinateModal: typeof setShowCoordinateModal !== 'undefined' ? setShowCoordinateModal : undefined,
-    vmImages: typeof vmImages !== 'undefined' ? vmImages : undefined,
-    setVmImages: typeof setVmImages !== 'undefined' ? setVmImages : undefined,
-    vmImageUrls: typeof vmImageUrls !== 'undefined' ? vmImageUrls : undefined,
-    setVmImageUrls: typeof setVmImageUrls !== 'undefined' ? setVmImageUrls : undefined,
-    vmAuditResult: typeof vmAuditResult !== 'undefined' ? vmAuditResult : undefined,
-    setVmAuditResult: typeof setVmAuditResult !== 'undefined' ? setVmAuditResult : undefined,
-    isAuditing: typeof isAuditing !== 'undefined' ? isAuditing : undefined,
-    setIsAuditing: typeof setIsAuditing !== 'undefined' ? setIsAuditing : undefined,
-    vmError: typeof vmError !== 'undefined' ? vmError : undefined,
-    setVmError: typeof setVmError !== 'undefined' ? setVmError : undefined,
     bundles: typeof bundles !== 'undefined' ? bundles : undefined,
     setBundles: typeof setBundles !== 'undefined' ? setBundles : undefined,
     isLoadingBundles: typeof isLoadingBundles !== 'undefined' ? isLoadingBundles : undefined,
     setIsLoadingBundles: typeof setIsLoadingBundles !== 'undefined' ? setIsLoadingBundles : undefined,
     publishedBundles: typeof publishedBundles !== 'undefined' ? publishedBundles : undefined,
     setPublishedBundles: typeof setPublishedBundles !== 'undefined' ? setPublishedBundles : undefined,
-    handleVmUpload: typeof handleVmUpload !== 'undefined' ? handleVmUpload : undefined,
-    fetchTrendForecast: typeof fetchTrendForecast !== 'undefined' ? fetchTrendForecast : undefined,
     handleCompUpload: typeof handleCompUpload !== 'undefined' ? handleCompUpload : undefined,
     fetchBundles: typeof fetchBundles !== 'undefined' ? fetchBundles : undefined,
     globalCustomers: typeof globalCustomers !== 'undefined' ? globalCustomers : undefined,
@@ -1579,8 +1518,7 @@ export default function App() {
     renderLogLine: typeof renderLogLine !== 'undefined' ? renderLogLine : undefined,
     persona: typeof persona !== 'undefined' ? persona : undefined,
     handleGenerateSmartCoordinate: typeof handleGenerateSmartCoordinate !== 'undefined' ? handleGenerateSmartCoordinate : undefined,
-    trendForecast: typeof trendForecast !== 'undefined' ? trendForecast : undefined,
-    isForecasting: typeof isForecasting !== 'undefined' ? isForecasting : undefined,
+
     compImage: typeof compImage !== 'undefined' ? compImage : undefined,
     compImageUrl: typeof compImageUrl !== 'undefined' ? compImageUrl : undefined,
     compIntelResult: typeof compIntelResult !== 'undefined' ? compIntelResult : undefined,
@@ -2001,7 +1939,7 @@ export default function App() {
             )}
 
             {/* 6. AI CAMPAIGN BUILDER */}
-            {['vm_auditor', 'smart_bundles'].includes(activeTab) && (
+            {activeTab === 'smart_bundles' && (
               <CampaignBuilderTab {...appState} />
             )}
 
@@ -2021,7 +1959,7 @@ export default function App() {
             )}
 
             {/* 9. VIP & DORMANT */}
-            {['customerinsights', 'vip', 'dormant', 'trend_forecast', 'competitor_intel'].includes(activeTab) && (
+            {['customerinsights', 'vip', 'dormant', 'competitor_intel'].includes(activeTab) && (
               <CustomerInsightsTab {...appState} />
             )}
 

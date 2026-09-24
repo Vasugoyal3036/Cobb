@@ -4,7 +4,6 @@ import SetupWizardModal from './SetupWizardModal';
 import SystemHealthModal from './SystemHealthModal';
 import PwaInstallBanner from './PwaInstallBanner';
 import {
-  LineChart,
   MessageCircle,
   Users,
   AlertCircle,
@@ -63,7 +62,6 @@ import {
   Crown,
   ThumbsUp,
   Upload,
-  Camera,
   Percent,
   CheckCircle,
   AlertTriangle,
@@ -105,9 +103,7 @@ const navigationItems = [
       { id: "transit", label: "Goods In Transit", icon: Truck, colorClass: "text-orange-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-orange-500/15 text-orange-400 font-bold border-l-2 border-orange-500" },
       { id: "deadstock", label: "Inventory", icon: Package },
       { id: "reorder", label: "Warehouse Reorder", icon: ClipboardList, colorClass: "text-blue-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-blue-500/15 text-blue-400 font-bold border-l-2 border-blue-500" },
-      { id: "vm_auditor", label: "VM Auditor", icon: Camera, colorClass: "text-purple-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-purple-500/15 text-purple-400 font-bold border-l-2 border-purple-500" },
       { id: "smart_bundles", label: "Smart Bundling", icon: Percent, colorClass: "text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-400 font-bold border-l-2 border-amber-500" },
-      { id: "trend_forecast", label: "Trend Forecaster", icon: LineChart, colorClass: "text-indigo-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-indigo-500/15 text-indigo-400 font-bold border-l-2 border-indigo-500" },
       { id: "competitor_intel", label: "Competitor Intel", icon: Target, colorClass: "text-red-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-red-500/15 text-red-400 font-bold border-l-2 border-red-500" },
     ]
   },

@@ -994,5 +994,17 @@
     "reason": "checkout",
     "status": "sent",
     "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-09-24T16:29:07.363800",
+    "date": "2026-09-24",
+    "time": "04:29 PM",
+    "billNo": "STST27-00727   ",
+    "cmId": "ST01127000STST27-00727",
+    "customerName": "Gulshan Walia",
+    "phone": "9896108500",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
   }
 ]

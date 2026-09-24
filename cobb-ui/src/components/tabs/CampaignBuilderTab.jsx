@@ -1,10 +1,9 @@
 import React from 'react';
-import { Megaphone, Camera, Sparkles, Send, RefreshCw, Layers, Upload, Percent, Plus } from 'lucide-react';
+import { Megaphone, Sparkles, Send, RefreshCw, Layers, Percent, Plus } from 'lucide-react';
 
 const CampaignBuilderTab = (props) => {
-  const { 
-    activeTab, 
-    vmImages, vmImageUrls, vmAuditResult, isAuditing, handleVmUpload, vmError,
+  const {
+    activeTab,
     bundles, isLoadingBundles, fetchBundles,
     campaignEvent, setCampaignEvent, campaignAudience, setCampaignAudience, campaignDraft, isGeneratingCampaign, handleGenerateCampaign
   } = props;
@@ -12,55 +11,6 @@ const CampaignBuilderTab = (props) => {
   return (
     <div className="p-4 sm:p-6 lg:p-8 animate-in fade-in duration-500">
       
-      {/* 1. VM AUDITOR PAGE */}
-      {activeTab === 'vm_auditor' && (
-        <div className="space-y-6">
-          <div className="border-b border-slate-200 pb-5">
-            <h3 className="text-2xl font-bold text-slate-800 flex items-center gap-3">
-              <Camera className="w-7 h-7 text-purple-600" /> AI Visual Merchandising Auditor
-            </h3>
-            <p className="text-sm text-slate-500 mt-2">Upload photos of your storefront or mannequins, and our Vision AI will analyze display compliance and suggest layout improvements.</p>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-10 text-center max-w-3xl mx-auto mt-8">
-            <div className="w-24 h-24 bg-purple-50 rounded-full flex items-center justify-center mx-auto mb-6 border-8 border-purple-100/50">
-              <Upload className="w-10 h-10 text-purple-500" />
-            </div>
-            <h4 className="text-xl font-black text-slate-800 mb-2">Upload Storefront Photos</h4>
-            <p className="text-slate-500 mb-8">Drag and drop images here, or click to browse. Supports JPG, PNG.</p>
-            
-            <label className="relative inline-flex items-center justify-center px-8 py-4 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all cursor-pointer shadow-md overflow-hidden group">
-              <input type="file" className="absolute inset-0 opacity-0 cursor-pointer" multiple accept="image/*" onChange={handleVmUpload} />
-              <span className="flex items-center gap-2 group-hover:scale-105 transition-transform">
-                <Camera size={18} /> Select Photos
-              </span>
-            </label>
-            
-            {vmError && <p className="text-red-500 mt-4 font-medium">{vmError}</p>}
-            
-            {vmImages?.length > 0 && (
-              <div className="mt-10 pt-8 border-t border-slate-100">
-                <div className="flex justify-center gap-4 flex-wrap">
-                  {vmImageUrls?.map((url, i) => (
-                    <img key={i} src={url} alt="VM Upload" className="w-32 h-32 object-cover rounded-xl shadow-sm border border-slate-200" />
-                  ))}
-                </div>
-                <button className="mt-6 bg-purple-600 text-white px-6 py-3 rounded-xl font-bold shadow-md shadow-purple-500/20 hover:bg-purple-700 flex items-center gap-2 mx-auto">
-                  {isAuditing ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
-                  {isAuditing ? 'Analyzing...' : 'Run AI VM Audit'}
-                </button>
-              </div>
-            )}
-            
-            {vmAuditResult && (
-              <div className="mt-8 bg-purple-50 p-6 rounded-2xl text-left border border-purple-100">
-                <h5 className="font-black text-purple-900 mb-2 flex items-center gap-2"><Sparkles size={16}/> Audit Results</h5>
-                <p className="text-purple-800">{vmAuditResult}</p>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* 2. SMART BUNDLES PAGE */}
       {activeTab === 'smart_bundles' && (
