@@ -666,7 +666,11 @@ const Layout = ({
           </div>
         </header>
 
-        <div className={activeTab === 'copilot' ? 'p-0 sm:p-6 lg:p-8 max-w-7xl mx-auto' : 'p-3 sm:p-6 lg:p-8 max-w-7xl mx-auto'}>
+        <div className={
+          ['copilot', 'transit'].includes(activeTab)
+            ? 'p-0 sm:p-4 lg:p-6 mx-auto w-full h-full' 
+            : 'p-3 sm:p-6 lg:p-8 max-w-7xl mx-auto'
+        }>
           {/* Multi-Store Executive HQ Mode Banner */}
           {activeStore === 'ALL' && (
             <div className="mb-5 p-4 rounded-2xl bg-gradient-to-r from-blue-950/70 via-indigo-950/60 to-purple-950/70 border border-blue-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xl backdrop-blur-md">
