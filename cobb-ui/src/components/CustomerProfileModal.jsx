@@ -71,40 +71,42 @@ const CustomerProfileModal = (props) => {
   return (
     <>
       <div className={inline ? "w-full h-full flex justify-end transition-opacity" : "fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex justify-end z-50 transition-opacity"}>
-            <div className={`bg-white w-full h-full p-0 overflow-hidden flex flex-col relative ${inline ? 'rounded-2xl border border-slate-200' : 'sm:max-w-xl shadow-2xl'}`}>
+            <div className={`${darkMode ? 'bg-[#121829]' : 'bg-white'} w-full h-full p-0 overflow-hidden flex flex-col relative ${inline ? `rounded-2xl border ${darkMode ? 'border-[#232e47]' : 'border-slate-200'}` : 'sm:max-w-xl shadow-2xl'}`}>
 
               {/* Modal Header */}
-              <div className="p-4 sm:p-6 lg:p-8 border-b border-slate-100 bg-slate-50">
+              <div className={`p-4 sm:p-6 lg:p-8 border-b ${darkMode ? 'border-[#232e47] bg-slate-900/50' : 'border-slate-100 bg-slate-50'}`}>
                 <div className="flex justify-between items-start">
                   <div>
                     <span className="text-[10px] uppercase font-black text-blue-600 tracking-widest">Client Dossier</span>
                     <div className="flex items-center mt-2">
-                      <h3 className="text-3xl font-black text-slate-800">{selectedCustomer.FirstName} {selectedCustomer.LastName || ''}</h3>
+                      <h3 className={`text-3xl font-black ${darkMode ? 'text-white' : 'text-slate-800'}`}>{selectedCustomer.FirstName} {selectedCustomer.LastName || ''}</h3>
                     </div>
                     <div className="flex items-center mt-3 gap-3">
-                      <p className="text-sm text-slate-500 font-mono bg-white px-3 py-1 rounded-lg border border-slate-200">{selectedCustomer.Phone}</p>
+                      <p className={`text-sm font-mono px-3 py-1 rounded-lg border ${darkMode ? 'bg-[#1a2333] border-[#232e47] text-slate-300' : 'bg-white border-slate-200 text-slate-500'}`}>{selectedCustomer.Phone}</p>
                       {loadingPersona ? (
-                        <span className="px-3 py-1 bg-slate-200 text-slate-500 rounded-lg text-xs font-bold animate-pulse">Analyzing Style...</span>
+                        <span className={`px-3 py-1 rounded-lg text-xs font-bold animate-pulse ${darkMode ? 'bg-slate-800 text-slate-400' : 'bg-slate-200 text-slate-500'}`}>Analyzing Style...</span>
                       ) : customerPersona ? (
-                        <span className="px-3 py-1 bg-indigo-100 text-indigo-800 border border-indigo-200 rounded-lg text-xs font-bold flex items-center shadow-sm">
+                        <span className={`px-3 py-1 border rounded-lg text-xs font-bold flex items-center shadow-sm ${darkMode ? 'bg-indigo-900/30 text-indigo-300 border-indigo-500/30' : 'bg-indigo-100 text-indigo-800 border-indigo-200'}`}>
                           <Sparkles className="w-3 h-3 mr-1.5 text-indigo-500" /> {customerPersona}
                         </span>
                       ) : null}
                     </div>
                   </div>
-                  <button onClick={() => setSelectedCustomer(null)} className="p-2.5 bg-white shadow-sm border border-slate-200 rounded-full text-slate-400 hover:text-slate-800 hover:bg-slate-50 transition-colors cursor-pointer">
-                    <X className="w-5 h-5" />
-                  </button>
+                  {!inline && (
+                    <button onClick={() => setSelectedCustomer(null)} className={`p-2.5 shadow-sm border rounded-full transition-colors cursor-pointer ${darkMode ? 'bg-[#1a2333] border-[#232e47] text-slate-400 hover:text-white hover:bg-slate-800' : 'bg-white border-slate-200 text-slate-400 hover:text-slate-800 hover:bg-slate-50'}`}>
+                      <X className="w-5 h-5" />
+                    </button>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8">
-                  <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Lifetime Value</p>
-                    <p className="text-2xl font-black text-green-600 mt-1">{formatCurrency(selectedCustomer.LifetimeSpend)}</p>
+                  <div className={`p-4 rounded-xl border shadow-sm ${darkMode ? 'bg-[#1a2333] border-[#232e47]' : 'bg-white border-slate-200'}`}>
+                    <p className={`text-[10px] font-bold uppercase tracking-wider ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>Lifetime Value</p>
+                    <p className={`text-2xl font-black mt-1 ${darkMode ? 'text-green-500' : 'text-green-600'}`}>{formatCurrency(selectedCustomer.LifetimeSpend)}</p>
                   </div>
-                  <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total Invoices</p>
-                    <p className="text-2xl font-black text-blue-600 mt-1">{selectedCustomer.TotalBills || customerHistory.length} <span className="text-sm font-semibold text-slate-400 ml-1">Visits</span></p>
+                  <div className={`p-4 rounded-xl border shadow-sm ${darkMode ? 'bg-[#1a2333] border-[#232e47]' : 'bg-white border-slate-200'}`}>
+                    <p className={`text-[10px] font-bold uppercase tracking-wider ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>Total Invoices</p>
+                    <p className={`text-2xl font-black mt-1 ${darkMode ? 'text-blue-500' : 'text-blue-600'}`}>{selectedCustomer.TotalBills || customerHistory.length} <span className={`text-sm font-semibold ml-1 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>Visits</span></p>
                   </div>
                 </div>
               </div>
@@ -167,8 +169,8 @@ const CustomerProfileModal = (props) => {
 
                 {/* Purchase History */}
                 <div>
-                  <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center">
-                    <ShoppingBag className="w-5 h-5 mr-2 text-slate-400" /> Itemized Wardrobe History
+                  <h4 className={`text-sm font-bold uppercase tracking-wider mb-4 flex items-center ${darkMode ? 'text-slate-300' : 'text-slate-800'}`}>
+                    <ShoppingBag className={`w-5 h-5 mr-2 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`} /> Itemized Wardrobe History
                   </h4>
 
                   {loadingHistory ? (
@@ -177,27 +179,27 @@ const CustomerProfileModal = (props) => {
                       <p className="text-sm font-medium">Loading line items...</p>
                     </div>
                   ) : customerHistory.length === 0 ? (
-                    <div className="bg-slate-50 rounded-2xl border border-slate-200 border-dashed py-12 text-center text-slate-400">
-                      <Package className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                    <div className={`rounded-2xl border border-dashed py-12 text-center ${darkMode ? 'bg-[#1a2333] border-[#232e47] text-slate-500' : 'bg-slate-50 border-slate-200 text-slate-400'}`}>
+                      <Package className="w-8 h-8 mx-auto mb-2 opacity-50" />
                       No individual line items found.
                     </div>
                   ) : (
-                    <div className="border border-slate-200 rounded-2xl overflow-hidden divide-y divide-slate-100 shadow-sm bg-white">
+                    <div className={`border rounded-2xl overflow-hidden divide-y shadow-sm ${darkMode ? 'bg-[#1a2333] border-[#232e47] divide-[#232e47]' : 'bg-white border-slate-200 divide-slate-100'}`}>
                       {customerHistory.map((item, idx) => (
-                        <div key={idx} className="p-4 hover:bg-slate-50 transition-colors flex justify-between items-center group">
+                        <div key={idx} className={`p-4 transition-colors flex justify-between items-center group ${darkMode ? 'hover:bg-slate-800/50' : 'hover:bg-slate-50'}`}>
                           <div>
-                            <p className="text-sm font-bold text-slate-800 group-hover:text-blue-600 transition-colors">{item.ArticleName}</p>
+                            <p className={`text-sm font-bold transition-colors ${darkMode ? 'text-slate-200 group-hover:text-blue-400' : 'text-slate-800 group-hover:text-blue-600'}`}>{item.ArticleName}</p>
                             <div className="flex gap-2 mt-1.5">
-                              <span className="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200">Size: {item.Size}</span>
-                              <span className="text-[10px] font-bold bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200">Color: {item.Color}</span>
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${darkMode ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>Size: {item.Size}</span>
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${darkMode ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-slate-100 text-slate-600 border-slate-200'}`}>Color: {item.Color}</span>
                             </div>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">
+                            <p className={`text-[10px] font-bold uppercase tracking-widest mt-2 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
                               {new Date(item.BillDate).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })} • {item.Category}
                             </p>
                           </div>
                           <div className="text-right">
-                            <p className="text-base font-black text-slate-800">{formatCurrency(item.NetPrice)}</p>
-                            <p className="text-xs font-bold text-slate-400 mt-1 bg-slate-50 px-2 py-1 rounded inline-block">{item.Quantity} Unit(s)</p>
+                            <p className={`text-base font-black ${darkMode ? 'text-slate-200' : 'text-slate-800'}`}>{formatCurrency(item.NetPrice)}</p>
+                            <p className={`text-xs font-bold mt-1 px-2 py-1 rounded inline-block ${darkMode ? 'bg-slate-800 text-slate-400' : 'bg-slate-50 text-slate-400'}`}>{item.Quantity} Unit(s)</p>
                           </div>
                         </div>
                       ))}
