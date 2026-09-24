@@ -60,18 +60,40 @@ export default function SetupScreen({ onComplete }) {
     }
   };
 
-  const startAiMapping = () => {
+  const startAiMapping = async () => {
     setAiAnalysisStatus('scanning');
     
-    // Simulate finding tables
-    setTimeout(() => {
+    try {
+      // Connect to the backend AI mapper
+      const response = await fetch('http://localhost:5000/api/setup/map-schema', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          engine: dbEngine,
+          host: dbConfig.host,
+          port: dbConfig.port,
+          database: dbConfig.database,
+          username: dbConfig.username,
+          password: dbConfig.password
+        })
+      });
+
+      const data = await response.json();
+      
       setAiAnalysisStatus('mapping');
       
-      // Simulate AI writing SQL queries
-      setTimeout(() => {
-        setAiAnalysisStatus('complete');
-      }, 3000);
-    }, 2000);
+      if (data.success) {
+        setTimeout(() => {
+          setAiAnalysisStatus('complete');
+        }, 1500); // Artificial delay to let the animation play out for the user
+      } else {
+        alert("AI Mapping Failed: " + data.error);
+        setAiAnalysisStatus('idle');
+      }
+    } catch (err) {
+      alert("Network Error: " + err.message);
+      setAiAnalysisStatus('idle');
+    }
   };
 
   const handleKeyUpload = (e) => {

@@ -11,6 +11,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@google/genai": "^2.24.0",
     "@google/generative-ai": "^0.24.1",
     "@ngrok/ngrok": "^1.7.0",
     "axios": "^1.19.0",
@@ -23,6 +24,8 @@
     "msnodesqlv8": "^5.2.3",
     "mssql": "^12.7.0",
     "multer": "^2.2.0",
-    "node-cache": "^5.1.2"
+    "mysql2": "^3.24.4",
+    "node-cache": "^5.1.2",
+    "pg": "^8.23.0"
   }
 }

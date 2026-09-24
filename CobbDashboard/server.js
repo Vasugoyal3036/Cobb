@@ -25,6 +25,9 @@ app.use('/api/tunnel', tunnelRouter);
 const configRouter = require('./routes/config');
 app.use('/api/config', configRouter);
 
+const setupRouter = require('./routes/setup');
+app.use('/api/setup', setupRouter);
+
 const expensesRouter = require('./routes/expenses');
 app.use('/api/expenses', expensesRouter);
 
