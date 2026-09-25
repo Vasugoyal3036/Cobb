@@ -208,7 +208,7 @@ const setLocalCache = (key, val) => {
 export default function App() {
   const { user, role, activeStore, switchStore, switchRole } = useAuth();
   const currentRole = role || user?.role || 'owner';
-  const [showSetup, setShowSetup] = useState(true); // Force true for SaaS preview
+  const [showSetup, setShowSetup] = useState(() => localStorage.getItem('cobb_setup_complete') !== 'true');
 
   let [vips, setVips] = useState(() => getLocalCache('vips', [])); if (!Array.isArray(vips)) vips = [];
   let [dormant, setDormant] = useState(() => getLocalCache('dormant', [])); if (!Array.isArray(dormant)) dormant = [];
@@ -1528,7 +1528,10 @@ export default function App() {
   };
 
   if (showSetup) {
-    return <SetupScreen onComplete={() => setShowSetup(false)} />;
+    return <SetupScreen onComplete={() => {
+      localStorage.setItem('cobb_setup_complete', 'true');
+      setShowSetup(false);
+    }} />;
   }
 
   if (!user) {
