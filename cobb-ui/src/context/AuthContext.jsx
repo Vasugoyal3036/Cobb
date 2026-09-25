@@ -14,7 +14,9 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
     try {
       const cached = localStorage.getItem('cobb_auth_user');
-      return cached ? JSON.parse(cached) : { id: 1, username: 'admin', role: 'owner', name: 'Parbhat Goyal' };
+      const parsed = cached ? JSON.parse(cached) : null;
+      if (parsed && parsed.username) return parsed;
+      return { id: 1, username: 'admin', role: 'owner', name: 'Parbhat Goyal' };
     } catch {
       return { id: 1, username: 'admin', role: 'owner', name: 'Parbhat Goyal' };
     }
