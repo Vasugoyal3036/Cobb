@@ -9,6 +9,7 @@ export default function AlterationsTab({ darkMode, activeStore = 'DEMO_STORE_001
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [dateFilter, setDateFilter] = useState('Today');
 
   useEffect(() => {
     const targetStore = activeStore === 'ALL' ? 'DEMO_STORE_001' : activeStore;
@@ -51,10 +52,25 @@ export default function AlterationsTab({ darkMode, activeStore = 'DEMO_STORE_001
     }
   };
 
-  const filtered = alterations.filter(s => 
-    (s.customerName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (s.phone || '').includes(searchQuery)
-  );
+  const filtered = alterations.filter(s => {
+    const searchMatch = (s.customerName || '').toLowerCase().includes(searchQuery.toLowerCase()) || (s.phone || '').includes(searchQuery);
+    if (!searchMatch) return false;
+
+    if (dateFilter === 'All Time') return true;
+    if (!s.createdAt) return false;
+    
+    const now = new Date();
+    const todayStr = now.toDateString();
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toDateString();
+    
+    const dateStr = s.createdAt.toDate ? s.createdAt.toDate().toDateString() : new Date(s.createdAt).toDateString();
+    
+    if (dateFilter === 'Today') return dateStr === todayStr;
+    if (dateFilter === 'Yesterday') return dateStr === yesterdayStr;
+    return true;
+  });
 
   return (
     <div className={`p-4 md:p-6 lg:p-8 animate-in fade-in duration-500 max-w-7xl mx-auto space-y-6 ${darkMode ? 'text-white' : 'text-slate-900'}`}>
@@ -87,6 +103,20 @@ export default function AlterationsTab({ darkMode, activeStore = 'DEMO_STORE_001
             />
           </div>
           
+          <select
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+            className={`px-3 py-2.5 rounded-xl text-sm font-bold border focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-colors ${
+              darkMode 
+                ? 'bg-[#0e1320] border-[#1c2436] text-slate-200' 
+                : 'bg-white border-slate-200 text-slate-700'
+            }`}
+          >
+            <option value="Today">Today</option>
+            <option value="Yesterday">Yesterday</option>
+            <option value="All Time">All Time</option>
+          </select>
+
           <button 
             onClick={() => setShowModal(true)}
             className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2.5 rounded-xl font-bold shadow-lg shadow-indigo-500/20 transition-all active:scale-95"

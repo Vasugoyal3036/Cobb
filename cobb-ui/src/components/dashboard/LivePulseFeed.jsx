@@ -15,11 +15,12 @@ const LivePulseFeed = ({
   activeStore = 'DEMO_STORE_001'
 }) => {
   const [recentAlterations, setRecentAlterations] = useState([]);
+  const [alterationDateFilter, setAlterationDateFilter] = useState('Today');
 
   useEffect(() => {
     const targetStore = activeStore === 'ALL' ? 'DEMO_STORE_001' : activeStore;
     const alterationsRef = collection(db, `stores/${targetStore}/alterations`);
-    const q = query(alterationsRef, orderBy('createdAt', 'desc'), limit(3));
+    const q = query(alterationsRef, orderBy('createdAt', 'desc'), limit(50));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const slips = [];
@@ -223,23 +224,58 @@ const LivePulseFeed = ({
 
           {/* Sub-Panel 2: Alteration Desk */}
           <div 
-            onClick={() => setShowAlterationModal?.(true)}
-            className="cursor-pointer group flex flex-col justify-between md:border-l md:border-slate-800/60 md:pl-4 hover:bg-slate-50 dark:hover:bg-[#151a26] rounded-xl transition-colors p-2 -m-2"
+            className="group flex flex-col justify-between md:border-l md:border-slate-800/60 md:pl-4 hover:bg-slate-50 dark:hover:bg-[#151a26] rounded-xl transition-colors p-2 -m-2"
           >
             <div>
               <div className="flex items-center justify-between gap-2 mb-2 pb-2 border-b border-slate-100 dark:border-[#1c2436]">
-                <span className="text-[11px] font-black uppercase tracking-wider text-indigo-500 dark:text-indigo-400 flex items-center gap-1.5">
+                <span 
+                  onClick={() => setShowAlterationModal?.(true)}
+                  className="cursor-pointer text-[11px] font-black uppercase tracking-wider text-indigo-500 dark:text-indigo-400 flex items-center gap-1.5"
+                >
                   <Scissors className="w-3.5 h-3.5" />
                   Alteration Desk
                 </span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 border border-indigo-500/20">
-                  {recentAlterations.length} Recent
-                </span>
+                <select
+                  value={alterationDateFilter}
+                  onChange={(e) => setAlterationDateFilter(e.target.value)}
+                  className={`text-[10px] font-bold px-2 py-0.5 rounded cursor-pointer outline-none ${
+                    darkMode 
+                      ? 'bg-indigo-500/10 text-indigo-400 border border-indigo-500/20' 
+                      : 'bg-indigo-50 text-indigo-600 border border-indigo-200'
+                  }`}
+                >
+                  <option value="Today">Today</option>
+                  <option value="Yesterday">Yesterday</option>
+                  <option value="All Time">All Time</option>
+                </select>
               </div>
 
               <div className="space-y-1.5 mt-2">
-                {recentAlterations.length > 0 ? (
-                  recentAlterations.map((slip, idx) => (
+                {(() => {
+                  const now = new Date();
+                  const todayStr = now.toDateString();
+                  const yesterday = new Date(now);
+                  yesterday.setDate(yesterday.getDate() - 1);
+                  const yesterdayStr = yesterday.toDateString();
+
+                  const filtered = recentAlterations.filter(s => {
+                    if (alterationDateFilter === 'All Time') return true;
+                    if (!s.createdAt) return false;
+                    const dateStr = s.createdAt.toDate ? s.createdAt.toDate().toDateString() : new Date(s.createdAt).toDateString();
+                    if (alterationDateFilter === 'Today') return dateStr === todayStr;
+                    if (alterationDateFilter === 'Yesterday') return dateStr === yesterdayStr;
+                    return true;
+                  }).slice(0, 3);
+
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="py-4 text-center text-xs text-slate-500 dark:text-slate-400">
+                        No alteration slips for {alterationDateFilter}.
+                      </div>
+                    );
+                  }
+
+                  return filtered.map((slip, idx) => (
                     <div key={idx} className="flex items-center justify-between text-xs py-1.5 px-2.5 rounded-xl bg-slate-900/30 border border-slate-800/40 hover:border-indigo-500/30 transition-all">
                       <div className="min-w-0 pr-2">
                         <p className="font-bold truncate text-[11px] text-slate-200">{slip.customerName || 'Customer'}</p>
@@ -255,16 +291,15 @@ const LivePulseFeed = ({
                         {slip.status || 'Pending'}
                       </span>
                     </div>
-                  ))
-                ) : (
-                  <div className="py-4 text-center text-xs text-slate-500 dark:text-slate-400">
-                    No recent alteration slips. Create one below.
-                  </div>
-                )}
+                  ));
+                })()}
               </div>
             </div>
 
-            <div className="mt-3 pt-2 border-t border-slate-200/40 dark:border-[#1c2436] flex items-center justify-between text-[11px] font-bold text-indigo-500 dark:text-indigo-400 group-hover:underline">
+            <div 
+              onClick={() => setShowAlterationModal?.(true)}
+              className="cursor-pointer mt-3 pt-2 border-t border-slate-200/40 dark:border-[#1c2436] flex items-center justify-between text-[11px] font-bold text-indigo-500 dark:text-indigo-400 group-hover:underline"
+            >
               <span>Create New Slip</span>
               <Plus className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform" />
             </div>
