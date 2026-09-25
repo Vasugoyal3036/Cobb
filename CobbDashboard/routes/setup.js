@@ -22,6 +22,37 @@ router.post('/map-schema', async (req, res) => {
         const mappingPath = path.join(__dirname, '..', 'schema_map.json');
         fs.writeFileSync(mappingPath, JSON.stringify(mappingResult, null, 2));
 
+        // Save DB credentials to .env file
+        const envPath = path.join(__dirname, '..', '.env');
+        let envContent = '';
+        if (fs.existsSync(envPath)) {
+            envContent = fs.readFileSync(envPath, 'utf8');
+        } else {
+            // Fallback to .env.example if .env doesn't exist yet
+            const examplePath = path.join(__dirname, '..', '.env.example');
+            if (fs.existsSync(examplePath)) {
+                envContent = fs.readFileSync(examplePath, 'utf8');
+            }
+        }
+        
+        // Update or append DB connection strings
+        const updateEnvVar = (content, key, value) => {
+            const regex = new RegExp(`^${key}=.*$`, 'm');
+            if (regex.test(content)) {
+                return content.replace(regex, `${key}=${value}`);
+            } else {
+                return content + (content.endsWith('\n') ? '' : '\n') + `${key}=${value}\n`;
+            }
+        };
+
+        envContent = updateEnvVar(envContent, 'DB_SERVER', host);
+        envContent = updateEnvVar(envContent, 'DB_USER', username);
+        envContent = updateEnvVar(envContent, 'DB_PASSWORD', password);
+        envContent = updateEnvVar(envContent, 'DB_NAME', database);
+
+        fs.writeFileSync(envPath, envContent);
+        console.log(`[Setup API] DB Credentials successfully saved to .env`);
+
         res.json({
             success: true,
             message: "AI Schema Mapping Complete",

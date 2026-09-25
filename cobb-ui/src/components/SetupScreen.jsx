@@ -24,6 +24,7 @@ export default function SetupScreen({ onComplete }) {
 
   // Step 1: DB State
   const [dbConfig, setDbConfig] = useState({
+    licenseKey: '',
     host: 'localhost',
     port: '1433',
     database: '',
@@ -157,6 +158,19 @@ export default function SetupScreen({ onComplete }) {
           {step === 1 && (
             <div className="animate-in fade-in slide-in-from-right-8 duration-500 max-w-xl mx-auto space-y-6">
               
+              <div className="space-y-4 mb-6">
+                <div>
+                  <label className="text-xs font-bold text-slate-500 uppercase ml-1 block mb-1">Product License Key</label>
+                  <input 
+                    type="text" 
+                    placeholder="XXXX-XXXX-XXXX-XXXX"
+                    value={dbConfig.licenseKey}
+                    onChange={e => setDbConfig({...dbConfig, licenseKey: e.target.value})}
+                    className="w-full bg-slate-900/50 border border-slate-800 rounded-xl px-4 py-3 focus:outline-none focus:border-blue-500 transition-colors font-mono tracking-widest text-blue-400" 
+                  />
+                </div>
+              </div>
+
               <div className="grid grid-cols-3 gap-3 mb-6">
                 {['mssql', 'mysql', 'postgres'].map(engine => (
                   <button 

@@ -3,6 +3,7 @@ module.exports = {
     {
       name: "cobb-backend",
       script: "server.js",
+      kill_timeout: 10000,
       watch: ["server.js"],
       ignore_watch: [
         "node_modules",
