@@ -105,7 +105,7 @@ const resolveApiBase = () => {
   if (typeof window !== 'undefined') {
     const host = window.location.hostname;
     if (host.includes('vercel.app') || host.includes('web.app') || host.includes('firebaseapp.com')) {
-      return 'https://freckles-comfy-proving.ngrok-free.dev';
+      return 'http://localhost:5000';
     }
     // If accessing from phone via local Wi-Fi IP (e.g. 192.168.x.x, 10.x.x.x, 172.x.x.x)
     if (host.startsWith('192.168.') || host.startsWith('10.') || host.startsWith('172.')) {
@@ -113,7 +113,7 @@ const resolveApiBase = () => {
     }
     // Remote browser on other domain
     if (host !== 'localhost' && host !== '127.0.0.1' && !isElectron) {
-      return 'https://freckles-comfy-proving.ngrok-free.dev';
+      return 'http://localhost:5000';
     }
   }
   return 'http://localhost:5000';
