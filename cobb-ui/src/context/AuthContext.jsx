@@ -21,7 +21,7 @@ export const AuthProvider = ({ children }) => {
   });
 
   const [activeStore, setActiveStore] = useState(() => {
-    return localStorage.getItem('cobb_active_store') || 'STORE_01';
+    return localStorage.getItem('cobb_active_store') || 'DEMO_STORE_001';
   });
 
   const switchRole = (newRole) => {
