@@ -113,7 +113,11 @@ const LiveBillsTab = (props) => {
 
         // If currently viewing today, also sync back to liveBills in App.jsx
         if (filterType === 'today' && typeof setLiveBills === 'function') {
-          setLiveBills(res.data);
+          const todayOnly = res.data.filter(b => {
+            const bDate = b.BillDate ? b.BillDate.trim() : (b.BillTime ? b.BillTime.slice(0, 10) : '');
+            return bDate === todayStr;
+          });
+          setLiveBills(todayOnly);
         }
       }
     } catch (err) {

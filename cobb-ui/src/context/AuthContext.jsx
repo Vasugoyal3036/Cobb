@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState } from 'react';
 
 export const AVAILABLE_STORES = [
-  { id: 'STORE_01', name: 'Cobb Pundri (Main)', shortName: 'Pundri', code: 'PUNDRI', location: 'Fatehpur Road, Pundri' },
+  { id: 'DEMO_STORE_001', name: 'Cobb Pundri (Main)', shortName: 'Pundri', code: 'PUNDRI', location: 'Fatehpur Road, Pundri' },
   { id: 'STORE_02', name: 'Cobb Branch 2 (New)', shortName: 'Branch 2', code: 'BRANCH_2', location: 'New Branch Market' },
   { id: 'ALL', name: 'All Stores (Combined)', shortName: 'All Stores', code: 'ALL', location: 'Consolidated Multi-Store View' }
 ];
@@ -21,7 +21,9 @@ export const AuthProvider = ({ children }) => {
   });
 
   const [activeStore, setActiveStore] = useState(() => {
-    return localStorage.getItem('cobb_active_store') || 'DEMO_STORE_001';
+    const stored = localStorage.getItem('cobb_active_store');
+    if (!stored || stored === 'STORE_01') return 'DEMO_STORE_001';
+    return stored;
   });
 
   const switchRole = (newRole) => {

@@ -30,7 +30,7 @@ export default function AlterationSlipModal({
     // 1. Save to database
     try {
       setIsSaving(true);
-      const targetStore = storeId === 'ALL' ? 'DEMO_STORE_001' : storeId;
+      const targetStore = (!storeId || storeId === 'ALL' || storeId === 'STORE_01') ? 'DEMO_STORE_001' : storeId;
       const alterationsRef = collection(db, `stores/${targetStore}/alterations`);
       await addDoc(alterationsRef, {
         customerName,

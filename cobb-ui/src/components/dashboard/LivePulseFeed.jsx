@@ -17,16 +17,22 @@ const LivePulseFeed = ({
   const [recentAlterations, setRecentAlterations] = useState([]);
 
   useEffect(() => {
-    const targetStore = activeStore === 'ALL' ? 'DEMO_STORE_001' : activeStore;
+    const targetStore = (!activeStore || activeStore === 'ALL' || activeStore === 'STORE_01') ? 'DEMO_STORE_001' : activeStore;
     const alterationsRef = collection(db, `stores/${targetStore}/alterations`);
-    const q = query(alterationsRef, orderBy('createdAt', 'desc'), limit(3));
+    const q = query(alterationsRef, orderBy('createdAt', 'desc'), limit(5));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const slips = [];
       snapshot.forEach((doc) => {
         slips.push({ id: doc.id, ...doc.data() });
       });
-      setRecentAlterations(slips);
+      // Prioritize pending alterations, then recent
+      slips.sort((a, b) => {
+        if (a.status === 'Pending' && b.status !== 'Pending') return -1;
+        if (a.status !== 'Pending' && b.status === 'Pending') return 1;
+        return 0;
+      });
+      setRecentAlterations(slips.slice(0, 3));
     });
 
     return () => unsubscribe();

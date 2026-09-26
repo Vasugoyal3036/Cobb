@@ -11,7 +11,7 @@ export default function AlterationsTab({ darkMode, activeStore = 'DEMO_STORE_001
   const [showModal, setShowModal] = useState(false);
 
   useEffect(() => {
-    const targetStore = activeStore === 'ALL' ? 'DEMO_STORE_001' : activeStore;
+    const targetStore = (!activeStore || activeStore === 'ALL' || activeStore === 'STORE_01') ? 'DEMO_STORE_001' : activeStore;
     const alterationsRef = collection(db, `stores/${targetStore}/alterations`);
     const q = query(alterationsRef, orderBy('createdAt', 'desc'));
 
@@ -32,7 +32,7 @@ export default function AlterationsTab({ darkMode, activeStore = 'DEMO_STORE_001
 
   const markCompleted = async (slipId) => {
     try {
-      const targetStore = activeStore === 'ALL' ? 'DEMO_STORE_001' : activeStore;
+      const targetStore = (!activeStore || activeStore === 'ALL' || activeStore === 'STORE_01') ? 'DEMO_STORE_001' : activeStore;
       const docRef = doc(db, `stores/${targetStore}/alterations`, slipId);
       await updateDoc(docRef, { status: 'Completed' });
     } catch (err) {
@@ -43,7 +43,7 @@ export default function AlterationsTab({ darkMode, activeStore = 'DEMO_STORE_001
   const deleteSlip = async (slipId) => {
     if (!window.confirm("Are you sure you want to delete this alteration slip?")) return;
     try {
-      const targetStore = activeStore === 'ALL' ? 'DEMO_STORE_001' : activeStore;
+      const targetStore = (!activeStore || activeStore === 'ALL' || activeStore === 'STORE_01') ? 'DEMO_STORE_001' : activeStore;
       const docRef = doc(db, `stores/${targetStore}/alterations`, slipId);
       await deleteDoc(docRef);
     } catch (err) {

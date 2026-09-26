@@ -443,7 +443,7 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                               darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-500'
                             }`}
                           >
-                            <span>View ({todayCount > 0 ? todayCount : liveBills.length})</span>
+                            <span>View ({todayCount})</span>
                             <ArrowRight className="w-3.5 h-3.5" />
                           </button>
                         );
@@ -459,13 +459,16 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                           const bDate = b.BillDate ? b.BillDate.trim() : (b.BillTime ? b.BillTime.slice(0, 10) : '');
                           return bDate === todayStr;
                         });
-                        const displayBills = todayBills.length > 0 ? todayBills : (Array.isArray(liveBills) ? liveBills.slice(0, 10) : []);
+                        const displayBills = todayBills;
 
                         if (displayBills.length === 0) {
                           return (
-                            <div className="p-6 text-center text-xs text-slate-400 flex flex-col items-center justify-center h-full">
-                              <RefreshCw className="w-5 h-5 mb-2 text-slate-400 animate-spin" style={{ animationDuration: '3s' }} />
-                              Waiting for counter checkouts...
+                            <div className="p-6 text-center text-xs text-slate-400 flex flex-col items-center justify-center h-full min-h-[150px]">
+                              <div className="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-400 mb-2 border border-blue-500/20">
+                                <Receipt className="w-4 h-4" />
+                              </div>
+                              <p className="font-bold text-slate-700 dark:text-slate-200">No Bills Recorded Today</p>
+                              <p className="text-[11px] text-slate-400 mt-0.5">Counter live • waiting for checkouts</p>
                             </div>
                           );
                         }
