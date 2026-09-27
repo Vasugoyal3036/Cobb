@@ -66,14 +66,14 @@ function _() {
 	m &&= (console.log("[Electron] Stopping backend server..."), m.kill(), null), h &&= (console.log("[Electron] Stopping sync agent..."), h.kill(), null);
 }
 function v() {
-	let t = i.join(process.env.VITE_PUBLIC, "favicon.svg");
+	let t = i.join(process.env.VITE_PUBLIC, "ors-logo.png"), n = i.join(process.env.VITE_PUBLIC, "favicon.svg"), r = o.existsSync(t) ? t : n;
 	p = new e({
 		title: "ORS",
 		width: 1280,
 		height: 800,
 		minWidth: 1024,
 		minHeight: 768,
-		icon: o.existsSync(t) ? t : void 0,
+		icon: o.existsSync(r) ? r : void 0,
 		webPreferences: {
 			preload: i.join(l, "preload.js"),
 			nodeIntegration: !0,

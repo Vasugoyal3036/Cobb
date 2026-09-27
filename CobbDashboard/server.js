@@ -37,6 +37,13 @@ app.use('/api/ai/chat', chatRouter);
 const parcelsRouter = require('./routes/parcels');
 app.use('/api/parcels', parcelsRouter);
 
+const staffRouter = require('./routes/staff');
+app.use('/api/staff', staffRouter);
+
+const whatsappConciergeRouter = require('./routes/whatsapp_concierge');
+app.use('/api/whatsapp/concierge', whatsappConciergeRouter);
+app.use('/api/alterations', whatsappConciergeRouter);
+
 
 // Stores Network endpoint (Feature 2 — Save-The-Sale)
 const STORES_NETWORK_FILE = path.join(__dirname, 'stores_network.json');
@@ -194,6 +201,15 @@ function getListenerScriptPath() {
         return { scriptPath: parentDirPath, cwd: path.join(__dirname, '..') };
     }
     return { scriptPath: currentDirPath, cwd: __dirname };
+}
+
+function getPythonwExecutable() {
+    const candidates = [
+        process.env.PYTHONW_PATH,
+        process.env.LOCALAPPDATA ? path.join(process.env.LOCALAPPDATA, 'Python', 'pythoncore-3.14-64', 'pythonw.exe') : null,
+        'pythonw.exe'
+    ].filter(Boolean);
+    return candidates.find(candidate => path.isAbsolute(candidate) ? fs.existsSync(candidate) : true) || 'pythonw.exe';
 }
 
 
@@ -1553,11 +1569,15 @@ function startAutomationHelper() {
     const { scriptPath, cwd } = getListenerScriptPath();
     pythonLogs.push(`[${new Date().toLocaleTimeString()}] Auto-spawning Automation Engine Listener silently...`);
     // Use pythonw with stdio: 'ignore' so Windows never creates any console window or pipe EOF
-    pythonProcess = spawn('pythonw', ['-u', scriptPath], { 
+    pythonProcess = spawn(getPythonwExecutable(), ['-u', scriptPath], {
         shell: false, 
         windowsHide: true, 
         cwd: cwd,
         stdio: 'ignore'
+    });
+    pythonProcess.on('error', (err) => {
+        pythonLogs.push(`[${new Date().toLocaleTimeString()}] Listener failed to start: ${err.message}`);
+        pythonProcess = null;
     });
     pythonProcess.on('close', (code) => {
         pythonLogs.push(`[${new Date().toLocaleTimeString()}] Listener closed with code ${code}`);
@@ -3927,8 +3947,8 @@ app.listen(PORT, () => {
             }
 
             // 1. Evening Closing Trigger:
-            // Scheduled Closing: 8:30 PM onwards (if PC is still running)
-            const isEveningSchedule = (hour > 20 || (hour === 20 && minute >= 30));
+            // Scheduled Closing: 9:30 PM onwards (if PC is still running)
+            const isEveningSchedule = (hour > 21 || (hour === 21 && minute >= 30));
 
             if (lastSentDate !== todayStr && isEveningSchedule) {
                 await connectDB();
@@ -3940,7 +3960,7 @@ app.listen(PORT, () => {
                 const { billCount } = activityQuery.recordset[0] || { billCount: 0 };
 
                 if (billCount > 0) {
-                    console.log(`[AUTO EOD] 8:30 PM scheduled closing trigger (${hour}:${String(minute).padStart(2, '0')}) active for ${todayStr} (${billCount} bills). Auto-dispatching EOD digest to owners...`);
+                    console.log(`[AUTO EOD] 9:30 PM scheduled closing trigger (${hour}:${String(minute).padStart(2, '0')}) active for ${todayStr} (${billCount} bills). Auto-dispatching EOD digest to owners...`);
                     await dispatchEodReport(todayStr, ' (Store Closing Digest)');
                 }
             }
@@ -4019,17 +4039,11 @@ async function handleProcessTermination(signal) {
     }
 }
 
-process.on('SIGTERM', async () => {
-    await handleProcessTermination('SIGTERM');
-    process.exit(0);
-});
-process.on('SIGINT', async () => {
-    await handleProcessTermination('SIGINT');
-    process.exit(0);
-});
-process.on('SIGBREAK', async () => {
-    await handleProcessTermination('SIGBREAK');
-    process.exit(0);
+['SIGTERM', 'SIGINT', 'SIGBREAK'].forEach((signal) => {
+    process.on(signal, async () => {
+        await handleProcessTermination(signal);
+        process.exit(0);
+    });
 });
 process.on('message', async (msg) => {
     if (msg === 'shutdown') {

@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Scissors, Search, Plus, Calendar, User, Phone, CheckCircle, Clock, Trash2 } from 'lucide-react';
+import { Scissors, Search, Plus, Calendar, User, Phone, CheckCircle, Clock, Trash2, Printer } from 'lucide-react';
 import { collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../../utils/firebase';
 import AlterationSlipModal from '../AlterationSlipModal';
 
-export default function AlterationsTab({ darkMode, activeStore = 'DEMO_STORE_001', formatCurrency }) {
+export default function AlterationsTab({ darkMode, activeStore = 'DEMO_STORE_001', formatCurrency, openThermalModal }) {
   const [alterations, setAlterations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -167,7 +167,31 @@ export default function AlterationsTab({ darkMode, activeStore = 'DEMO_STORE_001
                       )}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-3">
+                      <div className="flex items-center justify-end gap-2.5">
+                        {/* Print Thermal Job Card */}
+                        <button
+                          onClick={() => {
+                            if (openThermalModal) {
+                              openThermalModal({
+                                receiptType: 'alteration',
+                                alterationData: {
+                                  tokenNumber: slip.tokenNumber || slip.id?.slice(0, 6)?.toUpperCase(),
+                                  customerName: slip.customerName,
+                                  customerPhone: slip.phone,
+                                  item: slip.itemCategory || slip.category,
+                                  type: slip.alterationType,
+                                  deliveryDate: slip.expectedDate,
+                                  notes: slip.instructions || slip.notes
+                                }
+                              });
+                            }
+                          }}
+                          className="px-2.5 py-1 rounded-lg text-xs font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/50 hover:bg-blue-100 flex items-center gap-1"
+                          title="Print Thermal Job Card for Tailor & Customer Token"
+                        >
+                          <Printer className="w-3.5 h-3.5" /> Job Slip
+                        </button>
+
                         {slip.status !== 'Completed' && (
                           <button 
                             onClick={() => markCompleted(slip.id)}

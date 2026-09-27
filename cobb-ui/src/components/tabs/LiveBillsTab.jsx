@@ -26,7 +26,8 @@ import {
   ChevronLeft,
   ChevronRight,
   AlertCircle,
-  Scissors
+  Scissors,
+  Printer
 } from 'lucide-react';
 import AlterationSlipModal from '../AlterationSlipModal';
 
@@ -799,6 +800,32 @@ const LiveBillsTab = (props) => {
                                 >
                                   <Scissors className="w-3.5 h-3.5" />
                                   <span>Alteration Slip</span>
+                                </button>
+
+                                {/* Thermal Slip Print */}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const currItems = billItemsCache[bill.BillId] || bill.Items || [];
+                                    if (props.openThermalModal) {
+                                      props.openThermalModal({
+                                        receiptType: 'bill',
+                                        billData: {
+                                          ...bill,
+                                          Items: currItems
+                                        }
+                                      });
+                                    }
+                                  }}
+                                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 border cursor-pointer ${
+                                    darkMode
+                                      ? 'bg-blue-500/15 hover:bg-blue-500/25 text-blue-300 border-blue-500/30'
+                                      : 'bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200'
+                                  }`}
+                                  title="Print ESC/POS Thermal Slip (80mm/58mm)"
+                                >
+                                  <Printer className="w-3.5 h-3.5 text-blue-500" />
+                                  <span>Thermal Slip</span>
                                 </button>
 
                                 {/* Copy Summary */}

@@ -1,0 +1,21 @@
+[
+  {
+    "id": "nps_1790512559679_reia",
+    "phone": "919812128787",
+    "customerName": "Dr Devinder Sani",
+    "billNo": "",
+    "scheduledAt": 1790514359679,
+    "createdAt": 1790512559679,
+    "status": "sent",
+    "sentAt": 1790514375150
+  },
+  {
+    "id": "nps_1790513618291_oonh",
+    "phone": "918572048847",
+    "customerName": "Asham Sohi",
+    "billNo": "",
+    "scheduledAt": 1790515418291,
+    "createdAt": 1790513618291,
+    "status": "pending"
+  }
+]

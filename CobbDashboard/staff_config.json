@@ -1,0 +1,37 @@
+{
+  "defaultCommissionPct": 1.5,
+  "monthlyStoreTarget": 500000,
+  "dailyStoreTarget": 25000,
+  "bonusThreshold": 100000,
+  "bonusCommissionPct": 0.5,
+  "printerConfig": {
+    "paperWidth": "80mm",
+    "storeName": "COBB APPARELS",
+    "address": "Fatehpur Road, Pundri",
+    "phone": "+91 91381 22820",
+    "gstin": "06AABCC1234F1Z5",
+    "footerNote": "Thank you for shopping at Cobb! Exchanges accepted within 7 days with tag intact."
+  },
+  "staffOverrides": {
+    "2800003": {
+      "name": "Vikas",
+      "target": 120000,
+      "commissionPct": 1.5
+    },
+    "0001001": {
+      "name": "Simran",
+      "target": 100000,
+      "commissionPct": 1.5
+    },
+    "0000180": {
+      "name": "Akhil",
+      "target": 80000,
+      "commissionPct": 1.5
+    },
+    "3200014": {
+      "name": "Pawan",
+      "target": 90000,
+      "commissionPct": 1.5
+    }
+  }
+}

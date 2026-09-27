@@ -3,6 +3,8 @@ require('dotenv').config();
 const { loadConfig } = require('./config_manager');
 
 let currentPool = null;
+let reconnectPromise = null;
+const rawQuery = sql.query.bind(sql);
 let dbStatus = {
     connected: false,
     lastError: null,
@@ -66,7 +68,7 @@ async function connectDB(customDbConfig = null) {
         
         // Auto-create LocalUsers table for RBAC Google Auth
         try {
-            await sql.query(`
+            await rawQuery(`
                 IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='LocalUsers' and xtype='U')
                 CREATE TABLE LocalUsers (
                     Id INT PRIMARY KEY IDENTITY(1,1),
@@ -91,6 +93,40 @@ async function connectDB(customDbConfig = null) {
         return { success: false, error: err.message };
     }
 }
+
+function isConnectionLossError(err) {
+    const message = String(err?.message || err || '').toLowerCase();
+    return message.includes('no connection is specified') ||
+        message.includes('connection is not open') ||
+        message.includes('connection is closed') ||
+        message.includes('econnreset') ||
+        message.includes('esocket') ||
+        message.includes('socket hang up') ||
+        message.includes('timeout');
+}
+
+async function reconnectOnce() {
+    if (!reconnectPromise) {
+        reconnectPromise = connectDB().finally(() => {
+            reconnectPromise = null;
+        });
+    }
+    return reconnectPromise;
+}
+
+async function queryWithReconnect(...args) {
+    try {
+        return await rawQuery(...args);
+    } catch (err) {
+        if (!isConnectionLossError(err)) throw err;
+        console.warn('[DB] Connection lost. Reconnecting before retrying query...');
+        const reconnectResult = await reconnectOnce();
+        if (!reconnectResult.success) throw err;
+        return rawQuery(...args);
+    }
+}
+
+sql.query = queryWithReconnect;
 
 /**
  * Tests connection with arbitrary database settings without disturbing the active pool.

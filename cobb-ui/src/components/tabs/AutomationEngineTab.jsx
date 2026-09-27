@@ -201,12 +201,12 @@ const AutomationEngineTab = (props) => {
                   )}
                 </div>
 
-                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
                   <div className="flex items-center justify-between mb-4">
-                    <h4 className="font-bold text-slate-800 text-base flex items-center">
-                      <MessageSquare className="w-5 h-5 mr-2 text-green-600" /> Send Instant Test WhatsApp Message
+                    <h4 className="font-bold text-slate-800 dark:text-white text-base flex items-center">
+                      <MessageSquare className="w-5 h-5 mr-2 text-green-600 dark:text-green-400" /> Send Instant Test WhatsApp Message
                     </h4>
-                    <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-100">
+                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-full border border-emerald-100 dark:border-emerald-800">
                       Local Gateway API (Port 3000)
                     </span>
                   </div>
@@ -218,7 +218,7 @@ const AutomationEngineTab = (props) => {
                         value={testPhone}
                         onChange={(e) => setTestPhone(e.target.value)}
                         placeholder="e.g. 9812423377"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:bg-white focus:border-indigo-500 font-mono"
+                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-indigo-500 font-mono"
                       />
                     </div>
                     <div>
@@ -228,7 +228,7 @@ const AutomationEngineTab = (props) => {
                         value={testMsg}
                         onChange={(e) => setTestMsg(e.target.value)}
                         placeholder="Leave blank for default test note..."
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:bg-white focus:border-indigo-500"
+                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-indigo-500"
                       />
                     </div>
                     <div>
@@ -240,6 +240,99 @@ const AutomationEngineTab = (props) => {
                         {isSendingTestWa ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
                         {isSendingTestWa ? 'Sending...' : '🚀 Send WhatsApp Message'}
                       </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2-Way Interactive Bot & 30-Min NPS Engine Card */}
+                <div className="bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 text-white p-6 sm:p-8 rounded-3xl border border-slate-800 shadow-2xl space-y-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-800">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 text-[10px] font-black uppercase tracking-wider border border-emerald-500/30">
+                          Active Inbound Flow
+                        </span>
+                        <span className="text-xs text-slate-400">• Webhook Listener Enabled</span>
+                      </div>
+                      <h4 className="text-xl font-black tracking-tight">Interactive 2-Way WhatsApp & NPS Engine</h4>
+                      <p className="text-xs text-slate-400 mt-1">
+                        Automated customer self-service, 30-minute post-checkout feedback survey, and Google Reviews booster.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="px-3 py-1.5 rounded-xl bg-slate-800/80 border border-slate-700 text-xs font-bold text-slate-300">
+                        ⚡ WhatsApp LocalAuth
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Bot Flow 1: Self-Service Concierge */}
+                    <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-xl bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold text-sm border border-blue-500/30">
+                          🤖
+                        </div>
+                        <div>
+                          <h5 className="font-bold text-sm text-slate-200">2-Way Self-Service</h5>
+                          <p className="text-[10px] text-slate-400">Automated reply triggers</p>
+                        </div>
+                      </div>
+                      <div className="space-y-1.5 text-xs text-slate-300 pt-1">
+                        <div className="p-2 rounded-lg bg-slate-900 border border-slate-800/80">
+                          <strong className="text-amber-400">Reply 1:</strong> Loyalty Points & VIP Balance
+                        </div>
+                        <div className="p-2 rounded-lg bg-slate-900 border border-slate-800/80">
+                          <strong className="text-blue-400">Reply 2:</strong> Live Alteration Status ✂️
+                        </div>
+                        <div className="p-2 rounded-lg bg-slate-900 border border-slate-800/80">
+                          <strong className="text-emerald-400">Reply 3:</strong> Trending Catalog & Top Movers 🛍️
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Bot Flow 2: Click & Collect */}
+                    <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center font-bold text-sm border border-purple-500/30">
+                          🛍️
+                        </div>
+                        <div>
+                          <h5 className="font-bold text-sm text-slate-200">Click & Collect</h5>
+                          <p className="text-[10px] text-slate-400">WhatsApp Reservation</p>
+                        </div>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs space-y-2">
+                        <p className="text-slate-300 leading-relaxed">
+                          Customers reply <code className="text-purple-300 bg-purple-950/60 px-1 py-0.5 rounded font-mono font-bold">RESERVE &lt;Code&gt;</code> to hold items for 24h.
+                        </p>
+                        <div className="text-[11px] text-slate-400 flex items-center gap-1.5 pt-1">
+                          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                          <span>Syncs directly to <strong>Hold Desk</strong></span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Bot Flow 3: 30-Min NPS Feedback */}
+                    <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-sm border border-amber-500/30">
+                          ⭐
+                        </div>
+                        <div>
+                          <h5 className="font-bold text-sm text-slate-200">30-Min NPS Engine</h5>
+                          <p className="text-[10px] text-slate-400">Post-Checkout Feedback</p>
+                        </div>
+                      </div>
+                      <div className="p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs space-y-2">
+                        <p className="text-slate-300 leading-relaxed">
+                          Auto-schedules a 5-star survey <strong>30 minutes</strong> after bill checkout.
+                        </p>
+                        <div className="text-[11px] space-y-1 text-slate-400 pt-1">
+                          <div>⭐ <strong>5 Stars:</strong> Direct Google Review Link</div>
+                          <div>⚠️ <strong>1-3 Stars:</strong> Instant Manager Alert</div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>

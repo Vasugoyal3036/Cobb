@@ -110,7 +110,9 @@ function stopBackendServer() {
 }
 
 function createWindow() {
-  const iconPath = path.join(process.env.VITE_PUBLIC, 'favicon.svg');
+  const iconCandidate = path.join(process.env.VITE_PUBLIC, 'ors-logo.png');
+  const iconFallback = path.join(process.env.VITE_PUBLIC, 'favicon.svg');
+  const iconPath = fs.existsSync(iconCandidate) ? iconCandidate : iconFallback;
   win = new BrowserWindow({
     title: 'ORS',
     width: 1280,

@@ -19,6 +19,8 @@ import ChatbotTab from './components/tabs/ChatbotTab';
 import MultiStoreMatrixTab from './components/tabs/MultiStoreMatrixTab';
 import AlterationsTab from './components/tabs/AlterationsTab';
 import GoodsInTransitTab from './components/tabs/GoodsInTransitTab';
+import StaffLeaderboardTab from './components/tabs/StaffLeaderboardTab';
+import ThermalReceiptModal from './components/ThermalReceiptModal';
 import FloatingCopilot from './components/FloatingCopilot';
 import { fetchWithOfflineFallback, subscribeToData } from './utils/offlineDb';
 
@@ -241,6 +243,29 @@ export default function App() {
   const [returnsData, setReturnsData] = useState(() => getLocalCache('returnsData', null));
   const [smartCoordinate, setSmartCoordinate] = useState({ data: null, loading: false, itemText: '' });
   const [showCoordinateModal, setShowCoordinateModal] = useState(false);
+
+  // Thermal Slip Modal State
+  const [thermalModalConfig, setThermalModalConfig] = useState({
+    isOpen: false,
+    receiptType: 'bill',
+    billData: null,
+    alterationData: null,
+    exchangeData: null
+  });
+
+  const openThermalModal = (cfg = {}) => {
+    setThermalModalConfig({
+      isOpen: true,
+      receiptType: cfg.receiptType || 'bill',
+      billData: cfg.billData || null,
+      alterationData: cfg.alterationData || null,
+      exchangeData: cfg.exchangeData || null
+    });
+  };
+
+  const closeThermalModal = () => {
+    setThermalModalConfig(prev => ({ ...prev, isOpen: false }));
+  };
 
   // Smart Bundling State
   let [bundles, setBundles] = useState(() => getLocalCache('bundles', [])); if (!Array.isArray(bundles)) bundles = [];
@@ -1524,7 +1549,8 @@ export default function App() {
     compImageUrl: typeof compImageUrl !== 'undefined' ? compImageUrl : undefined,
     compIntelResult: typeof compIntelResult !== 'undefined' ? compIntelResult : undefined,
     isAnalyzingComp: typeof isAnalyzingComp !== 'undefined' ? isAnalyzingComp : undefined,
-    compError: typeof compError !== 'undefined' ? compError : undefined
+    compError: typeof compError !== 'undefined' ? compError : undefined,
+    openThermalModal
   };
 
   if (showSetup) {
@@ -1908,6 +1934,7 @@ export default function App() {
         setDashTheme={setDashTheme}
         isGatewayRunning={isGatewayRunning}
         isListenerRunning={isListenerRunning}
+        openThermalModal={openThermalModal}
         API_BASE={API_BASE}
       >
 
@@ -2002,10 +2029,18 @@ export default function App() {
 
             {/* 18. ALTERATIONS DESK */}
             {activeTab === 'alterations' && (
-              <AlterationsTab darkMode={darkMode} activeStore={activeStore} formatCurrency={formatCurrency} />
+              <AlterationsTab
+                darkMode={darkMode}
+                activeStore={activeStore}
+                formatCurrency={formatCurrency}
+                openThermalModal={openThermalModal}
+              />
             )}
 
-
+            {/* 19. STAFF LEADERBOARD & INCENTIVES */}
+            {activeTab === 'staff_leaderboard' && (
+              <StaffLeaderboardTab API_BASE={API_BASE} />
+            )}
 
             {/* 20. GOODS IN TRANSIT */}
             {activeTab === 'transit' && (
@@ -2263,6 +2298,15 @@ export default function App() {
           </button>
         </div>
 
+        {/* ESC/POS Thermal Receipt Modal */}
+        <ThermalReceiptModal
+          isOpen={thermalModalConfig.isOpen}
+          onClose={closeThermalModal}
+          receiptType={thermalModalConfig.receiptType}
+          billData={thermalModalConfig.billData}
+          alterationData={thermalModalConfig.alterationData}
+          exchangeData={thermalModalConfig.exchangeData}
+        />
         </div>
       </Layout>
     </div>

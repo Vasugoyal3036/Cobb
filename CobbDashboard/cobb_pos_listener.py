@@ -19,11 +19,14 @@ if sys.stdout and hasattr(sys.stdout, 'reconfigure'):
 def get_lock():
     get_lock._lock_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
-        get_lock._lock_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        # This socket is a process lock. Address reuse would allow duplicate listeners on Windows.
+        if hasattr(socket, 'SO_EXCLUSIVEADDRUSE'):
+            get_lock._lock_socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
         get_lock._lock_socket.bind(('127.0.0.1', 47200))
         return True
     except socket.error:
         print("Another instance of the listener is already running.")
+        get_lock._lock_socket.close()
         return False
 
 # Configuration
@@ -378,8 +381,12 @@ def setup_windows_shutdown_watcher(cursor):
 
         def on_shutdown_event(hwnd):
             now = time.localtime()
+            today_str = time.strftime('%Y-%m-%d', now)
             # Store closing shutdown window: 8:00 PM (20:00) onwards
             if now.tm_hour >= 20:
+                if is_eod_already_sent(today_str):
+                    log_engine(f"[SHUTDOWN HOOK] EOD digest for {today_str} was already sent today. Skipping shutdown dispatch.")
+                    return
                 log_engine(f"[SHUTDOWN HOOK] Windows system shutdown detected at {now.tm_hour}:{now.tm_min:02d}. Holding shutdown to dispatch EOD digest...")
                 try:
                     user32.ShutdownBlockReasonCreate(hwnd, "Dispatching Cobb Store EOD Closing Digest via WhatsApp...")
@@ -453,7 +460,7 @@ def get_db_connection():
 
     return pyodbc.connect(conn_str)
 
-def send_whatsapp_message(phone_number, customer_name):
+def send_whatsapp_message(phone_number, customer_name, dedupe_key=None):
     """Sends standard post-purchase thank you message for regular sales bills."""
     clean_phone = normalize_phone_number(phone_number)
     if not clean_phone or len(clean_phone) < 10:
@@ -477,7 +484,8 @@ def send_whatsapp_message(phone_number, customer_name):
     payload = {
         'number': clean_phone,
         'message': message_text,
-        'mediaPath': MEDIA_FILE
+        'mediaPath': MEDIA_FILE,
+        'dedupeKey': f'checkout:{dedupe_key}' if dedupe_key else None
     }
     headers = {'Content-Type': 'application/json'}
 
@@ -504,7 +512,7 @@ def send_whatsapp_message(phone_number, customer_name):
         log_engine(f"[ERROR] Connecting to WhatsApp sender (port 3000): {e}")
         return {'status': 'client_not_ready', 'detail': str(e)}
 
-def send_exchange_whatsapp_slip(phone_number, customer_name, bill_no, bill_time, net_amount, returned_items, replacement_items):
+def send_exchange_whatsapp_slip(phone_number, customer_name, bill_no, bill_time, net_amount, returned_items, replacement_items, dedupe_key=None):
     """Sends official digital exchange slip for product exchanges."""
     clean_phone = normalize_phone_number(phone_number)
     if not clean_phone or len(clean_phone) < 10:
@@ -578,7 +586,8 @@ def send_exchange_whatsapp_slip(phone_number, customer_name, bill_no, bill_time,
 
     payload = {
         'number': clean_phone,
-        'message': message_text
+        'message': message_text,
+        'dedupeKey': f'checkout:{dedupe_key}' if dedupe_key else None
     }
     headers = {'Content-Type': 'application/json'}
 
@@ -802,7 +811,7 @@ def run_listener():
                         success = True
                     elif is_exchange:
                         log_engine(f"[NEW EXCHANGE DETECTED] Bill #{bill_no} | Phone: {clean_phone} | Returned: {len(returned_items)} | Replaced: {len(replacement_items)}")
-                        res = send_exchange_whatsapp_slip(clean_phone, name, bill_no, bill_time, amount, returned_items, replacement_items)
+                        res = send_exchange_whatsapp_slip(clean_phone, name, bill_no, bill_time, amount, returned_items, replacement_items, cm_id_str)
                         if res.get('status') == 'client_not_ready':
                             log_engine(f"[GATEWAY WAITING] WhatsApp Client is reconnecting. Will retry Bill #{bill_no} once gateway is ready.")
                             break
@@ -810,7 +819,7 @@ def run_listener():
                         success = res['status'] in ('sent', 'not_on_whatsapp')
                     else:
                         log_engine(f"[NEW BILL DETECTED] Bill #{bill_no} | Rs.{amount} | Phone: {clean_phone}")
-                        res = send_whatsapp_message(clean_phone, name)
+                        res = send_whatsapp_message(clean_phone, name, cm_id_str)
                         if res.get('status') == 'client_not_ready':
                             log_engine(f"[GATEWAY WAITING] WhatsApp Client is reconnecting. Will retry Bill #{bill_no} once gateway is ready.")
                             break

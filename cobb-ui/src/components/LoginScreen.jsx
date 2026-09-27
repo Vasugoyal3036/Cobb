@@ -33,14 +33,16 @@ const LoginScreen = ({ onSetup }) => {
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-purple-600/10 blur-[100px] pointer-events-none" />
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
-        <div className="flex justify-center text-blue-500 mb-6">
-          <Lock className="w-16 h-16" />
+        <div className="flex justify-center mb-5">
+          <div className="w-24 h-24 rounded-3xl bg-slate-900/80 p-2.5 border border-white/10 shadow-2xl flex items-center justify-center backdrop-blur-xl ring-1 ring-white/10">
+            <img src="/ors-logo.png" alt="ORS Logo" className="w-full h-full object-contain" />
+          </div>
         </div>
-        <h2 className="text-center text-3xl font-extrabold tracking-tight">
-          Cobb Retail CRM
+        <h2 className="text-center text-3xl font-black tracking-tight text-white">
+          ORS
         </h2>
-        <p className="mt-2 text-center text-sm text-gray-400">
-          Sign in to your workspace
+        <p className="mt-1 text-center text-xs font-bold text-slate-400 uppercase tracking-widest">
+          Complete CRM Solutions
         </p>
       </div>
 

@@ -55,6 +55,8 @@ const endpointsToSync = [
     "/api/reports/eod-summary",
     "/api/system/health",
     "/api/crm/anniversaries-today",
+    "/api/staff/leaderboard",
+    "/api/staff/config",
     { url: "/api/ai/demand-forecasts", method: "POST", data: { refresh: true } }
 ];
 

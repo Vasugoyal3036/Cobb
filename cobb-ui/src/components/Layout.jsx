@@ -69,7 +69,8 @@ import {
   Wallet,
   AlarmClock,
   Network,
-  Truck
+  Truck,
+  Printer
 } from 'lucide-react';
 import { THEMES } from './DashboardBackground';
 
@@ -93,6 +94,7 @@ const navigationItems = [
   {
     category: "Operations", items: [
       { id: "live", label: "Transactions & Bills", icon: Receipt, colorClass: "text-blue-600 dark:text-blue-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-blue-500/15 text-blue-600 dark:text-blue-400 font-bold border-l-2 border-blue-500" },
+      { id: "staff_leaderboard", label: "Staff Leaderboard & Incentives", icon: Trophy, colorClass: "text-amber-600 dark:text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold border-l-2 border-amber-500" },
       { id: "pocket_khata", label: "Pocket Khata (Expenses)", icon: Wallet, colorClass: "text-amber-600 dark:text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold border-l-2 border-amber-500" },
       { id: "hold_desk", label: "Hold & Reserve Desk", icon: AlarmClock, colorClass: "text-amber-600 dark:text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold border-l-2 border-amber-500" },
       { id: "save_the_sale", label: "Save-The-Sale Network", icon: Network, colorClass: "text-emerald-600 dark:text-emerald-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold border-l-2 border-emerald-500" },
@@ -150,6 +152,7 @@ const Layout = ({
   isGatewayRunning,
   isListenerRunning,
   userRole: propUserRole,
+  openThermalModal,
   API_BASE
 }) => {
 
@@ -218,13 +221,21 @@ const Layout = ({
 
       {/* Sidebar Navigation - Glassmorphism Floating Theme */}
       <div className={`fixed lg:static inset-y-0 left-0 w-64 lg:m-4 lg:h-[calc(100vh-32px)] lg:rounded-[2rem] flex flex-col z-40 transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} ${darkMode ? 'bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] shadow-[0_8px_32px_0_rgba(0,0,0,0.36)]' : 'bg-white/80 backdrop-blur-xl border border-slate-200/50 shadow-[0_8px_30px_rgb(0,0,0,0.04)]'}`}>
-        <div className={`p-6 flex justify-between items-center`}>
-          <div>
-            <div className="flex items-center gap-3 mb-1">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border ${darkMode ? 'bg-black border-white/20' : 'bg-white border-slate-200 shadow-sm'}`}>
-                <span className={`font-black text-xs tracking-wider ${darkMode ? 'text-white' : 'text-slate-900'}`}>X</span>
+        <div className={`p-5 pb-4 flex justify-between items-center border-b ${darkMode ? 'border-white/[0.06]' : 'border-slate-100'}`}>
+          <div className="flex items-center gap-3">
+            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 p-1 border shadow-sm ${
+              darkMode ? 'bg-[#0b0e14] border-white/10' : 'bg-white border-slate-200'
+            }`}>
+              <img src="/ors-logo.png" alt="ORS Logo" className="w-full h-full object-contain" />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className={`text-lg font-black tracking-wider leading-none ${darkMode ? 'text-white' : 'text-slate-900'}`}>ORS</span>
+                <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">CRM</span>
               </div>
-              <h1 className={`text-xl font-black tracking-wider ${darkMode ? 'text-white' : 'text-slate-900'}`}>COBB</h1>
+              <p className={`text-[10px] font-bold tracking-tight uppercase truncate mt-0.5 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                Complete CRM Solutions
+              </p>
             </div>
           </div>
           <button
@@ -354,11 +365,16 @@ const Layout = ({
                 >
                   {isMobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
                 </button>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center text-white font-black text-[10px] shadow-sm">
-                    ORS
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 p-0.5 border shadow-sm ${
+                    darkMode ? 'bg-[#0b0e14] border-white/10' : 'bg-white border-slate-200'
+                  }`}>
+                    <img src="/ors-logo.png" alt="ORS" className="w-full h-full object-contain" />
                   </div>
-                  <span className="font-extrabold text-xs tracking-wider uppercase">ORS</span>
+                  <div>
+                    <span className="font-black text-xs tracking-wider uppercase block leading-none">ORS</span>
+                    <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tight block">CRM</span>
+                  </div>
                 </div>
               </div>
 
