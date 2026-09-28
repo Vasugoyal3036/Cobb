@@ -1073,17 +1073,6 @@ const Layout = ({
                   <span>Test Standard Sale Alert</span>
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (typeof playCheckoutChime === 'function') playCheckoutChime();
-                  }}
-                  className="w-full py-2 rounded-xl font-bold text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-white/10 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-[0.98]"
-                >
-                  <Volume2 className="w-4 h-4 text-emerald-400" />
-                  <span>Test Cash Register Chime</span>
-                </button>
-
                 {!notificationsEnabled ? (
                   <button
                     type="button"
