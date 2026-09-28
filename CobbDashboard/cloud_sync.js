@@ -37,51 +37,64 @@ if (serviceAccount) {
 const STORE_ID = process.env.STORE_ID || "DEMO_STORE_001";
 const LOCAL_API = process.env.LOCAL_API || `http://localhost:${process.env.PORT || 5000}`;
 
-const endpointsToSync = [
+// --- SMART TIERED SYNC ENDPOINTS ---
+// Tier 1: Real-Time Operational Data (Every 2 minutes)
+// Key daily numbers that need frequent updates for store owner visibility
+const operationalEndpoints = [
     "/api/sales/overview",
     { url: "/api/sales/live?days=7", docName: "sales_live" },
-    { url: "/api/sales/history?days=14", docName: "sales_history" },
     "/api/sales/daily-month",
     "/api/analytics/hourly",
-    "/api/analytics/monthly-products",
-    "/api/inventory",
-    "/api/inventory/dead-stock",
-    "/api/customers/vip",
-    "/api/customers/dormant",
-    "/api/automation/status",
-    "/api/gateway/status",
-    "/api/broadcast/status",
     "/api/reconciliation/latest",
-    "/api/analytics/retention-radar",
-    "/api/financials/pnl",
-    "/api/analytics/wardrobe-profiles",
-    "/api/financials/gst-summary",
-    "/api/inventory/size-matrix",
-    "/api/analytics/top-movers",
-    "/api/sales/returns",
-    "/api/broadcast/group",
-    "/api/smart-bundles",
+    "/api/gateway/status",
+    "/api/system/health",
     { url: "/api/reports/eod-summary", docName: "reports_eod-summary" },
     { url: "/api/reports/eod-summary", docName: "eod_summary" },
-    { url: "/api/sales/cancelled?limit=15", docName: "sales_cancelled" },
-    "/api/system/health",
+    { url: "/api/sales/cancelled?limit=15", docName: "sales_cancelled" }
+];
+
+// Tier 2: Standard Daily Operations (Every 15 minutes)
+// Data that shifts occasionally throughout the business day
+const standardEndpoints = [
+    { url: "/api/sales/history?days=14", docName: "sales_history" },
+    "/api/analytics/top-movers",
+    "/api/sales/returns",
+    "/api/automation/status",
+    "/api/broadcast/status",
     "/api/crm/anniversaries-today",
     { url: "/api/staff/leaderboard?period=bundle", docName: "staff_leaderboard" },
-    "/api/staff/config",
+    "/api/staff/config"
+];
+
+// Tier 3: Deep Analytics & Heavy Catalog (Every 60 minutes)
+// Heavy tables that place high load on SQL/disk (inventory, taxes, profiles)
+const deepAnalyticsEndpoints = [
+    "/api/inventory",
+    "/api/inventory/dead-stock",
+    "/api/inventory/size-matrix",
+    "/api/financials/gst-summary",
+    "/api/financials/pnl",
+    "/api/analytics/monthly-products",
+    "/api/customers/vip",
+    "/api/customers/dormant",
+    "/api/analytics/retention-radar",
+    "/api/analytics/wardrobe-profiles",
+    "/api/broadcast/group",
+    "/api/smart-bundles",
     { url: "/api/ai/demand-forecasts", method: "POST", data: { refresh: true } }
 ];
 
 const lastPayloadHash = new Map();
 
-async function runSyncCycle() {
+async function syncEndpointList(items, tierName = 'Sync') {
     if (!db) {
-        console.log("[SYNC AGENT] Firebase not configured yet. Skipping sync cycle.");
+        console.log(`[SYNC AGENT] Firebase not configured yet. Skipping ${tierName}.`);
         return;
     }
 
-    console.log(`\n[SYNC AGENT] Starting sync cycle for Store ID: ${STORE_ID} at ${new Date().toISOString()}`);
+    console.log(`\n[SYNC AGENT] ⚡ Starting [${tierName}] for Store: ${STORE_ID} (${items.length} endpoints) at ${new Date().toLocaleTimeString()}`);
     
-    for (const item of endpointsToSync) {
+    for (const item of items) {
         // Support both string URL and object config
         const url = typeof item === 'string' ? item : item.url;
         const method = (typeof item === 'object' && item.method) ? item.method : 'GET';
@@ -92,7 +105,7 @@ async function runSyncCycle() {
 
         try {
             let response;
-            const axiosConfig = { timeout: 60000 };
+            const axiosConfig = { timeout: 45000 };
             if (method === "GET") {
                 response = await axios.get(`${LOCAL_API}${url}`, axiosConfig);
             } else if (method === "POST") {
@@ -103,7 +116,7 @@ async function runSyncCycle() {
                 // Deduplicate: Don't write to Firestore if the content is identical to last sync
                 const jsonStr = JSON.stringify(response.data);
                 if (lastPayloadHash.get(docName) === jsonStr) {
-                    continue; // Skip write, saves Firestore quota!
+                    continue; // Skip write, saves Firestore quota & network!
                 }
 
                 // Ensure data is an object before pushing (if it's an array, wrap it)
@@ -112,13 +125,12 @@ async function runSyncCycle() {
 
                 await db.collection("stores").doc(STORE_ID).collection("data").doc(docName).set(payload, { merge: true });
                 lastPayloadHash.set(docName, jsonStr);
-                console.log(`[SYNC AGENT] ✅ Synced ${docName}`);
+                console.log(`[SYNC AGENT] ✅ [${tierName}] Synced ${docName}`);
             }
         } catch (err) {
-            console.error(`[SYNC AGENT] ❌ Failed to sync ${docName}: ${err.message}`);
+            console.error(`[SYNC AGENT] ❌ [${tierName}] Failed to sync ${docName}: ${err.message}`);
         }
     }
-    console.log(`[SYNC AGENT] Sync cycle completed.`);
 }
 
 // --- FAST REAL-TIME CHECKOUT PUSH ALERTS ---
@@ -632,8 +644,11 @@ process.on('message', (msg) => {
     if (msg === 'shutdown') handleGracefulShutdown('pm2:shutdown');
 });
 
-// Run the sync agent loop every 1 minute (60,000 ms)
-const SYNC_INTERVAL = 60 * 1000;
+// Smart Tiered Sync Intervals:
+const OPERATIONAL_INTERVAL = 2 * 60 * 1000;      // 2 minutes (Sales, Live, Hourly, Status)
+const STANDARD_INTERVAL = 15 * 60 * 1000;        // 15 minutes (Staff, Returns, Top Movers)
+const DEEP_ANALYTICS_INTERVAL = 60 * 60 * 1000;  // 60 minutes (Heavy Inventory, GST, PnL)
+
 // Check for new checkouts every 10 seconds for real-time notification
 const CHECKOUT_INTERVAL = 10 * 1000;
 // Check for cancelled bills every 20 seconds
@@ -648,11 +663,23 @@ if (serviceAccount) {
     dispatchSystemStatusAlert('online', 'Store PC Booted / Services Started');
     updateHeartbeat();
 
-    // 2. Start intervals
-    runSyncCycle();
+    // 2. Initial baseline sync across all tiers (sequenced to protect POS CPU)
+    (async () => {
+        try {
+            await syncEndpointList(operationalEndpoints, 'Operational Tier');
+            await syncEndpointList(standardEndpoints, 'Standard Tier');
+            await syncEndpointList(deepAnalyticsEndpoints, 'Deep Analytics Tier');
+        } catch (initialSyncErr) {
+            console.warn('[SYNC AGENT] Initial sync notice:', initialSyncErr.message);
+        }
+    })();
+
+    // 3. Start tiered intervals
     checkAndDispatchCheckoutAlerts();
     checkAndDispatchCancelledBillAlerts();
-    setInterval(runSyncCycle, SYNC_INTERVAL);
+    setInterval(() => syncEndpointList(operationalEndpoints, 'Operational Tier'), OPERATIONAL_INTERVAL);
+    setInterval(() => syncEndpointList(standardEndpoints, 'Standard Tier'), STANDARD_INTERVAL);
+    setInterval(() => syncEndpointList(deepAnalyticsEndpoints, 'Deep Analytics Tier'), DEEP_ANALYTICS_INTERVAL);
     setInterval(checkAndDispatchCheckoutAlerts, CHECKOUT_INTERVAL);
     setInterval(checkAndDispatchCancelledBillAlerts, CANCELLED_INTERVAL);
     setInterval(updateHeartbeat, HEARTBEAT_INTERVAL);

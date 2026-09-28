@@ -6,9 +6,11 @@ const { spawn, execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const { checkPort } = require('./scanner');
+const compression = require('compression');
 require('dotenv').config();
 
 const app = express();
+app.use(compression());
 app.use(cors({
     origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
