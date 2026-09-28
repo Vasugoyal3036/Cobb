@@ -2,6 +2,7 @@ const { initializeApp, cert } = require('firebase-admin/app');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const { getMessaging } = require('firebase-admin/messaging');
 const axios = require("axios");
+const os = require('os');
 require('dotenv').config();
 
 // The user will save their private key to firebase-admin.json locally for maximum security.
@@ -272,19 +273,160 @@ async function checkAndDispatchCheckoutAlerts() {
     }
 }
 
+// Format 12-hour time for alerts (e.g. 10:15 AM)
+function formatTimeAMPM(d = new Date()) {
+    try {
+        return d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+    } catch {
+        return d.toTimeString().slice(0, 5);
+    }
+}
+
+function formatDateString(d = new Date()) {
+    try {
+        return d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    } catch {
+        return d.toISOString().split('T')[0];
+    }
+}
+
+// --- SYSTEM ON / OFF ALERT DISPATCHER ---
+async function dispatchSystemStatusAlert(status, reason = '') {
+    if (!db) return;
+    const now = new Date();
+    const timeStr = formatTimeAMPM(now);
+    const dateStr = formatDateString(now);
+    const isOnline = status === 'online';
+
+    const title = isOnline 
+        ? `🟢 Store System Online | ${timeStr}`
+        : `🔴 Store System Turned OFF | ${timeStr}`;
+    const body = isOnline
+        ? `Cobb Pundri POS booted up on ${dateStr} at ${timeStr}. Store system is now active.`
+        : `Cobb Pundri POS shut down on ${dateStr} at ${timeStr}${reason ? ` (${reason})` : ''}. Store system is now closed.`;
+
+    const alertId = `sys_${status}_${Date.now()}`;
+    const payload = {
+        type: 'system_status',
+        status,
+        reason,
+        title,
+        body,
+        url: '/?tab=dashboard',
+        createdAt: Date.now(),
+        timestamp: FieldValue.serverTimestamp()
+    };
+
+    try {
+        // 1. Update system_status doc for live status & watchdog on Phone Link
+        await db.collection("stores").doc(STORE_ID).collection("data").doc("system_status").set({
+            status,
+            isOnline,
+            lastHeartbeat: FieldValue.serverTimestamp(),
+            lastSeenMillis: Date.now(),
+            [isOnline ? 'lastBootTime' : 'lastShutdownTime']: FieldValue.serverTimestamp(),
+            [isOnline ? 'lastBootTimeFormatted' : 'lastShutdownTimeFormatted']: `${dateStr}, ${timeStr}`,
+            machineName: os.hostname(),
+            platform: os.platform(),
+            lastStatusChange: FieldValue.serverTimestamp()
+        }, { merge: true });
+
+        // 2. Add to checkout_notifications so connected phones immediately receive chime & toast
+        await db.collection("stores").doc(STORE_ID).collection("checkout_notifications").doc(alertId).set(payload);
+        console.log(`[SYNC AGENT] 📢 System ${status.toUpperCase()} alert written to Firestore: ${title}`);
+
+        // 3. Dispatch native FCM push notification to registered mobile devices
+        if (messaging) {
+            const tokenSnap = await db.collection("stores").doc(STORE_ID).collection("fcm_tokens").get().catch(() => null);
+            if (tokenSnap && !tokenSnap.empty) {
+                const rawTokens = tokenSnap.docs.map(d => d.data().token).filter(Boolean);
+                if (rawTokens.length > 0) {
+                    await messaging.sendEachForMulticast({
+                        tokens: rawTokens,
+                        notification: { title, body },
+                        data: {
+                            type: 'system_status',
+                            status,
+                            title,
+                            body,
+                            url: '/?tab=dashboard'
+                        },
+                        webpush: {
+                            fcmOptions: { link: '/?tab=dashboard' },
+                            notification: {
+                                title,
+                                body,
+                                icon: '/ors-logo.png',
+                                badge: '/favicon.svg',
+                                tag: 'cobb-system-status'
+                            }
+                        }
+                    }).catch(e => console.warn('[SYNC AGENT] System alert FCM push notice:', e.message));
+                }
+            }
+        }
+    } catch (err) {
+        console.error(`[SYNC AGENT] Error dispatching system ${status} alert:`, err.message);
+    }
+}
+
+// Periodic heartbeat pulse so Phone Link Watchdog can detect power cuts / crashes within 2 minutes
+async function updateHeartbeat() {
+    if (!db) return;
+    try {
+        await db.collection("stores").doc(STORE_ID).collection("data").doc("system_status").set({
+            status: 'online',
+            isOnline: true,
+            lastHeartbeat: FieldValue.serverTimestamp(),
+            lastSeenMillis: Date.now(),
+            machineName: os.hostname()
+        }, { merge: true });
+    } catch (e) {
+        // Silently skip if network blip
+    }
+}
+
+// Graceful termination & shutdown handlers
+let isShuttingDown = false;
+async function handleGracefulShutdown(signal) {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+    console.log(`[SYNC AGENT] Clean shutdown signal (${signal}) received. Dispatching System OFF alert...`);
+    try {
+        await dispatchSystemStatusAlert('offline', `Clean Shutdown: ${signal}`);
+    } catch (e) {}
+    process.exit(0);
+}
+
+['SIGINT', 'SIGTERM', 'SIGBREAK'].forEach(sig => {
+    process.on(sig, () => handleGracefulShutdown(sig));
+});
+process.on('message', (msg) => {
+    if (msg === 'shutdown') handleGracefulShutdown('pm2:shutdown');
+});
+
 // Run the sync agent loop every 1 minute (60,000 ms)
 const SYNC_INTERVAL = 60 * 1000;
 // Check for new checkouts every 10 seconds for real-time notification
 const CHECKOUT_INTERVAL = 10 * 1000;
+// Heartbeat pulse every 20 seconds for watchdog power cut detection
+const HEARTBEAT_INTERVAL = 20 * 1000;
 
 console.log("[SYNC AGENT] Process started. Waiting to begin initial sync...");
 // Start immediately, then loop
 if (serviceAccount) {
+    // 1. Immediately send System ON alert & pulse
+    dispatchSystemStatusAlert('online', 'Store PC Booted / Services Started');
+    updateHeartbeat();
+
+    // 2. Start intervals
     runSyncCycle();
     checkAndDispatchCheckoutAlerts();
     setInterval(runSyncCycle, SYNC_INTERVAL);
     setInterval(checkAndDispatchCheckoutAlerts, CHECKOUT_INTERVAL);
+    setInterval(updateHeartbeat, HEARTBEAT_INTERVAL);
 } else {
     console.log("[SYNC AGENT] Please update .env with FIREBASE_SERVICE_ACCOUNT and restart.");
 }
+
 

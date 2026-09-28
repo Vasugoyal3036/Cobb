@@ -263,3 +263,76 @@ export const triggerTestCheckoutNotification = async (storeId = 'DEMO_STORE_001'
 
   return payload;
 };
+
+// Trigger a test System ON or System OFF alert
+export const triggerTestSystemStatusAlert = async (status = 'online', storeId = 'DEMO_STORE_001') => {
+  const isOnline = status === 'online';
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+  const dateStr = now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+
+  const title = isOnline 
+    ? `🟢 Test: Store System Online | ${timeStr}`
+    : `🔴 Test: Store System Turned OFF | ${timeStr}`;
+  const body = isOnline
+    ? `Cobb Pundri POS booted up on ${dateStr} at ${timeStr}. Store system is now active.`
+    : `Cobb Pundri POS shut down on ${dateStr} at ${timeStr} (Clean Shutdown). Store system is now closed.`;
+
+  const payload = {
+    billId: `test_sys_${status}_${Date.now()}`,
+    type: 'system_status',
+    status,
+    title,
+    body,
+    url: '/?tab=dashboard',
+    isTest: true,
+    createdAt: Date.now()
+  };
+
+  playCheckoutChime();
+  if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+    try { navigator.vibrate([250, 100, 250]); } catch (e) {}
+  }
+
+  if (hasConfig && db) {
+    try {
+      if (authPromise) await authPromise;
+      const notifRef = doc(db, 'stores', storeId, 'checkout_notifications', payload.billId);
+      await setDoc(notifRef, {
+        ...payload,
+        timestamp: serverTimestamp()
+      });
+
+      // Update system_status doc so header pill updates immediately
+      const sysRef = doc(db, 'stores', storeId, 'data', 'system_status');
+      await setDoc(sysRef, {
+        status,
+        isOnline,
+        lastHeartbeat: serverTimestamp(),
+        lastSeenMillis: Date.now(),
+        [isOnline ? 'lastBootTimeFormatted' : 'lastShutdownTimeFormatted']: `${dateStr}, ${timeStr}`
+      }, { merge: true });
+
+      console.log(`[CheckoutAlert] 🧪 Test system ${status} alert written to Firestore.`);
+    } catch (e) {
+      console.warn('[CheckoutAlert] Firestore test system alert warning:', e.message);
+    }
+  }
+
+  if (isNotificationGranted() && typeof window !== 'undefined') {
+    try {
+      const sysNotif = new Notification(title, {
+        body,
+        icon: '/ors-logo.png',
+        badge: '/favicon.svg',
+        tag: 'cobb-system-status'
+      });
+      sysNotif.onclick = () => {
+        window.focus();
+      };
+    } catch (e) {}
+  }
+
+  return payload;
+};
+

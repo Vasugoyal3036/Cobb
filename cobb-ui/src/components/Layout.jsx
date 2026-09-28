@@ -3,6 +3,7 @@ import RolePinModal from './RolePinModal';
 import axios from 'axios';
 import SetupWizardModal from './SetupWizardModal';
 import SystemHealthModal from './SystemHealthModal';
+import SystemPowerModal from './SystemPowerModal';
 import PwaInstallBanner from './PwaInstallBanner';
 import {
   MessageCircle,
@@ -161,7 +162,9 @@ const Layout = ({
   notificationsEnabled = false,
   onEnableNotifications,
   onTestNotification,
-  playCheckoutChime
+  playCheckoutChime,
+  systemStatus = null,
+  onTriggerSystemTest
 }) => {
 
   const {
@@ -186,6 +189,7 @@ const Layout = ({
   const [showAlertModal, setShowAlertModal] = useState(false);
   const [showThemePicker, setShowThemePicker] = useState(false);
   const [healthStatus, setHealthStatus] = useState({ overall: 'healthy', inboundAlertsCount: 0 });
+  const [showPowerModal, setShowPowerModal] = useState(false);
 
   useEffect(() => {
     const fetchHealth = async () => {
@@ -449,6 +453,38 @@ const Layout = ({
                   {healthStatus.inboundAlertsCount > 0 && (
                     <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full animate-pulse"></span>
                   )}
+                </button>
+
+                {/* Store POS Hardware & Power Status Pill */}
+                <button
+                  type="button"
+                  onClick={() => setShowPowerModal(true)}
+                  className={`px-2 py-1 rounded-xl border shrink-0 cursor-pointer flex items-center gap-1.5 transition-all ${
+                    (systemStatus?.isOnline ?? true)
+                      ? darkMode
+                        ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20'
+                        : 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
+                      : systemStatus?.status === 'unresponsive'
+                        ? darkMode
+                          ? 'bg-amber-500/15 border-amber-500/30 text-amber-300 hover:bg-amber-500/25 animate-pulse'
+                          : 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100 animate-pulse'
+                        : darkMode
+                          ? 'bg-rose-500/15 border-rose-500/30 text-rose-300 hover:bg-rose-500/25'
+                          : 'bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100'
+                  }`}
+                  title="Store POS Hardware & Power Status (Tap for details)"
+                >
+                  <span className="relative flex h-2 w-2">
+                    {(systemStatus?.isOnline ?? true) && (
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    )}
+                    <span className={`relative inline-flex rounded-full h-2 w-2 ${
+                      (systemStatus?.isOnline ?? true) ? 'bg-emerald-500' : systemStatus?.status === 'unresponsive' ? 'bg-amber-500' : 'bg-rose-500'
+                    }`}></span>
+                  </span>
+                  <span className="text-[10px] font-black tracking-tight">
+                    {(systemStatus?.isOnline ?? true) ? 'POS Online' : systemStatus?.status === 'unresponsive' ? 'POS Power Cut' : 'POS Closed'}
+                  </span>
                 </button>
 
                 {/* Checkout Push Notification Bell */}
@@ -725,6 +761,38 @@ const Layout = ({
                 )}
               </button>
 
+              {/* Store POS Hardware & Power Status Pill */}
+              <button
+                type="button"
+                onClick={() => setShowPowerModal(true)}
+                className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl border shadow-xs cursor-pointer shrink-0 transition-all ${
+                  (systemStatus?.isOnline ?? true)
+                    ? darkMode
+                      ? 'bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/30 text-emerald-400'
+                      : 'bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-700'
+                    : systemStatus?.status === 'unresponsive'
+                      ? darkMode
+                        ? 'bg-amber-500/15 hover:bg-amber-500/25 border-amber-500/30 text-amber-300 animate-pulse'
+                        : 'bg-amber-50 hover:bg-amber-100 border-amber-200 text-amber-700 animate-pulse'
+                      : darkMode
+                        ? 'bg-rose-500/15 hover:bg-rose-500/25 border-rose-500/30 text-rose-300'
+                        : 'bg-rose-50 hover:bg-rose-100 border-rose-200 text-rose-700'
+                }`}
+                title="Store POS Hardware & Power Status (Click for details & test)"
+              >
+                <span className="relative flex h-2 w-2">
+                  {(systemStatus?.isOnline ?? true) && (
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  )}
+                  <span className={`relative inline-flex rounded-full h-2 w-2 ${
+                    (systemStatus?.isOnline ?? true) ? 'bg-emerald-500' : systemStatus?.status === 'unresponsive' ? 'bg-amber-500' : 'bg-rose-500'
+                  }`}></span>
+                </span>
+                <span className="text-[10.5px] font-black tracking-tight">
+                  {(systemStatus?.isOnline ?? true) ? 'POS Online' : systemStatus?.status === 'unresponsive' ? 'POS Power Cut' : 'POS Closed'}
+                </span>
+              </button>
+
               {/* Checkout Push Alerts Indicator / Bell */}
               <button
                 type="button"
@@ -947,6 +1015,16 @@ const Layout = ({
           </div>
         </div>
       )}
+
+      {/* Store POS System & Power Modal */}
+      <SystemPowerModal
+        isOpen={showPowerModal}
+        onClose={() => setShowPowerModal(false)}
+        systemStatus={systemStatus}
+        onTriggerTestAlert={onTriggerSystemTest}
+        activeStore={activeStore}
+        darkMode={darkMode}
+      />
 
       {/* Progressive Web App Install Banner */}
       <PwaInstallBanner darkMode={darkMode} />

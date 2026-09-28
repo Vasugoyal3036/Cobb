@@ -33,8 +33,10 @@ import {
   registerForPushNotifications,
   isNotificationGranted,
   playCheckoutChime,
-  triggerTestCheckoutNotification
+  triggerTestCheckoutNotification,
+  triggerTestSystemStatusAlert
 } from './utils/checkoutNotifications';
+import { subscribeToSystemWatchdog } from './utils/systemWatchdog';
 import { useAuth, ROLE_PERMISSIONS } from './context/AuthContext';
 import { hasConfig } from './utils/firebase';
 import axios from 'axios';
@@ -508,6 +510,36 @@ export default function App() {
     setActiveCheckoutAlert(testAlert);
     return testAlert;
   };
+
+  // Store POS System Hardware & Power Status
+  const [systemStatus, setSystemStatus] = useState({
+    status: 'online',
+    isOnline: true,
+    lastBootTimeFormatted: 'Recently',
+    lastShutdownTimeFormatted: 'None',
+    machineName: 'Store POS'
+  });
+
+  const handleTriggerSystemTest = async (type) => {
+    const storeId = (!activeStore || activeStore === 'ALL' || activeStore === 'STORE_01') ? 'DEMO_STORE_001' : activeStore;
+    const testAlert = await triggerTestSystemStatusAlert(type, storeId);
+    setActiveCheckoutAlert(testAlert);
+    return testAlert;
+  };
+
+  // System Watchdog: Listens to POS heartbeat and triggers alerts on power cuts / crash
+  useEffect(() => {
+    const storeId = (!activeStore || activeStore === 'ALL' || activeStore === 'STORE_01') ? 'DEMO_STORE_001' : activeStore;
+    const unsubscribe = subscribeToSystemWatchdog(storeId, (statusData) => {
+      setSystemStatus(statusData);
+    }, (powerCutAlert) => {
+      setActiveCheckoutAlert(powerCutAlert);
+    });
+
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, [activeStore]);
 
   // Real-time Firestore checkout listener for instant in-app alerts and chimes
   useEffect(() => {
@@ -2033,6 +2065,8 @@ export default function App() {
         onEnableNotifications={handleEnablePushNotifications}
         onTestNotification={handleTestCheckoutNotification}
         playCheckoutChime={playCheckoutChime}
+        systemStatus={systemStatus}
+        onTriggerSystemTest={handleTriggerSystemTest}
       >
 
         {/* Dynamic Views */}
