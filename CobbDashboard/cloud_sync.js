@@ -61,7 +61,9 @@ const endpointsToSync = [
     "/api/sales/returns",
     "/api/broadcast/group",
     "/api/smart-bundles",
-    "/api/reports/eod-summary",
+    { url: "/api/reports/eod-summary", docName: "reports_eod-summary" },
+    { url: "/api/reports/eod-summary", docName: "eod_summary" },
+    { url: "/api/sales/cancelled?limit=15", docName: "sales_cancelled" },
     "/api/system/health",
     "/api/crm/anniversaries-today",
     { url: "/api/staff/leaderboard?period=bundle", docName: "staff_leaderboard" },
@@ -189,17 +191,41 @@ async function checkAndDispatchCheckoutAlerts() {
                 ? bill.CustomerName.trim()
                 : (bill.Phone ? `Cust (${bill.Phone})` : 'Walk-in');
 
-            // Format requested:
-            // Title: '🧾 New Sale: ₹{Amount} | Bill #{BillNo}'
-            // Body: 'Items: {Qty} • Pay: {UPI/Cash} • Staff: {Salesperson} • Cust: {Customer}'
-            const title = `🧾 New Sale: ₹${amount.toLocaleString('en-IN')} | Bill #${billNo}`;
-            const body = `Items: ${qty} • Pay: ${pay} • Staff: ${staff} • Cust: ${cust}`;
+            const discountAmt = Math.round(Number(bill.DiscountAmount || 0));
+            const grossAmt = Math.round(Number(bill.GrossAmount || (amount + discountAmt)));
+            const discountPct = Number(bill.DiscountPercent) || (grossAmt > 0 ? Math.round((discountAmt / grossAmt) * 100) : 0);
+
+            // Categorize Alert:
+            // 1. Heavy Discount Warning (Fraud / Revenue Leakage Prevention)
+            // 2. VIP Mega Sale Alert (High Value Purchase)
+            // 3. Regular New Sale
+            let alertType = 'sale';
+            let title = `🧾 New Sale: ₹${amount.toLocaleString('en-IN')} | Bill #${billNo}`;
+            let body = `Items: ${qty} • Pay: ${pay} • Staff: ${staff} • Cust: ${cust}`;
+            let tag = `cobb-sale-${billNo}`;
+
+            if ((discountPct >= 35 && discountAmt >= 1000) || discountAmt >= 2500) {
+                alertType = 'heavy_discount';
+                title = `⚠️ HEAVY DISCOUNT (${discountPct}% OFF) | Bill #${billNo}`;
+                body = `⚠️ Staff: ${staff} gave ₹${discountAmt.toLocaleString('en-IN')} (${discountPct}%) discount on ₹${grossAmt.toLocaleString('en-IN')} bill for ${cust}! Net: ₹${amount.toLocaleString('en-IN')}`;
+                tag = `cobb-discount-${billNo}`;
+            } else if (amount >= 10000) {
+                alertType = 'big_ticket_sale';
+                title = `💎 VIP MEGA SALE: ₹${amount.toLocaleString('en-IN')} | Bill #${billNo}`;
+                body = `🎉 Staff: ${staff} closed a massive ₹${amount.toLocaleString('en-IN')} ticket (${qty} items) for ${cust}! Pay: ${pay}`;
+                tag = `cobb-vip-${billNo}`;
+            }
+
             const clickUrl = `/?tab=livebills&bill=${encodeURIComponent(billNo)}`;
 
             const notificationPayload = {
                 billId: String(bill.BillId || billNo),
                 billNumber: billNo,
+                type: alertType,
                 amount,
+                grossAmount: grossAmt,
+                discountAmount: discountAmt,
+                discountPercent: discountPct,
                 qty,
                 paymentMode: pay,
                 salesperson: staff,
@@ -213,7 +239,7 @@ async function checkAndDispatchCheckoutAlerts() {
 
             // 1. Write to Firestore checkout_notifications (triggers real-time onSnapshot in cobb-ui)
             await db.collection("stores").doc(STORE_ID).collection("checkout_notifications").doc(String(bill.BillId || billNo)).set(notificationPayload);
-            console.log(`[SYNC AGENT] 📢 New Checkout Alert written to Firestore: ${title}`);
+            console.log(`[SYNC AGENT] 📢 New Checkout Alert written to Firestore [${alertType}]: ${title}`);
 
             // 2. Dispatch FCM Web Push to registered devices
             if (messaging && fcmTokens.length > 0) {
@@ -226,10 +252,14 @@ async function checkAndDispatchCheckoutAlerts() {
                             body: body
                         },
                         data: {
+                            type: alertType,
                             title: title,
                             body: body,
                             billNumber: billNo,
                             billId: String(bill.BillId || ''),
+                            amount: String(amount),
+                            discountAmount: String(discountAmt),
+                            discountPercent: String(discountPct),
                             url: clickUrl
                         },
                         webpush: {
@@ -241,7 +271,7 @@ async function checkAndDispatchCheckoutAlerts() {
                                 body: body,
                                 icon: '/ors-logo.png',
                                 badge: '/favicon.svg',
-                                tag: `cobb-sale-${billNo}`
+                                tag: tag
                             }
                         }
                     });
@@ -270,6 +300,197 @@ async function checkAndDispatchCheckoutAlerts() {
         }
     } catch (err) {
         // Silently skip if local server is busy or momentarily reloading
+    }
+}
+
+// --- FAST REAL-TIME CANCELLED / VOID BILL ALERTS (FRAUD PREVENTION) ---
+const knownCancelledBillIds = new Set();
+let isFirstCancelledBillsRun = true;
+
+async function checkAndDispatchCancelledBillAlerts() {
+    if (!db) return;
+    try {
+        const response = await axios.get(`${LOCAL_API}/api/sales/cancelled?limit=10`, { timeout: 10000 });
+        const cancelledBills = Array.isArray(response.data) ? response.data : [];
+        if (cancelledBills.length === 0) return;
+
+        if (isFirstCancelledBillsRun) {
+            cancelledBills.forEach(b => {
+                const id = String(b.BillId || b.BillNumber).trim();
+                if (id) knownCancelledBillIds.add(id);
+            });
+            isFirstCancelledBillsRun = false;
+            return;
+        }
+
+        const newlyCancelled = [];
+        for (let i = cancelledBills.length - 1; i >= 0; i--) {
+            const b = cancelledBills[i];
+            const id = String(b.BillId || b.BillNumber).trim();
+            if (id && !knownCancelledBillIds.has(id)) {
+                knownCancelledBillIds.add(id);
+                newlyCancelled.push(b);
+            }
+        }
+
+        if (newlyCancelled.length === 0) return;
+
+        let fcmTokens = [];
+        try {
+            const tokenSnap = await db.collection("stores").doc(STORE_ID).collection("fcm_tokens").get();
+            tokenSnap.forEach(docSnap => {
+                const tok = docSnap.data()?.token || docSnap.id;
+                if (tok && typeof tok === 'string' && tok.length > 20) {
+                    fcmTokens.push({ id: docSnap.id, token: tok });
+                }
+            });
+        } catch (e) {}
+
+        for (const bill of newlyCancelled) {
+            const amount = Math.round(Number(bill.Amount || bill.NET_AMOUNT || 0));
+            const billNo = String(bill.BillNumber || bill.CM_NO || 'N/A').trim();
+            const staff = bill.Salesperson || 'Counter Staff';
+            const cust = bill.CustomerName && bill.CustomerName.trim() ? bill.CustomerName.trim() : (bill.Phone ? `Cust (${bill.Phone})` : 'Walk-in');
+
+            const title = `🚫 BILL CANCELLED / VOIDED: ₹${amount.toLocaleString('en-IN')} | Bill #${billNo}`;
+            const body = `⚠️ Warning: Bill #${billNo} worth ₹${amount.toLocaleString('en-IN')} was cancelled at POS counter!`;
+            const alertId = `cancelled_${bill.BillId || billNo}_${Date.now()}`;
+
+            const payload = {
+                billId: alertId,
+                billNumber: billNo,
+                type: 'cancelled_bill',
+                amount,
+                salesperson: staff,
+                customer: cust,
+                title,
+                body,
+                url: '/?tab=livebills',
+                createdAt: Date.now(),
+                timestamp: FieldValue.serverTimestamp()
+            };
+
+            await db.collection("stores").doc(STORE_ID).collection("checkout_notifications").doc(alertId).set(payload);
+            console.log(`[SYNC AGENT] 📢 Cancelled Bill Alert written to Firestore: ${title}`);
+
+            if (messaging && fcmTokens.length > 0) {
+                const rawTokens = fcmTokens.map(t => t.token);
+                await messaging.sendEachForMulticast({
+                    tokens: rawTokens,
+                    notification: { title, body },
+                    data: {
+                        type: 'cancelled_bill',
+                        title,
+                        body,
+                        billNumber: billNo,
+                        amount: String(amount),
+                        url: '/?tab=livebills'
+                    },
+                    webpush: {
+                        fcmOptions: { link: '/?tab=livebills' },
+                        notification: {
+                            title,
+                            body,
+                            icon: '/ors-logo.png',
+                            badge: '/favicon.svg',
+                            tag: `cobb-cancelled-${billNo}`
+                        }
+                    }
+                }).catch(e => console.warn('[SYNC AGENT] Cancelled bill FCM push notice:', e.message));
+            }
+        }
+    } catch (err) {
+        // Silently skip if endpoint momentarily busy
+    }
+}
+
+// --- AUTOMATED EOD (END OF DAY) STORE DIGEST DISPATCHER ---
+let lastDispatchedEodDate = '';
+
+async function dispatchEodDigestAlert(isScheduled = false) {
+    if (!db) return;
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (isScheduled && lastDispatchedEodDate === todayStr) {
+        return; // Don't send duplicate on same day
+    }
+
+    try {
+        const response = await axios.get(`${LOCAL_API}/api/reports/eod-summary`, { timeout: 15000 });
+        const report = response.data;
+        if (!report || !report.summary) return;
+
+        const { grossSales, billCount, cash, upi, card, netExpectedDrawerCash, topCategory } = report.summary;
+        const now = new Date();
+        const timeStr = formatTimeAMPM(now);
+        const dateStr = formatDateString(now);
+
+        const title = `📊 Daily Store Closing Digest: ₹${Number(grossSales || 0).toLocaleString('en-IN')}`;
+        const body = `Total: ₹${Number(grossSales || 0).toLocaleString('en-IN')} (${billCount} Bills) • Cash: ₹${Number(cash || 0).toLocaleString('en-IN')} • Drawer: ₹${Number(netExpectedDrawerCash || 0).toLocaleString('en-IN')} • UPI: ₹${Number(upi || 0).toLocaleString('en-IN')} • Top: ${topCategory || 'Apparel'}`;
+        const alertId = `eod_${todayStr}_${Date.now()}`;
+
+        const payload = {
+            billId: alertId,
+            type: 'eod_summary',
+            title,
+            body,
+            summary: report.summary,
+            text: report.text,
+            date: dateStr,
+            time: timeStr,
+            url: '/?tab=dashboard&view=eod',
+            createdAt: Date.now(),
+            timestamp: FieldValue.serverTimestamp()
+        };
+
+        // 1. Save detailed report doc
+        await db.collection("stores").doc(STORE_ID).collection("data").doc("reports_eod-summary").set({
+            ...report,
+            lastDispatchedAt: FieldValue.serverTimestamp(),
+            lastDispatchedDate: todayStr
+        }, { merge: true });
+
+        await db.collection("stores").doc(STORE_ID).collection("data").doc("eod_summary").set({
+            ...report,
+            lastDispatchedAt: FieldValue.serverTimestamp(),
+            lastDispatchedDate: todayStr
+        }, { merge: true });
+
+        // 2. Add notification toast for connected phones
+        await db.collection("stores").doc(STORE_ID).collection("checkout_notifications").doc(alertId).set(payload);
+        console.log(`[SYNC AGENT] 📢 Automated EOD Digest written to Firestore: ${title}`);
+        lastDispatchedEodDate = todayStr;
+
+        // 3. Dispatch native FCM push notification to registered phones
+        if (messaging) {
+            const tokenSnap = await db.collection("stores").doc(STORE_ID).collection("fcm_tokens").get().catch(() => null);
+            if (tokenSnap && !tokenSnap.empty) {
+                const rawTokens = tokenSnap.docs.map(d => d.data().token).filter(Boolean);
+                if (rawTokens.length > 0) {
+                    await messaging.sendEachForMulticast({
+                        tokens: rawTokens,
+                        notification: { title, body },
+                        data: {
+                            type: 'eod_summary',
+                            title,
+                            body,
+                            url: '/?tab=dashboard&view=eod'
+                        },
+                        webpush: {
+                            fcmOptions: { link: '/?tab=dashboard&view=eod' },
+                            notification: {
+                                title,
+                                body,
+                                icon: '/ors-logo.png',
+                                badge: '/favicon.svg',
+                                tag: `cobb-eod-${todayStr}`
+                            }
+                        }
+                    }).catch(e => console.warn('[SYNC AGENT] EOD FCM push notice:', e.message));
+                }
+            }
+        }
+    } catch (err) {
+        console.error('[SYNC AGENT] Failed to dispatch automated EOD digest:', err.message);
     }
 }
 
@@ -365,6 +586,12 @@ async function dispatchSystemStatusAlert(status, reason = '') {
                 }
             }
         }
+
+        // 4. If system is shutting down, trigger EOD Closing Digest automatically
+        if (status === 'offline') {
+            console.log('[SYNC AGENT] 🌙 Store is shutting down. Dispatching closing EOD Digest...');
+            await dispatchEodDigestAlert(false);
+        }
     } catch (err) {
         console.error(`[SYNC AGENT] Error dispatching system ${status} alert:`, err.message);
     }
@@ -409,6 +636,8 @@ process.on('message', (msg) => {
 const SYNC_INTERVAL = 60 * 1000;
 // Check for new checkouts every 10 seconds for real-time notification
 const CHECKOUT_INTERVAL = 10 * 1000;
+// Check for cancelled bills every 20 seconds
+const CANCELLED_INTERVAL = 20 * 1000;
 // Heartbeat pulse every 20 seconds for watchdog power cut detection
 const HEARTBEAT_INTERVAL = 20 * 1000;
 
@@ -422,9 +651,19 @@ if (serviceAccount) {
     // 2. Start intervals
     runSyncCycle();
     checkAndDispatchCheckoutAlerts();
+    checkAndDispatchCancelledBillAlerts();
     setInterval(runSyncCycle, SYNC_INTERVAL);
     setInterval(checkAndDispatchCheckoutAlerts, CHECKOUT_INTERVAL);
+    setInterval(checkAndDispatchCancelledBillAlerts, CANCELLED_INTERVAL);
     setInterval(updateHeartbeat, HEARTBEAT_INTERVAL);
+
+    // 3. Nightly closing digest scheduled trigger (between 9:45 PM and 9:55 PM)
+    setInterval(() => {
+        const now = new Date();
+        if (now.getHours() === 21 && now.getMinutes() >= 45 && now.getMinutes() <= 55) {
+            dispatchEodDigestAlert(true);
+        }
+    }, 60 * 1000);
 } else {
     console.log("[SYNC AGENT] Please update .env with FIREBASE_SERVICE_ACCOUNT and restart.");
 }

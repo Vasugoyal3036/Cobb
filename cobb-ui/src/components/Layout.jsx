@@ -164,7 +164,8 @@ const Layout = ({
   onTestNotification,
   playCheckoutChime,
   systemStatus = null,
-  onTriggerSystemTest
+  onTriggerSystemTest,
+  onTriggerTestAlert
 }) => {
 
   const {
@@ -962,6 +963,50 @@ const Layout = ({
               </div>
 
               <div className="pt-2 flex flex-col gap-2">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Trigger Real-time Push Alert Tests</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (typeof onTriggerTestAlert === 'function') onTriggerTestAlert('vip');
+                      else if (typeof onTestNotification === 'function') onTestNotification();
+                    }}
+                    className="py-2 px-3 rounded-xl font-bold text-[11px] bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-500/40 transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                  >
+                    <span>💎 VIP Sale</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (typeof onTriggerTestAlert === 'function') onTriggerTestAlert('discount');
+                    }}
+                    className="py-2 px-3 rounded-xl font-bold text-[11px] bg-amber-600/30 hover:bg-amber-600/50 text-amber-200 border border-amber-500/40 transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                  >
+                    <span>⚠️ Heavy Discount</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (typeof onTriggerTestAlert === 'function') onTriggerTestAlert('cancelled');
+                    }}
+                    className="py-2 px-3 rounded-xl font-bold text-[11px] bg-rose-600/30 hover:bg-rose-600/50 text-rose-200 border border-rose-500/40 transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                  >
+                    <span>🚫 Voided Sale</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (typeof onTriggerTestAlert === 'function') onTriggerTestAlert('eod');
+                    }}
+                    className="py-2 px-3 rounded-xl font-bold text-[11px] bg-cyan-600/30 hover:bg-cyan-600/50 text-cyan-200 border border-cyan-500/40 transition-all flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                  >
+                    <span>📊 EOD Digest</span>
+                  </button>
+                </div>
+
                 <button
                   type="button"
                   onClick={async () => {
@@ -969,10 +1014,10 @@ const Layout = ({
                       await onTestNotification();
                     }
                   }}
-                  className="w-full py-2.5 rounded-xl font-bold text-xs bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-amber-500/20 active:scale-[0.98]"
+                  className="w-full py-2 rounded-xl font-bold text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-white/10 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-[0.98] mt-1"
                 >
-                  <Sparkles className="w-4 h-4 text-slate-950" />
-                  <span>Send Test Sale Alert (Phone & Screen)</span>
+                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Test Standard Sale Alert</span>
                 </button>
 
                 <button
@@ -980,7 +1025,7 @@ const Layout = ({
                   onClick={() => {
                     if (typeof playCheckoutChime === 'function') playCheckoutChime();
                   }}
-                  className="w-full py-2.5 rounded-xl font-bold text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-white/10 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-[0.98]"
+                  className="w-full py-2 rounded-xl font-bold text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-white/10 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-[0.98]"
                 >
                   <Volume2 className="w-4 h-4 text-emerald-400" />
                   <span>Test Cash Register Chime</span>

@@ -336,3 +336,215 @@ export const triggerTestSystemStatusAlert = async (status = 'online', storeId = 
   return payload;
 };
 
+// 1. Trigger Test VIP Mega Sale Alert (e.g. ₹18,500)
+export const triggerTestBigTicketAlert = async (storeId = 'DEMO_STORE_001') => {
+  const testBillNo = `TEST-VIP-${Math.floor(1000 + Math.random() * 9000)}`;
+  const amount = 18500;
+  const title = `💎 VIP MEGA SALE: ₹${amount.toLocaleString('en-IN')} | Bill #${testBillNo}`;
+  const body = `🎉 Staff: Rohit closed a massive ₹${amount.toLocaleString('en-IN')} ticket (6 items) for Asham Sohi! Pay: UPI`;
+
+  const payload = {
+    billId: testBillNo,
+    billNumber: testBillNo,
+    type: 'big_ticket_sale',
+    amount,
+    grossAmount: 22000,
+    discountAmount: 3500,
+    discountPercent: 16,
+    qty: 6,
+    paymentMode: 'UPI',
+    salesperson: 'Rohit',
+    customer: 'Asham Sohi',
+    title,
+    body,
+    url: '/?tab=livebills',
+    isTest: true,
+    createdAt: Date.now()
+  };
+
+  playCheckoutChime();
+  if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+    try { navigator.vibrate([300, 100, 300]); } catch (e) {}
+  }
+
+  if (hasConfig && db) {
+    try {
+      if (authPromise) await authPromise;
+      const notifRef = doc(db, 'stores', storeId, 'checkout_notifications', testBillNo);
+      await setDoc(notifRef, { ...payload, timestamp: serverTimestamp() });
+    } catch (e) {}
+  }
+
+  if (isNotificationGranted() && typeof window !== 'undefined') {
+    try {
+      const sysNotif = new Notification(title, { body, icon: '/ors-logo.png', badge: '/favicon.svg', tag: `cobb-vip-${testBillNo}` });
+      sysNotif.onclick = () => window.focus();
+    } catch (e) {}
+  }
+
+  return payload;
+};
+
+// 2. Trigger Test Heavy Discount Warning Alert (e.g. 45% OFF)
+export const triggerTestHeavyDiscountAlert = async (storeId = 'DEMO_STORE_001') => {
+  const testBillNo = `TEST-DISC-${Math.floor(1000 + Math.random() * 9000)}`;
+  const netAmount = 4400;
+  const grossAmount = 8000;
+  const discountAmount = 3600;
+  const discountPct = 45;
+  const title = `⚠️ HEAVY DISCOUNT (${discountPct}% OFF) | Bill #${testBillNo}`;
+  const body = `⚠️ Staff: Sahil gave ₹${discountAmount.toLocaleString('en-IN')} (${discountPct}%) discount on ₹${grossAmount.toLocaleString('en-IN')} bill for Walk-in! Net: ₹${netAmount.toLocaleString('en-IN')}`;
+
+  const payload = {
+    billId: testBillNo,
+    billNumber: testBillNo,
+    type: 'heavy_discount',
+    amount: netAmount,
+    grossAmount,
+    discountAmount,
+    discountPercent: discountPct,
+    qty: 3,
+    paymentMode: 'Cash',
+    salesperson: 'Sahil',
+    customer: 'Walk-in',
+    title,
+    body,
+    url: '/?tab=livebills',
+    isTest: true,
+    createdAt: Date.now()
+  };
+
+  playCheckoutChime();
+  if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+    try { navigator.vibrate([200, 100, 200, 100, 200]); } catch (e) {}
+  }
+
+  if (hasConfig && db) {
+    try {
+      if (authPromise) await authPromise;
+      const notifRef = doc(db, 'stores', storeId, 'checkout_notifications', testBillNo);
+      await setDoc(notifRef, { ...payload, timestamp: serverTimestamp() });
+    } catch (e) {}
+  }
+
+  if (isNotificationGranted() && typeof window !== 'undefined') {
+    try {
+      const sysNotif = new Notification(title, { body, icon: '/ors-logo.png', badge: '/favicon.svg', tag: `cobb-disc-${testBillNo}` });
+      sysNotif.onclick = () => window.focus();
+    } catch (e) {}
+  }
+
+  return payload;
+};
+
+// 3. Trigger Test Cancelled / Void Bill Alert
+export const triggerTestCancelledBillAlert = async (storeId = 'DEMO_STORE_001') => {
+  const testBillNo = `TEST-VOID-${Math.floor(1000 + Math.random() * 9000)}`;
+  const amount = 4200;
+  const title = `🚫 BILL CANCELLED / VOIDED: ₹${amount.toLocaleString('en-IN')} | Bill #${testBillNo}`;
+  const body = `⚠️ Warning: Bill #${testBillNo} worth ₹${amount.toLocaleString('en-IN')} was cancelled at POS counter by Counter Staff!`;
+
+  const payload = {
+    billId: `cancelled_${testBillNo}`,
+    billNumber: testBillNo,
+    type: 'cancelled_bill',
+    amount,
+    salesperson: 'Counter Staff',
+    customer: 'Walk-in',
+    title,
+    body,
+    url: '/?tab=livebills',
+    isTest: true,
+    createdAt: Date.now()
+  };
+
+  playCheckoutChime();
+  if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+    try { navigator.vibrate([400, 200, 400]); } catch (e) {}
+  }
+
+  if (hasConfig && db) {
+    try {
+      if (authPromise) await authPromise;
+      const notifRef = doc(db, 'stores', storeId, 'checkout_notifications', payload.billId);
+      await setDoc(notifRef, { ...payload, timestamp: serverTimestamp() });
+    } catch (e) {}
+  }
+
+  if (isNotificationGranted() && typeof window !== 'undefined') {
+    try {
+      const sysNotif = new Notification(title, { body, icon: '/ors-logo.png', badge: '/favicon.svg', tag: `cobb-void-${testBillNo}` });
+      sysNotif.onclick = () => window.focus();
+    } catch (e) {}
+  }
+
+  return payload;
+};
+
+// 4. Trigger Test EOD Closing Digest Alert
+export const triggerTestEodSummaryAlert = async (storeId = 'DEMO_STORE_001') => {
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+  const dateStr = now.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  const grossSales = 48650;
+  const billCount = 24;
+  const cash = 22400;
+  const pettyCashSpent = 600;
+  const netDrawer = 21800;
+  const upi = 26250;
+  const topCat = 'CASUAL SHIRTS';
+
+  const title = `📊 Daily Store Closing Digest: ₹${grossSales.toLocaleString('en-IN')}`;
+  const body = `Total: ₹${grossSales.toLocaleString('en-IN')} (${billCount} Bills) • Cash: ₹${cash.toLocaleString('en-IN')} • Drawer: ₹${netDrawer.toLocaleString('en-IN')} • UPI: ₹${upi.toLocaleString('en-IN')} • Top: ${topCat}`;
+
+  const payload = {
+    billId: `test_eod_${Date.now()}`,
+    type: 'eod_summary',
+    title,
+    body,
+    summary: {
+      grossSales,
+      billCount,
+      cash,
+      pettyCashSpent,
+      netExpectedDrawerCash: netDrawer,
+      card: 0,
+      upi,
+      discounts: 14200,
+      topCategory: topCat,
+      topCategoryUnits: 18,
+      exchangeBills: 1,
+      exchangeValue: 1290,
+      upsellCollected: 450
+    },
+    date: dateStr,
+    time: timeStr,
+    url: '/?tab=dashboard&view=eod',
+    isTest: true,
+    createdAt: Date.now()
+  };
+
+  playCheckoutChime();
+  if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+    try { navigator.vibrate([200, 100, 200]); } catch (e) {}
+  }
+
+  if (hasConfig && db) {
+    try {
+      if (authPromise) await authPromise;
+      const notifRef = doc(db, 'stores', storeId, 'checkout_notifications', payload.billId);
+      await setDoc(notifRef, { ...payload, timestamp: serverTimestamp() });
+    } catch (e) {}
+  }
+
+  if (isNotificationGranted() && typeof window !== 'undefined') {
+    try {
+      const sysNotif = new Notification(title, { body, icon: '/ors-logo.png', badge: '/favicon.svg', tag: 'cobb-eod-test' });
+      sysNotif.onclick = () => window.focus();
+    } catch (e) {}
+  }
+
+  return payload;
+};
+
+

@@ -34,7 +34,11 @@ import {
   isNotificationGranted,
   playCheckoutChime,
   triggerTestCheckoutNotification,
-  triggerTestSystemStatusAlert
+  triggerTestSystemStatusAlert,
+  triggerTestBigTicketAlert,
+  triggerTestHeavyDiscountAlert,
+  triggerTestCancelledBillAlert,
+  triggerTestEodSummaryAlert
 } from './utils/checkoutNotifications';
 import { subscribeToSystemWatchdog } from './utils/systemWatchdog';
 import { useAuth, ROLE_PERMISSIONS } from './context/AuthContext';
@@ -102,7 +106,12 @@ import {
   Percent,
   CheckCircle,
   AlertTriangle,
-  Copy
+  Copy,
+  Share2,
+  CreditCard,
+  Smartphone,
+  Coins,
+  Eye
 } from 'lucide-react';
 
 const isElectron = window.location.protocol === 'app:' || window.location.protocol === 'file:' || (typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('electron'));
@@ -359,6 +368,10 @@ export default function App() {
   }, [showReconModal, activeStore]);
   const [showEodModal, setShowEodModal] = useState(false);
   const [eodSummaryText, setEodSummaryText] = useState('');
+  const [eodSummaryData, setEodSummaryData] = useState(null);
+  const [eodSelectedDate, setEodSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [eodActiveTab, setEodActiveTab] = useState('visual');
+  const [isLoadingEod, setIsLoadingEod] = useState(false);
   const [eodCopied, setEodCopied] = useState(false);
   const [isSendingEod, setIsSendingEod] = useState(false);
   const [eodSendResult, setEodSendResult] = useState('');
@@ -480,10 +493,14 @@ export default function App() {
 
   const handleOpenBillFromNotification = (alertData) => {
     setActiveCheckoutAlert(null);
+    if (alertData?.type === 'eod_summary') {
+      handleGenerateEodReport();
+      return;
+    }
     const billNo = alertData?.billNumber || alertData?.billId;
     setActiveTab('live');
     if (billNo) {
-      const cleanNo = String(billNo).trim();
+      const cleanNo = String(billNo).replace(/^cancelled_/, '').trim();
       setTargetHighlightBill(cleanNo);
       const matched = (Array.isArray(liveBills) ? liveBills : []).find(b => 
         String(b.BillNumber || '').trim().toLowerCase() === cleanNo.toLowerCase() ||
@@ -507,6 +524,26 @@ export default function App() {
   const handleTestCheckoutNotification = async () => {
     const storeId = (!activeStore || activeStore === 'ALL' || activeStore === 'STORE_01') ? 'DEMO_STORE_001' : activeStore;
     const testAlert = await triggerTestCheckoutNotification(storeId);
+    setActiveCheckoutAlert(testAlert);
+    return testAlert;
+  };
+
+  const handleTriggerTestAlert = async (type) => {
+    const storeId = (!activeStore || activeStore === 'ALL' || activeStore === 'STORE_01') ? 'DEMO_STORE_001' : activeStore;
+    let testAlert;
+    if (type === 'vip') {
+      testAlert = await triggerTestBigTicketAlert(storeId);
+    } else if (type === 'discount') {
+      testAlert = await triggerTestHeavyDiscountAlert(storeId);
+    } else if (type === 'cancelled') {
+      testAlert = await triggerTestCancelledBillAlert(storeId);
+    } else if (type === 'eod') {
+      testAlert = await triggerTestEodSummaryAlert(storeId);
+    } else if (type === 'online' || type === 'offline') {
+      testAlert = await triggerTestSystemStatusAlert(type, storeId);
+    } else {
+      testAlert = await triggerTestCheckoutNotification(storeId);
+    }
     setActiveCheckoutAlert(testAlert);
     return testAlert;
   };
@@ -1253,23 +1290,37 @@ export default function App() {
     }
   };
 
-  const handleGenerateEodReport = async () => {
+  const handleGenerateEodReport = async (dateParam = null) => {
+    setIsLoadingEod(true);
     try {
+      const storeId = (!activeStore || activeStore === 'ALL' || activeStore === 'STORE_01') ? 'DEMO_STORE_001' : activeStore;
+      const target = dateParam !== null ? dateParam : eodSelectedDate;
+      if (dateParam !== null) {
+        setEodSelectedDate(dateParam);
+      }
+      const dateQuery = target ? `?date=${encodeURIComponent(target)}` : '';
+
       if (isLocalhost || isTunnel) {
-        const res = await axios.get(`${API_BASE}/api/reports/eod-summary`);
-        setEodSummaryText(res.data.text);
+        const res = await axios.get(`${API_BASE}/api/reports/eod-summary${dateQuery}`);
+        setEodSummaryText(res.data?.text || '');
+        setEodSummaryData(res.data?.summary || null);
       } else {
-        const docRef = doc(db, "stores", "DEMO_STORE_001", "data", "reports_eod-summary");
+        const docRef = doc(db, "stores", storeId, "data", "reports_eod-summary");
         const docSnap = await getDoc(docRef);
-        if (docSnap.exists() && docSnap.data().text) {
-          setEodSummaryText(docSnap.data().text);
+        if (docSnap.exists()) {
+          const docData = docSnap.data();
+          setEodSummaryText(docData.text || '');
+          setEodSummaryData(docData.summary || null);
         } else {
           setEodSummaryText("EOD Report is still being synced from the store. Please try again later.");
+          setEodSummaryData(null);
         }
       }
       setShowEodModal(true);
     } catch (err) {
       alert(`Failed to generate report: ${err.message}`);
+    } finally {
+      setIsLoadingEod(false);
     }
   };
 
@@ -1277,15 +1328,23 @@ export default function App() {
     setIsSendingEod(true);
     setEodSendResult('');
     try {
-      const res = await axios.post(`${API_BASE}/api/reports/eod-summary/send`);
-      if (res.data?.success) {
-        setEodSendResult('✅ Closing digest successfully dispatched to all 4 store owners on WhatsApp!');
+      if (isLocalhost || isTunnel) {
+        const res = await axios.post(`${API_BASE}/api/reports/eod-summary/send`, { date: eodSelectedDate });
+        if (res.data?.success) {
+          setEodSendResult('✅ Closing digest successfully dispatched to all 4 store owners on WhatsApp!');
+        } else {
+          setEodSendResult('⚠️ Dispatched with partial response. Please verify numbers.');
+        }
       } else {
-        setEodSendResult('⚠️ Dispatched with partial response. Please verify numbers.');
+        const cleanText = encodeURIComponent(eodSummaryText);
+        window.open(`https://wa.me/?text=${cleanText}`, '_blank');
+        setEodSendResult('✅ Opened WhatsApp to dispatch Daily Digest!');
       }
     } catch (err) {
       console.error('Failed to dispatch EOD report:', err);
-      setEodSendResult('❌ Failed to dispatch: ' + (err.response?.data?.error || err.message));
+      const cleanText = encodeURIComponent(eodSummaryText);
+      window.open(`https://wa.me/?text=${cleanText}`, '_blank');
+      setEodSendResult('📲 Opening WhatsApp share...');
     } finally {
       setIsSendingEod(false);
     }
@@ -2067,6 +2126,7 @@ export default function App() {
         playCheckoutChime={playCheckoutChime}
         systemStatus={systemStatus}
         onTriggerSystemTest={handleTriggerSystemTest}
+        onTriggerTestAlert={handleTriggerTestAlert}
       >
 
         {/* Dynamic Views */}
@@ -2315,72 +2375,314 @@ export default function App() {
 
         {/* EOD WHATSAPP REPORT MODAL */}
         {showEodModal && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in">
-            <div className="bg-white rounded-2xl p-6 w-full max-w-xl shadow-2xl border border-slate-200 space-y-4">
-              <div className="flex items-start justify-between">
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-3 sm:p-4 animate-in fade-in">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
+              {/* Header */}
+              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
                 <div>
-                  <h3 className="text-xl font-black text-slate-900 flex items-center gap-2">
-                    <FileText className="w-6 h-6 text-amber-500" />
-                    Store Closing Digest (EOD)
-                  </h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Automated nightly store intelligence report dispatched at <strong>9:30 PM</strong>.
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <span className="p-2 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-xl">
+                      <FileText className="w-5 h-5" />
+                    </span>
+                    <div>
+                      <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white tracking-tight">
+                        Store Closing Digest (EOD)
+                      </h3>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">
+                        Cobb Apparels, Fatehpur Road, Pundri
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <span className="text-[11px] font-bold px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200 rounded-full flex items-center gap-1">
-                  ⏰ Auto 9:30 PM
-                </span>
-              </div>
 
-              {/* Recipient list card */}
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80">
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                    Configured Owner Recipients (4 Numbers)
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold px-2.5 py-1 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/50 rounded-full flex items-center gap-1">
+                    ⏰ Auto Close
                   </span>
-                  <span className="text-[10px] font-semibold text-emerald-600">Active</span>
-                </div>
-                <div className="flex flex-wrap gap-1.5 font-mono text-xs font-bold text-slate-700">
-                  <span className="px-2 py-0.5 bg-white rounded border border-slate-200">9138122820</span>
-                  <span className="px-2 py-0.5 bg-white rounded border border-slate-200">8708788707</span>
-                  <span className="px-2 py-0.5 bg-white rounded border border-slate-200">9034522000</span>
-                  <span className="px-2 py-0.5 bg-white rounded border border-slate-200">9466422821</span>
+                  <button
+                    onClick={() => { setShowEodModal(false); setEodSendResult(''); }}
+                    className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
               </div>
 
-              {/* Live Preview textarea */}
-              <textarea 
-                value={eodSummaryText} 
-                readOnly 
-                className="w-full h-64 p-4 bg-slate-950 text-emerald-400 font-mono text-xs rounded-xl focus:outline-none custom-scrollbar leading-relaxed border border-slate-800" 
-              />
+              {/* Date Selector & Mode Tabs */}
+              <div className="flex flex-wrap items-center justify-between gap-2.5 bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-2xl border border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const today = new Date().toISOString().split('T')[0];
+                      handleGenerateEodReport(today);
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      eodSelectedDate === new Date().toISOString().split('T')[0]
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100'
+                    }`}
+                  >
+                    Today
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const yest = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+                      handleGenerateEodReport(yest);
+                    }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      eodSelectedDate === new Date(Date.now() - 86400000).toISOString().split('T')[0]
+                        ? 'bg-blue-600 text-white shadow-xs'
+                        : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100'
+                    }`}
+                  >
+                    Yesterday
+                  </button>
+                  <div className="flex items-center gap-1 bg-white dark:bg-slate-700 px-2 py-1 rounded-xl border border-slate-200 dark:border-slate-600">
+                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                    <input
+                      type="date"
+                      value={eodSelectedDate}
+                      onChange={(e) => handleGenerateEodReport(e.target.value)}
+                      className="text-xs font-semibold text-slate-700 dark:text-slate-200 bg-transparent focus:outline-none cursor-pointer"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1 bg-slate-200/70 dark:bg-slate-700/60 p-1 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setEodActiveTab('visual')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      eodActiveTab === 'visual'
+                        ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-800'
+                    }`}
+                  >
+                    📊 Visual Digest
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEodActiveTab('text')}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      eodActiveTab === 'text'
+                        ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-800'
+                    }`}
+                  >
+                    💬 WhatsApp Text
+                  </button>
+                </div>
+              </div>
+
+              {isLoadingEod ? (
+                <div className="py-12 flex flex-col items-center justify-center gap-3">
+                  <RefreshCw className="w-6 h-6 text-blue-500 animate-spin" />
+                  <p className="text-xs text-slate-500 font-semibold">Compiling store metrics from POS...</p>
+                </div>
+              ) : eodActiveTab === 'visual' && eodSummaryData ? (
+                <div className="space-y-3.5">
+                  {/* Hero Total Sales Card */}
+                  <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-indigo-900 via-slate-900 to-slate-950 text-white shadow-lg border border-indigo-500/20 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+                    <div className="relative flex flex-wrap items-center justify-between gap-4">
+                      <div>
+                        <span className="text-[10px] font-extrabold uppercase tracking-widest text-indigo-300">
+                          Total Net Daily Sales
+                        </span>
+                        <h2 className="text-3xl sm:text-4xl font-black text-emerald-400 tracking-tight mt-0.5">
+                          ₹{Number(eodSummaryData.grossSales || 0).toLocaleString('en-IN')}
+                        </h2>
+                        <p className="text-xs text-slate-400 mt-1">
+                          Processed across <strong className="text-white font-bold">{eodSummaryData.billCount || 0} Customer Bills</strong>
+                        </p>
+                      </div>
+
+                      <div className="flex sm:flex-col items-end gap-1.5 sm:gap-2">
+                        <div className="px-3 py-1.5 bg-white/10 rounded-xl backdrop-blur-md border border-white/10 text-right">
+                          <span className="text-[9px] uppercase tracking-wider text-slate-300 block">Avg Ticket (ABV)</span>
+                          <span className="text-sm font-black text-amber-300">
+                            ₹{eodSummaryData.billCount > 0 ? Math.round((eodSummaryData.grossSales || 0) / eodSummaryData.billCount).toLocaleString('en-IN') : 0}
+                          </span>
+                        </div>
+                        {eodSummaryData.discounts > 0 && (
+                          <div className="px-3 py-1 bg-amber-500/20 border border-amber-400/30 rounded-lg text-amber-300 text-[11px] font-bold">
+                            ₹{Number(eodSummaryData.discounts).toLocaleString('en-IN')} Discounts Given
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 4-Stat Cards */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {/* Drawer Cash */}
+                    <div className="p-3.5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-800/40">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-emerald-700 dark:text-emerald-300 flex items-center gap-1">
+                          <Coins className="w-3.5 h-3.5" /> Net Drawer Cash
+                        </span>
+                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-100 dark:bg-emerald-900/50 px-1.5 py-0.5 rounded">
+                          Expected
+                        </span>
+                      </div>
+                      <div className="text-xl font-black text-emerald-800 dark:text-emerald-200">
+                        ₹{Number(eodSummaryData.netExpectedDrawerCash ?? (eodSummaryData.cash || 0)).toLocaleString('en-IN')}
+                      </div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1 flex items-center justify-between">
+                        <span>Gross Cash: ₹{Number(eodSummaryData.cash || 0).toLocaleString('en-IN')}</span>
+                        {eodSummaryData.pettyCashSpent > 0 && (
+                          <span className="text-rose-600 font-bold">-₹{Number(eodSummaryData.pettyCashSpent).toLocaleString('en-IN')} Khata</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* UPI Online */}
+                    <div className="p-3.5 rounded-2xl bg-blue-50/70 dark:bg-blue-950/20 border border-blue-200/80 dark:border-blue-800/40">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-blue-700 dark:text-blue-300 flex items-center gap-1">
+                          <Smartphone className="w-3.5 h-3.5" /> UPI / QR
+                        </span>
+                        <span className="text-[10px] font-bold text-blue-600 bg-blue-100 dark:bg-blue-900/50 px-1.5 py-0.5 rounded">
+                          Digital
+                        </span>
+                      </div>
+                      <div className="text-xl font-black text-blue-800 dark:text-blue-200">
+                        ₹{Number(eodSummaryData.upi || 0).toLocaleString('en-IN')}
+                      </div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                        Instant Bank Credit
+                      </div>
+                    </div>
+
+                    {/* Card Swipes */}
+                    <div className="p-3.5 rounded-2xl bg-purple-50/70 dark:bg-purple-950/20 border border-purple-200/80 dark:border-purple-800/40">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-purple-700 dark:text-purple-300 flex items-center gap-1">
+                          <CreditCard className="w-3.5 h-3.5" /> Card Swipe
+                        </span>
+                        <span className="text-[10px] font-bold text-purple-600 bg-purple-100 dark:bg-purple-900/50 px-1.5 py-0.5 rounded">
+                          POS
+                        </span>
+                      </div>
+                      <div className="text-xl font-black text-purple-800 dark:text-purple-200">
+                        ₹{Number(eodSummaryData.card || 0).toLocaleString('en-IN')}
+                      </div>
+                      <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">
+                        Credit / Debit Terminals
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Highlights Bar */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200/70 dark:border-slate-700/60 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="p-1.5 bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-lg">
+                          <Trophy className="w-4 h-4" />
+                        </span>
+                        <div>
+                          <span className="text-[10px] font-bold uppercase text-slate-400 block">Best Seller Today</span>
+                          <span className="text-xs font-black text-slate-800 dark:text-white">
+                            {eodSummaryData.topCategory || 'Apparel'}
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                        {eodSummaryData.topCategoryUnits || 0} units
+                      </span>
+                    </div>
+
+                    <div className="p-3 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200/70 dark:border-slate-700/60 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="p-1.5 bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-lg">
+                          <RotateCcw className="w-4 h-4" />
+                        </span>
+                        <div>
+                          <span className="text-[10px] font-bold uppercase text-slate-400 block">Exchanges & Upsell</span>
+                          <span className="text-xs font-black text-slate-800 dark:text-white">
+                            {eodSummaryData.exchangeBills || 0} Replacement Bills
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                        {Number(eodSummaryData.upsellCollected || 0) >= 0 ? '+' : ''}₹{Number(eodSummaryData.upsellCollected || 0).toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {/* Recipient list card */}
+                  <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200/80 dark:border-slate-700">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                        Configured Store Owners (4 Numbers)
+                      </span>
+                      <span className="text-[10px] font-semibold text-emerald-600">Active</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 font-mono text-xs font-bold text-slate-700 dark:text-slate-200">
+                      <span className="px-2 py-0.5 bg-white dark:bg-slate-700 rounded border border-slate-200 dark:border-slate-600">9138122820</span>
+                      <span className="px-2 py-0.5 bg-white dark:bg-slate-700 rounded border border-slate-200 dark:border-slate-600">8708788707</span>
+                      <span className="px-2 py-0.5 bg-white dark:bg-slate-700 rounded border border-slate-200 dark:border-slate-600">9034522000</span>
+                      <span className="px-2 py-0.5 bg-white dark:bg-slate-700 rounded border border-slate-200 dark:border-slate-600">9466422821</span>
+                    </div>
+                  </div>
+
+                  {/* Live Preview textarea */}
+                  <textarea 
+                    value={eodSummaryText} 
+                    readOnly 
+                    className="w-full h-56 p-4 bg-slate-950 text-emerald-400 font-mono text-xs rounded-2xl focus:outline-none custom-scrollbar leading-relaxed border border-slate-800" 
+                  />
+                </div>
+              )}
 
               {eodSendResult && (
                 <div className={`p-3 rounded-xl text-xs font-semibold ${
                   eodSendResult.startsWith('✅') 
-                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' 
-                    : 'bg-rose-50 text-rose-800 border border-rose-200'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800' 
+                    : 'bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-200 border border-rose-200 dark:border-rose-800'
                 }`}>
                   {eodSendResult}
                 </div>
               )}
               
-              <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+              {/* Footer Actions */}
+              <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
                 <button 
                   onClick={() => { setShowEodModal(false); setEodSendResult(''); }} 
-                  className="px-4 py-2.5 text-slate-500 font-bold text-xs rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
+                  className="px-4 py-2.5 text-slate-500 font-bold text-xs rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                 >
                   Close
                 </button>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
+                  {typeof navigator !== 'undefined' && 'share' in navigator && (
+                    <button 
+                      onClick={async () => {
+                        try {
+                          await navigator.share({
+                            title: 'Cobb Store Closing Digest',
+                            text: eodSummaryText
+                          });
+                        } catch (e) {}
+                      }}
+                      className="px-3.5 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Share2 className="w-4 h-4 text-blue-500"/>
+                      <span>Share</span>
+                    </button>
+                  )}
+
                   <button 
                     onClick={() => { 
                       navigator.clipboard.writeText(eodSummaryText); 
                       setEodCopied(true); 
                       setTimeout(() => setEodCopied(false), 2000); 
                     }} 
-                    className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer"
+                    className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer"
                   >
                     {eodCopied ? <CheckCircle2 className="w-4 h-4 text-emerald-600"/> : <Copy className="w-4 h-4"/>}
                     {eodCopied ? 'Copied!' : 'Copy Text'}
@@ -2392,7 +2694,7 @@ export default function App() {
                     className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow-md shadow-emerald-600/20 transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
                   >
                     {isSendingEod ? <RefreshCw className="w-4 h-4 animate-spin"/> : <Send className="w-4 h-4"/>}
-                    <span>{isSendingEod ? 'Dispatching...' : 'Send to 4 Owners Now'}</span>
+                    <span>{isSendingEod ? 'Dispatching...' : 'Send WhatsApp to 4 Owners'}</span>
                   </button>
                 </div>
               </div>
@@ -2444,6 +2746,7 @@ export default function App() {
           notification={activeCheckoutAlert}
           onClose={() => setActiveCheckoutAlert(null)}
           onOpenBill={handleOpenBillFromNotification}
+          onOpenEod={() => handleGenerateEodReport()}
         />
         </div>
       </Layout>

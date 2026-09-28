@@ -1312,6 +1312,8 @@ const handleSalesLiveOrHistory = async (req, res) => {
                 ISNULL(c.CUSTOMER_FNAME, '') + ' ' + ISNULL(c.CUSTOMER_LNAME, '') as CustomerName,
                 c.CUSTOMER_FNAME as FirstName,
                 m.NET_AMOUNT as Amount,
+                ISNULL(m.DISCOUNT_AMOUNT, 0) as DiscountAmount,
+                ISNULL(m.CANCELLED, 0) as Cancelled,
                 CONVERT(varchar, m.CM_TIME, 126) as BillTime,
                 CONVERT(varchar, m.CM_TIME, 23) as BillDate
             FROM CMM01106 m WITH (NOLOCK)
@@ -1333,7 +1335,7 @@ const handleSalesLiveOrHistory = async (req, res) => {
                 SELECT 
                     p.MEMO_ID as BillId,
                     ISNULL(p.CASH_AMOUNT, 0) as CashAmount,
-                    ISNULL(p.CC_AMOUNT, 0) - ISNULL(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0), 0) as CardAmount,
+                    ISNULL(p.CC_AMOUNT, 0) - ISNULL(SUM(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0)), 0) as CardAmount,
                     ISNULL(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0), 0) as UpiAmount
                 FROM VW_BILL_PAYMODE p WITH (NOLOCK)
                 LEFT JOIN VW_WL_CASHMEMOLIST w WITH (NOLOCK) ON p.MEMO_ID = w.MEMO_ID
@@ -1405,6 +1407,13 @@ const handleSalesLiveOrHistory = async (req, res) => {
             const totalQty = billItems.reduce((sum, item) => sum + (Number(item.Quantity) || 1), 0);
             const salesperson = billItems.find(it => it.Salesperson && it.Salesperson !== 'Staff')?.Salesperson || (billItems[0]?.Salesperson || 'Staff');
 
+            const netAmt = Math.round(Number(b.Amount || 0));
+            const discountAmt = Math.round(Number(b.DiscountAmount || 0));
+            const grossAmt = netAmt + discountAmt;
+            const discountPct = grossAmt > 0 ? Math.round((discountAmt / grossAmt) * 100) : 0;
+            const isHeavyDiscount = (discountPct >= 35 && discountAmt >= 1000) || discountAmt >= 2500;
+            const isBigTicket = netAmt >= 10000;
+
             return {
                 ...b,
                 CashAmount: cash,
@@ -1413,6 +1422,11 @@ const handleSalesLiveOrHistory = async (req, res) => {
                 PaymentMode: paymentMode,
                 TotalQty: totalQty,
                 Salesperson: salesperson,
+                DiscountAmount: discountAmt,
+                GrossAmount: grossAmt,
+                DiscountPercent: discountPct,
+                IsHeavyDiscount: isHeavyDiscount,
+                IsBigTicket: isBigTicket,
                 Items: billItems
             };
         });
@@ -1426,6 +1440,34 @@ const handleSalesLiveOrHistory = async (req, res) => {
 
 app.get('/api/sales/live', handleSalesLiveOrHistory);
 app.get('/api/sales/history', handleSalesLiveOrHistory);
+
+// Cancelled / Void Bills Endpoint (Fraud Prevention)
+app.get('/api/sales/cancelled', async (req, res) => {
+    try {
+        const limit = Math.min(Math.max(parseInt(req.query.limit) || 10, 1), 50);
+        const result = await sql.query(`
+            SELECT TOP ${limit}
+                m.CM_ID as BillId,
+                m.CM_NO as BillNumber,
+                m.CUSTOMER_CODE as Phone,
+                ISNULL(c.CUSTOMER_FNAME, '') + ' ' + ISNULL(c.CUSTOMER_LNAME, '') as CustomerName,
+                c.CUSTOMER_FNAME as FirstName,
+                m.NET_AMOUNT as Amount,
+                ISNULL(m.DISCOUNT_AMOUNT, 0) as DiscountAmount,
+                m.CANCELLED as Cancelled,
+                CONVERT(varchar, m.CM_TIME, 126) as BillTime,
+                CONVERT(varchar, m.CM_TIME, 23) as BillDate
+            FROM CMM01106 m WITH (NOLOCK)
+            LEFT JOIN CUSTDYM c WITH (NOLOCK) ON m.CUSTOMER_CODE = c.CUSTOMER_CODE
+            WHERE m.CANCELLED = 1 AND m.CM_TIME >= DATEADD(day, -7, GETDATE())
+            ORDER BY m.CM_TIME DESC
+        `);
+        res.json(result.recordset || []);
+    } catch (err) {
+        console.error('Cancelled sales endpoint error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
 
 
 app.get('/api/sales/bill/:id/items', async (req, res) => {
