@@ -1,0 +1,112 @@
+rules_version = '2';
+
+// ===============================================================
+// Assumed Data Model & Architecture: Cobb Store Intelligence
+// ===============================================================
+//
+// Application: Cobb Store Intelligence System (Phone Link & POS)
+// Firebase Project: cobb-store
+// Client Auth: Firebase Anonymous Authentication (request.auth != null)
+// Server/Backend: Firebase Admin SDK (Service Account, bypasses rules)
+//
+// Collections:
+// 1. /stores/{storeId}/data/{docName}
+//    - Store analytics snapshots, sales overviews, inventory, staff leaderboard & system state.
+//    - Read: Authenticated store clients.
+//    - Write: Authenticated store clients (updating config & system heartbeat).
+//
+// 2. /stores/{storeId}/checkout_notifications/{notificationId}
+//    - Real-time sales checkout alerts, system online/offline alerts.
+//    - Read: Authenticated store clients (listening to real-time checkout feed).
+//    - Create: Authenticated clients (test alerts, cashier checkouts) and Admin SDK.
+//
+// 3. /stores/{storeId}/fcm_tokens/{tokenId}
+//    - Web Push / mobile device tokens for checkout notifications.
+//    - Read/Write: Authenticated store devices.
+//
+// 4. /stores/{storeId}/alterations/{alterationId}
+//    - Tailor alteration jobs, customer tickets, status tracking.
+//    - Read/Write/Delete: Authenticated store associates.
+//
+// 5. /whatsapp_queue/{messageId}
+//    - Outbound customer notification queue (e.g. receipts, alteration ready alerts).
+//    - Create: Authenticated store clients.
+//    - Read/Update: Admin SDK / WhatsApp Gateway.
+//
+// ===============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isValidStoreId(storeId) {
+      return storeId is string && storeId.size() > 0 && storeId.size() <= 64;
+    }
+
+    // ===============================================================
+    // Store Root & Synced Data Docs
+    // ===============================================================
+
+    match /stores/{storeId} {
+      allow read: if isAuthenticated() && isValidStoreId(storeId);
+      allow write: if isAuthenticated() && isValidStoreId(storeId);
+
+      // Synced Analytics, Inventory, Staff Leaderboard, and System Status
+      match /data/{docName} {
+        allow read: if isAuthenticated() && isValidStoreId(storeId);
+        allow write: if isAuthenticated() && isValidStoreId(storeId);
+      }
+
+      // Real-time Checkout & System Status Notifications
+      match /checkout_notifications/{notificationId} {
+        allow read: if isAuthenticated() && isValidStoreId(storeId);
+        allow create: if isAuthenticated() && isValidStoreId(storeId)
+          && request.resource.data.keys().hasAny(['title', 'body', 'createdAt']);
+        allow update, delete: if isAuthenticated() && isValidStoreId(storeId);
+      }
+
+      // FCM Web Push Device Tokens
+      match /fcm_tokens/{tokenId} {
+        allow read: if isAuthenticated() && isValidStoreId(storeId);
+        allow create, update: if isAuthenticated() && isValidStoreId(storeId)
+          && request.resource.data.token is string;
+        allow delete: if isAuthenticated() && isValidStoreId(storeId);
+      }
+
+      // Alteration Desk Tickets & Garment Stubs
+      match /alterations/{alterationId} {
+        allow read: if isAuthenticated() && isValidStoreId(storeId);
+        allow create: if isAuthenticated() && isValidStoreId(storeId)
+          && request.resource.data.category is string;
+        allow update, delete: if isAuthenticated() && isValidStoreId(storeId);
+      }
+    }
+
+    // ===============================================================
+    // Outbound WhatsApp Queue
+    // ===============================================================
+
+    match /whatsapp_queue/{messageId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated()
+        && request.resource.data.phone is string
+        && request.resource.data.message is string;
+      allow update, delete: if isAuthenticated();
+    }
+
+    // ===============================================================
+    // Default Deny
+    // ===============================================================
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
