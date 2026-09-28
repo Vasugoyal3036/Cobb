@@ -24,8 +24,8 @@ let win;
 let backendProcess = null;
 let syncProcess = null;
 
-// --- AUTO-START BACKEND SERVER ---
-function startBackendServer() {
+// --- AUTO-START BACKEND SERVER & CLOUD SYNC AGENT ---
+function startBackendServices() {
   const possiblePaths = [
     path.join(process.env.APP_ROOT, '..', 'CobbDashboard', 'server.js'),
     'D:\\cobbbb\\CobbDashboard\\server.js',
@@ -42,6 +42,7 @@ function startBackendServer() {
   const backendDir = path.dirname(serverScript);
   const syncScript = path.join(backendDir, 'cloud_sync.js');
 
+  // 1. Check and start Backend Server if not running
   try {
     const req = http.get('http://localhost:5000/api/sales/overview', (res) => {
       console.log('[Electron] Backend server is already running on port 5000');
@@ -67,32 +68,33 @@ function startBackendServer() {
         console.log(`[Backend] Process exited with code ${code}`);
         backendProcess = null;
       });
-
-      if (fs.existsSync(syncScript)) {
-        console.log('[Electron] Starting sync agent from:', syncScript);
-        syncProcess = spawn('node', [syncScript], {
-          cwd: backendDir,
-          stdio: 'pipe',
-          shell: false,
-          windowsHide: true
-        });
-
-        syncProcess.stdout.on('data', (data) => {
-          console.log(`[Sync Agent] ${data.toString().trim()}`);
-        });
-
-        syncProcess.stderr.on('data', (data) => {
-          console.error(`[Sync Agent ERR] ${data.toString().trim()}`);
-        });
-
-        syncProcess.on('close', (code) => {
-          console.log(`[Sync Agent] Process exited with code ${code}`);
-          syncProcess = null;
-        });
-      }
     });
   } catch (err) {
     console.error('[Electron] Error checking backend status:', err);
+  }
+
+  // 2. Start Cloud Sync Agent independently
+  if (fs.existsSync(syncScript) && !syncProcess) {
+    console.log('[Electron] Starting cloud sync agent from:', syncScript);
+    syncProcess = spawn('node', [syncScript], {
+      cwd: backendDir,
+      stdio: 'pipe',
+      shell: false,
+      windowsHide: true
+    });
+
+    syncProcess.stdout.on('data', (data) => {
+      console.log(`[Sync Agent] ${data.toString().trim()}`);
+    });
+
+    syncProcess.stderr.on('data', (data) => {
+      console.error(`[Sync Agent ERR] ${data.toString().trim()}`);
+    });
+
+    syncProcess.on('close', (code) => {
+      console.log(`[Sync Agent] Process exited with code ${code}`);
+      syncProcess = null;
+    });
   }
 }
 
@@ -164,8 +166,8 @@ app.on('before-quit', () => {
 });
 
 app.whenReady().then(() => {
-  // Start backend automatically
-  startBackendServer();
+  // Start backend & sync agent automatically
+  startBackendServices();
 
   // Handle custom protocol
   protocol.handle('app', (request) => {

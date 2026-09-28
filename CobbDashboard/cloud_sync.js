@@ -168,6 +168,11 @@ async function checkAndDispatchCheckoutAlerts() {
 
         if (newBills.length === 0) return;
 
+        // Invalidate backend sales cache so overview stats refresh immediately
+        try {
+            await axios.post(`${LOCAL_API}/api/cache/invalidate-sales`, {}, { timeout: 3000 });
+        } catch (cacheErr) {}
+
         // Fetch registered FCM device tokens for this store
         let fcmTokens = [];
         try {

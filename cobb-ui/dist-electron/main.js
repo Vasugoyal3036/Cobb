@@ -45,22 +45,23 @@ function g() {
 				console.error(`[Backend ERR] ${e.toString().trim()}`);
 			}), m.on("close", (e) => {
 				console.log(`[Backend] Process exited with code ${e}`), m = null;
-			}), o.existsSync(n) && (console.log("[Electron] Starting sync agent from:", n), h = s("node", [n], {
-				cwd: t,
-				stdio: "pipe",
-				shell: !1,
-				windowsHide: !0
-			}), h.stdout.on("data", (e) => {
-				console.log(`[Sync Agent] ${e.toString().trim()}`);
-			}), h.stderr.on("data", (e) => {
-				console.error(`[Sync Agent ERR] ${e.toString().trim()}`);
-			}), h.on("close", (e) => {
-				console.log(`[Sync Agent] Process exited with code ${e}`), h = null;
-			}));
+			});
 		});
 	} catch (e) {
 		console.error("[Electron] Error checking backend status:", e);
 	}
+	o.existsSync(n) && !h && (console.log("[Electron] Starting cloud sync agent from:", n), h = s("node", [n], {
+		cwd: t,
+		stdio: "pipe",
+		shell: !1,
+		windowsHide: !0
+	}), h.stdout.on("data", (e) => {
+		console.log(`[Sync Agent] ${e.toString().trim()}`);
+	}), h.stderr.on("data", (e) => {
+		console.error(`[Sync Agent ERR] ${e.toString().trim()}`);
+	}), h.on("close", (e) => {
+		console.log(`[Sync Agent] Process exited with code ${e}`), h = null;
+	}));
 }
 function _() {
 	m &&= (console.log("[Electron] Stopping backend server..."), m.kill(), null), h &&= (console.log("[Electron] Stopping sync agent..."), h.kill(), null);

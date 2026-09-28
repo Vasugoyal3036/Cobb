@@ -60,38 +60,47 @@ app.get('/api/stores/network', (req, res) => {
 
 
 const GlobalNodeCache = require('node-cache');
-const globalApiCache = new GlobalNodeCache({ stdTTL: 300 }); // 5 minutes cache for blazing fast tab switches
+const globalApiCache = new GlobalNodeCache({ stdTTL: 180 }); // Default fallback
+
+// Smart Cache TTL Mapping:
+// - Real-time metrics: 20s so checkout sales updates reflect near instantly
+// - Operational metrics: 60-120s
+// - Heavy analytical & inventory catalogs: 600s (10 mins)
+const ENDPOINT_TTL = {
+    '/api/sales/overview': 20,
+    '/api/sales/daily-month': 30,
+    '/api/analytics/hourly': 20,
+    '/api/reconciliation/latest': 30,
+    '/api/sales/live': 20,
+    '/api/sales/history': 120,
+    '/api/sales/cancelled': 30,
+    '/api/reports/eod-summary': 60,
+    '/api/analytics/top-movers': 120,
+    '/api/sales/returns': 60,
+    '/api/staff/leaderboard': 120,
+    '/api/inventory': 600,
+    '/api/inventory/dead-stock': 600,
+    '/api/inventory/size-matrix': 600,
+    '/api/financials/gst-summary': 600,
+    '/api/financials/pnl': 600,
+    '/api/analytics/monthly-products': 600,
+    '/api/analytics/wardrobe-profiles': 600,
+    '/api/analytics/retention-radar': 600,
+    '/api/customers/vip': 300,
+    '/api/customers/dormant': 300,
+    '/api/broadcast/group': 300,
+    '/api/smart-bundles': 300,
+    '/api/inventory/reorder-suggestions': 600,
+    '/api/inventory/stock-health': 600,
+    '/api/inventory/broken-sizes': 600,
+    '/api/inventory/dead-stock-aged': 600,
+    '/api/loyalty/leaderboard': 300
+};
 
 // Global Cache Middleware
 app.use((req, res, next) => {
-    const cacheEndpoints = [
-        '/api/sales/overview',
-        '/api/sales/history',
-        '/api/sales/daily-month',
-        '/api/analytics/hourly',
-        '/api/analytics/monthly-products',
-        '/api/inventory',
-        '/api/inventory/dead-stock',
-        '/api/customers/vip',
-        '/api/customers/dormant',
-        '/api/analytics/retention-radar',
-        '/api/financials/pnl',
-        '/api/analytics/wardrobe-profiles',
-        '/api/financials/gst-summary',
-        '/api/inventory/size-matrix',
-        '/api/analytics/top-movers',
-        '/api/sales/returns',
-        '/api/broadcast/group',
-        '/api/smart-bundles',
-        '/api/reports/eod-summary',
-        '/api/inventory/reorder-suggestions',
-        '/api/inventory/stock-health',
-        '/api/inventory/broken-sizes',
-        '/api/inventory/dead-stock-aged',
-        '/api/loyalty/leaderboard'
-    ];
-
-    if (req.method === 'GET' && cacheEndpoints.includes(req.path) && req.query.refresh !== 'true') {
+    const ttl = ENDPOINT_TTL[req.path];
+    if (req.method === 'GET' && ttl !== undefined && req.query.refresh !== 'true') {
         const key = req.originalUrl;
         const cachedResponse = globalApiCache.get(key);
         if (cachedResponse) {
@@ -101,7 +110,7 @@ app.use((req, res, next) => {
         const originalJson = res.json;
         res.json = function(body) {
             if (res.statusCode >= 200 && res.statusCode < 300 && body && !body.error) {
-                globalApiCache.set(key, body);
+                globalApiCache.set(key, body, ttl);
             }
             return originalJson.call(this, body);
         };
@@ -109,6 +118,20 @@ app.use((req, res, next) => {
     } else {
         next();
     }
+});
+
+// Cache invalidation endpoint (triggered on checkout/alteration/payment)
+function invalidateSalesCache() {
+    const keys = globalApiCache.keys();
+    keys.forEach(k => {
+        if (k.includes('/api/sales') || k.includes('/api/analytics/hourly') || k.includes('/api/reports/eod')) {
+            globalApiCache.del(k);
+        }
+    });
+}
+app.post('/api/cache/invalidate-sales', (req, res) => {
+    invalidateSalesCache();
+    res.json({ success: true, message: 'Sales cache cleared' });
 });
 // Serve the compiled frontend UI so it can be accessed on a phone via tunneling port 5000
 const frontendPath = path.join(__dirname, '../cobb-ui/dist');
