@@ -646,6 +646,94 @@ async function dispatchSystemStatusAlert(status, reason = '') {
     }
 }
 
+// Real-time listener for UI-triggered test alerts written to Firestore
+function listenForTestAlertsAndDispatchFcm() {
+    if (!db || !messaging) return;
+
+    let isSeeded = false;
+    const seenTestIds = new Set();
+
+    console.log("[SYNC AGENT] 👂 Listening for UI test alerts to dispatch phone push notifications...");
+
+    db.collection("stores").doc(STORE_ID).collection("checkout_notifications")
+        .orderBy("createdAt", "desc")
+        .limit(10)
+        .onSnapshot((snapshot) => {
+            if (!isSeeded) {
+                // Seed existing records so previous tests are not re-sent on process restart
+                snapshot.forEach(docSnap => seenTestIds.add(docSnap.id));
+                isSeeded = true;
+                return;
+            }
+
+            snapshot.docChanges().forEach(async (change) => {
+                if (change.type === 'added') {
+                    const docSnap = change.doc;
+                    const testId = docSnap.id;
+                    if (seenTestIds.has(testId)) return;
+                    seenTestIds.add(testId);
+
+                    const data = docSnap.data();
+                    if (!data || !data.isTest || data.fcmDispatched) return;
+
+                    console.log(`[SYNC AGENT] 🧪 Remote UI Test Alert detected (${testId}): "${data.title}". Dispatching FCM to registered phones...`);
+
+                    try {
+                        const tokenSnap = await db.collection("stores").doc(STORE_ID).collection("fcm_tokens").get();
+                        if (tokenSnap.empty) {
+                            console.warn('[SYNC AGENT] No registered FCM phone tokens found in Firestore.');
+                            return;
+                        }
+
+                        const rawTokens = tokenSnap.docs.map(d => d.data()?.token).filter(Boolean);
+                        if (rawTokens.length === 0) return;
+
+                        const title = data.title || '🧾 Test Sale Alert';
+                        const body = data.body || 'A new test sale has been recorded.';
+                        const url = data.url || '/?tab=livebills';
+
+                        const pushRes = await messaging.sendEachForMulticast({
+                            tokens: rawTokens,
+                            notification: {
+                                title,
+                                body
+                            },
+                            data: {
+                                type: data.type || 'sale',
+                                title,
+                                body,
+                                url,
+                                billNumber: String(data.billNumber || testId)
+                            },
+                            webpush: {
+                                headers: {
+                                    Urgency: 'high'
+                                },
+                                fcmOptions: { link: url },
+                                notification: {
+                                    title,
+                                    body,
+                                    icon: '/ors-logo.png',
+                                    badge: '/ors-logo.png',
+                                    tag: `cobb-test-${testId}`,
+                                    requireInteraction: 'true',
+                                    silent: 'true'
+                                }
+                            }
+                        });
+
+                        console.log(`[SYNC AGENT] 📲 FCM Test Alert dispatched: ${pushRes.successCount} succeeded, ${pushRes.failureCount} failed.`);
+                        await docSnap.ref.update({ fcmDispatched: true }).catch(() => {});
+                    } catch (err) {
+                        console.error('[SYNC AGENT] Error dispatching test alert FCM:', err.message);
+                    }
+                }
+            });
+        }, (err) => {
+            console.warn('[SYNC AGENT] Test alerts listener notice:', err.message);
+        });
+}
+
 // Periodic heartbeat pulse so Phone Link Watchdog can detect power cuts / crashes within 2 minutes
 async function updateHeartbeat() {
     if (!db) return;
@@ -757,9 +845,10 @@ function startSyncAgent() {
             }
         })();
 
-        // 3. Start tiered intervals
+        // 3. Start tiered intervals & remote test listeners
         checkAndDispatchCheckoutAlerts();
         checkAndDispatchCancelledBillAlerts();
+        listenForTestAlertsAndDispatchFcm();
         setInterval(() => syncEndpointList(operationalEndpoints, 'Operational Tier'), OPERATIONAL_INTERVAL);
         setInterval(() => syncEndpointList(standardEndpoints, 'Standard Tier'), STANDARD_INTERVAL);
         setInterval(() => syncEndpointList(deepAnalyticsEndpoints, 'Deep Analytics Tier'), DEEP_ANALYTICS_INTERVAL);

@@ -32,7 +32,7 @@ messaging.onBackgroundMessage((payload) => {
     body,
     icon: '/ors-logo.png',
     badge: '/ors-logo.png',
-    vibrate: [250, 100, 250, 100, 250],
+    silent: true,
     tag: `cobb-sale-${billNumber || Date.now()}`,
     renotify: true,
     data: {
