@@ -160,6 +160,7 @@ const Layout = ({
   API_BASE,
   notificationsEnabled = false,
   onEnableNotifications,
+  onTestNotification,
   playCheckoutChime
 }) => {
 
@@ -895,10 +896,23 @@ const Layout = ({
               <div className="pt-2 flex flex-col gap-2">
                 <button
                   type="button"
+                  onClick={async () => {
+                    if (typeof onTestNotification === 'function') {
+                      await onTestNotification();
+                    }
+                  }}
+                  className="w-full py-2.5 rounded-xl font-bold text-xs bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-amber-500/20 active:scale-[0.98]"
+                >
+                  <Sparkles className="w-4 h-4 text-slate-950" />
+                  <span>Send Test Sale Alert (Phone & Screen)</span>
+                </button>
+
+                <button
+                  type="button"
                   onClick={() => {
                     if (typeof playCheckoutChime === 'function') playCheckoutChime();
                   }}
-                  className="w-full py-2.5 rounded-xl font-bold text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-white/10 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                  className="w-full py-2.5 rounded-xl font-bold text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-white/10 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-[0.98]"
                 >
                   <Volume2 className="w-4 h-4 text-emerald-400" />
                   <span>Test Cash Register Chime</span>

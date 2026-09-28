@@ -194,3 +194,72 @@ export const subscribeToCheckoutNotifications = (storeId = 'DEMO_STORE_001', onN
 
   return unsubscribe;
 };
+
+// Trigger a test checkout alert with chime sound, Firestore push, and device banner
+export const triggerTestCheckoutNotification = async (storeId = 'DEMO_STORE_001') => {
+  const testBillNo = 'TEST-' + Math.floor(1000 + Math.random() * 9000);
+  const testAmounts = [1499, 2499, 3999, 4999, 6999];
+  const testAmount = testAmounts[Math.floor(Math.random() * testAmounts.length)];
+  const staffList = ['Vikas', 'Simran', 'Rahul', 'Pooja'];
+  const staff = staffList[Math.floor(Math.random() * staffList.length)];
+  const payModes = ['UPI', 'Cash', 'Card'];
+  const pay = payModes[Math.floor(Math.random() * payModes.length)];
+
+  const title = `🧾 Test Sale Alert: ₹${testAmount.toLocaleString('en-IN')} | Bill #${testBillNo}`;
+  const body = `Items: 2 • Pay: ${pay} • Staff: ${staff} • Cust: Parbhat Goyal`;
+
+  const payload = {
+    billId: testBillNo,
+    billNumber: testBillNo,
+    amount: testAmount,
+    qty: 2,
+    paymentMode: pay,
+    salesperson: staff,
+    customer: 'Parbhat Goyal (Test)',
+    title,
+    body,
+    url: '/?tab=livebills',
+    isTest: true,
+    createdAt: Date.now()
+  };
+
+  // 1. Play Cash Register Chime immediately
+  playCheckoutChime();
+
+  // 2. Vibrate phone if supported
+  if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+    try { navigator.vibrate([200, 100, 200]); } catch (e) {}
+  }
+
+  // 3. Write to Firestore so all connected phones / devices trigger simultaneously
+  if (hasConfig && db) {
+    try {
+      if (authPromise) await authPromise;
+      const notifRef = doc(db, 'stores', storeId, 'checkout_notifications', testBillNo);
+      await setDoc(notifRef, {
+        ...payload,
+        timestamp: serverTimestamp()
+      });
+      console.log('[CheckoutAlert] 🧪 Test sale alert written to Firestore:', testBillNo);
+    } catch (e) {
+      console.warn('[CheckoutAlert] Firestore test push notice:', e.message);
+    }
+  }
+
+  // 4. Trigger Web Notification on this device
+  if (isNotificationGranted() && typeof window !== 'undefined') {
+    try {
+      const sysNotif = new Notification(title, {
+        body,
+        icon: '/ors-logo.png',
+        badge: '/favicon.svg',
+        tag: `cobb-sale-${testBillNo}`
+      });
+      sysNotif.onclick = () => {
+        window.focus();
+      };
+    } catch (e) {}
+  }
+
+  return payload;
+};

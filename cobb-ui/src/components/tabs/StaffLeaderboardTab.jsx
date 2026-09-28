@@ -23,11 +23,14 @@ import {
   Info
 } from 'lucide-react';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
+import { db, hasConfig } from '../../utils/firebase';
 
 export default function StaffLeaderboardTab({ API_BASE = 'http://localhost:5000' }) {
   const { addToast } = useToast();
+  const { activeStore } = useAuth();
   const [period, setPeriod] = useState('all_time');
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [leaderboardData, setLeaderboardData] = useState(null);
   const [selectedStaff, setSelectedStaff] = useState(null);
   const [showConfigModal, setShowConfigModal] = useState(false);
@@ -41,15 +44,57 @@ export default function StaffLeaderboardTab({ API_BASE = 'http://localhost:5000'
   });
   const [savingConfig, setSavingConfig] = useState(false);
 
-  const fetchLeaderboard = async () => {
-    setLoading(true);
+  // Cached bundle state for 0ms period switching and instant offline loads
+  const [rawBundle, setRawBundle] = useState(() => {
     try {
-      const res = await axios.get(`${API_BASE}/api/staff/leaderboard?period=${period}`);
+      const c = localStorage.getItem('cobb_staff_leaderboard_cache');
+      return c ? JSON.parse(c) : null;
+    } catch (e) {
+      return null;
+    }
+  });
+
+  // Extract the active period data from bundle whenever period or rawBundle updates
+  useEffect(() => {
+    if (rawBundle) {
+      if (rawBundle.periods && rawBundle.periods[period]) {
+        setLeaderboardData(rawBundle.periods[period]);
+      } else if (rawBundle.period === period) {
+        setLeaderboardData(rawBundle);
+      }
+    }
+  }, [period, rawBundle]);
+
+  const fetchLeaderboard = async (forceFresh = false) => {
+    if (!rawBundle?.periods?.[period] || forceFresh) {
+      setLoading(true);
+    }
+    try {
+      // 1. First attempt to fetch the full bundle for 0ms period switching on phone
+      const targetUrl = `${API_BASE}/api/staff/leaderboard?period=bundle`;
+      const res = await axios.get(targetUrl);
       if (res.data) {
-        setLeaderboardData(res.data);
+        setRawBundle(res.data);
+        try {
+          localStorage.setItem('cobb_staff_leaderboard_cache', JSON.stringify(res.data));
+        } catch (e) {}
+
+        if (res.data.periods && res.data.periods[period]) {
+          setLeaderboardData(res.data.periods[period]);
+        } else {
+          setLeaderboardData(res.data);
+        }
       }
     } catch (err) {
-      console.error('Failed to load staff leaderboard:', err);
+      // 2. Fallback to period-specific query if bundle is unavailable
+      try {
+        const fallbackRes = await axios.get(`${API_BASE}/api/staff/leaderboard?period=${period}`);
+        if (fallbackRes.data) {
+          setLeaderboardData(fallbackRes.data);
+        }
+      } catch (fbErr) {
+        console.error('Failed to load staff leaderboard:', fbErr);
+      }
     } finally {
       setLoading(false);
     }
@@ -57,9 +102,17 @@ export default function StaffLeaderboardTab({ API_BASE = 'http://localhost:5000'
 
   const fetchConfig = async () => {
     try {
+      const cached = localStorage.getItem('cobb_staff_config_cache');
+      if (cached) setConfigForm(JSON.parse(cached));
+    } catch (e) {}
+
+    try {
       const res = await axios.get(`${API_BASE}/api/staff/config`);
       if (res.data) {
         setConfigForm(res.data);
+        try {
+          localStorage.setItem('cobb_staff_config_cache', JSON.stringify(res.data));
+        } catch (e) {}
       }
     } catch (err) {
       console.error('Failed to load staff config:', err);
@@ -79,9 +132,24 @@ export default function StaffLeaderboardTab({ API_BASE = 'http://localhost:5000'
     setSavingConfig(true);
     try {
       await axios.post(`${API_BASE}/api/staff/config`, configForm);
+      try {
+        localStorage.setItem('cobb_staff_config_cache', JSON.stringify(configForm));
+      } catch (e) {}
+
+      // Backup config to Firestore if available
+      if (hasConfig && db) {
+        try {
+          const storeId = (!activeStore || activeStore === 'ALL' || activeStore === 'STORE_01') ? 'DEMO_STORE_001' : activeStore;
+          const { doc, setDoc } = await import('firebase/firestore');
+          await setDoc(doc(db, 'stores', storeId, 'data', 'staff_config'), configForm, { merge: true });
+        } catch (fsErr) {
+          console.debug('[StaffLeaderboard] Firestore config backup note:', fsErr.message);
+        }
+      }
+
       if (addToast) addToast('Commission & Targets updated successfully!', 'success');
       setShowConfigModal(false);
-      fetchLeaderboard();
+      fetchLeaderboard(true);
     } catch (err) {
       if (addToast) addToast('Failed to save config: ' + err.message, 'error');
     } finally {
@@ -113,9 +181,15 @@ export default function StaffLeaderboardTab({ API_BASE = 'http://localhost:5000'
               Sales Staff Leaderboard & Commissions
             </h1>
           </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Real-time salesperson attribution, quota achievements, and automated commission payouts
-          </p>
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              {rawBundle?.periods ? 'Cloud Synced' : 'Live Sync'}
+            </span>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              Real-time salesperson attribution, quota achievements, and automated commission payouts
+            </p>
+          </div>
         </div>
 
         {/* Action Buttons & Period Selector */}

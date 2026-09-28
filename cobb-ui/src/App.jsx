@@ -32,7 +32,8 @@ import {
   subscribeToCheckoutNotifications,
   registerForPushNotifications,
   isNotificationGranted,
-  playCheckoutChime
+  playCheckoutChime,
+  triggerTestCheckoutNotification
 } from './utils/checkoutNotifications';
 import { useAuth, ROLE_PERMISSIONS } from './context/AuthContext';
 import { hasConfig } from './utils/firebase';
@@ -499,6 +500,13 @@ export default function App() {
       setNotificationsEnabled(true);
     }
     return res;
+  };
+
+  const handleTestCheckoutNotification = async () => {
+    const storeId = (!activeStore || activeStore === 'ALL' || activeStore === 'STORE_01') ? 'DEMO_STORE_001' : activeStore;
+    const testAlert = await triggerTestCheckoutNotification(storeId);
+    setActiveCheckoutAlert(testAlert);
+    return testAlert;
   };
 
   // Real-time Firestore checkout listener for instant in-app alerts and chimes
@@ -2023,6 +2031,7 @@ export default function App() {
         API_BASE={API_BASE}
         notificationsEnabled={notificationsEnabled}
         onEnableNotifications={handleEnablePushNotifications}
+        onTestNotification={handleTestCheckoutNotification}
         playCheckoutChime={playCheckoutChime}
       >
 
