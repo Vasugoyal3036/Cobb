@@ -250,17 +250,31 @@ export const triggerTestCheckoutNotification = async (storeId = 'DEMO_STORE_001'
   const payModes = ['UPI', 'Cash', 'Card'];
   const pay = payModes[Math.floor(Math.random() * payModes.length)];
 
-  const title = `🧾 Test Sale Alert: ₹${testAmount.toLocaleString('en-IN')} | Bill #${testBillNo}`;
-  const body = `Items: 2 • Pay: ${pay} • Staff: ${staff} • Cust: Parbhat Goyal`;
+  const sampleItemSets = [
+    'Denim Jeans, Casual Shirt',
+    'Cotton Chinos, Polo T-Shirt',
+    'Formal Trouser, Linen Shirt',
+    'Printed Kurta, Slim Denim'
+  ];
+  const itemNames = sampleItemSets[Math.floor(Math.random() * sampleItemSets.length)];
+  const discountAmt = Math.round(testAmount * 0.15);
+  const grossAmt = testAmount + discountAmt;
+  const discountPct = Math.round((discountAmt / grossAmt) * 100);
+
+  const title = `🧾 New Sale: ₹${testAmount.toLocaleString('en-IN')} | Bill #${testBillNo}`;
+  const body = `🛍️ 2 Items: ${itemNames}\n💳 Pay: ${pay} | Gross: ₹${grossAmt.toLocaleString('en-IN')} | Disc: ₹${discountAmt.toLocaleString('en-IN')} (${discountPct}% OFF)\n👤 Customer: Parbhat Goyal (98123-45678) • Staff: ${staff}`;
 
   const payload = {
     billId: testBillNo,
     billNumber: testBillNo,
     amount: testAmount,
+    grossAmount: grossAmt,
+    discountAmount: discountAmt,
+    discountPercent: discountPct,
     qty: 2,
     paymentMode: pay,
     salesperson: staff,
-    customer: 'Parbhat Goyal (Test)',
+    customer: 'Parbhat Goyal (98123-45678)',
     title,
     body,
     url: '/?tab=livebills',
@@ -373,7 +387,7 @@ export const triggerTestBigTicketAlert = async (storeId = 'DEMO_STORE_001') => {
   const testBillNo = `TEST-VIP-${Math.floor(1000 + Math.random() * 9000)}`;
   const amount = 18500;
   const title = `💎 VIP MEGA SALE: ₹${amount.toLocaleString('en-IN')} | Bill #${testBillNo}`;
-  const body = `🎉 Staff: Rohit closed a massive ₹${amount.toLocaleString('en-IN')} ticket (6 items) for Asham Sohi! Pay: UPI`;
+  const body = `🛍️ 6 Items: Premium Suit, 2 Shirts, Blazer + 2 more\n💳 Pay: UPI | Gross: ₹22,000 | Disc: ₹3,500 (16% OFF)\n👤 Customer: Asham Sohi (98765-43210) • Staff: Rohit`;
 
   const payload = {
     billId: testBillNo,
@@ -386,7 +400,7 @@ export const triggerTestBigTicketAlert = async (storeId = 'DEMO_STORE_001') => {
     qty: 6,
     paymentMode: 'UPI',
     salesperson: 'Rohit',
-    customer: 'Asham Sohi',
+    customer: 'Asham Sohi (98765-43210)',
     title,
     body,
     url: '/?tab=livebills',
@@ -426,7 +440,7 @@ export const triggerTestHeavyDiscountAlert = async (storeId = 'DEMO_STORE_001') 
   const discountAmount = 3600;
   const discountPct = 45;
   const title = `⚠️ HEAVY DISCOUNT (${discountPct}% OFF) | Bill #${testBillNo}`;
-  const body = `⚠️ Staff: Sahil gave ₹${discountAmount.toLocaleString('en-IN')} (${discountPct}%) discount on ₹${grossAmount.toLocaleString('en-IN')} bill for Walk-in! Net: ₹${netAmount.toLocaleString('en-IN')}`;
+  const body = `🛍️ 3 Items: Denim Jeans, Linen Shirt, Trouser\n💳 Pay: Cash | Gross: ₹8,000 | Disc: ₹3,600 (45% OFF)\n👤 Customer: Walk-in • Staff: Sahil`;
 
   const payload = {
     billId: testBillNo,

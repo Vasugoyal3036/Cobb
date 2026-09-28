@@ -229,13 +229,41 @@ async function checkAndDispatchCheckoutAlerts() {
             const staff = (bill.Salesperson && bill.Salesperson !== 'Staff')
                 ? bill.Salesperson
                 : (bill.Items && bill.Items[0]?.Salesperson && bill.Items[0]?.Salesperson !== 'Staff' ? bill.Items[0].Salesperson : 'Staff');
-            const cust = bill.CustomerName && bill.CustomerName.trim()
-                ? bill.CustomerName.trim()
-                : (bill.Phone ? `Cust (${bill.Phone})` : 'Walk-in');
+            const custName = (bill.CustomerName || bill.FirstName || '').trim();
+            const custPhone = (bill.Phone || '').trim();
+            let custDisplay = 'Walk-in';
+            if (custName && custPhone) custDisplay = `${custName} (${custPhone})`;
+            else if (custName) custDisplay = custName;
+            else if (custPhone) custDisplay = `Cust (${custPhone})`;
 
             const discountAmt = Math.round(Number(bill.DiscountAmount || 0));
             const grossAmt = Math.round(Number(bill.GrossAmount || (amount + discountAmt)));
             const discountPct = Number(bill.DiscountPercent) || (grossAmt > 0 ? Math.round((discountAmt / grossAmt) * 100) : 0);
+
+            // Item names summary
+            let itemSummary = '';
+            if (Array.isArray(bill.Items) && bill.Items.length > 0) {
+                const rawNames = bill.Items.map(it => {
+                    const name = String(it.ArticleName || it.Category || 'Item').trim();
+                    return name.toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+                });
+                const uniqueNames = [...new Set(rawNames)];
+                if (uniqueNames.length <= 3) {
+                    itemSummary = uniqueNames.join(', ');
+                } else {
+                    itemSummary = `${uniqueNames.slice(0, 2).join(', ')} +${uniqueNames.length - 2} more`;
+                }
+            } else {
+                itemSummary = `${qty} items`;
+            }
+
+            // Payment & Financial line
+            let paySummary = `Pay: ${pay} | Gross: ₹${grossAmt.toLocaleString('en-IN')}`;
+            if (discountAmt > 0) {
+                paySummary += ` | Disc: ₹${discountAmt.toLocaleString('en-IN')} (${discountPct}% OFF)`;
+            } else {
+                paySummary += ` (No Disc)`;
+            }
 
             // Categorize Alert:
             // 1. Heavy Discount Warning (Fraud / Revenue Leakage Prevention)
@@ -243,18 +271,18 @@ async function checkAndDispatchCheckoutAlerts() {
             // 3. Regular New Sale
             let alertType = 'sale';
             let title = `🧾 New Sale: ₹${amount.toLocaleString('en-IN')} | Bill #${billNo}`;
-            let body = `Items: ${qty} • Pay: ${pay} • Staff: ${staff} • Cust: ${cust}`;
+            let body = `🛍️ ${qty} Items: ${itemSummary}\n💳 ${paySummary}\n👤 Customer: ${custDisplay} • Staff: ${staff}`;
             let tag = `cobb-sale-${billNo}`;
 
             if ((discountPct >= 35 && discountAmt >= 1000) || discountAmt >= 2500) {
                 alertType = 'heavy_discount';
                 title = `⚠️ HEAVY DISCOUNT (${discountPct}% OFF) | Bill #${billNo}`;
-                body = `⚠️ Staff: ${staff} gave ₹${discountAmt.toLocaleString('en-IN')} (${discountPct}%) discount on ₹${grossAmt.toLocaleString('en-IN')} bill for ${cust}! Net: ₹${amount.toLocaleString('en-IN')}`;
+                body = `⚠️ Staff: ${staff} gave ₹${discountAmt.toLocaleString('en-IN')} (${discountPct}%) discount!\n🛍️ ${qty} Items: ${itemSummary}\n💳 ${paySummary}\n👤 Customer: ${custDisplay}`;
                 tag = `cobb-discount-${billNo}`;
             } else if (amount >= 10000) {
                 alertType = 'big_ticket_sale';
                 title = `💎 VIP MEGA SALE: ₹${amount.toLocaleString('en-IN')} | Bill #${billNo}`;
-                body = `🎉 Staff: ${staff} closed a massive ₹${amount.toLocaleString('en-IN')} ticket (${qty} items) for ${cust}! Pay: ${pay}`;
+                body = `🎉 VIP Purchase (${qty} Items: ${itemSummary})\n💳 ${paySummary}\n👤 Customer: ${custDisplay} • Staff: ${staff}`;
                 tag = `cobb-vip-${billNo}`;
             }
 
