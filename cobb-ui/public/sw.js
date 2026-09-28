@@ -78,3 +78,70 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
+// --- Checkout Web Push Notification Handler ---
+self.addEventListener('push', (event) => {
+  let payload = {};
+  if (event.data) {
+    try {
+      payload = event.data.json();
+    } catch (e) {
+      payload = {
+        notification: {
+          title: '🧾 New Sale Alert',
+          body: event.data.text()
+        }
+      };
+    }
+  }
+
+  const notificationData = payload.notification || {};
+  const customData = payload.data || {};
+
+  const title = notificationData.title || customData.title || '🧾 New Sale Recorded';
+  const body = notificationData.body || customData.body || 'A new checkout was made.';
+  const billNumber = customData.billNumber || '';
+  const billId = customData.billId || '';
+  const targetUrl = customData.url || (billNumber ? `/?tab=livebills&bill=${encodeURIComponent(billNumber)}` : '/?tab=livebills');
+
+  const options = {
+    body: body,
+    icon: notificationData.icon || '/ors-logo.png',
+    badge: '/favicon.svg',
+    vibrate: [250, 100, 250, 100, 250],
+    tag: `cobb-sale-${billNumber || Date.now()}`,
+    renotify: true,
+    data: {
+      url: targetUrl,
+      billNumber: billNumber,
+      billId: billId,
+      dateOfArrival: Date.now()
+    }
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// Deep link to bill breakdown on notification tap
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const customData = event.notification.data || {};
+  const relativeUrl = customData.url || '/?tab=livebills';
+  const destinationUrl = new URL(relativeUrl, self.location.origin).href;
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          if ('navigate' in client) {
+            client.navigate(destinationUrl);
+          }
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(destinationUrl);
+      }
+    })
+  );
+});
+

@@ -1352,7 +1352,8 @@ const handleSalesLiveOrHistory = async (req, res) => {
                     A.NET as NetPrice,
                     ISNULL(P1.PARA1_NAME, 'Standard') as Color,
                     ISNULL(P2.PARA2_NAME, 'Standard') as Size,
-                    ISNULL(F.SECTION_NAME, 'Apparel') as Category
+                    ISNULL(F.SECTION_NAME, 'Apparel') as Category,
+                    ISNULL(NULLIF(RTRIM(EMP.emp_name), ''), 'Staff') as Salesperson
                 FROM CMD01106 A WITH (NOLOCK)
                 JOIN SKU C WITH (NOLOCK) ON A.PRODUCT_CODE = C.PRODUCT_CODE
                 JOIN ARTICLE D WITH (NOLOCK) ON C.ARTICLE_CODE = D.ARTICLE_CODE
@@ -1360,6 +1361,7 @@ const handleSalesLiveOrHistory = async (req, res) => {
                 LEFT JOIN SECTIONM F WITH (NOLOCK) ON E.SECTION_CODE = F.SECTION_CODE
                 LEFT JOIN PARA1 P1 WITH (NOLOCK) ON C.PARA1_CODE = P1.PARA1_CODE
                 LEFT JOIN PARA2 P2 WITH (NOLOCK) ON C.PARA2_CODE = P2.PARA2_CODE
+                LEFT JOIN EMPLOYEE EMP WITH (NOLOCK) ON A.emp_code = EMP.emp_code
                 WHERE A.CM_ID IN (${idList})
                 ORDER BY A.CM_ID, A.NET DESC
             `).catch(err => {
@@ -1401,6 +1403,7 @@ const handleSalesLiveOrHistory = async (req, res) => {
 
             const billItems = itemsByBill[b.BillId] || [];
             const totalQty = billItems.reduce((sum, item) => sum + (Number(item.Quantity) || 1), 0);
+            const salesperson = billItems.find(it => it.Salesperson && it.Salesperson !== 'Staff')?.Salesperson || (billItems[0]?.Salesperson || 'Staff');
 
             return {
                 ...b,
@@ -1409,6 +1412,7 @@ const handleSalesLiveOrHistory = async (req, res) => {
                 UpiAmount: upi,
                 PaymentMode: paymentMode,
                 TotalQty: totalQty,
+                Salesperson: salesperson,
                 Items: billItems
             };
         });

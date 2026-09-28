@@ -44,6 +44,7 @@ const LiveBillsTab = (props) => {
     loadingBillItems,
     setLoadingBillItems,
     toggleBillExpansion,
+    targetHighlightBill,
     setSmartCoordinate,
     setShowCoordinateModal,
     formatCurrency = (val) => `₹${Number(val || 0).toLocaleString('en-IN')}`
@@ -152,6 +153,19 @@ const LiveBillsTab = (props) => {
       setBills(liveBills);
     }
   }, [liveBills, dateFilter]);
+
+  // Auto-scroll into view if arriving from a Push Notification tap
+  useEffect(() => {
+    if (targetHighlightBill) {
+      const timer = setTimeout(() => {
+        const el = document.getElementById(`bill-row-${String(targetHighlightBill).trim()}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 350);
+      return () => clearTimeout(timer);
+    }
+  }, [targetHighlightBill, bills]);
 
   // Filter bills client-side (handles search, payment mode, and date matching)
   const filteredBills = useMemo(() => {
@@ -602,14 +616,26 @@ const LiveBillsTab = (props) => {
                 const items = billItemsCache[bill.BillId] || bill.Items || [];
                 const itemCount = items.length > 0 ? items.reduce((s, i) => s + (Number(i.Quantity) || 1), 0) : (bill.TotalQty || 1);
 
+                const isTargetHighlight = Boolean(
+                  targetHighlightBill && (
+                    String(bill.BillNumber || '').trim().toLowerCase() === String(targetHighlightBill).trim().toLowerCase() ||
+                    String(bill.BillId || '').trim().toLowerCase() === String(targetHighlightBill).trim().toLowerCase()
+                  )
+                );
+
                 return (
                   <React.Fragment key={bill.BillId || idx}>
                     <tr
+                      id={`bill-row-${String(bill.BillNumber || bill.BillId || '').trim()}`}
                       onClick={() => toggleBillExpansion(bill.BillId)}
-                      className={`transition-colors cursor-pointer ${
-                        isExpanded
-                          ? (darkMode ? 'bg-blue-950/20' : 'bg-blue-50/40')
-                          : (darkMode ? 'hover:bg-white/[0.03]' : 'hover:bg-slate-50/70')
+                      className={`transition-all duration-300 cursor-pointer ${
+                        isTargetHighlight
+                          ? darkMode
+                            ? 'bg-emerald-500/20 ring-2 ring-emerald-500/80 shadow-lg shadow-emerald-500/20'
+                            : 'bg-emerald-50 ring-2 ring-emerald-500 shadow-md shadow-emerald-500/20'
+                          : isExpanded
+                            ? (darkMode ? 'bg-blue-950/20' : 'bg-blue-50/40')
+                            : (darkMode ? 'hover:bg-white/[0.03]' : 'hover:bg-slate-50/70')
                       }`}
                     >
                       {/* Date & Time */}

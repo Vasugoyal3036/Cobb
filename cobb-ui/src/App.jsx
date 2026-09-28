@@ -27,7 +27,14 @@ import { fetchWithOfflineFallback, subscribeToData } from './utils/offlineDb';
 import Layout from './components/Layout';
 import SetupScreen from './components/SetupScreen';
 import LoginScreen from './components/LoginScreen';
-import { useAuth } from './context/AuthContext';
+import CheckoutNotificationToast from './components/CheckoutNotificationToast';
+import {
+  subscribeToCheckoutNotifications,
+  registerForPushNotifications,
+  isNotificationGranted,
+  playCheckoutChime
+} from './utils/checkoutNotifications';
+import { useAuth, ROLE_PERMISSIONS } from './context/AuthContext';
 import { hasConfig } from './utils/firebase';
 import axios from 'axios';
 import {
@@ -389,13 +396,13 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState('dashboard');
   
-  // RBAC Tab Protection Guard (Forces restricted tabs back to live checkouts if manager is active)
+  // RBAC Tab Protection Guard — uses ROLE_PERMISSIONS to redirect if current tab is not allowed
   useEffect(() => {
-    if (currentRole === 'manager') {
-      const managerRestrictedTabs = ['pnl', 'gst', 'automation', 'automationengine', 'broadcast', 'competitor_intel'];
-      if (managerRestrictedTabs.includes(activeTab)) {
-        setActiveTab('live');
-      }
+    const allowed = ROLE_PERMISSIONS[currentRole];
+    if (allowed !== null && allowed !== undefined && !allowed.includes(activeTab)) {
+      // Redirect to the first allowed tab for this role, defaulting to 'live'
+      const fallback = allowed.includes('live') ? 'live' : allowed[0] || 'live';
+      setActiveTab(fallback);
     }
   }, [currentRole, activeTab]);
 
@@ -448,9 +455,85 @@ export default function App() {
   const [billItemsCache, setBillItemsCache] = useState({});
   const [loadingBillItems, setLoadingBillItems] = useState(false);
 
+  const [activeCheckoutAlert, setActiveCheckoutAlert] = useState(null);
+  const [targetHighlightBill, setTargetHighlightBill] = useState(null);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(() => isNotificationGranted());
+
+  // Deep-link routing via URL parameters (e.g. ?tab=livebills&bill=1042)
+  useEffect(() => {
+    try {
+      const searchParams = new URLSearchParams(window.location.search);
+      const urlTab = searchParams.get('tab');
+      const urlBill = searchParams.get('bill') || searchParams.get('billId');
+
+      if (urlTab === 'livebills' || urlTab === 'live') {
+        setActiveTab('live');
+      }
+      if (urlBill) {
+        setTargetHighlightBill(String(urlBill).trim());
+      }
+    } catch (e) {}
+  }, []);
+
+  const handleOpenBillFromNotification = (alertData) => {
+    setActiveCheckoutAlert(null);
+    const billNo = alertData?.billNumber || alertData?.billId;
+    setActiveTab('live');
+    if (billNo) {
+      const cleanNo = String(billNo).trim();
+      setTargetHighlightBill(cleanNo);
+      const matched = (Array.isArray(liveBills) ? liveBills : []).find(b => 
+        String(b.BillNumber || '').trim().toLowerCase() === cleanNo.toLowerCase() ||
+        String(b.BillId || '').trim().toLowerCase() === cleanNo.toLowerCase()
+      );
+      if (matched) {
+        toggleBillExpansion(matched.BillId);
+      }
+    }
+  };
+
+  const handleEnablePushNotifications = async () => {
+    const storeId = (!activeStore || activeStore === 'ALL' || activeStore === 'STORE_01') ? 'DEMO_STORE_001' : activeStore;
+    const res = await registerForPushNotifications(storeId);
+    if (res.success) {
+      setNotificationsEnabled(true);
+    }
+    return res;
+  };
+
+  // Real-time Firestore checkout listener for instant in-app alerts and chimes
+  useEffect(() => {
+    const storeId = (!activeStore || activeStore === 'ALL' || activeStore === 'STORE_01') ? 'DEMO_STORE_001' : activeStore;
+    const unsubscribe = subscribeToCheckoutNotifications(storeId, (alertData, isDirectSystemClick) => {
+      if (isDirectSystemClick) {
+        handleOpenBillFromNotification(alertData);
+      } else {
+        setActiveCheckoutAlert(alertData);
+      }
+    });
+
+    return () => {
+      if (typeof unsubscribe === 'function') unsubscribe();
+    };
+  }, [activeStore]);
+
+  // Auto-expand bill when targetHighlightBill matches loaded liveBills
+  useEffect(() => {
+    if (!targetHighlightBill || !Array.isArray(liveBills) || liveBills.length === 0) return;
+    const target = String(targetHighlightBill).trim().toLowerCase();
+    const matched = liveBills.find(b => 
+      String(b.BillNumber || '').trim().toLowerCase() === target ||
+      String(b.BillId || '').trim().toLowerCase() === target
+    );
+    if (matched) {
+      if (expandedBillId !== matched.BillId) {
+        toggleBillExpansion(matched.BillId);
+      }
+    }
+  }, [targetHighlightBill, liveBills]);
+
   const DAILY_TARGET = 50000;
 
-  
   const processedBills = useRef(new Set());
   const initialLoadRef = useRef(true);
 
@@ -1515,6 +1598,8 @@ export default function App() {
     setSelectedCalendarDay: typeof setSelectedCalendarDay !== 'undefined' ? setSelectedCalendarDay : undefined,
     expandedBillId: typeof expandedBillId !== 'undefined' ? expandedBillId : undefined,
     setExpandedBillId: typeof setExpandedBillId !== 'undefined' ? setExpandedBillId : undefined,
+    targetHighlightBill: typeof targetHighlightBill !== 'undefined' ? targetHighlightBill : undefined,
+    setTargetHighlightBill: typeof setTargetHighlightBill !== 'undefined' ? setTargetHighlightBill : undefined,
     billItemsCache: typeof billItemsCache !== 'undefined' ? billItemsCache : undefined,
     setBillItemsCache: typeof setBillItemsCache !== 'undefined' ? setBillItemsCache : undefined,
     loadingBillItems: typeof loadingBillItems !== 'undefined' ? loadingBillItems : undefined,
@@ -1936,6 +2021,9 @@ export default function App() {
         isListenerRunning={isListenerRunning}
         openThermalModal={openThermalModal}
         API_BASE={API_BASE}
+        notificationsEnabled={notificationsEnabled}
+        onEnableNotifications={handleEnablePushNotifications}
+        playCheckoutChime={playCheckoutChime}
       >
 
         {/* Dynamic Views */}
@@ -2306,6 +2394,13 @@ export default function App() {
           billData={thermalModalConfig.billData}
           alterationData={thermalModalConfig.alterationData}
           exchangeData={thermalModalConfig.exchangeData}
+        />
+
+        {/* Real-time Checkout Push Notification Banner */}
+        <CheckoutNotificationToast
+          notification={activeCheckoutAlert}
+          onClose={() => setActiveCheckoutAlert(null)}
+          onOpenBill={handleOpenBillFromNotification}
         />
         </div>
       </Layout>

@@ -16,6 +16,37 @@
     "billNo": "",
     "scheduledAt": 1790515418291,
     "createdAt": 1790513618291,
-    "status": "pending"
+    "status": "sent",
+    "sentAt": 1790515425477
+  },
+  {
+    "id": "nps_1790566828907_cy4w",
+    "phone": "918708788707",
+    "customerName": "Valued Customer",
+    "billNo": "s",
+    "scheduledAt": 1790568628907,
+    "createdAt": 1790566828907,
+    "status": "sent",
+    "sentAt": 1790570661808
+  },
+  {
+    "id": "nps_1790566829015_9upi",
+    "phone": "919034522000",
+    "customerName": "Valued Customer",
+    "billNo": "s",
+    "scheduledAt": 1790568629015,
+    "createdAt": 1790566829015,
+    "status": "sent",
+    "sentAt": 1790570661808
+  },
+  {
+    "id": "nps_1790566829055_ag22",
+    "phone": "919466422821",
+    "customerName": "Valued Customer",
+    "billNo": "s",
+    "scheduledAt": 1790568629055,
+    "createdAt": 1790566829055,
+    "status": "sent",
+    "sentAt": 1790570661808
   }
 ]

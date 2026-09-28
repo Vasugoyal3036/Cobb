@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import RolePinModal from './RolePinModal';
 import axios from 'axios';
 import SetupWizardModal from './SetupWizardModal';
 import SystemHealthModal from './SystemHealthModal';
@@ -70,7 +71,10 @@ import {
   AlarmClock,
   Network,
   Truck,
-  Printer
+  Printer,
+  Bell,
+  BellRing,
+  Volume2
 } from 'lucide-react';
 import { THEMES } from './DashboardBackground';
 
@@ -126,7 +130,7 @@ const navigationItems = [
   }
 ];
 
-import { useAuth, AVAILABLE_STORES } from '../context/AuthContext';
+import { useAuth, AVAILABLE_STORES, ROLE_PERMISSIONS, ROLE_LABELS } from '../context/AuthContext';
 import {
   Building2,
   Store,
@@ -153,13 +157,32 @@ const Layout = ({
   isListenerRunning,
   userRole: propUserRole,
   openThermalModal,
-  API_BASE
+  API_BASE,
+  notificationsEnabled = false,
+  onEnableNotifications,
+  playCheckoutChime
 }) => {
 
-  const { role: contextRole, switchRole, activeStore, switchStore, user } = useAuth();
+  const {
+    role: contextRole, switchRole, activeStore, switchStore, user,
+    verifyPin, changePin, roleRequiresPin, rememberOwner, setRememberOwner,
+  } = useAuth();
   const currentRole = contextRole || propUserRole || 'owner';
+
+  // ── PIN modal state ───────────────────────────────────────
+  const [pinModal, setPinModal] = useState(null); // { targetRole: 'owner'|'manager' } | null
+
+  const handleRoleSwitch = (targetRole) => {
+    if (roleRequiresPin(targetRole)) {
+      setPinModal({ targetRole });
+    } else {
+      switchRole(targetRole);
+    }
+  };
+  // ─────────────────────────────────────────────────────────
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [showHealthModal, setShowHealthModal] = useState(false);
+  const [showAlertModal, setShowAlertModal] = useState(false);
   const [showThemePicker, setShowThemePicker] = useState(false);
   const [healthStatus, setHealthStatus] = useState({ overall: 'healthy', inboundAlertsCount: 0 });
 
@@ -177,37 +200,18 @@ const Layout = ({
     return () => clearInterval(interval);
   }, [API_BASE]);
 
-  // Filter navigation items based on role (RBAC)
-  // Store Manager only sees operational counter tools; hides P&L, GST, Automation, Broadcast, Competitor Intel
-  const managerAllowedItems = [
-    'dashboard',
-    'live',
-    'pocket_khata',
-    'hold_desk',
-    'save_the_sale',
-    'returns',
-    'topmovers',
-    'sizematrix',
-    'deadstock',
-    'reorder',
-    'loyalty',
-    'vip',
-    'dormant',
-    'copilot',
-    'multistore',
-    'transit'
-  ];
+  // RBAC: Filter navigation items based on role using ROLE_PERMISSIONS map
+  // owner → null (all tabs), manager → operational set, cashier → counter-only set
+  const allowedTabs = ROLE_PERMISSIONS[currentRole] ?? null; // null means all
 
-  
-  const filteredNavigation = navigationItems.map(cat => {
-    return {
-      ...cat,
-      items: cat.items.filter(item => {
-        if (currentRole === 'owner') return true;
-        return managerAllowedItems.includes(item.id);
-      })
-    };
-  }).filter(cat => cat.items.length > 0);
+  const filteredNavigation = navigationItems.map(cat => ({
+    ...cat,
+    items: cat.items.filter(item =>
+      allowedTabs === null || allowedTabs.includes(item.id)
+    )
+  })).filter(cat => cat.items.length > 0);
+
+  const roleInfo = ROLE_LABELS[currentRole] || ROLE_LABELS.owner;
 
   return (
     <>
@@ -395,25 +399,23 @@ const Layout = ({
                   </select>
                 </div>
 
-                {/* Quick Role Pill */}
+                {/* Quick Role Cycle Pill — PIN protected for Owner/Manager */}
                 <button
                   type="button"
                   onClick={() => {
-                    const nextRole = currentRole === 'owner' ? 'manager' : 'owner';
-                    switchRole(nextRole);
+                    const cycle = { owner: 'manager', manager: 'cashier', cashier: 'owner' };
+                    handleRoleSwitch(cycle[currentRole] || 'owner');
                   }}
                   className={`px-2 py-1 rounded-xl font-bold text-[10px] transition-all shadow-xs flex items-center gap-1 cursor-pointer border shrink-0 ${
                     currentRole === 'owner'
-                      ? darkMode
-                        ? 'bg-amber-500/15 text-amber-300 border-amber-500/30 hover:bg-amber-500/25'
-                        : 'bg-amber-50 text-amber-800 border-amber-200'
-                      : darkMode
-                        ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/25'
-                        : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                      ? darkMode ? 'bg-amber-500/15 text-amber-300 border-amber-500/30 hover:bg-amber-500/25' : 'bg-amber-50 text-amber-800 border-amber-200'
+                      : currentRole === 'manager'
+                        ? darkMode ? 'bg-blue-500/15 text-blue-300 border-blue-500/30 hover:bg-blue-500/25' : 'bg-blue-50 text-blue-800 border-blue-200'
+                        : darkMode ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/25' : 'bg-emerald-50 text-emerald-800 border-emerald-200'
                   }`}
-                  title={currentRole === 'owner' ? 'Owner Mode (tap to switch)' : 'Manager Mode (tap to switch)'}
+                  title={`Current: ${currentRole.charAt(0).toUpperCase() + currentRole.slice(1)} — tap to switch role`}
                 >
-                  {currentRole === 'owner' ? '👑 Owner' : '👔 Mgr'}
+                  {currentRole === 'owner' ? '👑 Owner' : currentRole === 'manager' ? '👔 Mgr' : '🧾 Cashier'}
                 </button>
 
                 {/* Dark mode button */}
@@ -445,6 +447,40 @@ const Layout = ({
                   </div>
                   {healthStatus.inboundAlertsCount > 0 && (
                     <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-rose-500 rounded-full animate-pulse"></span>
+                  )}
+                </button>
+
+                {/* Checkout Push Notification Bell */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!notificationsEnabled && typeof onEnableNotifications === 'function') {
+                      onEnableNotifications();
+                    } else {
+                      setShowAlertModal(true);
+                    }
+                  }}
+                  className={`p-1.5 rounded-xl border shrink-0 cursor-pointer flex items-center justify-center relative transition-all ${
+                    notificationsEnabled
+                      ? darkMode
+                        ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25'
+                        : 'bg-emerald-50 border-emerald-200 text-emerald-600 hover:bg-emerald-100'
+                      : darkMode
+                        ? 'bg-[#0e1320] border-[#1c2436] text-slate-400 hover:text-white'
+                        : 'bg-slate-100 border-slate-200 text-slate-500 hover:text-slate-800'
+                  }`}
+                  title={notificationsEnabled ? "Checkout Alerts Active (Tap to view details)" : "Tap to enable Checkout Push Alerts"}
+                >
+                  {notificationsEnabled ? (
+                    <BellRing className="w-3.5 h-3.5" />
+                  ) : (
+                    <Bell className="w-3.5 h-3.5" />
+                  )}
+                  {notificationsEnabled && (
+                    <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
                   )}
                 </button>
               </div>
@@ -551,33 +587,42 @@ const Layout = ({
                 </select>
               </div>
 
-              {/* Quick Role Switcher Pill */}
+              {/* Quick Role Switcher Pill — PIN protected for Owner/Manager */}
               <button
                 type="button"
                 onClick={() => {
-                  const nextRole = currentRole === 'owner' ? 'manager' : 'owner';
-                  switchRole(nextRole);
+                  const cycle = { owner: 'manager', manager: 'cashier', cashier: 'owner' };
+                  handleRoleSwitch(cycle[currentRole] || 'owner');
                 }}
                 className={`px-2.5 py-1.5 rounded-xl font-bold text-xs transition-all shadow-xs flex items-center gap-1.5 cursor-pointer border shrink-0 ${
                   currentRole === 'owner'
                     ? darkMode
                       ? 'bg-amber-500/15 text-amber-300 border-amber-500/30 hover:bg-amber-500/25'
                       : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
-                    : darkMode
-                      ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/25'
-                      : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                    : currentRole === 'manager'
+                      ? darkMode
+                        ? 'bg-blue-500/15 text-blue-300 border-blue-500/30 hover:bg-blue-500/25'
+                        : 'bg-blue-50 text-blue-800 border-blue-200 hover:bg-blue-100'
+                      : darkMode
+                        ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30 hover:bg-emerald-500/25'
+                        : 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
                 }`}
-                title={currentRole === 'owner' ? 'Click to preview Manager View' : 'Click to return to Owner View'}
+                title={`Current: ${currentRole} — click to switch role`}
               >
                 {currentRole === 'owner' ? (
                   <>
                     <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
                     <span>👑 Owner</span>
                   </>
+                ) : currentRole === 'manager' ? (
+                  <>
+                    <ShieldAlert className="w-3.5 h-3.5 text-blue-400" />
+                    <span>👔 Manager</span>
+                  </>
                 ) : (
                   <>
                     <ShieldAlert className="w-3.5 h-3.5 text-emerald-400" />
-                    <span>👔 Manager</span>
+                    <span>🧾 Cashier</span>
                   </>
                 )}
               </button>
@@ -678,6 +723,43 @@ const Layout = ({
                   </span>
                 )}
               </button>
+
+              {/* Checkout Push Alerts Indicator / Bell */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (!notificationsEnabled && typeof onEnableNotifications === 'function') {
+                    onEnableNotifications();
+                  } else {
+                    setShowAlertModal(true);
+                  }
+                }}
+                className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl border shadow-xs cursor-pointer shrink-0 transition-all ${
+                  notificationsEnabled
+                    ? darkMode
+                      ? 'bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-500/30 text-emerald-400'
+                      : 'bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-700'
+                    : darkMode
+                      ? 'bg-[#0b0f19] hover:bg-[#141b2b] border-[#1e2638] text-slate-400 hover:text-white'
+                      : 'bg-slate-100 hover:bg-slate-200/80 border-slate-200 text-slate-600'
+                }`}
+                title={notificationsEnabled ? "Checkout Push Alerts Active (Tap to view details)" : "Tap to enable Checkout Push Alerts"}
+              >
+                {notificationsEnabled ? (
+                  <BellRing className="w-3.5 h-3.5" />
+                ) : (
+                  <Bell className="w-3.5 h-3.5" />
+                )}
+                <span className="text-[10.5px] font-bold tracking-tight">
+                  {notificationsEnabled ? 'Alerts Active' : 'Enable Alerts'}
+                </span>
+                {notificationsEnabled && (
+                  <span className="relative flex h-2 w-2 ml-1">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                )}
+              </button>
             </div>
           </div>
         </header>
@@ -719,6 +801,23 @@ const Layout = ({
         </div>
       </div>
 
+      {/* PIN Auth Modal for Role Switching */}
+      {pinModal && (
+        <RolePinModal
+          targetRole={pinModal.targetRole}
+          darkMode={darkMode}
+          verifyPin={verifyPin}
+          changePin={changePin}
+          rememberOwner={rememberOwner}
+          setRememberOwner={setRememberOwner}
+          onSuccess={() => {
+            switchRole(pinModal.targetRole);
+            setPinModal(null);
+          }}
+          onCancel={() => setPinModal(null)}
+        />
+      )}
+
       {/* Multi-Store & Database Setup Wizard */}
       <SetupWizardModal
         isOpen={showSetupModal}
@@ -736,6 +835,104 @@ const Layout = ({
         API_BASE={API_BASE}
         darkMode={darkMode}
       />
+
+      {/* Checkout Push Notification Info & Controls Modal */}
+      {showAlertModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className={`relative w-full max-w-md rounded-3xl p-6 shadow-2xl border ${
+            darkMode ? 'bg-[#0f1422] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
+          }`}>
+            <div className="flex items-center justify-between pb-4 border-b border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                  <BellRing className="w-5 h-5 animate-pulse" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base leading-tight">Checkout Push Alerts</h3>
+                  <p className="text-xs text-slate-400">Firebase Link Live Notification Service</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAlertModal(false)}
+                className="p-1.5 rounded-xl hover:bg-white/10 text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="py-4 space-y-4">
+              <div className="flex items-center justify-between p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
+                <div className="flex items-center gap-2.5">
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                  </span>
+                  <span className="text-xs font-bold text-emerald-300">
+                    {notificationsEnabled ? 'Device Connected & Active' : 'Permission Pending'}
+                  </span>
+                </div>
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300">
+                  FCM + WebSockets
+                </span>
+              </div>
+
+              <div>
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">Notification Format Preview</p>
+                <div className="p-3.5 rounded-2xl bg-slate-800/60 border border-white/10 space-y-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-black text-emerald-400 font-mono">🧾 New Sale: ₹4,599 | Bill #1042</span>
+                  </div>
+                  <p className="text-xs text-slate-300">
+                    Items: 3 • Pay: UPI • Staff: Rahul • Cust: Amit Sharma
+                  </p>
+                  <p className="text-[10px] text-slate-400 pt-1">
+                    👉 Tapping notification immediately expands the exact bill on this phone.
+                  </p>
+                </div>
+              </div>
+
+              <div className="pt-2 flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (typeof playCheckoutChime === 'function') playCheckoutChime();
+                  }}
+                  className="w-full py-2.5 rounded-xl font-bold text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-white/10 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+                >
+                  <Volume2 className="w-4 h-4 text-emerald-400" />
+                  <span>Test Cash Register Chime</span>
+                </button>
+
+                {!notificationsEnabled && (
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (typeof onEnableNotifications === 'function') {
+                        await onEnableNotifications();
+                      }
+                    }}
+                    className="w-full py-2.5 rounded-xl font-bold text-xs bg-emerald-600 hover:bg-emerald-500 text-white transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md shadow-emerald-600/30"
+                  >
+                    <Bell className="w-4 h-4" />
+                    <span>Grant Notification Permission</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-white/10 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setShowAlertModal(false)}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Progressive Web App Install Banner */}
       <PwaInstallBanner darkMode={darkMode} />
