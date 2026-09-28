@@ -1,31 +1,34 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import DashboardBackground, { getThemeCardCSS } from './components/DashboardBackground';
 import { useToast } from './context/ToastContext';
-import InventoryTab from './components/tabs/InventoryTab';
-import CustomerProfileModal from './components/CustomerProfileModal';
 import DashboardTab from './components/tabs/DashboardTab';
-import CustomerInsightsTab from './components/tabs/CustomerInsightsTab';
-import CompetitorIntelTab from './components/tabs/CompetitorIntelTab';
-import LiveBillsTab from './components/tabs/LiveBillsTab';
-import AutomationEngineTab from './components/tabs/AutomationEngineTab';
-import CampaignBuilderTab from './components/tabs/CampaignBuilderTab';
-import ReorderTab from './components/tabs/ReorderTab';
-import LoyaltyTab from './components/tabs/LoyaltyTab';
-import ExchangeTab from './components/tabs/ExchangeTab';
-import PocketKhataTab from './components/tabs/PocketKhataTab';
-import HoldDeskTab from './components/tabs/HoldDeskTab';
-import SaveTheSaleTab from './components/tabs/SaveTheSaleTab';
-import ChatbotTab from './components/tabs/ChatbotTab';
-import MultiStoreMatrixTab from './components/tabs/MultiStoreMatrixTab';
-import AlterationsTab from './components/tabs/AlterationsTab';
-import GoodsInTransitTab from './components/tabs/GoodsInTransitTab';
-import StaffLeaderboardTab from './components/tabs/StaffLeaderboardTab';
-import ThermalReceiptModal from './components/ThermalReceiptModal';
-import FloatingCopilot from './components/FloatingCopilot';
+
+// Lazy-loaded secondary tabs & heavy modals for instant startup & lightweight bundle
+const InventoryTab = lazy(() => import('./components/tabs/InventoryTab'));
+const CustomerInsightsTab = lazy(() => import('./components/tabs/CustomerInsightsTab'));
+const CompetitorIntelTab = lazy(() => import('./components/tabs/CompetitorIntelTab'));
+const LiveBillsTab = lazy(() => import('./components/tabs/LiveBillsTab'));
+const AutomationEngineTab = lazy(() => import('./components/tabs/AutomationEngineTab'));
+const CampaignBuilderTab = lazy(() => import('./components/tabs/CampaignBuilderTab'));
+const ReorderTab = lazy(() => import('./components/tabs/ReorderTab'));
+const LoyaltyTab = lazy(() => import('./components/tabs/LoyaltyTab'));
+const ExchangeTab = lazy(() => import('./components/tabs/ExchangeTab'));
+const PocketKhataTab = lazy(() => import('./components/tabs/PocketKhataTab'));
+const HoldDeskTab = lazy(() => import('./components/tabs/HoldDeskTab'));
+const SaveTheSaleTab = lazy(() => import('./components/tabs/SaveTheSaleTab'));
+const ChatbotTab = lazy(() => import('./components/tabs/ChatbotTab'));
+const MultiStoreMatrixTab = lazy(() => import('./components/tabs/MultiStoreMatrixTab'));
+const AlterationsTab = lazy(() => import('./components/tabs/AlterationsTab'));
+const GoodsInTransitTab = lazy(() => import('./components/tabs/GoodsInTransitTab'));
+const StaffLeaderboardTab = lazy(() => import('./components/tabs/StaffLeaderboardTab'));
+const ThermalReceiptModal = lazy(() => import('./components/ThermalReceiptModal'));
+const CustomerProfileModal = lazy(() => import('./components/CustomerProfileModal'));
+const FloatingCopilot = lazy(() => import('./components/FloatingCopilot'));
+const SetupScreen = lazy(() => import('./components/SetupScreen'));
+
 import { fetchWithOfflineFallback, subscribeToData } from './utils/offlineDb';
 
 import Layout from './components/Layout';
-import SetupScreen from './components/SetupScreen';
 import LoginScreen from './components/LoginScreen';
 import CheckoutNotificationToast from './components/CheckoutNotificationToast';
 import {
@@ -225,6 +228,16 @@ const setLocalCache = (key, val) => {
     localStorage.setItem('cobb_cache_' + key, JSON.stringify(val));
   } catch (e) {}
 };
+
+// Lightweight skeleton fallback for lazy-loaded tabs
+const TabFallback = () => (
+  <div className="w-full min-h-[420px] flex flex-col items-center justify-center p-8 space-y-3 animate-pulse">
+    <div className="w-10 h-10 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+      <div className="w-5 h-5 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+    </div>
+    <div className="h-3 w-32 bg-slate-700/30 rounded-full" />
+  </div>
+);
 
 export default function App() {
   const { user, role, activeStore, switchStore, switchRole } = useAuth();
@@ -715,105 +728,10 @@ export default function App() {
         }
       }).catch(console.error);
       axios.get(`${API_BASE}/api/reconciliation/latest`).then(res => { if(!res?.data?.error) setReconData(res.data); }).catch(console.error);
-      subscribeToData('dead-stock', `${API_BASE}/api/inventory/dead-stock`, setDeadStock);
     }, 300);
-
-    // Priority 3: Customer queries — staggered to 700ms
-    setTimeout(() => {
-      axios.get(`${API_BASE}/api/customers/vip`).then(res => {
-        if(!res?.data?.error) {
-          setVips(res.data);
-          setLocalCache('vips', res.data);
-        }
-      }).catch(console.error);
-      axios.get(`${API_BASE}/api/customers/dormant`).then(res => {
-        if(!res?.data?.error) {
-          setDormant(res.data);
-          setLocalCache('dormant', res.data);
-        }
-      }).catch(console.error);
-    }, 700);
-
-    // Priority 4: Financial & Inventory analytics — staggered to 1200ms
-    setTimeout(() => {
-      axios.get(`${API_BASE}/api/financials/gst-summary`).then(res => {
-        if(!res?.data?.error && res?.data) {
-          const payload = { ...res.data, lastFetched: Date.now() };
-          setGstSummary(payload);
-          setLocalCache('gstSummary', payload);
-        }
-      }).catch(console.error);
-
-      axios.get(`${API_BASE}/api/sales/returns`).then(res => {
-        if(!res?.data?.error && res?.data?.today) {
-          setReturnsData(res.data);
-          setLocalCache('returnsData', res.data);
-        }
-      }).catch(console.error);
-
-      axios.get(`${API_BASE}/api/inventory/size-matrix`).then(res => {
-        if(!res?.data?.error) {
-          setSizeMatrix(res.data);
-          setLocalCache('sizeMatrix', res.data);
-        }
-      }).catch(console.error);
-
-      axios.get(`${API_BASE}/api/analytics/monthly-products`).then(res => {
-        if(!res?.data?.error) {
-          setMonthlyProducts(res.data);
-          setLocalCache('monthlyProducts', res.data);
-        }
-      }).catch(console.error);
-
-      axios.get(`${API_BASE}/api/analytics/retention-radar`).then(res => {
-        if(!res?.data?.error) {
-          setRetentionData(res.data);
-          setLocalCache('retentionData', res.data);
-        }
-      }).catch(console.error);
-
-      axios.get(`${API_BASE}/api/financials/pnl`).then(res => {
-        if(!res?.data?.error) {
-          setPnlData(res.data);
-          setLocalCache('pnlData', res.data);
-        }
-      }).catch(console.error);
-
-      axios.get(`${API_BASE}/api/analytics/wardrobe-profiles`).then(res => {
-        if(!res?.data?.error) {
-          setWardrobeProfiles(res.data);
-          setLocalCache('wardrobeProfiles', res.data);
-        }
-      }).catch(console.error);
-    }, 1200);
-
-    // Priority 5: Marketing & Bundles — staggered to 2000ms
-    setTimeout(() => {
-      axios.get(`${API_BASE}/api/smart-bundles`).then(res => {
-        if(!res?.data?.error && Array.isArray(res.data)) {
-          setBundles(res.data);
-          setLocalCache('bundles', res.data);
-        }
-      }).catch(console.error);
-
-      axios.get(`${API_BASE}/api/broadcast/group`).then(res => {
-        if(!res?.data?.error && res.data?.contacts) {
-          setBroadcastGroup(res.data.contacts);
-          setBroadcastGroupCount(res.data.totalCount || 0);
-          setLocalCache('broadcastGroup', res.data.contacts);
-        }
-      }).catch(console.error);
-
-      axios.get(`${API_BASE}/api/analytics/top-movers`).then(res => {
-        if(!res?.data?.error && res.data?.topArticles) {
-          setTopMoversData(res.data);
-          setLocalCache('topMoversData', res.data);
-        }
-      }).catch(console.error);
-    }, 2000);
   }, []);
 
-  // Lazy load data only when its tab is active
+  // Lazy load data on-demand strictly when its tab becomes active
   useEffect(() => {
     if (['inventory', 'deadstock'].includes(activeTab) && (!deadStock || deadStock.length === 0)) {
       subscribeToData('dead-stock', `${API_BASE}/api/inventory/dead-stock`, setDeadStock);
@@ -878,6 +796,48 @@ export default function App() {
     }
     if (activeTab === 'smart_bundles' && (!bundles || bundles.length === 0)) {
       fetchBundles();
+    }
+    if (activeTab === 'pnl' && (!pnlData || Object.keys(pnlData).length === 0)) {
+      axios.get(`${API_BASE}/api/financials/pnl`).then(res => {
+        if (!res?.data?.error) {
+          setPnlData(res.data);
+          setLocalCache('pnlData', res.data);
+        }
+      }).catch(console.error);
+    }
+    if (activeTab === 'retention' && (!retentionData || Object.keys(retentionData).length === 0)) {
+      axios.get(`${API_BASE}/api/analytics/retention-radar`).then(res => {
+        if (!res?.data?.error) {
+          setRetentionData(res.data);
+          setLocalCache('retentionData', res.data);
+        }
+      }).catch(console.error);
+    }
+    if (activeTab === 'wardrobe' && (!wardrobeProfiles || wardrobeProfiles.length === 0)) {
+      axios.get(`${API_BASE}/api/analytics/wardrobe-profiles`).then(res => {
+        if (!res?.data?.error) {
+          setWardrobeProfiles(res.data);
+          setLocalCache('wardrobeProfiles', res.data);
+        }
+      }).catch(console.error);
+    }
+    if (['vip', 'dormant', 'customerinsights'].includes(activeTab)) {
+      if (!vips || vips.length === 0) {
+        axios.get(`${API_BASE}/api/customers/vip`).then(res => {
+          if (!res?.data?.error) {
+            setVips(res.data);
+            setLocalCache('vips', res.data);
+          }
+        }).catch(console.error);
+      }
+      if (!dormant || dormant.length === 0) {
+        axios.get(`${API_BASE}/api/customers/dormant`).then(res => {
+          if (!res?.data?.error) {
+            setDormant(res.data);
+            setLocalCache('dormant', res.data);
+          }
+        }).catch(console.error);
+      }
     }
   }, [activeTab]);
 
@@ -1738,7 +1698,11 @@ export default function App() {
   };
 
   if (showSetup) {
-    return <SetupScreen onComplete={() => setShowSetup(false)} />;
+    return (
+      <Suspense fallback={<TabFallback />}>
+        <SetupScreen onComplete={() => setShowSetup(false)} />
+      </Suspense>
+    );
   }
 
   if (!user) {
@@ -2134,8 +2098,8 @@ export default function App() {
 
           {/* Dynamic Views */}
           <div>
-
-            {/* 1. COMMAND CENTER */}
+            <Suspense fallback={<TabFallback />}>
+              {/* 1. COMMAND CENTER */}
             {['dashboard', 'pnl', 'gst', 'analytics', 'monthly', 'topmovers', 'sizematrix', 'broadcast', 'wardrobe', 'retention'].includes(activeTab) && (
               <DashboardTab {...appState} />
             )}
@@ -2248,7 +2212,9 @@ export default function App() {
             />
 
 
-        {!['vip', 'dormant'].includes(activeTab) && <CustomerProfileModal {...appState} />}
+              {!['vip', 'dormant'].includes(activeTab) && <CustomerProfileModal {...appState} />}
+            </Suspense>
+          </div>
 
         {/* EOD CASH RECONCILIATION MODAL WITH POCKET KHATA INTEGRATION */}
         {showReconModal && (
@@ -2732,14 +2698,18 @@ export default function App() {
         </div>
 
         {/* ESC/POS Thermal Receipt Modal */}
-        <ThermalReceiptModal
-          isOpen={thermalModalConfig.isOpen}
-          onClose={closeThermalModal}
-          receiptType={thermalModalConfig.receiptType}
-          billData={thermalModalConfig.billData}
-          alterationData={thermalModalConfig.alterationData}
-          exchangeData={thermalModalConfig.exchangeData}
-        />
+        {thermalModalConfig.isOpen && (
+          <Suspense fallback={null}>
+            <ThermalReceiptModal
+              isOpen={thermalModalConfig.isOpen}
+              onClose={closeThermalModal}
+              receiptType={thermalModalConfig.receiptType}
+              billData={thermalModalConfig.billData}
+              alterationData={thermalModalConfig.alterationData}
+              exchangeData={thermalModalConfig.exchangeData}
+            />
+          </Suspense>
+        )}
 
         {/* Real-time Checkout Push Notification Banner */}
         <CheckoutNotificationToast
@@ -2748,7 +2718,6 @@ export default function App() {
           onOpenBill={handleOpenBillFromNotification}
           onOpenEod={() => handleGenerateEodReport()}
         />
-        </div>
       </Layout>
     </div>
   );
