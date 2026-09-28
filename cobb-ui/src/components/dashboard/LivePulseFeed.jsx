@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
-import { BarChart3, Zap, ArrowRight, Flame, Crown, Scissors, Plus } from 'lucide-react';
+import { BarChart3, Zap, ArrowRight, Flame, Crown, Scissors, Plus, CheckCircle } from 'lucide-react';
 import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db } from '../../utils/firebase';
 
@@ -33,13 +33,12 @@ const LivePulseFeed = ({
     // Helper to calculate exact matching metrics
     const processItems = (items) => {
       const activeList = items.filter(s => s.status !== 'Completed');
-      const sorted = [...items].sort((a, b) => {
-        const order = { 'Pending': 1, 'In Progress': 2, 'Ready for Pickup': 3, 'Completed': 4 };
+      const sortedActive = [...activeList].sort((a, b) => {
+        const order = { 'Pending': 1, 'In Progress': 2, 'Ready for Pickup': 3 };
         return (order[a.status] || 5) - (order[b.status] || 5);
       });
-      // Show active first in the mini tile
-      const displaySlips = activeList.length > 0 ? sorted.filter(s => s.status !== 'Completed').slice(0, 3) : sorted.slice(0, 3);
-      setRecentAlterations(displaySlips);
+      // Show active slips only in the mini tile
+      setRecentAlterations(sortedActive.slice(0, 3));
 
       const pendingJobs = items.filter(s => s.status === 'Pending' || s.status === 'In Progress').length;
       const readyJobs = items.filter(s => s.status === 'Ready for Pickup').length;
@@ -312,39 +311,51 @@ const LivePulseFeed = ({
                       {alterationsSummary.dueToday} Due
                     </span>
                   )}
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 border border-indigo-500/20">
-                    {alterationsSummary.pendingJobs > 0 ? `${alterationsSummary.pendingJobs} Pending` : `${alterationsSummary.totalJobs || recentAlterations.length} Active`}
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                    alterationsSummary.activeJobs > 0
+                      ? 'bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 border-indigo-500/20'
+                      : 'bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 border-emerald-500/20'
+                  }`}>
+                    {alterationsSummary.activeJobs > 0
+                      ? (alterationsSummary.pendingJobs > 0 ? `${alterationsSummary.pendingJobs} Pending` : `${alterationsSummary.activeJobs} Active`)
+                      : '0 Active'}
                   </span>
                 </div>
               </div>
 
               <div className="space-y-1.5 mt-2">
                 {recentAlterations.length > 0 ? (
-                  recentAlterations.map((slip, idx) => (
-                    <div key={idx} className="flex items-center justify-between text-xs py-1.5 px-2.5 rounded-xl bg-slate-900/30 border border-slate-800/40 hover:border-indigo-500/30 transition-all">
-                      <div className="min-w-0 pr-2">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-mono text-[10px] font-bold text-indigo-400">{slip.tokenNumber || slip.id}</span>
-                          <p className="font-bold truncate text-[11px] text-slate-200">{slip.customerName || 'Customer'}</p>
+                  recentAlterations.map((slip, idx) => {
+                    const token = slip.tokenNumber || `ALT-${String(slip.id || '').slice(-4).toUpperCase()}`;
+                    return (
+                      <div key={slip.id || idx} className="flex items-center justify-between text-xs py-1.5 px-2.5 rounded-xl bg-slate-900/30 border border-slate-800/40 hover:border-indigo-500/30 transition-all">
+                        <div className="min-w-0 pr-2">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono text-[10px] font-bold text-indigo-400">{token}</span>
+                            <p className="font-bold truncate text-[11px] text-slate-200">{slip.customerName || 'Customer'}</p>
+                          </div>
+                          <p className="text-[10px] text-slate-500 font-mono">
+                            {slip.category} x {slip.quantity || 1} • {slip.expectedDate || 'Today'}
+                          </p>
                         </div>
-                        <p className="text-[10px] text-slate-500 font-mono">
-                          {slip.category} x {slip.quantity || 1} • {slip.expectedDate || 'Today'}
-                        </p>
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded border whitespace-nowrap ${
+                          slip.status === 'Completed' 
+                            ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                            : slip.status === 'Ready for Pickup'
+                            ? 'bg-blue-500/15 text-blue-300 border-blue-500/30'
+                            : 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                        }`}>
+                          {slip.status || 'Pending'}
+                        </span>
                       </div>
-                      <span className={`text-[10px] font-black px-2 py-0.5 rounded border whitespace-nowrap ${
-                        slip.status === 'Completed' 
-                          ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
-                          : slip.status === 'Ready for Pickup'
-                          ? 'bg-blue-500/15 text-blue-300 border-blue-500/30'
-                          : 'bg-amber-500/15 text-amber-300 border-amber-500/30'
-                      }`}>
-                        {slip.status || 'Pending'}
-                      </span>
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
-                  <div className="py-4 text-center text-xs text-slate-500 dark:text-slate-400">
-                    No active alteration slips today. Tap below to create.
+                  <div className="py-4 text-center text-xs text-slate-500 dark:text-slate-400 flex flex-col items-center justify-center gap-1 bg-slate-900/10 dark:bg-black/10 rounded-xl border border-slate-800/20">
+                    <span className="text-emerald-500 font-bold text-xs flex items-center gap-1.5">
+                      <CheckCircle className="w-3.5 h-3.5" /> All Alteration Jobs Caught Up
+                    </span>
+                    <span className="text-[10px] text-slate-400">0 active / pending • 2 completed previously</span>
                   </div>
                 )}
               </div>
