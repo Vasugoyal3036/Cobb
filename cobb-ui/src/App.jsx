@@ -510,7 +510,7 @@ export default function App() {
   useEffect(() => {
     if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
       const storeId = (!activeStore || activeStore === 'ALL' || activeStore === 'STORE_01') ? 'DEMO_STORE_001' : activeStore;
-      registerForPushNotifications(storeId).catch(() => {});
+      registerForPushNotifications(storeId, false).catch(() => {});
       setNotificationsEnabled(true);
     }
   }, [activeStore]);
@@ -554,7 +554,7 @@ export default function App() {
 
   const handleEnablePushNotifications = async () => {
     const storeId = (!activeStore || activeStore === 'ALL' || activeStore === 'STORE_01') ? 'DEMO_STORE_001' : activeStore;
-    const res = await registerForPushNotifications(storeId);
+    const res = await registerForPushNotifications(storeId, true);
     if (res.success) {
       setNotificationsEnabled(true);
       setShowNotificationPromptBanner(false);

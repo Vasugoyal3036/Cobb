@@ -22,7 +22,6 @@ protocol.registerSchemesAsPrivileged([
 
 let win;
 let backendProcess = null;
-let syncProcess = null;
 
 // --- AUTO-START BACKEND SERVER & CLOUD SYNC AGENT ---
 function startBackendServices() {
@@ -72,30 +71,6 @@ function startBackendServices() {
   } catch (err) {
     console.error('[Electron] Error checking backend status:', err);
   }
-
-  // 2. Start Cloud Sync Agent independently
-  if (fs.existsSync(syncScript) && !syncProcess) {
-    console.log('[Electron] Starting cloud sync agent from:', syncScript);
-    syncProcess = spawn('node', [syncScript], {
-      cwd: backendDir,
-      stdio: 'pipe',
-      shell: false,
-      windowsHide: true
-    });
-
-    syncProcess.stdout.on('data', (data) => {
-      console.log(`[Sync Agent] ${data.toString().trim()}`);
-    });
-
-    syncProcess.stderr.on('data', (data) => {
-      console.error(`[Sync Agent ERR] ${data.toString().trim()}`);
-    });
-
-    syncProcess.on('close', (code) => {
-      console.log(`[Sync Agent] Process exited with code ${code}`);
-      syncProcess = null;
-    });
-  }
 }
 
 function stopBackendServer() {
@@ -103,11 +78,6 @@ function stopBackendServer() {
     console.log('[Electron] Stopping backend server...');
     backendProcess.kill();
     backendProcess = null;
-  }
-  if (syncProcess) {
-    console.log('[Electron] Stopping sync agent...');
-    syncProcess.kill();
-    syncProcess = null;
   }
 }
 

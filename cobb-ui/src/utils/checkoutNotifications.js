@@ -87,7 +87,7 @@ export const showSystemNotification = async (title, options = {}) => {
 };
 
 // Request notification permission and register FCM device token
-export const registerForPushNotifications = async (storeId = 'DEMO_STORE_001') => {
+export const registerForPushNotifications = async (storeId = 'DEMO_STORE_001', isUserAction = false) => {
   if (typeof window === 'undefined') {
     return { success: false, reason: 'Window is not defined' };
   }
@@ -95,7 +95,7 @@ export const registerForPushNotifications = async (storeId = 'DEMO_STORE_001') =
   // If system Notification API is not supported (e.g. older iOS Safari), enable in-app toasts & chime
   if (!('Notification' in window)) {
     localStorage.setItem('cobb_checkout_notifications_enabled', 'true');
-    playCheckoutChime();
+    if (isUserAction) playCheckoutChime();
     return { success: true, permission: 'in_app_only', reason: 'In-app chimes active' };
   }
 
@@ -160,15 +160,16 @@ export const registerForPushNotifications = async (storeId = 'DEMO_STORE_001') =
       }
     }
 
-    // Play confirmation chime
-    playCheckoutChime();
-
-    // Fire an immediate confirmation notification into the phone's notification bar!
-    await showSystemNotification('🔔 Phone Alerts Active', {
-      body: 'Cobb Garments: Real-time checkout alerts will now appear in your phone notification bar.',
-      tag: 'cobb-alert-enabled',
-      data: { url: '/?tab=livebills' }
-    });
+    // Only fire confirmation notification & chime if explicitly triggered by user action (e.g. clicking Enable)
+    // Never on passive link/app opening
+    if (isUserAction) {
+      playCheckoutChime();
+      await showSystemNotification('🔔 Phone Alerts Active', {
+        body: 'Cobb Garments: Real-time checkout alerts will now appear in your phone notification bar.',
+        tag: 'cobb-alert-enabled',
+        data: { url: '/?tab=livebills' }
+      });
+    }
 
     return { success: true, permission };
   } catch (error) {

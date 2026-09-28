@@ -1,9 +1,25 @@
+const fs = require('fs');
+const path = require('path');
+const net = require('net');
+const os = require('os');
 const { initializeApp, cert } = require('firebase-admin/app');
 const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const { getMessaging } = require('firebase-admin/messaging');
 const axios = require("axios");
-const os = require('os');
 require('dotenv').config();
+
+// Ensure only one instance of cloud_sync runs in the background
+const SYNC_LOCK_PORT = 51234;
+const lockServer = net.createServer();
+lockServer.once('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+        console.log('[SYNC AGENT] Another instance of cloud_sync is already running in background. Exiting duplicate process.');
+        process.exit(0);
+    }
+});
+lockServer.listen(SYNC_LOCK_PORT, '127.0.0.1', () => {
+    startSyncAgent();
+});
 
 // The user will save their private key to firebase-admin.json locally for maximum security.
 let serviceAccount;
@@ -677,43 +693,90 @@ const CANCELLED_INTERVAL = 20 * 1000;
 // Heartbeat pulse every 20 seconds for watchdog power cut detection
 const HEARTBEAT_INTERVAL = 20 * 1000;
 
-console.log("[SYNC AGENT] Process started. Waiting to begin initial sync...");
-// Start immediately, then loop
-if (serviceAccount) {
-    // 1. Immediately send System ON alert & pulse
-    dispatchSystemStatusAlert('online', 'Store PC Booted / Services Started');
-    updateHeartbeat();
+// Detect if the PC physically booted up recently (within 6 minutes) and send alert once per boot session
+async function checkAndDispatchPcBootAlert() {
+    const uptimeSec = os.uptime();
+    // A PC boot is considered recent if Windows started within the last 6 minutes (360 seconds)
+    const BOOT_UPTIME_THRESHOLD_SEC = 360;
 
-    // 2. Initial baseline sync across all tiers (sequenced to protect POS CPU)
-    (async () => {
+    // Calculate approximate epoch (ms) when this PC booted
+    const bootEpochMs = Date.now() - Math.round(uptimeSec * 1000);
+    const bootRecordPath = path.join(__dirname, '.last_boot_alert.json');
+
+    let alreadyAlerted = false;
+    try {
+        if (fs.existsSync(bootRecordPath)) {
+            const data = JSON.parse(fs.readFileSync(bootRecordPath, 'utf8'));
+            if (data.bootEpochMs && Math.abs(data.bootEpochMs - bootEpochMs) < 10 * 60 * 1000) {
+                alreadyAlerted = true;
+            }
+        }
+    } catch (e) {
+        // Continue if reading failed
+    }
+
+    if (uptimeSec < BOOT_UPTIME_THRESHOLD_SEC && !alreadyAlerted) {
+        console.log(`[SYNC AGENT] 🖥️ Genuine PC Boot detected (System Uptime: ${Math.round(uptimeSec)}s). Dispatching Boot Alert to phone...`);
         try {
-            await syncEndpointList(operationalEndpoints, 'Operational Tier');
-            await syncEndpointList(standardEndpoints, 'Standard Tier');
-            await syncEndpointList(deepAnalyticsEndpoints, 'Deep Analytics Tier');
-        } catch (initialSyncErr) {
-            console.warn('[SYNC AGENT] Initial sync notice:', initialSyncErr.message);
+            await dispatchSystemStatusAlert('online', 'Store PC Booted');
+            fs.writeFileSync(bootRecordPath, JSON.stringify({
+                bootEpochMs,
+                notifiedAt: new Date().toISOString(),
+                uptimeSec: Math.round(uptimeSec)
+            }, null, 2));
+        } catch (alertErr) {
+            console.warn('[SYNC AGENT] Failed to dispatch PC boot alert:', alertErr.message);
         }
-    })();
-
-    // 3. Start tiered intervals
-    checkAndDispatchCheckoutAlerts();
-    checkAndDispatchCancelledBillAlerts();
-    setInterval(() => syncEndpointList(operationalEndpoints, 'Operational Tier'), OPERATIONAL_INTERVAL);
-    setInterval(() => syncEndpointList(standardEndpoints, 'Standard Tier'), STANDARD_INTERVAL);
-    setInterval(() => syncEndpointList(deepAnalyticsEndpoints, 'Deep Analytics Tier'), DEEP_ANALYTICS_INTERVAL);
-    setInterval(checkAndDispatchCheckoutAlerts, CHECKOUT_INTERVAL);
-    setInterval(checkAndDispatchCancelledBillAlerts, CANCELLED_INTERVAL);
-    setInterval(updateHeartbeat, HEARTBEAT_INTERVAL);
-
-    // 3. Nightly closing digest scheduled trigger (between 9:45 PM and 9:55 PM)
-    setInterval(() => {
-        const now = new Date();
-        if (now.getHours() === 21 && now.getMinutes() >= 45 && now.getMinutes() <= 55) {
-            dispatchEodDigestAlert(true);
+    } else {
+        if (uptimeSec >= BOOT_UPTIME_THRESHOLD_SEC) {
+            console.log(`[SYNC AGENT] System uptime is ${Math.round(uptimeSec / 60)} minutes (PC was not recently booted). Starting sync silently without boot notification.`);
+        } else {
+            console.log('[SYNC AGENT] PC Boot alert already dispatched for this boot session. Skipping duplicate notification.');
         }
-    }, 60 * 1000);
-} else {
-    console.log("[SYNC AGENT] Please update .env with FIREBASE_SERVICE_ACCOUNT and restart.");
+    }
+
+    // Always keep heartbeat updated silently
+    await updateHeartbeat();
+}
+
+function startSyncAgent() {
+    console.log("[SYNC AGENT] Process started. Waiting to begin initial sync...");
+    // Start immediately, then loop
+    if (serviceAccount) {
+        // 1. Check if the PC physically booted up recently before dispatching alert
+        checkAndDispatchPcBootAlert();
+
+        // 2. Initial baseline sync across all tiers (sequenced to protect POS CPU)
+        (async () => {
+            try {
+                await syncEndpointList(operationalEndpoints, 'Operational Tier');
+                await syncEndpointList(standardEndpoints, 'Standard Tier');
+                await syncEndpointList(deepAnalyticsEndpoints, 'Deep Analytics Tier');
+            } catch (initialSyncErr) {
+                console.warn('[SYNC AGENT] Initial sync notice:', initialSyncErr.message);
+            }
+        })();
+
+        // 3. Start tiered intervals
+        checkAndDispatchCheckoutAlerts();
+        checkAndDispatchCancelledBillAlerts();
+        setInterval(() => syncEndpointList(operationalEndpoints, 'Operational Tier'), OPERATIONAL_INTERVAL);
+        setInterval(() => syncEndpointList(standardEndpoints, 'Standard Tier'), STANDARD_INTERVAL);
+        setInterval(() => syncEndpointList(deepAnalyticsEndpoints, 'Deep Analytics Tier'), DEEP_ANALYTICS_INTERVAL);
+        setInterval(checkAndDispatchCheckoutAlerts, CHECKOUT_INTERVAL);
+        setInterval(checkAndDispatchCancelledBillAlerts, CANCELLED_INTERVAL);
+        setInterval(updateHeartbeat, HEARTBEAT_INTERVAL);
+
+        // 3. Nightly closing digest scheduled trigger (between 9:45 PM and 9:55 PM)
+        setInterval(() => {
+            const now = new Date();
+            if (now.getHours() === 21 && now.getMinutes() >= 45 && now.getMinutes() <= 55) {
+                dispatchEodDigestAlert(true);
+            }
+        }, 60 * 1000);
+    } else {
+        console.log("[SYNC AGENT] Please update .env with FIREBASE_SERVICE_ACCOUNT and restart.");
+    }
 }
 
 
