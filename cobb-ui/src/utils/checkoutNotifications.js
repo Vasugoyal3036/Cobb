@@ -41,21 +41,33 @@ export const playCheckoutChime = () => {
   }
 };
 
-// Check if browser notifications are currently granted
+// Check if browser notifications or in-app alerts are currently enabled
 export const isNotificationGranted = () => {
-  return typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted';
+  if (typeof window === 'undefined') return false;
+  if ('Notification' in window && Notification.permission === 'granted') return true;
+  return localStorage.getItem('cobb_checkout_notifications_enabled') === 'true';
 };
 
 // Request notification permission and register FCM device token
 export const registerForPushNotifications = async (storeId = 'DEMO_STORE_001') => {
-  if (typeof window === 'undefined' || !('Notification' in window)) {
-    return { success: false, reason: 'Notifications not supported in this browser' };
+  if (typeof window === 'undefined') {
+    return { success: false, reason: 'Window is not defined' };
+  }
+
+  // If system Notification API is not supported (e.g. older iOS Safari), enable in-app toasts & chime
+  if (!('Notification' in window)) {
+    localStorage.setItem('cobb_checkout_notifications_enabled', 'true');
+    playCheckoutChime();
+    return { success: true, permission: 'in_app_only', reason: 'In-app chimes & toasts active' };
   }
 
   try {
     const permission = await Notification.requestPermission();
     if (permission !== 'granted') {
-      return { success: false, reason: 'Notification permission denied by user' };
+      // Still enable in-app audio & banners even if system push dialog was dismissed
+      localStorage.setItem('cobb_checkout_notifications_enabled', 'true');
+      playCheckoutChime();
+      return { success: true, permission, reason: 'In-app toasts & sound chime active (system push denied)' };
     }
 
     localStorage.setItem('cobb_checkout_notifications_enabled', 'true');

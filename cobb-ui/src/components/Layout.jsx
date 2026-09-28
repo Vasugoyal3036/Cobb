@@ -491,14 +491,8 @@ const Layout = ({
                 {/* Checkout Push Notification Bell */}
                 <button
                   type="button"
-                  onClick={() => {
-                    if (!notificationsEnabled && typeof onEnableNotifications === 'function') {
-                      onEnableNotifications();
-                    } else {
-                      setShowAlertModal(true);
-                    }
-                  }}
-                  className={`p-1.5 rounded-xl border shrink-0 cursor-pointer flex items-center justify-center relative transition-all ${
+                  onClick={() => setShowAlertModal(true)}
+                  className={`p-1.5 rounded-xl border shrink-0 cursor-pointer flex items-center justify-center relative transition-all active:scale-95 ${
                     notificationsEnabled
                       ? darkMode
                         ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25'
@@ -797,14 +791,8 @@ const Layout = ({
               {/* Checkout Push Alerts Indicator / Bell */}
               <button
                 type="button"
-                onClick={() => {
-                  if (!notificationsEnabled && typeof onEnableNotifications === 'function') {
-                    onEnableNotifications();
-                  } else {
-                    setShowAlertModal(true);
-                  }
-                }}
-                className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl border shadow-xs cursor-pointer shrink-0 transition-all ${
+                onClick={() => setShowAlertModal(true)}
+                className={`flex items-center space-x-1.5 px-2.5 py-1.5 rounded-xl border shadow-xs cursor-pointer shrink-0 transition-all active:scale-95 ${
                   notificationsEnabled
                     ? darkMode
                       ? 'bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-500/30 text-emerald-400'
@@ -908,10 +896,16 @@ const Layout = ({
 
       {/* Checkout Push Notification Info & Controls Modal */}
       {showAlertModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-          <div className={`relative w-full max-w-md rounded-3xl p-6 shadow-2xl border ${
-            darkMode ? 'bg-[#0f1422] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
-          }`}>
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+          onClick={() => setShowAlertModal(false)}
+        >
+          <div 
+            className={`relative w-full max-w-md rounded-3xl p-6 shadow-2xl border ${
+              darkMode ? 'bg-[#0f1422] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between pb-4 border-b border-white/10">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
@@ -1031,7 +1025,7 @@ const Layout = ({
                   <span>Test Cash Register Chime</span>
                 </button>
 
-                {!notificationsEnabled && (
+                {!notificationsEnabled ? (
                   <button
                     type="button"
                     onClick={async () => {
@@ -1044,6 +1038,24 @@ const Layout = ({
                     <Bell className="w-4 h-4" />
                     <span>Grant Notification Permission</span>
                   </button>
+                ) : (
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                      <span>Push & In-App Alerts Active</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (typeof onEnableNotifications === 'function') {
+                          await onEnableNotifications();
+                        }
+                      }}
+                      className="text-[10px] text-emerald-300 underline cursor-pointer hover:text-white"
+                    >
+                      Re-sync
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
