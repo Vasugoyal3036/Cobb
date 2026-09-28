@@ -25,6 +25,8 @@ const ThermalReceiptModal = lazy(() => import('./components/ThermalReceiptModal'
 const CustomerProfileModal = lazy(() => import('./components/CustomerProfileModal'));
 const FloatingCopilot = lazy(() => import('./components/FloatingCopilot'));
 const SetupScreen = lazy(() => import('./components/SetupScreen'));
+const DepreciationClockTab = lazy(() => import('./components/tabs/DepreciationClockTab'));
+const WardrobePassportModal = lazy(() => import('./components/WardrobePassportModal'));
 
 import { fetchWithOfflineFallback, subscribeToData } from './utils/offlineDb';
 
@@ -48,6 +50,7 @@ import { useAuth, ROLE_PERMISSIONS } from './context/AuthContext';
 import { hasConfig } from './utils/firebase';
 import axios from 'axios';
 import {
+  Bell,
   LineChart,
   MessageCircle,
   Users,
@@ -299,6 +302,17 @@ export default function App() {
     setThermalModalConfig(prev => ({ ...prev, isOpen: false }));
   };
 
+  // Digital Wardrobe Passport Modal State
+  const [showWardrobePassportModal, setShowWardrobePassportModal] = useState(false);
+  const [wardrobePassportPhone, setWardrobePassportPhone] = useState('');
+  const [wardrobePassportCustomerName, setWardrobePassportCustomerName] = useState('');
+
+  const openWardrobePassport = (phone = '', name = '') => {
+    setWardrobePassportPhone(phone || '');
+    setWardrobePassportCustomerName(name || '');
+    setShowWardrobePassportModal(true);
+  };
+
   // Smart Bundling State
   let [bundles, setBundles] = useState(() => getLocalCache('bundles', [])); if (!Array.isArray(bundles)) bundles = [];
   const [isLoadingBundles, setIsLoadingBundles] = useState(false);
@@ -487,6 +501,19 @@ export default function App() {
   const [activeCheckoutAlert, setActiveCheckoutAlert] = useState(null);
   const [targetHighlightBill, setTargetHighlightBill] = useState(null);
   const [notificationsEnabled, setNotificationsEnabled] = useState(() => isNotificationGranted());
+  const [showNotificationPromptBanner, setShowNotificationPromptBanner] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return 'Notification' in window && Notification.permission === 'default';
+  });
+
+  // Automatically ensure service worker and FCM token registration if permission is granted
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+      const storeId = (!activeStore || activeStore === 'ALL' || activeStore === 'STORE_01') ? 'DEMO_STORE_001' : activeStore;
+      registerForPushNotifications(storeId).catch(() => {});
+      setNotificationsEnabled(true);
+    }
+  }, [activeStore]);
 
   // Deep-link routing via URL parameters (e.g. ?tab=livebills&bill=1042)
   useEffect(() => {
@@ -530,6 +557,7 @@ export default function App() {
     const res = await registerForPushNotifications(storeId);
     if (res.success) {
       setNotificationsEnabled(true);
+      setShowNotificationPromptBanner(false);
     }
     return res;
   };
@@ -1550,6 +1578,8 @@ export default function App() {
     setSizeMatrix: typeof setSizeMatrix !== 'undefined' ? setSizeMatrix : undefined,
     wardrobeProfiles: typeof wardrobeProfiles !== 'undefined' ? wardrobeProfiles : undefined,
     setWardrobeProfiles: typeof setWardrobeProfiles !== 'undefined' ? setWardrobeProfiles : undefined,
+    openWardrobePassport,
+    onOpenWardrobePassport: openWardrobePassport,
     pnlData: typeof pnlData !== 'undefined' ? pnlData : undefined,
     setPnlData: typeof setPnlData !== 'undefined' ? setPnlData : undefined,
     retentionData: typeof retentionData !== 'undefined' ? retentionData : undefined,
@@ -2064,7 +2094,47 @@ export default function App() {
         }
       `}</style>
 
-      
+      {/* Floating Phone Notification Bar Alert Prompt */}
+      {showNotificationPromptBanner && !notificationsEnabled && (
+        <aside
+          aria-label="Phone notification permission prompt"
+          className="fixed top-3 inset-x-3 sm:inset-x-auto sm:right-6 sm:w-96 z-50"
+        >
+          <div className={`p-3.5 rounded-2xl shadow-2xl border backdrop-blur-xl flex items-center justify-between gap-3 ${
+            darkMode 
+              ? 'bg-[#0f172a]/95 border-indigo-500/40 text-white shadow-indigo-950/50' 
+              : 'bg-white/95 border-indigo-200 text-slate-900 shadow-indigo-100'
+          }`}>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shrink-0 shadow-md shadow-indigo-500/30 text-white">
+                <Bell className="w-5 h-5 animate-pulse" />
+              </div>
+              <div>
+                <p className="text-[10px] font-black tracking-tight text-indigo-500 uppercase">Phone Alert System</p>
+                <h4 className="text-xs font-bold leading-snug">Enable Phone Notification Bar Alerts</h4>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={handleEnablePushNotifications}
+                className="px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/30 transition-all cursor-pointer"
+              >
+                Enable
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowNotificationPromptBanner(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-200 text-xs cursor-pointer"
+                title="Dismiss"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        </aside>
+      )}
+
       <Layout
         userRole={currentRole}
         isMobileMenuOpen={isMobileMenuOpen}
@@ -2187,6 +2257,7 @@ export default function App() {
               <AlterationsTab
                 darkMode={darkMode}
                 activeStore={activeStore}
+                API_BASE={API_BASE}
                 formatCurrency={formatCurrency}
                 openThermalModal={openThermalModal}
               />
@@ -2202,6 +2273,17 @@ export default function App() {
               <GoodsInTransitTab darkMode={darkMode} />
             )}
 
+            {/* 21. DEAD-STOCK DEPRECIATION CLOCK & CLEARANCE MATRIX */}
+            {activeTab === 'depreciation_clock' && (
+              <DepreciationClockTab
+                API_BASE={API_BASE}
+                darkMode={darkMode}
+                formatCurrency={formatCurrency}
+                onOpenBundleModal={() => setActiveTab('smart_bundles')}
+                onOpenTransferModal={() => setActiveTab('transit')}
+              />
+            )}
+
             {/* FLOATING AI COPILOT ON-SCREEN WIDGET (Active across all tabs) */}
             <FloatingCopilot
               API_BASE={API_BASE}
@@ -2211,6 +2293,15 @@ export default function App() {
               onNavigateTab={(tab) => setActiveTab(tab)}
             />
 
+            {/* DIGITAL WARDROBE PASSPORT MODAL (Available globally) */}
+            <WardrobePassportModal
+              isOpen={showWardrobePassportModal}
+              onClose={() => setShowWardrobePassportModal(false)}
+              initialPhone={wardrobePassportPhone}
+              initialCustomerName={wardrobePassportCustomerName}
+              API_BASE={API_BASE}
+              darkMode={darkMode}
+            />
 
               {!['vip', 'dormant'].includes(activeTab) && <CustomerProfileModal {...appState} />}
             </Suspense>

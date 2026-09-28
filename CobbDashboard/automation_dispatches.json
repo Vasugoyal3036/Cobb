@@ -1138,5 +1138,17 @@
     "reason": "checkout",
     "status": "sent",
     "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-09-28T18:36:47.253874",
+    "date": "2026-09-28",
+    "time": "06:36 PM",
+    "billNo": "STST27-00751   ",
+    "cmId": "ST01127000STST27-00751",
+    "customerName": "Ujjwal",
+    "phone": "8708752471",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
   }
 ]

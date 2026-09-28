@@ -106,7 +106,7 @@ self.addEventListener('push', (event) => {
   const options = {
     body: body,
     icon: notificationData.icon || '/ors-logo.png',
-    badge: '/favicon.svg',
+    badge: '/ors-logo.png',
     vibrate: [250, 100, 250, 100, 250],
     tag: `cobb-sale-${billNumber || Date.now()}`,
     renotify: true,

@@ -1,6 +1,6 @@
 import { db, hasConfig, authPromise } from './firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { playCheckoutChime, isNotificationGranted } from './checkoutNotifications';
+import { playCheckoutChime, isNotificationGranted, showSystemNotification } from './checkoutNotifications';
 
 /**
  * System Watchdog Service
@@ -77,17 +77,14 @@ export function subscribeToSystemWatchdog(storeId = 'DEMO_STORE_001', onStatusUp
         try { navigator.vibrate([400, 200, 400]); } catch (e) {}
       }
 
-      // Native browser notification
-      if (isNotificationGranted() && typeof window !== 'undefined') {
-        try {
-          new Notification(powerCutAlert.title, {
-            body: powerCutAlert.body,
-            icon: '/ors-logo.png',
-            badge: '/favicon.svg',
-            tag: 'cobb-power-cut'
-          });
-        } catch (e) {}
-      }
+      // Native phone notification bar alert
+      showSystemNotification(powerCutAlert.title, {
+        body: powerCutAlert.body,
+        icon: '/ors-logo.png',
+        badge: '/ors-logo.png',
+        tag: 'cobb-power-cut',
+        data: { url: '/?tab=dashboard' }
+      }).catch(() => {});
 
       if (typeof onPowerCutAlert === 'function') {
         onPowerCutAlert(powerCutAlert);

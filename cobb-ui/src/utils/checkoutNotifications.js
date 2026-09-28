@@ -41,11 +41,86 @@ export const playCheckoutChime = () => {
   }
 };
 
-// Check if browser notifications or in-app alerts are currently enabled
+// Check if browser notifications are currently enabled
 export const isNotificationGranted = () => {
   if (typeof window === 'undefined') return false;
-  if ('Notification' in window && Notification.permission === 'granted') return true;
-  return localStorage.getItem('cobb_checkout_notifications_enabled') === 'true';
+  return ('Notification' in window && Notification.permission === 'granted');
+};
+
+/**
+ * Triggers a native system notification that appears in the Android / iOS Notification Bar / Status Bar.
+ * On mobile devices (Android Chrome, iOS PWA), new Notification() fails with Illegal Constructor;
+ * ServiceWorkerRegistration.showNotification() is the ONLY method that posts to the phone's notification bar.
+ */
+export const showSystemNotification = async (title, options = {}) => {
+  if (typeof window === 'undefined') return false;
+
+  // Verify permission
+  if (!('Notification' in window) || Notification.permission !== 'granted') {
+    return false;
+  }
+
+  const origin = window.location.origin || 'https://cobb-store.web.app';
+  const logoPng = `${origin}/ors-logo.png`;
+
+  const defaultOptions = {
+    icon: logoPng,
+    badge: logoPng,
+    vibrate: [300, 100, 300, 100, 300],
+    renotify: true,
+    requireInteraction: false,
+    silent: false,
+    ...options
+  };
+
+  // Mobile Android/iOS requirement: icons and badges MUST NOT be SVG, must be raster PNG/JPG
+  if (defaultOptions.badge && defaultOptions.badge.endsWith('.svg')) {
+    defaultOptions.badge = logoPng;
+  }
+  if (defaultOptions.icon && defaultOptions.icon.endsWith('.svg')) {
+    defaultOptions.icon = logoPng;
+  }
+
+  // 1. Primary for Mobile Android / iOS PWA: Service Worker showNotification
+  if ('serviceWorker' in navigator) {
+    try {
+      let reg = await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise(resolve => setTimeout(() => resolve(null), 1200))
+      ]);
+
+      if (!reg && navigator.serviceWorker.getRegistration) {
+        reg = await navigator.serviceWorker.getRegistration().catch(() => null);
+      }
+
+      if (!reg && navigator.serviceWorker.register) {
+        reg = await navigator.serviceWorker.register('/sw.js').catch(() => null);
+        if (reg) {
+          await Promise.race([
+            navigator.serviceWorker.ready,
+            new Promise(resolve => setTimeout(() => resolve(null), 1200))
+          ]);
+        }
+      }
+
+      if (reg && reg.showNotification) {
+        await reg.showNotification(title, defaultOptions);
+        return true;
+      }
+    } catch (swErr) {
+      console.warn('[CheckoutAlert] ServiceWorker showNotification note:', swErr.message);
+    }
+  }
+
+  // 2. Desktop browser fallback
+  try {
+    const notif = new Notification(title, defaultOptions);
+    if (options.onclick) notif.onclick = options.onclick;
+    return true;
+  } catch (e) {
+    console.warn('[CheckoutAlert] Desktop Notification fallback failed:', e.message);
+    return false;
+  }
 };
 
 // Request notification permission and register FCM device token
@@ -58,30 +133,32 @@ export const registerForPushNotifications = async (storeId = 'DEMO_STORE_001') =
   if (!('Notification' in window)) {
     localStorage.setItem('cobb_checkout_notifications_enabled', 'true');
     playCheckoutChime();
-    return { success: true, permission: 'in_app_only', reason: 'In-app chimes & toasts active' };
+    return { success: true, permission: 'in_app_only', reason: 'In-app chimes active' };
   }
 
   try {
     const permission = await Notification.requestPermission();
     if (permission !== 'granted') {
-      // Still enable in-app audio & banners even if system push dialog was dismissed
-      localStorage.setItem('cobb_checkout_notifications_enabled', 'true');
-      playCheckoutChime();
-      return { success: true, permission, reason: 'In-app toasts & sound chime active (system push denied)' };
+      localStorage.setItem('cobb_checkout_notifications_enabled', 'false');
+      return { success: false, permission, reason: 'Notification permission denied' };
     }
 
     localStorage.setItem('cobb_checkout_notifications_enabled', 'true');
 
-    // Register Service Worker if not registered
+    // Register Service Worker for Mobile Notification Bar display
     let swReg = null;
     if ('serviceWorker' in navigator) {
-      swReg = await navigator.serviceWorker.ready.catch(() => null);
-      if (!swReg) {
+      try {
         swReg = await navigator.serviceWorker.register('/sw.js').catch(() => null);
+        await navigator.serviceWorker.ready.catch(() => null);
+      } catch (swErr) {
+        console.warn('[CheckoutAlert] SW register note:', swErr.message);
       }
     }
 
-    // Attempt Firebase Cloud Messaging registration if configured
+    // Register Firebase Cloud Messaging device token for background push
+    const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY || 'BAzF7nMwaadSHCnfIKmm8E6m5szGLJfgfEPZhDYR-rDKcwy0Ce6insWwnHquke3wDeLE9xDKz3CNUFTzre6ID3s';
+
     if (hasConfig && db) {
       try {
         if (authPromise) await authPromise;
@@ -93,7 +170,6 @@ export const registerForPushNotifications = async (storeId = 'DEMO_STORE_001') =
           const { app } = await import('./firebase');
           const messaging = getMessaging(app);
 
-          const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY || undefined;
           const token = await getToken(messaging, {
             serviceWorkerRegistration: swReg || undefined,
             vapidKey: vapidKey
@@ -103,7 +179,6 @@ export const registerForPushNotifications = async (storeId = 'DEMO_STORE_001') =
           });
 
           if (token) {
-            // Sanitize token for doc id
             const tokenDocId = token.replace(/[^a-zA-Z0-9_-]/g, '').slice(-40) || 'device_' + Date.now();
             const tokenRef = doc(db, 'stores', storeId, 'fcm_tokens', tokenDocId);
             await setDoc(tokenRef, {
@@ -115,16 +190,22 @@ export const registerForPushNotifications = async (storeId = 'DEMO_STORE_001') =
             }, { merge: true });
 
             console.log('[CheckoutAlert] 📲 FCM Device Token registered in Firestore successfully.');
-            return { success: true, permission, token };
           }
         }
       } catch (fcmErr) {
-        console.warn('[CheckoutAlert] FCM push token setup fallback to web notifications:', fcmErr.message);
+        console.warn('[CheckoutAlert] FCM push token setup notice:', fcmErr.message);
       }
     }
 
     // Play confirmation chime
     playCheckoutChime();
+
+    // Fire an immediate confirmation notification into the phone's notification bar!
+    await showSystemNotification('🔔 Phone Alerts Active', {
+      body: 'Cobb Garments: Real-time checkout alerts will now appear in your phone notification bar.',
+      tag: 'cobb-alert-enabled',
+      data: { url: '/?tab=livebills' }
+    });
 
     return { success: true, permission };
   } catch (error) {
@@ -153,7 +234,7 @@ export const subscribeToCheckoutNotifications = (storeId = 'DEMO_STORE_001', onN
       return;
     }
 
-    snapshot.docChanges().forEach((change) => {
+    snapshot.docChanges().forEach(async (change) => {
       if (change.type === 'added') {
         const notifDoc = change.doc;
         const notifId = notifDoc.id;
@@ -172,26 +253,14 @@ export const subscribeToCheckoutNotifications = (storeId = 'DEMO_STORE_001', onN
             } catch (e) {}
           }
 
-          // 3. Trigger Browser Web Notification if permitted and page is hidden / background
-          if (isNotificationGranted() && typeof window !== 'undefined') {
-            try {
-              const sysNotif = new Notification(data.title || '🧾 New Sale Recorded', {
-                body: data.body || 'A new checkout has been processed.',
-                icon: '/ors-logo.png',
-                badge: '/favicon.svg',
-                tag: `cobb-sale-${data.billNumber || notifId}`
-              });
-
-              sysNotif.onclick = () => {
-                window.focus();
-                if (typeof onNewSaleCallback === 'function') {
-                  onNewSaleCallback(data, true);
-                }
-              };
-            } catch (notifErr) {
-              console.debug('[CheckoutAlert] System notification trigger fallback:', notifErr);
-            }
-          }
+          // 3. Trigger Native Phone Notification Bar Alert
+          await showSystemNotification(data.title || '🧾 New Sale Recorded', {
+            body: data.body || 'A new checkout has been processed.',
+            icon: '/ors-logo.png',
+            badge: '/ors-logo.png',
+            tag: `cobb-sale-${data.billNumber || notifId}`,
+            data: { url: `/?tab=livebills&bill=${encodeURIComponent(data.billNumber || '')}` }
+          });
 
           // 4. Send to in-app banner handler
           if (typeof onNewSaleCallback === 'function') {
@@ -258,20 +327,14 @@ export const triggerTestCheckoutNotification = async (storeId = 'DEMO_STORE_001'
     }
   }
 
-  // 4. Trigger Web Notification on this device
-  if (isNotificationGranted() && typeof window !== 'undefined') {
-    try {
-      const sysNotif = new Notification(title, {
-        body,
-        icon: '/ors-logo.png',
-        badge: '/favicon.svg',
-        tag: `cobb-sale-${testBillNo}`
-      });
-      sysNotif.onclick = () => {
-        window.focus();
-      };
-    } catch (e) {}
-  }
+  // 4. Trigger Native Phone Notification Bar Alert
+  await showSystemNotification(title, {
+    body,
+    icon: '/ors-logo.png',
+    badge: '/ors-logo.png',
+    tag: `cobb-sale-${testBillNo}`,
+    data: { url: `/?tab=livebills&bill=${encodeURIComponent(testBillNo)}` }
+  });
 
   return payload;
 };
@@ -331,19 +394,12 @@ export const triggerTestSystemStatusAlert = async (status = 'online', storeId = 
     }
   }
 
-  if (isNotificationGranted() && typeof window !== 'undefined') {
-    try {
-      const sysNotif = new Notification(title, {
-        body,
-        icon: '/ors-logo.png',
-        badge: '/favicon.svg',
-        tag: 'cobb-system-status'
-      });
-      sysNotif.onclick = () => {
-        window.focus();
-      };
-    } catch (e) {}
-  }
+  await showSystemNotification(title, {
+    body,
+    icon: '/ors-logo.png',
+    badge: '/ors-logo.png',
+    tag: 'cobb-system-status'
+  });
 
   return payload;
 };
@@ -387,12 +443,13 @@ export const triggerTestBigTicketAlert = async (storeId = 'DEMO_STORE_001') => {
     } catch (e) {}
   }
 
-  if (isNotificationGranted() && typeof window !== 'undefined') {
-    try {
-      const sysNotif = new Notification(title, { body, icon: '/ors-logo.png', badge: '/favicon.svg', tag: `cobb-vip-${testBillNo}` });
-      sysNotif.onclick = () => window.focus();
-    } catch (e) {}
-  }
+  await showSystemNotification(title, {
+    body,
+    icon: '/ors-logo.png',
+    badge: '/ors-logo.png',
+    tag: `cobb-vip-${testBillNo}`,
+    data: { url: `/?tab=livebills&bill=${encodeURIComponent(testBillNo)}` }
+  });
 
   return payload;
 };
@@ -439,12 +496,13 @@ export const triggerTestHeavyDiscountAlert = async (storeId = 'DEMO_STORE_001') 
     } catch (e) {}
   }
 
-  if (isNotificationGranted() && typeof window !== 'undefined') {
-    try {
-      const sysNotif = new Notification(title, { body, icon: '/ors-logo.png', badge: '/favicon.svg', tag: `cobb-disc-${testBillNo}` });
-      sysNotif.onclick = () => window.focus();
-    } catch (e) {}
-  }
+  await showSystemNotification(title, {
+    body,
+    icon: '/ors-logo.png',
+    badge: '/ors-logo.png',
+    tag: `cobb-disc-${testBillNo}`,
+    data: { url: `/?tab=livebills&bill=${encodeURIComponent(testBillNo)}` }
+  });
 
   return payload;
 };
@@ -483,12 +541,13 @@ export const triggerTestCancelledBillAlert = async (storeId = 'DEMO_STORE_001') 
     } catch (e) {}
   }
 
-  if (isNotificationGranted() && typeof window !== 'undefined') {
-    try {
-      const sysNotif = new Notification(title, { body, icon: '/ors-logo.png', badge: '/favicon.svg', tag: `cobb-void-${testBillNo}` });
-      sysNotif.onclick = () => window.focus();
-    } catch (e) {}
-  }
+  await showSystemNotification(title, {
+    body,
+    icon: '/ors-logo.png',
+    badge: '/ors-logo.png',
+    tag: `cobb-void-${testBillNo}`,
+    data: { url: `/?tab=livebills` }
+  });
 
   return payload;
 };
@@ -549,12 +608,13 @@ export const triggerTestEodSummaryAlert = async (storeId = 'DEMO_STORE_001') => 
     } catch (e) {}
   }
 
-  if (isNotificationGranted() && typeof window !== 'undefined') {
-    try {
-      const sysNotif = new Notification(title, { body, icon: '/ors-logo.png', badge: '/favicon.svg', tag: 'cobb-eod-test' });
-      sysNotif.onclick = () => window.focus();
-    } catch (e) {}
-  }
+  await showSystemNotification(title, {
+    body,
+    icon: '/ors-logo.png',
+    badge: '/ors-logo.png',
+    tag: 'cobb-eod-test',
+    data: { url: '/?tab=dashboard&view=eod' }
+  });
 
   return payload;
 };

@@ -50,7 +50,8 @@ const operationalEndpoints = [
     "/api/system/health",
     { url: "/api/reports/eod-summary", docName: "reports_eod-summary" },
     { url: "/api/reports/eod-summary", docName: "eod_summary" },
-    { url: "/api/sales/cancelled?limit=15", docName: "sales_cancelled" }
+    { url: "/api/sales/cancelled?limit=15", docName: "sales_cancelled" },
+    "/api/alterations"
 ];
 
 // Tier 2: Standard Daily Operations (Every 15 minutes)
@@ -81,6 +82,7 @@ const deepAnalyticsEndpoints = [
     "/api/analytics/wardrobe-profiles",
     "/api/broadcast/group",
     "/api/smart-bundles",
+    { url: "/api/inventory/depreciation-clock", docName: "inventory_depreciation-clock" },
     { url: "/api/ai/demand-forecasts", method: "POST", data: { refresh: true } }
 ];
 
@@ -142,18 +144,25 @@ async function checkAndDispatchCheckoutAlerts() {
     try {
         const response = await axios.get(`${LOCAL_API}/api/sales/live?limit=15`, { timeout: 10000 });
         const bills = Array.isArray(response.data) ? response.data : [];
-        if (bills.length === 0) return;
 
         if (isFirstLiveBillsRun) {
-            // Seed known bills so we don't alert on historical bills on startup
+            isFirstLiveBillsRun = false;
+            const now = Date.now();
             bills.forEach(b => {
                 const id = String(b.BillId || b.BillNumber).trim();
-                if (id) knownBillIds.add(id);
+                let billTimeMillis = 0;
+                if (b.BillTime) billTimeMillis = new Date(b.BillTime).getTime();
+                else if (b.BillDate) billTimeMillis = new Date(b.BillDate).getTime();
+
+                // Only seed as historical if it is older than 5 minutes
+                if (billTimeMillis && (now - billTimeMillis > 5 * 60 * 1000)) {
+                    if (id) knownBillIds.add(id);
+                }
             });
-            isFirstLiveBillsRun = false;
-            console.log(`[SYNC AGENT] 🔔 Checkout alert engine armed with ${knownBillIds.size} baseline bills.`);
-            return;
+            console.log(`[SYNC AGENT] 🔔 Checkout alert engine armed with ${knownBillIds.size} historical baseline bills.`);
         }
+
+        if (bills.length === 0) return;
 
         // Process newly detected bills in chronological order
         const newBills = [];
@@ -280,6 +289,9 @@ async function checkAndDispatchCheckoutAlerts() {
                             url: clickUrl
                         },
                         webpush: {
+                            headers: {
+                                Urgency: 'high'
+                            },
                             fcmOptions: {
                                 link: clickUrl
                             },
@@ -287,8 +299,9 @@ async function checkAndDispatchCheckoutAlerts() {
                                 title: title,
                                 body: body,
                                 icon: '/ors-logo.png',
-                                badge: '/favicon.svg',
-                                tag: tag
+                                badge: '/ors-logo.png',
+                                tag: tag,
+                                requireInteraction: 'true'
                             }
                         }
                     });
@@ -329,16 +342,15 @@ async function checkAndDispatchCancelledBillAlerts() {
     try {
         const response = await axios.get(`${LOCAL_API}/api/sales/cancelled?limit=10`, { timeout: 10000 });
         const cancelledBills = Array.isArray(response.data) ? response.data : [];
-        if (cancelledBills.length === 0) return;
-
         if (isFirstCancelledBillsRun) {
+            isFirstCancelledBillsRun = false;
             cancelledBills.forEach(b => {
                 const id = String(b.BillId || b.BillNumber).trim();
                 if (id) knownCancelledBillIds.add(id);
             });
-            isFirstCancelledBillsRun = false;
-            return;
         }
+
+        if (cancelledBills.length === 0) return;
 
         const newlyCancelled = [];
         for (let i = cancelledBills.length - 1; i >= 0; i--) {
@@ -590,13 +602,17 @@ async function dispatchSystemStatusAlert(status, reason = '') {
                             url: '/?tab=dashboard'
                         },
                         webpush: {
+                            headers: {
+                                Urgency: 'high'
+                            },
                             fcmOptions: { link: '/?tab=dashboard' },
                             notification: {
                                 title,
                                 body,
                                 icon: '/ors-logo.png',
-                                badge: '/favicon.svg',
-                                tag: 'cobb-system-status'
+                                badge: '/ors-logo.png',
+                                tag: 'cobb-system-status',
+                                requireInteraction: 'true'
                             }
                         }
                     }).catch(e => console.warn('[SYNC AGENT] System alert FCM push notice:', e.message));

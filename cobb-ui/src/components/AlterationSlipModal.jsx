@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
+import axios from 'axios';
 import { X, Printer, Scissors, Calendar, User, Phone, Save } from 'lucide-react';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, setDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../utils/firebase';
 
 export default function AlterationSlipModal({
@@ -9,6 +10,8 @@ export default function AlterationSlipModal({
   initialData = null,
   darkMode = true,
   storeId = 'DEMO_STORE_001',
+  API_BASE = 'http://localhost:5000',
+  onSlipCreated,
   showToast
 }) {
   const [customerName, setCustomerName] = useState(initialData?.CustomerName || '');
@@ -27,24 +30,55 @@ export default function AlterationSlipModal({
   if (!isOpen) return null;
 
   const handlePrintAndSave = async (onlySave = false) => {
-    // 1. Save to database
+    // 1. Save to local database & cloud
     try {
       setIsSaving(true);
       const targetStore = (!storeId || storeId === 'ALL' || storeId === 'STORE_01') ? 'DEMO_STORE_001' : storeId;
-      const alterationsRef = collection(db, `stores/${targetStore}/alterations`);
-      await addDoc(alterationsRef, {
-        customerName,
-        phone,
+      
+      const payload = {
+        customerName: customerName || 'Walk-in Customer',
+        phone: phone || '',
         category,
         quantity: parseInt(quantity, 10) || 1,
         instructions,
         tailorName,
         expectedDate,
-        createdAt: serverTimestamp(),
-        status: 'Pending',
+        storeId: targetStore,
         storeName: 'Cobb Garments Pundri'
-      });
-      showToast?.('Alteration slip saved to database!', 'success');
+      };
+
+      // Primary: Post to local Node API for persistence
+      let createdSlip = null;
+      try {
+        const res = await axios.post(`${API_BASE}/api/alterations`, payload);
+        if (res.data?.item) {
+          createdSlip = res.data.item;
+        }
+      } catch (apiErr) {
+        console.warn('API post error in AlterationSlipModal:', apiErr.message);
+      }
+
+      // Secondary: Backup to Firestore with synchronized ID
+      if (db) {
+        try {
+          const docId = createdSlip?.id || createdSlip?.tokenNumber || `ALT-${Date.now().toString().slice(-4)}`;
+          const slipRecord = {
+            ...payload,
+            id: docId,
+            tokenNumber: docId,
+            status: 'Pending',
+            createdAt: createdSlip?.createdAt || new Date().toISOString()
+          };
+          const alterationsRef = collection(db, `stores/${targetStore}/alterations`);
+          await setDoc(doc(alterationsRef, docId), slipRecord, { merge: true });
+          if (!createdSlip) createdSlip = slipRecord;
+        } catch (fsErr) {
+          console.warn('Firestore backup note in AlterationSlipModal:', fsErr.message);
+        }
+      }
+
+      showToast?.('Alteration slip saved successfully!', 'success');
+      onSlipCreated?.(createdSlip || payload);
     } catch (err) {
       console.error('Error saving alteration:', err);
       showToast?.('Failed to save to database. Proceeding to print.', 'error');

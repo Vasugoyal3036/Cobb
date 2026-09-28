@@ -547,6 +547,7 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                   todayTopArticles={todayTopArticles}
                   setShowAlterationModal={setShowAlterationModal}
                   activeStore={activeStore}
+                  API_BASE={API_BASE}
                 />
               </div>
 
@@ -1984,15 +1985,31 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                       <td className="py-3.5 px-3 text-right font-black text-green-600 whitespace-nowrap">{formatCurrency(c.TotalSpent)}</td>
                       <td className="py-3.5 px-3 text-right text-xs font-bold text-slate-700 whitespace-nowrap">{c.TotalVisits} Visits</td>
                       <td className="py-3.5 pl-4 text-center whitespace-nowrap">
-                        <button
-                          onClick={() => {
-                            const msg = `Hello ${c.CustomerName?.trim() || 'Sir'}! 👋 We just added new ${c.PrimaryStyle} collections at Cobb Pundri matching your style! Drop by today to explore.`;
-                            window.open(`https://wa.me/${c.Phone?.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
-                          }}
-                          className="px-3 py-1 bg-green-50 text-green-700 border border-green-200 rounded-lg text-xs font-bold hover:bg-green-600 hover:text-white transition-all cursor-pointer"
-                        >
-                          💬 Recommend Style
-                        </button>
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={() => {
+                              if (props.openWardrobePassport) {
+                                props.openWardrobePassport(c.Phone, c.CustomerName);
+                              } else {
+                                const msg = `Hello ${c.CustomerName?.trim() || 'Sir'}! 👋 We just added new ${c.PrimaryStyle} collections at Cobb Pundri matching your style! Drop by today to explore.`;
+                                window.open(`https://wa.me/${c.Phone?.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
+                              }
+                            }}
+                            className="px-3 py-1 bg-purple-50 text-purple-700 border border-purple-200 rounded-lg text-xs font-bold hover:bg-purple-600 hover:text-white transition-all cursor-pointer flex items-center gap-1"
+                          >
+                            👔 Wardrobe Passport
+                          </button>
+                          <button
+                            onClick={() => {
+                              const msg = `Hello ${c.CustomerName?.trim() || 'Sir'}! 👋 We just added new ${c.PrimaryStyle} collections at Cobb Pundri matching your style! Drop by today to explore.`;
+                              window.open(`https://wa.me/${c.Phone?.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
+                            }}
+                            className="p-1.5 bg-green-50 text-green-700 border border-green-200 rounded-lg text-xs font-bold hover:bg-green-600 hover:text-white transition-all cursor-pointer"
+                            title="WhatsApp Style Recommendation"
+                          >
+                            💬
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

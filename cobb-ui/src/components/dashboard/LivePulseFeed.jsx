@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import axios from 'axios';
 import { BarChart3, Zap, ArrowRight, Flame, Crown, Scissors, Plus } from 'lucide-react';
 import { collection, query, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db } from '../../utils/firebase';
@@ -12,31 +13,98 @@ const LivePulseFeed = ({
   todayTopArticlesLoading,
   todayTopArticles,
   setShowAlterationModal,
-  activeStore = 'DEMO_STORE_001'
+  activeStore = 'DEMO_STORE_001',
+  API_BASE = 'http://localhost:5000'
 }) => {
   const [recentAlterations, setRecentAlterations] = useState([]);
+  const [alterationsSummary, setAlterationsSummary] = useState({
+    totalJobs: 0,
+    activeJobs: 0,
+    pendingJobs: 0,
+    readyJobs: 0,
+    dueToday: 0
+  });
+
+  const loadAlterations = useCallback(async () => {
+    const targetStore = (!activeStore || activeStore === 'ALL' || activeStore === 'STORE_01') ? 'DEMO_STORE_001' : activeStore;
+    const today = new Date().toISOString().split('T')[0];
+    let fetched = false;
+
+    // Helper to calculate exact matching metrics
+    const processItems = (items) => {
+      const activeList = items.filter(s => s.status !== 'Completed');
+      const sorted = [...items].sort((a, b) => {
+        const order = { 'Pending': 1, 'In Progress': 2, 'Ready for Pickup': 3, 'Completed': 4 };
+        return (order[a.status] || 5) - (order[b.status] || 5);
+      });
+      // Show active first in the mini tile
+      const displaySlips = activeList.length > 0 ? sorted.filter(s => s.status !== 'Completed').slice(0, 3) : sorted.slice(0, 3);
+      setRecentAlterations(displaySlips);
+
+      const pendingJobs = items.filter(s => s.status === 'Pending' || s.status === 'In Progress').length;
+      const readyJobs = items.filter(s => s.status === 'Ready for Pickup').length;
+      const dueToday = items.filter(s => s.expectedDate === today && s.status !== 'Completed').length;
+      const activeJobs = activeList.length;
+
+      setAlterationsSummary({
+        totalJobs: items.length,
+        activeJobs,
+        pendingJobs,
+        readyJobs,
+        dueToday
+      });
+    };
+
+    // 1. Try local API first for 100% sync with alterations.json & menu
+    try {
+      const res = await axios.get(`${API_BASE}/api/alterations?storeId=${targetStore}`);
+      const rawData = res.data;
+      const items = Array.isArray(rawData) ? rawData : (Array.isArray(rawData?.items) ? rawData.items : null);
+      if (items && items.length > 0) {
+        processItems(items);
+        fetched = true;
+      }
+    } catch (e) {
+      // Fall through to Firestore
+    }
+
+    // 2. Firestore listener for real-time live sync across local & phone link
+    if (db) {
+      try {
+        const alterationsRef = collection(db, `stores/${targetStore}/alterations`);
+        const q = query(alterationsRef, orderBy('createdAt', 'desc'));
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+          const slips = [];
+          snapshot.forEach((doc) => {
+            const data = doc.data();
+            slips.push({ 
+              id: doc.id, 
+              ...data,
+              createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt
+            });
+          });
+          if (slips.length > 0 || !fetched) {
+            processItems(slips);
+          }
+        }, (err) => {
+          console.warn('[LivePulseFeed] Firestore listener note:', err.message);
+        });
+        return unsubscribe;
+      } catch (err) {
+        console.warn('[LivePulseFeed] Firestore fallback note:', err.message);
+      }
+    }
+  }, [API_BASE, activeStore]);
 
   useEffect(() => {
-    const targetStore = (!activeStore || activeStore === 'ALL' || activeStore === 'STORE_01') ? 'DEMO_STORE_001' : activeStore;
-    const alterationsRef = collection(db, `stores/${targetStore}/alterations`);
-    const q = query(alterationsRef, orderBy('createdAt', 'desc'), limit(5));
-    
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const slips = [];
-      snapshot.forEach((doc) => {
-        slips.push({ id: doc.id, ...doc.data() });
-      });
-      // Prioritize pending alterations, then recent
-      slips.sort((a, b) => {
-        if (a.status === 'Pending' && b.status !== 'Pending') return -1;
-        if (a.status !== 'Pending' && b.status === 'Pending') return 1;
-        return 0;
-      });
-      setRecentAlterations(slips.slice(0, 3));
-    });
-
-    return () => unsubscribe();
-  }, [activeStore]);
+    const unsubPromise = loadAlterations();
+    const interval = setInterval(loadAlterations, 15000);
+    return () => {
+      clearInterval(interval);
+      if (typeof unsubPromise === 'function') unsubPromise();
+      else if (unsubPromise?.then) unsubPromise.then(unsub => typeof unsub === 'function' && unsub());
+    };
+  }, [loadAlterations]);
 
   // --- Hourly Rush data ---
   const hourlyData = Array.isArray(hourlySales) ? hourlySales : [];
@@ -229,7 +297,7 @@ const LivePulseFeed = ({
 
           {/* Sub-Panel 2: Alteration Desk */}
           <div 
-            onClick={() => setShowAlterationModal?.(true)}
+            onClick={() => typeof setActiveTab === 'function' && setActiveTab('alterations')}
             className="cursor-pointer group flex flex-col justify-between md:border-l md:border-slate-800/60 md:pl-4 hover:bg-slate-50 dark:hover:bg-[#151a26] rounded-xl transition-colors p-2 -m-2"
           >
             <div>
@@ -238,9 +306,16 @@ const LivePulseFeed = ({
                   <Scissors className="w-3.5 h-3.5" />
                   Alteration Desk
                 </span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 border border-indigo-500/20">
-                  {recentAlterations.length} Recent
-                </span>
+                <div className="flex items-center gap-1">
+                  {alterationsSummary.dueToday > 0 && (
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 border border-amber-500/30 animate-pulse">
+                      {alterationsSummary.dueToday} Due
+                    </span>
+                  )}
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 border border-indigo-500/20">
+                    {alterationsSummary.pendingJobs > 0 ? `${alterationsSummary.pendingJobs} Pending` : `${alterationsSummary.totalJobs || recentAlterations.length} Active`}
+                  </span>
+                </div>
               </div>
 
               <div className="space-y-1.5 mt-2">
@@ -248,15 +323,20 @@ const LivePulseFeed = ({
                   recentAlterations.map((slip, idx) => (
                     <div key={idx} className="flex items-center justify-between text-xs py-1.5 px-2.5 rounded-xl bg-slate-900/30 border border-slate-800/40 hover:border-indigo-500/30 transition-all">
                       <div className="min-w-0 pr-2">
-                        <p className="font-bold truncate text-[11px] text-slate-200">{slip.customerName || 'Customer'}</p>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono text-[10px] font-bold text-indigo-400">{slip.tokenNumber || slip.id}</span>
+                          <p className="font-bold truncate text-[11px] text-slate-200">{slip.customerName || 'Customer'}</p>
+                        </div>
                         <p className="text-[10px] text-slate-500 font-mono">
-                          {slip.category} x {slip.quantity}
+                          {slip.category} x {slip.quantity || 1} • {slip.expectedDate || 'Today'}
                         </p>
                       </div>
-                      <span className={`text-[10px] font-black px-2 py-0.5 rounded border ${
+                      <span className={`text-[10px] font-black px-2 py-0.5 rounded border whitespace-nowrap ${
                         slip.status === 'Completed' 
                           ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
-                          : 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30'
+                          : slip.status === 'Ready for Pickup'
+                          ? 'bg-blue-500/15 text-blue-300 border-blue-500/30'
+                          : 'bg-amber-500/15 text-amber-300 border-amber-500/30'
                       }`}>
                         {slip.status || 'Pending'}
                       </span>
@@ -264,15 +344,28 @@ const LivePulseFeed = ({
                   ))
                 ) : (
                   <div className="py-4 text-center text-xs text-slate-500 dark:text-slate-400">
-                    No recent alteration slips. Create one below.
+                    No active alteration slips today. Tap below to create.
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="mt-3 pt-2 border-t border-slate-200/40 dark:border-[#1c2436] flex items-center justify-between text-[11px] font-bold text-indigo-500 dark:text-indigo-400 group-hover:underline">
-              <span>Create New Slip</span>
-              <Plus className="w-3.5 h-3.5 group-hover:rotate-90 transition-transform" />
+            <div className="mt-3 pt-2 border-t border-slate-200/40 dark:border-[#1c2436] flex items-center justify-between text-[11px] font-bold">
+              <span className="text-indigo-400 group-hover:underline flex items-center gap-1">
+                Open Alterations Desk <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+              </span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowAlterationModal?.(true);
+                }}
+                className="px-2 py-0.5 rounded-lg bg-indigo-600/30 hover:bg-indigo-600 text-indigo-300 hover:text-white border border-indigo-500/40 flex items-center gap-1 transition"
+                title="Create New Alteration Slip"
+              >
+                <Plus className="w-3 h-3" />
+                <span>New</span>
+              </button>
             </div>
           </div>
         </div>

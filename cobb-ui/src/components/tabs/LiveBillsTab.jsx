@@ -674,9 +674,24 @@ const LiveBillsTab = (props) => {
                       {/* Customer Details */}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex flex-col">
-                          <span className={`font-bold text-sm ${darkMode ? 'text-slate-100' : 'text-slate-800'}`}>
-                            {bill.CustomerName?.trim() || bill.FirstName?.trim() || 'Guest Customer'}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span className={`font-bold text-sm ${darkMode ? 'text-slate-100' : 'text-slate-800'}`}>
+                              {bill.CustomerName?.trim() || bill.FirstName?.trim() || 'Guest Customer'}
+                            </span>
+                            {bill.Phone && (props.openWardrobePassport || props.onOpenWardrobePassport) && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const fn = props.openWardrobePassport || props.onOpenWardrobePassport;
+                                  fn(bill.Phone, bill.CustomerName);
+                                }}
+                                className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-500/15 text-purple-400 border border-purple-500/30 hover:bg-purple-600 hover:text-white transition cursor-pointer"
+                                title="View Customer Digital Wardrobe Passport"
+                              >
+                                👔 Wardrobe
+                              </button>
+                            )}
+                          </div>
                           {bill.Phone && (
                             <span className="text-xs text-slate-400 font-mono mt-0.5 inline-flex items-center gap-1">
                               {bill.Phone}

@@ -4,16 +4,16 @@ import { getFirestore, collection, addDoc, serverTimestamp } from 'firebase/fire
 // Firebase configuration - loaded from environment variables.
 // If no Firebase project is configured, the app runs fully offline (local SQL only).
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '',
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || '',
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '',
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || '',
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || ''
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyDabxrr3v81IWbRI-u27a2bUa5DOGmDu78',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'cobb-store.firebaseapp.com',
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'cobb-store',
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'cobb-store.firebasestorage.app',
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '1010797128815',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:1010797128815:web:2adc68eef43a09d004719a',
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || 'G-5F78Z1WTRV'
 };
 
-// Firebase is only active if at least the projectId is provided
+// Firebase is active if projectId is present
 export const hasConfig = Boolean(firebaseConfig.projectId);
 
 let app;

@@ -109,6 +109,7 @@ const navigationItems = [
       { id: "sizematrix", label: "Size Matrix Heatmap", icon: Grid, colorClass: "text-blue-600 dark:text-blue-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-blue-500/15 text-blue-600 dark:text-blue-400 font-bold border-l-2 border-blue-500" },
       { id: "transit", label: "Goods In Transit", icon: Truck, colorClass: "text-orange-600 dark:text-orange-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-orange-500/15 text-orange-600 dark:text-orange-400 font-bold border-l-2 border-orange-500" },
       { id: "deadstock", label: "Inventory", icon: Package },
+      { id: "depreciation_clock", label: "⏳ Depreciation Clock", icon: Clock, colorClass: "text-rose-600 dark:text-rose-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-rose-500/15 text-rose-600 dark:text-rose-400 font-bold border-l-2 border-rose-500" },
       { id: "reorder", label: "Warehouse Reorder", icon: ClipboardList, colorClass: "text-blue-600 dark:text-blue-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-blue-500/15 text-blue-600 dark:text-blue-400 font-bold border-l-2 border-blue-500" },
       { id: "smart_bundles", label: "Smart Bundling", icon: Percent, colorClass: "text-amber-600 dark:text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold border-l-2 border-amber-500" },
       { id: "competitor_intel", label: "Competitor Intel", icon: Target, colorClass: "text-red-600 dark:text-red-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-red-500/15 text-red-600 dark:text-red-400 font-bold border-l-2 border-red-500" },
@@ -436,6 +437,35 @@ const Layout = ({
                   {darkMode ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5 text-slate-600" />}
                 </button>
 
+                {/* Phone Notification Bar Alert Button */}
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (notificationsEnabled) {
+                      if (typeof onTestNotification === 'function') {
+                        await onTestNotification();
+                      }
+                    } else {
+                      if (typeof onEnableNotifications === 'function') {
+                        await onEnableNotifications();
+                      }
+                    }
+                  }}
+                  className={`p-1.5 rounded-xl border shrink-0 cursor-pointer flex items-center justify-center relative transition-all ${
+                    notificationsEnabled
+                      ? darkMode
+                        ? 'bg-[#0e1320] border-[#1c2436] text-indigo-400 hover:bg-[#141a2c]'
+                        : 'bg-indigo-50 border-indigo-200 text-indigo-600 hover:bg-indigo-100'
+                      : darkMode
+                        ? 'bg-amber-500/15 border-amber-500/30 text-amber-300 hover:bg-amber-500/25 animate-pulse'
+                        : 'bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100 animate-pulse'
+                  }`}
+                  title={notificationsEnabled ? "Phone Notification Bar Active — Tap to send test alert to notification bar" : "Tap to Enable Phone Notification Bar Alerts"}
+                >
+                  <Bell className="w-3.5 h-3.5" />
+                  <span className={`absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full ${notificationsEnabled ? 'bg-emerald-500' : 'bg-amber-500 animate-ping'}`} />
+                </button>
+
                 {/* System Health Watchdog Button */}
                 <button
                   type="button"
@@ -725,6 +755,35 @@ const Layout = ({
                 title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
               >
                 {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
+              </button>
+
+              {/* Phone Notification Bar Alert Button */}
+              <button
+                type="button"
+                onClick={async () => {
+                  if (notificationsEnabled) {
+                    if (typeof onTestNotification === 'function') {
+                      await onTestNotification();
+                    }
+                  } else {
+                    if (typeof onEnableNotifications === 'function') {
+                      await onEnableNotifications();
+                    }
+                  }
+                }}
+                className={`p-1.5 rounded-xl transition-all shadow-xs cursor-pointer flex items-center justify-center shrink-0 border relative ${
+                  notificationsEnabled
+                    ? darkMode
+                      ? 'bg-[#0b0f19] hover:bg-[#121828] border-[#1e2638] text-indigo-400'
+                      : 'bg-slate-100 hover:bg-slate-200/80 border-slate-200 text-indigo-600'
+                    : darkMode
+                      ? 'bg-amber-500/15 border-amber-500/30 text-amber-300 hover:bg-amber-500/25 animate-pulse'
+                      : 'bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100 animate-pulse'
+                }`}
+                title={notificationsEnabled ? "Phone Notification Bar Active — Tap to send test alert to notification bar" : "Tap to Enable Phone Notification Bar Alerts"}
+              >
+                <Bell className="w-4 h-4" />
+                <span className={`absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full ${notificationsEnabled ? 'bg-emerald-500' : 'bg-amber-500 animate-ping'}`} />
               </button>
 
               {/* Interactive Systems status badge */}
