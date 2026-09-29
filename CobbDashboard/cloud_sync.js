@@ -359,7 +359,7 @@ async function checkAndDispatchCheckoutAlerts() {
                 qty,
                 paymentMode: pay,
                 salesperson: staff,
-                customer: cust,
+                customer: custDisplay,
                 title,
                 body,
                 url: clickUrl,
