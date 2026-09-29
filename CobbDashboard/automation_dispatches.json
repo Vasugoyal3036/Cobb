@@ -1150,5 +1150,29 @@
     "reason": "checkout",
     "status": "sent",
     "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-09-29T11:46:52.150273",
+    "date": "2026-09-29",
+    "time": "11:46 AM",
+    "billNo": "STST27-00752   ",
+    "cmId": "ST01127000STST27-00752",
+    "customerName": "Anu",
+    "phone": "9253878534",
+    "reason": "checkout",
+    "status": "not_on_whatsapp",
+    "detail": "Phone number is not registered on WhatsApp"
+  },
+  {
+    "timestamp": "2026-09-29T13:25:01.209574",
+    "date": "2026-09-29",
+    "time": "01:25 PM",
+    "billNo": "STST27-00753   ",
+    "cmId": "ST01127000STST27-00753",
+    "customerName": "Kashmiri Lal Buchi",
+    "phone": "9466653283",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
   }
 ]

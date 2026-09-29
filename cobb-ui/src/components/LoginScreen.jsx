@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Lock, User, Key, AlertCircle } from 'lucide-react';
+import OrsLogo from './OrsLogo';
 
 const LoginScreen = ({ onSetup }) => {
   const [username, setUsername] = useState('');
@@ -34,9 +35,7 @@ const LoginScreen = ({ onSetup }) => {
 
       <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
         <div className="flex justify-center mb-5">
-          <div className="w-24 h-24 rounded-3xl bg-slate-900/80 p-2.5 border border-white/10 shadow-2xl flex items-center justify-center backdrop-blur-xl ring-1 ring-white/10">
-            <img src="/ors-logo.png" alt="ORS Logo" className="w-full h-full object-contain" />
-          </div>
+          <OrsLogo size={88} />
         </div>
         <h2 className="text-center text-3xl font-black tracking-tight text-white">
           ORS

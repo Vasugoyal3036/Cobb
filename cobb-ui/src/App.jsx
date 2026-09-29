@@ -23,7 +23,6 @@ const GoodsInTransitTab = lazy(() => import('./components/tabs/GoodsInTransitTab
 const StaffLeaderboardTab = lazy(() => import('./components/tabs/StaffLeaderboardTab'));
 const ThermalReceiptModal = lazy(() => import('./components/ThermalReceiptModal'));
 const CustomerProfileModal = lazy(() => import('./components/CustomerProfileModal'));
-const FloatingCopilot = lazy(() => import('./components/FloatingCopilot'));
 const SetupScreen = lazy(() => import('./components/SetupScreen'));
 const DepreciationClockTab = lazy(() => import('./components/tabs/DepreciationClockTab'));
 const WardrobePassportModal = lazy(() => import('./components/WardrobePassportModal'));
@@ -2294,14 +2293,6 @@ export default function App() {
               />
             )}
 
-            {/* FLOATING AI COPILOT ON-SCREEN WIDGET (Active across all tabs) */}
-            <FloatingCopilot
-              API_BASE={API_BASE}
-              darkMode={darkMode}
-              activeTab={activeTab}
-              onOpenFullTab={() => setActiveTab('copilot')}
-              onNavigateTab={(tab) => setActiveTab(tab)}
-            />
 
             {/* DIGITAL WARDROBE PASSPORT MODAL (Available globally) */}
             <WardrobePassportModal
