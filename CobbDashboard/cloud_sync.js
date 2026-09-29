@@ -133,7 +133,7 @@ const operationalEndpoints = [
 // Tier 2: Standard Daily Operations (Every 15 minutes)
 // Data that shifts occasionally throughout the business day
 const standardEndpoints = [
-    { url: "/api/sales/history?days=14", docName: "sales_history" },
+    { url: "/api/sales/history?days=30&limit=300", docName: "sales_history" },
     "/api/analytics/top-movers",
     "/api/sales/returns",
     "/api/automation/status",

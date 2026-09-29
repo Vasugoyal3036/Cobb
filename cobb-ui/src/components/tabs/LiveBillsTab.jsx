@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import axios from 'axios';
 import {
   Receipt,
@@ -68,6 +68,7 @@ const LiveBillsTab = (props) => {
   const [customDate, setCustomDate] = useState(yesterdayStr);
   const [searchQuery, setSearchQuery] = useState('');
   const [paymentFilter, setPaymentFilter] = useState('all'); // 'all' | 'Cash' | 'UPI / Online' | 'Debit / Credit Card' | 'Split'
+  const dateInputRef = useRef(null);
   
   // Data States
   const [bills, setBills] = useState([]);
@@ -75,6 +76,7 @@ const LiveBillsTab = (props) => {
   const [copiedBillId, setCopiedBillId] = useState(null);
   const [copiedSummaryId, setCopiedSummaryId] = useState(null);
   const [lastFetchedAt, setLastFetchedAt] = useState(null);
+  const [fetchError, setFetchError] = useState(null);
   
   const [showAlterationModal, setShowAlterationModal] = useState(false);
   const [alterationInitialData, setAlterationInitialData] = useState(null);
@@ -82,6 +84,7 @@ const LiveBillsTab = (props) => {
   // Fetch transactions from backend
   const fetchBills = useCallback(async (filterType = dateFilter, selectedCustomDate = customDate) => {
     setIsLoading(true);
+    setFetchError(null);
     let url = `${API_BASE}/api/sales/live`;
     const params = new URLSearchParams();
 
@@ -97,14 +100,54 @@ const LiveBillsTab = (props) => {
     params.append('refresh', 'true');
 
     try {
-      const res = await axios.get(`${url}?${params.toString()}`);
+      let res = await axios.get(`${url}?${params.toString()}`);
+
+      // On Phone Link (Firestore cloud interceptor), sales_live holds recent 7 days.
+      // If user selected a custom date and sales_live had no records for that date,
+      // also check sales_history (which holds up to 30 days) so older dates load seamlessly!
+      if (filterType === 'custom' && selectedCustomDate && res.data && Array.isArray(res.data)) {
+        const hasDateMatch = res.data.some(b => {
+          const bDate = (b.BillDate || (b.BillTime ? b.BillTime.slice(0, 10) : '')).trim();
+          return bDate === selectedCustomDate;
+        });
+        if (!hasDateMatch) {
+          try {
+            const histRes = await axios.get(`${API_BASE}/api/sales/history?refresh=true`);
+            if (histRes.data && Array.isArray(histRes.data) && histRes.data.length > 0) {
+              res = histRes;
+            }
+          } catch (_) {
+            // Ignore fallback error
+          }
+        }
+      }
+
       if (res.data && Array.isArray(res.data)) {
-        setBills(res.data);
+        // Client-side date filter for cloud (Firestore returns up to 30 days, we filter here)
+        let filtered = res.data;
+        if (filterType === 'today') {
+          filtered = res.data.filter(b => {
+            const bDate = (b.BillDate || (b.BillTime ? b.BillTime.slice(0, 10) : '')).trim();
+            return !bDate || bDate === todayStr;
+          });
+        } else if (filterType === 'yesterday') {
+          filtered = res.data.filter(b => {
+            const bDate = (b.BillDate || (b.BillTime ? b.BillTime.slice(0, 10) : '')).trim();
+            return !bDate || bDate === yesterdayStr;
+          });
+        } else if (filterType === 'custom' && selectedCustomDate) {
+          filtered = res.data.filter(b => {
+            const bDate = (b.BillDate || (b.BillTime ? b.BillTime.slice(0, 10) : '')).trim();
+            return !bDate || bDate === selectedCustomDate;
+          });
+        }
+
+        setBills(filtered);
         setLastFetchedAt(new Date());
 
         // Batch populate billItemsCache so bill details open with 0 latency
         const newItemsMap = {};
-        res.data.forEach(bill => {
+        filtered.forEach(bill => {
           if (bill.Items && bill.Items.length > 0) {
             newItemsMap[bill.BillId] = bill.Items;
           }
@@ -115,28 +158,31 @@ const LiveBillsTab = (props) => {
 
         // If currently viewing today, also sync back to liveBills in App.jsx
         if (filterType === 'today' && typeof setLiveBills === 'function') {
-          const todayOnly = res.data.filter(b => {
-            const bDate = b.BillDate ? b.BillDate.trim() : (b.BillTime ? b.BillTime.slice(0, 10) : '');
-            return bDate === todayStr;
-          });
-          setLiveBills(todayOnly);
+          setLiveBills(filtered);
         }
+      } else if (res.data && res.data.error) {
+        setFetchError(`Could not load: ${res.data.error}`);
+        setBills([]);
       }
     } catch (err) {
-      console.warn('[TRANSACTIONS] API fetch failed, checking local liveBills fallback:', err);
-      // Client-side fallback from liveBills prop (e.g. offline cloud sync)
+      console.warn('[TRANSACTIONS] API fetch failed:', err);
+      setFetchError('Could not reach the store system. Showing cached data if available.');
+      // Client-side fallback from liveBills prop (e.g. offline)
       if (Array.isArray(liveBills) && liveBills.length > 0) {
         setBills(liveBills);
+      } else {
+        setBills([]);
       }
     } finally {
       setIsLoading(false);
     }
-  }, [API_BASE, dateFilter, customDate, yesterdayStr, liveBills, setLiveBills, setBillItemsCache]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [API_BASE, yesterdayStr, todayStr, setBillItemsCache, setLiveBills]);
 
-  // Initial load and filter changes
+  // Reload when date filter or custom date changes
   useEffect(() => {
     fetchBills(dateFilter, customDate);
-  }, [dateFilter, customDate]);
+  }, [dateFilter, customDate, fetchBills]);
 
   // Auto-refresh when viewing 'today' (every 25 seconds)
   useEffect(() => {
@@ -172,14 +218,14 @@ const LiveBillsTab = (props) => {
     return bills.filter(bill => {
       // Date filter matching (especially important for fallback/multi-day payloads)
       if (dateFilter === 'today') {
-        const bDate = bill.BillDate || (bill.BillTime ? bill.BillTime.slice(0, 10) : '');
+        const bDate = (bill.BillDate || (bill.BillTime ? bill.BillTime.slice(0, 10) : '')).trim();
         if (bDate && bDate !== todayStr) return false;
       } else if (dateFilter === 'yesterday') {
-        const bDate = bill.BillDate || (bill.BillTime ? bill.BillTime.slice(0, 10) : '');
+        const bDate = (bill.BillDate || (bill.BillTime ? bill.BillTime.slice(0, 10) : '')).trim();
         if (bDate && bDate !== yesterdayStr) return false;
-      } else if (dateFilter === 'custom') {
-        const bDate = bill.BillDate || (bill.BillTime ? bill.BillTime.slice(0, 10) : '');
-        if (bDate && bDate !== customDate) return false;
+      } else if (dateFilter === 'custom' && customDate) {
+        const bDate = (bill.BillDate || (bill.BillTime ? bill.BillTime.slice(0, 10) : '')).trim();
+        if (bDate && bDate !== customDate.trim()) return false;
       }
 
       // Payment Mode filter
@@ -439,20 +485,59 @@ const LiveBillsTab = (props) => {
             <span>Last 7 Days</span>
           </button>
 
-          {/* Custom Date Picker */}
+          {/* Custom Date Picker with Calendar Trigger */}
           <div className="flex items-center gap-1.5 pl-1">
-            <span className={`text-xs font-semibold ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>or Pick Date:</span>
-            <input
-              type="date"
-              value={customDate}
-              onChange={(e) => {
-                setCustomDate(e.target.value);
+            <button
+              type="button"
+              onClick={() => {
                 setDateFilter('custom');
+                try {
+                  dateInputRef.current?.showPicker?.();
+                  dateInputRef.current?.focus();
+                } catch (_) {
+                  dateInputRef.current?.focus();
+                }
+              }}
+              className={`px-3 py-2 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
+                dateFilter === 'custom'
+                  ? (darkMode ? 'bg-amber-600 text-white border-amber-500 shadow-[0_0_15px_rgba(217,119,6,0.4)]' : 'bg-amber-600 text-white border-amber-600 shadow-sm')
+                  : (darkMode ? 'bg-[#161922] hover:bg-[#1f2330] text-slate-300 border-[#2e3342]' : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200')
+              }`}
+              title="Click to pick a custom date from calendar"
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              <span>
+                {dateFilter === 'custom' && customDate
+                  ? `📅 ${new Date(customDate + 'T00:00:00').toLocaleDateString([], { day: '2-digit', month: 'short' })}`
+                  : '📅 Pick Date'}
+              </span>
+            </button>
+
+            <input
+              ref={dateInputRef}
+              type="date"
+              value={customDate || ''}
+              onChange={(e) => {
+                if (e.target.value) {
+                  setCustomDate(e.target.value);
+                  setDateFilter('custom');
+                }
+              }}
+              onInput={(e) => {
+                if (e.target.value) {
+                  setCustomDate(e.target.value);
+                  setDateFilter('custom');
+                }
+              }}
+              onClick={(e) => {
+                setDateFilter('custom');
+                try { e.target.showPicker?.(); } catch(_) {}
               }}
               max={todayStr}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition outline-none cursor-pointer ${
+              style={{ colorScheme: darkMode ? 'dark' : 'light' }}
+              className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold border transition outline-none cursor-pointer ${
                 dateFilter === 'custom'
-                  ? (darkMode ? 'bg-blue-950/60 text-blue-300 border-blue-500 ring-1 ring-blue-500' : 'bg-blue-50 text-blue-700 border-blue-400 ring-1 ring-blue-400')
+                  ? (darkMode ? 'bg-amber-950/60 text-amber-200 border-amber-500 ring-1 ring-amber-500' : 'bg-amber-50 text-amber-800 border-amber-400 ring-1 ring-amber-400')
                   : (darkMode ? 'bg-[#161922] text-slate-300 border-[#2e3342]' : 'bg-slate-100 text-slate-700 border-slate-200')
               }`}
             />
@@ -611,6 +696,18 @@ const LiveBillsTab = (props) => {
               </tr>
             </thead>
             <tbody className={`divide-y ${darkMode ? 'divide-[#1e222e]' : 'divide-slate-100'}`}>
+              {isLoading && (
+                <tr>
+                  <td colSpan="7" className="px-6 py-12 text-center">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <div className="w-7 h-7 rounded-full border-2 border-blue-500 border-t-transparent animate-spin"></div>
+                      <span className={`text-xs font-semibold ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                        Loading transactions for {dateFilter === 'today' ? 'today' : dateFilter === 'yesterday' ? 'yesterday' : customDate ? `date ${customDate}` : 'selected date'}...
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              )}
               {filteredBills.map((bill, idx) => {
                 const isExpanded = expandedBillId === bill.BillId;
                 const items = billItemsCache[bill.BillId] || bill.Items || [];
