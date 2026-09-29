@@ -283,8 +283,23 @@ const GoodsInTransitTab = ({ darkMode, API_BASE }) => {
                   </thead>
                   <tbody className={`divide-y ${darkMode ? 'divide-slate-800' : 'divide-slate-200'}`}>
                     {(() => {
-                      const sourceItems = activeDispatch?.items?.length ? activeDispatch.items : mockChallanItems;
+                      const inTransitMatch = data.activeInTransit?.find(t => 
+                        (t.challan_no || t.invoice_no) === activeDispatch?.challan
+                      );
+                      const sourceItems = inTransitMatch?.items 
+                        ? inTransitMatch.items 
+                        : (activeDispatch?.items || []);
                       
+                      if (!sourceItems || sourceItems.length === 0) {
+                          return (
+                            <tr>
+                              <td colSpan="5" className={`px-4 py-8 text-center ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                                No item-level details found for this dispatch.
+                              </td>
+                            </tr>
+                          );
+                      }
+
                       // Group by category and color
                       const grouped = sourceItems.reduce((acc, item) => {
                         const key = `${item.desc || 'UNKNOWN'}|${item.p1 || 'UNKNOWN'}`;

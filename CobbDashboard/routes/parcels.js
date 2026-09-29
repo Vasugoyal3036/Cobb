@@ -84,7 +84,7 @@ router.get('/transit', async (req, res) => {
 
         // Combine deduplicated parcels
         const seenMemos = new Set();
-        const combined = [];
+        let combined = [];
 
         for (const p of mirrorParcels) {
             if (p.parcel_memo_no && !seenMemos.has(p.parcel_memo_no)) {
@@ -99,16 +99,15 @@ router.get('/transit', async (req, res) => {
                 combined.push(p);
             }
         }
+        
+        // Limit combined to 50 to prevent excessive SQL queries
+        combined = combined.slice(0, 50);
 
         // Compute summary metrics
-        const activeInTransit = [];
-        const inTransitParcels = combined.filter(p => p.status === 'In Transit' || p.status === 'Arrived Today');
-        
-        // Attach items to active in-transit parcels so they can be grouped on frontend
-        for (const p of inTransitParcels) {
-            const newP = JSON.parse(JSON.stringify(p));
-            const invId = newP.challan_no || newP.invoice_no || newP.parcel_memo_no;
-            if (invId) {
+        // Attach items to all parcels so they can be grouped on frontend
+        for (const p of combined) {
+            const invId = p.challan_no || p.invoice_no || p.parcel_memo_no;
+            if (invId && invId.length > 5 && invId !== 'WH') {
                 try {
                     const itemsRes = await sql.query(`
                         SELECT TOP 500
@@ -123,18 +122,21 @@ router.get('/transit', async (req, res) => {
                             'PCS' as uom
                         FROM docwsl_ind01106_mirror d WITH (NOLOCK)
                         LEFT JOIN SKU_NAMES s WITH (NOLOCK) ON d.PRODUCT_CODE = s.product_Code
-                        WHERE d.INV_ID = '${invId}' OR d.INV_ID LIKE '%${invId}%'
+                        WHERE d.INV_ID LIKE '%${invId}%'
                     `);
-                    newP.items = itemsRes.recordset || [];
+                    p.items = itemsRes.recordset || [];
                 } catch (e) {
                     console.warn('[ParcelsRoute] Warning fetching items for parcel:', invId, e.message);
-                    newP.items = [];
+                    p.items = [];
                 }
             } else {
-                newP.items = [];
+                p.items = [];
             }
-            activeInTransit.push(newP);
         }
+        
+        // Re-filter activeInTransit after items are attached to combined
+        const activeInTransit = combined.filter(p => p.status === 'In Transit' || p.status === 'Arrived Today');
+
         const latestParcel = combined[0] || null;
 
         // Current month's parcels
