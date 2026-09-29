@@ -31,6 +31,19 @@ import {
 } from 'lucide-react';
 import AlterationSlipModal from '../AlterationSlipModal';
 
+export const resolvePaymentMode = (bill) => {
+  let mode = bill?.PaymentMode;
+  const cash = Number(bill?.CashAmount || 0);
+  const upi = Number(bill?.UpiAmount || 0);
+  const card = Number(bill?.CardAmount || 0);
+  if (!mode || mode === 'Cash') {
+    if (upi > 0 && cash === 0 && card === 0) return 'UPI / Online';
+    if (card > 0 && cash === 0 && upi === 0) return 'Debit / Credit Card';
+    if ((cash > 0 && upi > 0) || (cash > 0 && card > 0) || (upi > 0 && card > 0)) return 'Split (Cash + Digital)';
+  }
+  return mode || 'Cash';
+};
+
 const LiveBillsTab = (props) => {
   const {
     API_BASE,
@@ -230,8 +243,9 @@ const LiveBillsTab = (props) => {
 
       // Payment Mode filter
       if (paymentFilter !== 'all') {
-        if (paymentFilter === 'Split' && !bill.PaymentMode?.includes('Split')) return false;
-        if (paymentFilter !== 'Split' && bill.PaymentMode !== paymentFilter) return false;
+        const mode = resolvePaymentMode(bill);
+        if (paymentFilter === 'Split' && !mode.includes('Split')) return false;
+        if (paymentFilter !== 'Split' && mode !== paymentFilter) return false;
       }
 
       // Search query
@@ -265,9 +279,22 @@ const LiveBillsTab = (props) => {
       const amt = Number(b.Amount || 0);
       totalRev += amt;
       totalQty += Number(b.TotalQty || (b.Items ? b.Items.reduce((s, i) => s + (Number(i.Quantity) || 1), 0) : 1));
-      cashRev += Number(b.CashAmount || 0);
-      upiRev += Number(b.UpiAmount || 0);
-      cardRev += Number(b.CardAmount > 0 ? b.CardAmount : 0);
+      
+      let cash = Number(b.CashAmount || 0);
+      let upi = Number(b.UpiAmount || 0);
+      let card = Number(b.CardAmount > 0 ? b.CardAmount : 0);
+
+      // If breakdown amounts were not populated (e.g. older cloud cache), fallback to inferred mode
+      if (cash === 0 && upi === 0 && card === 0 && amt > 0) {
+        const mode = resolvePaymentMode(b);
+        if (mode === 'UPI / Online' || mode?.includes('UPI')) upi = amt;
+        else if (mode === 'Debit / Credit Card' || mode?.includes('Card')) card = amt;
+        else cash = amt;
+      }
+
+      cashRev += cash;
+      upiRev += upi;
+      cardRev += card;
     });
 
     const count = filteredBills.length;
@@ -350,7 +377,7 @@ const LiveBillsTab = (props) => {
             <div><strong>Date:</strong> ${bill.BillDate || bill.BillTime?.slice(0, 10)}</div>
             <div><strong>Customer:</strong> ${bill.CustomerName?.trim() || 'Guest'}</div>
             <div><strong>Phone:</strong> ${bill.Phone || '-'}</div>
-            <div><strong>Mode:</strong> ${bill.PaymentMode}</div>
+            <div><strong>Mode:</strong> ${resolvePaymentMode(bill)}</div>
           </div>
           <table>
             <thead>
@@ -383,7 +410,7 @@ const LiveBillsTab = (props) => {
     const items = billItemsCache[bill.BillId] || bill.Items || [];
     let itemsText = items.map(i => `• ${i.ArticleName} (${i.Size || 'Std'}, ${i.Color || 'Std'}) x${i.Quantity || 1} - ₹${i.NetPrice}`).join('\n');
     
-    const text = `Hello ${bill.CustomerName?.trim() || 'Valued Customer'}, here are your invoice details from Cobb Apparels:\n\n*Invoice No:* ${bill.BillNumber.trim()}\n*Date:* ${formatBillDateTime(bill.BillTime, bill.BillDate)}\n*Total Amount:* ₹${bill.Amount}\n*Payment Mode:* ${bill.PaymentMode}\n\n*Items Purchased:*\n${itemsText || 'Details on invoice'}\n\nThank you for shopping with Cobb!`;
+    const text = `Hello ${bill.CustomerName?.trim() || 'Valued Customer'}, here are your invoice details from Cobb Apparels:\n\n*Invoice No:* ${bill.BillNumber.trim()}\n*Date:* ${formatBillDateTime(bill.BillTime, bill.BillDate)}\n*Total Amount:* ₹${bill.Amount}\n*Payment Mode:* ${resolvePaymentMode(bill)}\n\n*Items Purchased:*\n${itemsText || 'Details on invoice'}\n\nThank you for shopping with Cobb!`;
     const cleanPhone = bill.Phone.replace(/[^0-9]/g, '');
     const phoneWithCountry = cleanPhone.length === 10 ? `91${cleanPhone}` : cleanPhone;
     window.open(`https://wa.me/${phoneWithCountry}?text=${encodeURIComponent(text)}`, '_blank');
@@ -799,20 +826,29 @@ const LiveBillsTab = (props) => {
 
                       {/* Payment Mode */}
                       <td className="px-6 py-4 text-center whitespace-nowrap">
-                        <span className={`px-3 py-1.5 rounded-xl text-xs font-bold border inline-flex items-center gap-1.5 ${
-                          bill.PaymentMode === 'Cash'
+                        {(() => {
+                          const mode = resolvePaymentMode(bill);
+                          const isCash = mode === 'Cash';
+                          const isUPI = mode === 'UPI / Online' || mode?.includes('UPI');
+                          const isCard = mode === 'Debit / Credit Card' || mode?.includes('Card');
+
+                          const badgeClass = isCash
                             ? (darkMode ? 'bg-emerald-950/40 text-emerald-300 border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border-emerald-200')
-                            : bill.PaymentMode === 'UPI / Online'
+                            : isUPI
                             ? (darkMode ? 'bg-purple-950/40 text-purple-300 border-purple-800/60' : 'bg-purple-50 text-purple-700 border-purple-200')
-                            : bill.PaymentMode === 'Debit / Credit Card'
+                            : isCard
                             ? (darkMode ? 'bg-blue-950/40 text-blue-300 border-blue-800/60' : 'bg-blue-50 text-blue-700 border-blue-200')
-                            : (darkMode ? 'bg-amber-950/40 text-amber-300 border-amber-800/60' : 'bg-amber-50 text-amber-700 border-amber-200')
-                        }`}>
-                          {bill.PaymentMode === 'Cash' ? '💵 Cash' :
-                            bill.PaymentMode === 'UPI / Online' ? '⚡ UPI / QR' :
-                            bill.PaymentMode === 'Debit / Credit Card' ? '💳 Card' :
-                            '🔀 Split Payment'}
-                        </span>
+                            : (darkMode ? 'bg-amber-950/40 text-amber-300 border-amber-800/60' : 'bg-amber-50 text-amber-700 border-amber-200');
+
+                          return (
+                            <span className={`px-3 py-1.5 rounded-xl text-xs font-bold border inline-flex items-center gap-1.5 ${badgeClass}`}>
+                              {isCash ? '💵 Cash' :
+                                isUPI ? '⚡ UPI / QR' :
+                                isCard ? '💳 Card' :
+                                '🔀 Split Payment'}
+                            </span>
+                          );
+                        })()}
                       </td>
 
                       {/* Items Count Badge */}
@@ -970,7 +1006,7 @@ const LiveBillsTab = (props) => {
                                 <button
                                   onClick={() => {
                                     const currItems = billItemsCache[bill.BillId] || bill.Items || [];
-                                    const text = `Invoice: ${bill.BillNumber?.trim()} | Customer: ${bill.CustomerName?.trim()} | Amount: ₹${bill.Amount} | Mode: ${bill.PaymentMode} | Items: ${currItems.map(i => `${i.ArticleName} (${i.Quantity})`).join(', ')}`;
+                                    const text = `Invoice: ${bill.BillNumber?.trim()} | Customer: ${bill.CustomerName?.trim()} | Amount: ₹${bill.Amount} | Mode: ${resolvePaymentMode(bill)} | Items: ${currItems.map(i => `${i.ArticleName} (${i.Quantity})`).join(', ')}`;
                                     handleCopy(text, bill.BillId, 'summary');
                                   }}
                                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 border cursor-pointer ${

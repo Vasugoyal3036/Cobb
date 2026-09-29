@@ -1363,13 +1363,19 @@ const handleSalesLiveOrHistory = async (req, res) => {
             
             const payPromise = sql.query(`
                 SELECT 
-                    p.MEMO_ID as BillId,
-                    ISNULL(p.CASH_AMOUNT, 0) as CashAmount,
-                    ISNULL(p.CC_AMOUNT, 0) - ISNULL(SUM(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0)), 0) as CardAmount,
-                    ISNULL(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0), 0) as UpiAmount
-                FROM VW_BILL_PAYMODE p WITH (NOLOCK)
-                LEFT JOIN VW_WL_CASHMEMOLIST w WITH (NOLOCK) ON p.MEMO_ID = w.MEMO_ID
-                WHERE p.MEMO_ID IN (${idList})
+                    m.CM_ID as BillId,
+                    ISNULL(MAX(p.CASH_AMOUNT), 0) as CashAmount,
+                    CASE 
+                        WHEN ISNULL(MAX(p.CC_AMOUNT), 0) - ISNULL(SUM(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0)), 0) > 0 
+                        THEN ISNULL(MAX(p.CC_AMOUNT), 0) - ISNULL(SUM(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0)), 0)
+                        ELSE 0 
+                    END as CardAmount,
+                    ISNULL(SUM(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0)), 0) as UpiAmount
+                FROM CMM01106 m WITH (NOLOCK)
+                LEFT JOIN VW_BILL_PAYMODE p WITH (NOLOCK) ON m.CM_ID = p.MEMO_ID AND (p.XN_TYPE IS NULL OR p.XN_TYPE = 'SLS')
+                LEFT JOIN VW_WL_CASHMEMOLIST w WITH (NOLOCK) ON m.CM_ID = w.MEMO_ID
+                WHERE m.CM_ID IN (${idList})
+                GROUP BY m.CM_ID
             `).catch(err => {
                 console.error('Paymode query error:', err.message);
                 return { recordset: [] };
@@ -1414,16 +1420,16 @@ const handleSalesLiveOrHistory = async (req, res) => {
 
         const enriched = bills.map(b => {
             const pay = paymodesByBill[b.BillId] || {};
-            const cash = pay.CashAmount || 0;
-            const card = (pay.CardAmount || 0) > 0 ? pay.CardAmount : 0;
-            const upi = pay.UpiAmount || 0;
+            const cash = Math.round(Number(pay.CashAmount || 0));
+            const card = Math.round(Number((pay.CardAmount || 0) > 0 ? pay.CardAmount : 0));
+            const upi = Math.round(Number(pay.UpiAmount || 0));
 
             let paymentMode = 'Cash';
             if (upi > 0 && cash === 0 && card === 0) {
                 paymentMode = 'UPI / Online';
             } else if (card > 0 && cash === 0 && upi === 0) {
                 paymentMode = 'Debit / Credit Card';
-            } else if (cash > 0 && (upi > 0 || card > 0)) {
+            } else if ((cash > 0 && upi > 0) || (cash > 0 && card > 0) || (upi > 0 && card > 0)) {
                 paymentMode = 'Split (Cash + Digital)';
             } else if (cash > 0) {
                 paymentMode = 'Cash';

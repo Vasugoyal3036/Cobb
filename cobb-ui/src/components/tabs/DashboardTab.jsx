@@ -121,6 +121,19 @@ const DashboardTab = (props) => {
     const items = billItemsCache[bill.BillId] || bill.Items || [];
     const printWindow = window.open('', '_blank', 'width=400,height=600');
     
+    const resolvedMode = (() => {
+      let mode = bill.PaymentMode;
+      const cash = Number(bill.CashAmount || 0);
+      const upi = Number(bill.UpiAmount || 0);
+      const card = Number(bill.CardAmount || 0);
+      if (!mode || mode === 'Cash') {
+        if (upi > 0 && cash === 0 && card === 0) return 'UPI / Online';
+        if (card > 0 && cash === 0 && upi === 0) return 'Debit / Credit Card';
+        if ((cash > 0 && upi > 0) || (cash > 0 && card > 0) || (upi > 0 && card > 0)) return 'Split Payment';
+      }
+      return mode || 'Cash';
+    })();
+
     const itemsHtml = items.map(i => `
       <tr>
         <td style="padding: 4px 0; border-bottom: 1px dashed #ccc;">${i.ArticleName}<br><small>${i.ArticleNo} | Size: ${i.Size || 'Std'}</small></td>
@@ -151,7 +164,7 @@ const DashboardTab = (props) => {
             <div><strong>Date:</strong> ${bill.BillDate || bill.BillTime?.slice(0, 10)}</div>
             <div><strong>Customer:</strong> ${bill.CustomerName?.trim() || 'Guest'}</div>
             <div><strong>Phone:</strong> ${bill.Phone || '-'}</div>
-            <div><strong>Mode:</strong> ${bill.PaymentMode}</div>
+            <div><strong>Mode:</strong> ${resolvedMode}</div>
           </div>
           <table>
             <thead>
@@ -492,15 +505,38 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
                                 <span>•</span>
                                 <span className="font-mono text-slate-300">#{bill.BillNumber}</span>
                                 <span>•</span>
-                                <span className={`font-mono font-semibold px-2 py-0.5 rounded text-[10px] ${
-                                  bill.PaymentMode === 'Cash' 
-                                    ? darkMode ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                    : bill.PaymentMode === 'UPI / Online' 
-                                      ? darkMode ? 'bg-purple-950/60 text-purple-300 border border-purple-800/60' : 'bg-purple-50 text-purple-700 border border-purple-200'
-                                      : darkMode ? 'bg-blue-950/60 text-blue-300 border border-blue-800/60' : 'bg-blue-50 text-blue-700 border border-blue-200'
-                                }`}>
-                                  {bill.PaymentMode || 'Cash'}
-                                </span>
+                                {(() => {
+                                  let mode = bill.PaymentMode;
+                                  const cash = Number(bill.CashAmount || 0);
+                                  const upi = Number(bill.UpiAmount || 0);
+                                  const card = Number(bill.CardAmount || 0);
+                                  if (!mode || mode === 'Cash') {
+                                    if (upi > 0 && cash === 0 && card === 0) mode = 'UPI / Online';
+                                    else if (card > 0 && cash === 0 && upi === 0) mode = 'Debit / Credit Card';
+                                    else if ((cash > 0 && upi > 0) || (cash > 0 && card > 0) || (upi > 0 && card > 0)) mode = 'Split (Cash + Digital)';
+                                    else mode = mode || 'Cash';
+                                  }
+
+                                  const isUPI = mode === 'UPI / Online' || mode?.toLowerCase().includes('upi');
+                                  const isCard = mode === 'Debit / Credit Card' || mode?.toLowerCase().includes('card');
+                                  const isSplit = mode?.toLowerCase().includes('split');
+
+                                  const badgeClass = isUPI
+                                    ? (darkMode ? 'bg-purple-950/60 text-purple-300 border border-purple-800/60' : 'bg-purple-50 text-purple-700 border border-purple-200')
+                                    : isCard
+                                    ? (darkMode ? 'bg-blue-950/60 text-blue-300 border border-blue-800/60' : 'bg-blue-50 text-blue-700 border border-blue-200')
+                                    : isSplit
+                                    ? (darkMode ? 'bg-amber-950/60 text-amber-300 border border-amber-800/60' : 'bg-amber-50 text-amber-700 border border-amber-200')
+                                    : (darkMode ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border border-emerald-200');
+
+                                  const label = isUPI ? '⚡ UPI' : isCard ? '💳 Card' : isSplit ? '🔀 Split' : '💵 Cash';
+
+                                  return (
+                                    <span className={`font-mono font-semibold px-2 py-0.5 rounded text-[10px] ${badgeClass}`}>
+                                      {label}
+                                    </span>
+                                  );
+                                })()}
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
