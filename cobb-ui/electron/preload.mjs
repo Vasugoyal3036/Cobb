@@ -19,3 +19,8 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
     return ipcRenderer.invoke(channel, ...omit);
   },
 });
+
+// Expose openExternal so the renderer can open URLs in the system browser
+contextBridge.exposeInMainWorld('electronAPI', {
+  openExternal: (url) => ipcRenderer.invoke('open-external', url),
+});

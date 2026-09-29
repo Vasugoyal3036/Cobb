@@ -1315,6 +1315,16 @@ export default function App() {
   const handleDispatchEodReport = async () => {
     setIsSendingEod(true);
     setEodSendResult('');
+
+    // Helper: open URL in system browser (Electron uses IPC shell.openExternal)
+    const openUrl = (url) => {
+      if (isElectron && window.electronAPI?.openExternal) {
+        window.electronAPI.openExternal(url);
+      } else {
+        window.open(url, '_blank');
+      }
+    };
+
     try {
       if (isLocalhost || isTunnel) {
         const res = await axios.post(`${API_BASE}/api/reports/eod-summary/send`, { date: eodSelectedDate });
@@ -1325,13 +1335,13 @@ export default function App() {
         }
       } else {
         const cleanText = encodeURIComponent(eodSummaryText);
-        window.open(`https://wa.me/?text=${cleanText}`, '_blank');
+        openUrl(`https://wa.me/?text=${cleanText}`);
         setEodSendResult('✅ Opened WhatsApp to dispatch Daily Digest!');
       }
     } catch (err) {
       console.error('Failed to dispatch EOD report:', err);
       const cleanText = encodeURIComponent(eodSummaryText);
-      window.open(`https://wa.me/?text=${cleanText}`, '_blank');
+      openUrl(`https://wa.me/?text=${cleanText}`);
       setEodSendResult('📲 Opening WhatsApp share...');
     } finally {
       setIsSendingEod(false);

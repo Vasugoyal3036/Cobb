@@ -1,4 +1,4 @@
-import { app, BrowserWindow, protocol, net } from 'electron';
+import { app, BrowserWindow, protocol, net, shell, ipcMain } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fs from 'node:fs';
@@ -104,6 +104,14 @@ function createWindow() {
     console.log(`[Renderer Console] ${message} (line ${line} in ${sourceId})`);
   });
 
+  // Open external links (wa.me, https://) in the system browser, not in Electron
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('https://') || url.startsWith('http://wa') || url.startsWith('whatsapp://')) {
+      shell.openExternal(url);
+    }
+    return { action: 'deny' };
+  });
+
   if (VITE_DEV_SERVER_URL) {
     console.log('[Electron] Loading dev server URL:', VITE_DEV_SERVER_URL);
     win.loadURL(VITE_DEV_SERVER_URL);
@@ -133,6 +141,15 @@ app.on('activate', () => {
 
 app.on('before-quit', () => {
   stopBackendServer();
+});
+
+// IPC: Open external URLs in the system browser (used by EOD WhatsApp send, etc.)
+ipcMain.handle('open-external', async (_event, url) => {
+  if (typeof url === 'string' && (url.startsWith('https://') || url.startsWith('http://') || url.startsWith('whatsapp://'))) {
+    await shell.openExternal(url);
+    return true;
+  }
+  return false;
 });
 
 app.whenReady().then(() => {

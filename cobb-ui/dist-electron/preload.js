@@ -1,5 +1,4 @@
 import { contextBridge as e, ipcRenderer as t } from "electron";
-//#region electron/preload.mjs
 e.exposeInMainWorld("ipcRenderer", {
 	on(...e) {
 		let [n, r] = e;
@@ -17,6 +16,6 @@ e.exposeInMainWorld("ipcRenderer", {
 		let [n, ...r] = e;
 		return t.invoke(n, ...r);
 	}
-});
+}), e.exposeInMainWorld("electronAPI", { openExternal: (e) => t.invoke("open-external", e) });
 //#endregion
 export {};
