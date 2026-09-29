@@ -274,27 +274,45 @@ const GoodsInTransitTab = ({ darkMode, API_BASE }) => {
                 <table className="w-full text-sm text-left whitespace-nowrap">
                   <thead className={`text-xs uppercase font-bold sticky top-0 z-10 border-b ${darkMode ? 'bg-slate-800 text-blue-300 border-slate-700' : 'bg-blue-50 text-blue-800 border-slate-300'}`}>
                     <tr>
-                      <th className="px-4 py-3 border-r border-slate-700/50">Item Code</th>
-                      <th className="px-4 py-3 border-r border-slate-700/50">Article No.</th>
-                      <th className="px-4 py-3 border-r border-slate-700/50">Description</th>
-                      <th className="px-4 py-3 border-r border-slate-700/50">Para1</th>
-                      <th className="px-4 py-3 border-r border-slate-700/50">Para2</th>
-                      <th className="px-4 py-3 border-r border-slate-700/50">Qty</th>
-                      <th className="px-4 py-3 text-right">MRP</th>
+                      <th className="px-4 py-3 border-r border-slate-700/50">Category (Desc)</th>
+                      <th className="px-4 py-3 border-r border-slate-700/50">Color (P1)</th>
+                      <th className="px-4 py-3 border-r border-slate-700/50 text-center">Total Qty</th>
+                      <th className="px-4 py-3 border-r border-slate-700/50 text-right">Avg MRP</th>
+                      <th className="px-4 py-3 text-right">Total Value</th>
                     </tr>
                   </thead>
                   <tbody className={`divide-y ${darkMode ? 'divide-slate-800' : 'divide-slate-200'}`}>
-                    {mockChallanItems.map((item, idx) => (
-                      <tr key={idx} className={`hover:bg-blue-500/5 transition-colors ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                        <td className={`px-4 py-2.5 font-mono border-r ${darkMode ? 'border-slate-800 text-blue-400' : 'border-slate-200 text-blue-600'}`}>{item.code}</td>
-                        <td className={`px-4 py-2.5 border-r ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>{item.article}</td>
-                        <td className={`px-4 py-2.5 border-r ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>{item.desc}</td>
-                        <td className={`px-4 py-2.5 border-r ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>{item.p1}</td>
-                        <td className={`px-4 py-2.5 border-r ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>{item.p2}</td>
-                        <td className={`px-4 py-2.5 border-r text-center font-bold ${darkMode ? 'border-slate-800 text-emerald-400 bg-emerald-500/10' : 'border-slate-200 text-emerald-600 bg-emerald-50'}`}>{item.qty}.00</td>
-                        <td className="px-4 py-2.5 text-right font-mono">{item.mrp.toLocaleString('en-IN')}.00</td>
-                      </tr>
-                    ))}
+                    {(() => {
+                      const sourceItems = activeDispatch?.items?.length ? activeDispatch.items : mockChallanItems;
+                      
+                      // Group by category and color
+                      const grouped = sourceItems.reduce((acc, item) => {
+                        const key = `${item.desc || 'UNKNOWN'}|${item.p1 || 'UNKNOWN'}`;
+                        if (!acc[key]) {
+                          acc[key] = {
+                            desc: item.desc || 'UNKNOWN',
+                            p1: item.p1 || 'UNKNOWN',
+                            qty: 0,
+                            mrpSum: 0,
+                            count: 0
+                          };
+                        }
+                        acc[key].qty += (item.qty || 1);
+                        acc[key].mrpSum += (item.mrp || 0) * (item.qty || 1);
+                        acc[key].count += 1;
+                        return acc;
+                      }, {});
+                      
+                      return Object.values(grouped).map((g, idx) => (
+                        <tr key={idx} className={`hover:bg-blue-500/5 transition-colors ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                          <td className={`px-4 py-2.5 font-bold border-r ${darkMode ? 'border-slate-800 text-blue-400' : 'border-slate-200 text-blue-600'}`}>{g.desc}</td>
+                          <td className={`px-4 py-2.5 border-r ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>{g.p1}</td>
+                          <td className={`px-4 py-2.5 border-r text-center font-bold ${darkMode ? 'border-slate-800 text-emerald-400 bg-emerald-500/10' : 'border-slate-200 text-emerald-600 bg-emerald-50'}`}>{g.qty} Pcs</td>
+                          <td className="px-4 py-2.5 border-r text-right">₹{Math.round(g.mrpSum / g.qty).toLocaleString('en-IN')}</td>
+                          <td className="px-4 py-2.5 text-right font-mono font-bold">₹{g.mrpSum.toLocaleString('en-IN')}</td>
+                        </tr>
+                      ));
+                    })()}
                   </tbody>
                 </table>
               </div>

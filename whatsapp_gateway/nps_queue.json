@@ -106,6 +106,17 @@
     "billNo": "",
     "scheduledAt": 1790685420320,
     "createdAt": 1790683620320,
-    "status": "pending"
+    "status": "sent",
+    "sentAt": 1790685428962
+  },
+  {
+    "id": "nps_1790686908520_prul",
+    "phone": "919896481404",
+    "customerName": "Sagar Mangal",
+    "billNo": "",
+    "scheduledAt": 1790688708520,
+    "createdAt": 1790686908520,
+    "status": "sent",
+    "sentAt": 1790688710670
   }
 ]

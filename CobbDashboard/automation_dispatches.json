@@ -1186,5 +1186,17 @@
     "reason": "checkout",
     "status": "sent",
     "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-09-29T18:31:48.555509",
+    "date": "2026-09-29",
+    "time": "06:31 PM",
+    "billNo": "STST27-00755   ",
+    "cmId": "ST01127000STST27-00755",
+    "customerName": "Sagar Mangal",
+    "phone": "9896481404",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
   }
 ]

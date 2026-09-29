@@ -101,7 +101,40 @@ router.get('/transit', async (req, res) => {
         }
 
         // Compute summary metrics
-        const activeInTransit = combined.filter(p => p.status === 'In Transit' || p.status === 'Arrived Today');
+        const activeInTransit = [];
+        const inTransitParcels = combined.filter(p => p.status === 'In Transit' || p.status === 'Arrived Today');
+        
+        // Attach items to active in-transit parcels so they can be grouped on frontend
+        for (const p of inTransitParcels) {
+            const newP = JSON.parse(JSON.stringify(p));
+            const invId = newP.challan_no || newP.invoice_no || newP.parcel_memo_no;
+            if (invId) {
+                try {
+                    const itemsRes = await sql.query(`
+                        SELECT TOP 500
+                            d.PRODUCT_CODE as code,
+                            s.article_no as article,
+                            s.article_name as [desc],
+                            s.para1_name as p1,
+                            s.para2_name as p2,
+                            s.para3_name as p3,
+                            ISNULL(d.QUANTITY, 0) as qty,
+                            d.mrp,
+                            'PCS' as uom
+                        FROM docwsl_ind01106_mirror d WITH (NOLOCK)
+                        LEFT JOIN SKU_NAMES s WITH (NOLOCK) ON d.PRODUCT_CODE = s.product_Code
+                        WHERE d.INV_ID = '${invId}' OR d.INV_ID LIKE '%${invId}%'
+                    `);
+                    newP.items = itemsRes.recordset || [];
+                } catch (e) {
+                    console.warn('[ParcelsRoute] Warning fetching items for parcel:', invId, e.message);
+                    newP.items = [];
+                }
+            } else {
+                newP.items = [];
+            }
+            activeInTransit.push(newP);
+        }
         const latestParcel = combined[0] || null;
 
         // Current month's parcels
@@ -145,17 +178,19 @@ router.get('/items', async (req, res) => {
         }
 
         const itemsResult = await sql.query(`
-            SELECT TOP 50
-                PRODUCT_CODE,
-                QUANTITY,
-                mrp,
-                RATE,
-                net_rate,
-                hsn_code,
-                xn_value_with_gst,
-                ROW_ID
-            FROM docwsl_ind01106_mirror WITH (NOLOCK)
-            WHERE INV_ID = '${invId}' OR INV_ID LIKE '%${invId}%'
+            SELECT TOP 500
+                d.PRODUCT_CODE as code,
+                s.article_no as article,
+                s.article_name as [desc],
+                s.para1_name as p1,
+                s.para2_name as p2,
+                s.para3_name as p3,
+                ISNULL(d.QUANTITY, 0) as qty,
+                d.mrp,
+                'PCS' as uom
+            FROM docwsl_ind01106_mirror d WITH (NOLOCK)
+            LEFT JOIN SKU_NAMES s WITH (NOLOCK) ON d.PRODUCT_CODE = s.product_Code
+            WHERE d.INV_ID = '${invId}' OR d.INV_ID LIKE '%${invId}%'
         `);
 
         res.json({
