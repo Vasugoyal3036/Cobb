@@ -2279,7 +2279,7 @@ export default function App() {
 
             {/* 20. GOODS IN TRANSIT */}
             {activeTab === 'transit' && (
-              <GoodsInTransitTab darkMode={darkMode} />
+              <GoodsInTransitTab darkMode={darkMode} API_BASE={API_BASE} />
             )}
 
             {/* 21. DEAD-STOCK DEPRECIATION CLOCK & CLEARANCE MATRIX */}

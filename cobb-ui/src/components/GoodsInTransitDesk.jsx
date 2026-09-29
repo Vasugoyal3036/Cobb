@@ -79,7 +79,8 @@ export default function GoodsInTransitDesk({
   formatCurrency = (v) => `₹${(v || 0).toLocaleString('en-IN')}`,
   darkMode = false,
   API_BASE = '',
-  targetHeight = null
+  targetHeight = null,
+  setActiveTab
 }) {
   const [data, setData] = useState({
     activeInTransit: [FALLBACK_PARCELS[0]],
@@ -277,7 +278,7 @@ export default function GoodsInTransitDesk({
           </span>
           <button
             type="button"
-            onClick={() => setSelectedParcel(latest)}
+            onClick={() => setActiveTab ? setActiveTab('transit') : setSelectedParcel(latest)}
             className={`text-xs font-bold flex items-center gap-1 cursor-pointer shrink-0 transition-colors ${
               darkMode ? 'text-amber-400 hover:text-amber-300' : 'text-amber-600 hover:underline'
             }`}
@@ -314,7 +315,7 @@ export default function GoodsInTransitDesk({
 
           <button
             type="button"
-            onClick={() => setShowAllModal(true)}
+            onClick={() => setActiveTab ? setActiveTab('transit') : setShowAllModal(true)}
             className={`text-xs font-bold px-2.5 py-1 rounded-lg border transition-colors cursor-pointer flex items-center gap-1 shrink-0 ${
               darkMode
                 ? 'bg-[#121829] hover:bg-[#1a2336] text-blue-400 border-[#1c2436]'

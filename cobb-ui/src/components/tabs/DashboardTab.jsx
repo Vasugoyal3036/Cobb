@@ -712,7 +712,7 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
 
                 {/* WIDGET 2: GOODS IN TRANSIT DESK */}
                 <div className="flex flex-col">
-                  <GoodsInTransitDesk formatCurrency={formatCurrency} darkMode={darkMode} API_BASE={API_BASE} />
+                  <GoodsInTransitDesk formatCurrency={formatCurrency} darkMode={darkMode} API_BASE={API_BASE} setActiveTab={setActiveTab} />
                 </div>
 
               </div>

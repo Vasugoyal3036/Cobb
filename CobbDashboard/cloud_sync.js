@@ -127,7 +127,8 @@ const operationalEndpoints = [
     { url: "/api/reports/eod-summary", docName: "reports_eod-summary" },
     { url: "/api/reports/eod-summary", docName: "eod_summary" },
     { url: "/api/sales/cancelled?limit=15", docName: "sales_cancelled" },
-    "/api/alterations"
+    "/api/alterations",
+    "/api/parcels/transit"
 ];
 
 // Tier 2: Standard Daily Operations (Every 15 minutes)

@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { Truck, Package, RotateCw, ExternalLink, ChevronRight, CheckCircle2, Box, X } from 'lucide-react';
 
 const baseMockData = [
@@ -17,15 +18,128 @@ const mockChallanItems = Array.from({ length: 201 }).map((_, idx) => ({
   ...baseMockData[idx % baseMockData.length],
 }));
 
-const GoodsInTransitTab = ({ darkMode }) => {
+const FALLBACK_PARCELS = [
+  {
+    parcel_memo_no: 'WH00023267',
+    parcel_memo_dt: new Date().toISOString(),
+    vehicle_no: 'DL01LAF4375',
+    total_quantity: 66,
+    total_boxes: 1,
+    total_weight: 30,
+    challan_no: 'WH/T27-018749',
+    invoice_amount: 38430,
+    origin: 'WH',
+    origin_name: 'Head Office Central WH',
+    status: 'Arrived Today'
+  },
+  {
+    parcel_memo_no: 'WH00023147',
+    parcel_memo_dt: '2026-09-12T00:00:00.000Z',
+    vehicle_no: 'DL01LAF4375',
+    bilty_no: '902157',
+    total_quantity: 154,
+    total_boxes: 1,
+    total_weight: 60,
+    challan_no: 'WH/T27-018642',
+    invoice_amount: 93129,
+    origin: 'WH',
+    origin_name: 'Head Office Central WH',
+    status: 'Received'
+  },
+  {
+    parcel_memo_no: 'WH00022298',
+    parcel_memo_dt: '2026-09-08T00:00:00.000Z',
+    vehicle_no: 'DL01LAF4375',
+    bilty_no: '902037',
+    total_quantity: 338,
+    total_boxes: 1,
+    total_weight: 150,
+    challan_no: 'WH/T27-017913',
+    invoice_amount: 186838,
+    origin: 'WH',
+    origin_name: 'Head Office Central WH',
+    status: 'Received'
+  },
+  {
+    parcel_memo_no: 'WH00021688',
+    parcel_memo_dt: '2026-09-04T00:00:00.000Z',
+    vehicle_no: 'DL01LAF4375',
+    bilty_no: '903398',
+    total_quantity: 91,
+    total_boxes: 1,
+    total_weight: 30,
+    challan_no: 'WH/T27-017397',
+    invoice_amount: 39711,
+    origin: 'WH',
+    origin_name: 'Head Office Central WH',
+    status: 'Received'
+  }
+];
+
+const GoodsInTransitTab = ({ darkMode, API_BASE }) => {
   const [selectedChallan, setSelectedChallan] = useState(null);
+  const [data, setData] = useState({
+    activeInTransit: [FALLBACK_PARCELS[0]],
+    allParcels: FALLBACK_PARCELS,
+    summary: {
+      incomingCount: 1,
+      incomingPieces: 66,
+      incomingValue: 38430,
+      monthPieces: 1021,
+      monthValue: 561808,
+      monthParcelsCount: 7,
+      latestParcel: FALLBACK_PARCELS[0]
+    }
+  });
+  const [loading, setLoading] = useState(false);
 
-  const recentDispatches = [
-    { id: 'WH00024923', challan: 'WH/T27-020174', date: '23 Sept', pcs: 201, val: '1,09,506', status: 'IN TRANSIT' },
-    { id: 'WH00024145', challan: 'WH/T27-018223', date: '19 Sept', pcs: 232, val: '1,22,907', status: 'RECEIVED' },
-  ];
+  useEffect(() => {
+    const fetchTransitData = async () => {
+      if (!API_BASE) return;
+      try {
+        setLoading(true);
+        const res = await axios.get(`${API_BASE}/api/parcels/transit`);
+        if (res.data?.success) {
+          setData(res.data);
+        }
+      } catch (err) {
+        try {
+          const res2 = await fetch(`${API_BASE}/api/parcels/transit`);
+          if (res2.ok) {
+            const json = await res2.json();
+            if (json?.success) {
+              setData(json);
+              return;
+            }
+          }
+        } catch (e2) {
+          // fallback
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchTransitData();
+  }, [API_BASE]);
 
-  const activeDispatch = recentDispatches.find(d => d.challan === selectedChallan);
+  const recentDispatches = (data.allParcels && data.allParcels.length > 0)
+    ? data.allParcels.map(p => ({
+        id: p.parcel_memo_no || 'Unknown',
+        challan: p.challan_no || p.invoice_no || 'WH',
+        date: p.parcel_memo_dt ? new Date(p.parcel_memo_dt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'Recent',
+        pcs: p.total_quantity || 0,
+        val: (p.invoice_amount || 0).toLocaleString('en-IN'),
+        status: p.status ? p.status.toUpperCase() : 'IN TRANSIT',
+        vehicle: p.vehicle_no,
+        ...p
+      }))
+    : [
+        { id: 'WH00024923', challan: 'WH/T27-020174', date: '23 Sept', pcs: 201, val: '1,09,506', status: 'IN TRANSIT' },
+        { id: 'WH00024145', challan: 'WH/T27-018223', date: '19 Sept', pcs: 232, val: '1,22,907', status: 'RECEIVED' },
+      ];
+
+  const activeDispatch = recentDispatches.find(d => d.challan === selectedChallan) || recentDispatches[0];
 
   return (
     <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 h-[calc(100vh-140px)] animate-in fade-in slide-in-from-bottom-4 duration-500 w-full max-w-[1600px] mx-auto">
@@ -50,11 +164,11 @@ const GoodsInTransitTab = ({ darkMode }) => {
           <div className={`rounded-xl p-3 flex justify-between ${darkMode ? 'bg-slate-900/50' : 'bg-slate-50'}`}>
             <div>
               <p className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Month Inflow</p>
-              <p className={`text-lg font-black ${darkMode ? 'text-white' : 'text-slate-900'}`}>1,454 <span className="text-xs text-slate-500 font-semibold">Pcs</span></p>
+              <p className={`text-lg font-black ${darkMode ? 'text-white' : 'text-slate-900'}`}>{data.summary?.monthPieces?.toLocaleString('en-IN') || '1,021'} <span className="text-xs text-slate-500 font-semibold">Pcs</span></p>
             </div>
             <div className="text-right">
               <p className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Stock Value</p>
-              <p className={`text-lg font-black ${darkMode ? 'text-white' : 'text-slate-900'}`}>₹7,94,221</p>
+              <p className={`text-lg font-black ${darkMode ? 'text-white' : 'text-slate-900'}`}>₹{(data.summary?.monthValue || 561808).toLocaleString('en-IN')}</p>
             </div>
           </div>
         </div>
