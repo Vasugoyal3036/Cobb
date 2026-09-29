@@ -2759,34 +2759,126 @@ export default function App() {
           </div>
         )}
 
-                {/* BOTTOM NAVIGATION BAR (MOBILE ONLY) */}
-        <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 flex items-center justify-around pb-safe-bottom z-40 shadow-[0_-5px_15px_rgba(0,0,0,0.05)]">
-          <button onClick={() => { setActiveTab('dashboard'); setIsMobileMenuOpen(false); }}
-            className={`flex flex-col items-center justify-center w-full py-2 cursor-pointer transition-colors ${activeTab === 'dashboard' ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}>
-            <LayoutDashboard className="w-5 h-5 mb-0.5" />
-            <span className="text-[9px] font-bold tracking-wider">HOME</span>
+                {/* BOTTOM NAVIGATION BAR (Android Material Design \u2014 MOBILE ONLY) */}
+        <div className={`lg:hidden fixed bottom-0 left-0 right-0 z-40 flex items-end justify-around px-2 pb-1 pt-1 ${
+          darkMode
+            ? 'bg-[#0d1017]/95 border-t border-white/[0.06] backdrop-blur-xl shadow-[0_-8px_24px_rgba(0,0,0,0.4)]'
+            : 'bg-white/95 border-t border-slate-200/80 backdrop-blur-xl shadow-[0_-4px_20px_rgba(0,0,0,0.06)]'
+        }`}>
+
+          {/* HOME */}
+          <button
+            onClick={() => { setActiveTab('dashboard'); setIsMobileMenuOpen(false); }}
+            className="flex flex-col items-center justify-center flex-1 py-1.5 gap-0.5 cursor-pointer group"
+          >
+            <div className={`flex items-center justify-center w-14 h-7 rounded-full transition-all duration-200 ${
+              activeTab === 'dashboard'
+                ? darkMode ? 'bg-blue-500/20' : 'bg-blue-100'
+                : 'bg-transparent'
+            }`}>
+              <LayoutDashboard className={`w-5 h-5 transition-colors ${
+                activeTab === 'dashboard'
+                  ? darkMode ? 'text-blue-400' : 'text-blue-600'
+                  : darkMode ? 'text-slate-400' : 'text-slate-500'
+              }`} />
+            </div>
+            <span className={`text-[10px] font-bold transition-colors ${
+              activeTab === 'dashboard'
+                ? darkMode ? 'text-blue-400' : 'text-blue-600'
+                : darkMode ? 'text-slate-500' : 'text-slate-400'
+            }`}>Home</span>
           </button>
-          <button onClick={() => { setActiveTab('live'); setIsMobileMenuOpen(false); }}
-            className={`flex flex-col items-center justify-center w-full py-2 cursor-pointer transition-colors ${activeTab === 'live' ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}>
-            <Receipt className="w-5 h-5 mb-0.5" />
-            <span className="text-[9px] font-bold tracking-wider">LIVE</span>
+
+          {/* LIVE BILLS */}
+          <button
+            onClick={() => { setActiveTab('live'); setIsMobileMenuOpen(false); }}
+            className="flex flex-col items-center justify-center flex-1 py-1.5 gap-0.5 cursor-pointer group"
+          >
+            <div className={`flex items-center justify-center w-14 h-7 rounded-full transition-all duration-200 ${
+              activeTab === 'live'
+                ? darkMode ? 'bg-emerald-500/20' : 'bg-emerald-100'
+                : 'bg-transparent'
+            }`}>
+              <Receipt className={`w-5 h-5 transition-colors ${
+                activeTab === 'live'
+                  ? darkMode ? 'text-emerald-400' : 'text-emerald-600'
+                  : darkMode ? 'text-slate-400' : 'text-slate-500'
+              }`} />
+            </div>
+            <span className={`text-[10px] font-bold transition-colors ${
+              activeTab === 'live'
+                ? darkMode ? 'text-emerald-400' : 'text-emerald-600'
+                : darkMode ? 'text-slate-500' : 'text-slate-400'
+            }`}>Bills</span>
           </button>
-          <button onClick={() => { setActiveTab('inventory'); setIsMobileMenuOpen(false); }}
-            className={`flex flex-col items-center justify-center w-full py-2 cursor-pointer transition-colors ${['inventory', 'deadstock'].includes(activeTab) ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}>
-            <Package className="w-5 h-5 mb-0.5" />
-            <span className="text-[9px] font-bold tracking-wider">STOCK</span>
+
+          {/* AI COPILOT — CENTER FAB-STYLE */}
+          <button
+            onClick={() => { setActiveTab('copilot'); setIsMobileMenuOpen(false); }}
+            className="flex flex-col items-center justify-center flex-1 py-1.5 gap-0.5 cursor-pointer group relative"
+          >
+            <div className={`flex items-center justify-center w-14 h-8 rounded-full transition-all duration-200 shadow-lg ${
+              activeTab === 'copilot'
+                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 shadow-purple-500/40'
+                : darkMode
+                  ? 'bg-gradient-to-r from-purple-600/70 to-indigo-600/70 shadow-purple-500/20'
+                  : 'bg-gradient-to-r from-purple-500 to-indigo-500 shadow-purple-400/30'
+            }`}>
+              <Sparkles className="w-4.5 h-4.5 text-white" />
+            </div>
+            <span className={`text-[10px] font-bold transition-colors ${
+              activeTab === 'copilot'
+                ? darkMode ? 'text-purple-400' : 'text-purple-600'
+                : darkMode ? 'text-slate-500' : 'text-slate-400'
+            }`}>AI</span>
           </button>
-          <button onClick={() => { setActiveTab('copilot'); setIsMobileMenuOpen(false); }}
-            className={`flex flex-col items-center justify-center w-full py-2 cursor-pointer transition-colors ${activeTab === 'copilot' ? 'text-indigo-600 dark:text-indigo-400 font-bold' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}>
-            <Sparkles className="w-5 h-5 mb-0.5" />
-            <span className="text-[9px] font-bold tracking-wider">AI CHAT</span>
+
+          {/* STOCK */}
+          <button
+            onClick={() => { setActiveTab('inventory'); setIsMobileMenuOpen(false); }}
+            className="flex flex-col items-center justify-center flex-1 py-1.5 gap-0.5 cursor-pointer group"
+          >
+            <div className={`flex items-center justify-center w-14 h-7 rounded-full transition-all duration-200 ${
+              ['inventory', 'deadstock'].includes(activeTab)
+                ? darkMode ? 'bg-orange-500/20' : 'bg-orange-100'
+                : 'bg-transparent'
+            }`}>
+              <Package className={`w-5 h-5 transition-colors ${
+                ['inventory', 'deadstock'].includes(activeTab)
+                  ? darkMode ? 'text-orange-400' : 'text-orange-600'
+                  : darkMode ? 'text-slate-400' : 'text-slate-500'
+              }`} />
+            </div>
+            <span className={`text-[10px] font-bold transition-colors ${
+              ['inventory', 'deadstock'].includes(activeTab)
+                ? darkMode ? 'text-orange-400' : 'text-orange-600'
+                : darkMode ? 'text-slate-500' : 'text-slate-400'
+            }`}>Stock</span>
           </button>
-          <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className={`flex flex-col items-center justify-center w-full py-2 cursor-pointer transition-colors ${isMobileMenuOpen ? 'text-blue-600 dark:text-white font-bold' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}>
-            {isMobileMenuOpen ? <X className="w-5 h-5 mb-0.5" /> : <Menu className="w-5 h-5 mb-0.5" />}
-            <span className="text-[9px] font-bold tracking-wider">MORE</span>
+
+          {/* MORE / MENU */}
+          <button
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="flex flex-col items-center justify-center flex-1 py-1.5 gap-0.5 cursor-pointer group"
+          >
+            <div className={`flex items-center justify-center w-14 h-7 rounded-full transition-all duration-200 relative ${
+              isMobileMenuOpen
+                ? darkMode ? 'bg-slate-500/20' : 'bg-slate-200'
+                : 'bg-transparent'
+            }`}>
+              {isMobileMenuOpen
+                ? <X className={`w-5 h-5 ${darkMode ? 'text-slate-300' : 'text-slate-700'}`} />
+                : <Menu className={`w-5 h-5 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`} />
+              }
+            </div>
+            <span className={`text-[10px] font-bold transition-colors ${
+              isMobileMenuOpen
+                ? darkMode ? 'text-slate-300' : 'text-slate-700'
+                : darkMode ? 'text-slate-500' : 'text-slate-400'
+            }`}>More</span>
           </button>
         </div>
+
 
         {/* ESC/POS Thermal Receipt Modal */}
         {thermalModalConfig.isOpen && (

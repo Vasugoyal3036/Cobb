@@ -9,17 +9,77 @@ const axios = require("axios");
 require('dotenv').config();
 
 // Ensure only one instance of cloud_sync runs in the background
+// Self-healing: if port is held by a ghost/zombie process, kill it and take over
 const SYNC_LOCK_PORT = 51234;
-const lockServer = net.createServer();
-lockServer.once('error', (err) => {
-    if (err.code === 'EADDRINUSE') {
-        console.log('[SYNC AGENT] Another instance of cloud_sync is already running in background. Exiting duplicate process.');
-        process.exit(0);
+
+function tryKillPortOwner(port) {
+    try {
+        // Use netstat to find and kill the PID holding our lock port
+        const { execSync } = require('child_process');
+        const out = execSync(
+            `netstat -ano | findstr "127.0.0.1:${port} " 2>nul`,
+            { encoding: 'utf8', timeout: 3000 }
+        ).trim();
+        const lines = out.split('\n').filter(l => l.includes('LISTENING'));
+        for (const line of lines) {
+            const parts = line.trim().split(/\s+/);
+            const pid = parts[parts.length - 1];
+            if (pid && pid !== String(process.pid) && /^\d+$/.test(pid)) {
+                console.log(`[SYNC AGENT] 🔧 Killing stale ghost process (PID ${pid}) holding lock port ${port}...`);
+                execSync(`taskkill /PID ${pid} /F 2>nul`, { timeout: 3000 });
+                return true;
+            }
+        }
+    } catch (e) {
+        // Ignore errors from netstat/taskkill
     }
-});
-lockServer.listen(SYNC_LOCK_PORT, '127.0.0.1', () => {
-    startSyncAgent();
-});
+    return false;
+}
+
+function acquireLockAndStart(attempt = 1) {
+    const lockServer = net.createServer();
+    lockServer.once('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+            if (attempt === 1) {
+                // First attempt: probe if the port owner is actually alive
+                const probe = net.connect({ port: SYNC_LOCK_PORT, host: '127.0.0.1' });
+                probe.setTimeout(800);
+                const cleanup = () => {
+                    try { probe.destroy(); } catch (e) {}
+                };
+                probe.on('connect', () => {
+                    // Port is held by a genuinely live process — this is a real duplicate
+                    cleanup();
+                    console.log('[SYNC AGENT] Another instance of cloud_sync is already running in background. Exiting duplicate process.');
+                    process.exit(0);
+                });
+                probe.on('timeout', () => {
+                    // Port held but no one answered — ghost process
+                    cleanup();
+                    console.log('[SYNC AGENT] ⚠️  Stale lock port detected (no response). Clearing ghost process and retaking lock...');
+                    tryKillPortOwner(SYNC_LOCK_PORT);
+                    setTimeout(() => acquireLockAndStart(2), 800);
+                });
+                probe.on('error', () => {
+                    // Connection refused / error — also a ghost
+                    cleanup();
+                    console.log('[SYNC AGENT] ⚠️  Stale lock port detected (connection refused). Clearing ghost process and retaking lock...');
+                    tryKillPortOwner(SYNC_LOCK_PORT);
+                    setTimeout(() => acquireLockAndStart(2), 800);
+                });
+            } else {
+                // Second attempt still failed — give up
+                console.log('[SYNC AGENT] Another instance of cloud_sync is already running in background. Exiting duplicate process.');
+                process.exit(0);
+            }
+        }
+    });
+    lockServer.listen(SYNC_LOCK_PORT, '127.0.0.1', () => {
+        startSyncAgent();
+    });
+}
+
+acquireLockAndStart();
 
 // The user will save their private key to firebase-admin.json locally for maximum security.
 let serviceAccount;
@@ -779,14 +839,69 @@ async function updateHeartbeat() {
 }
 
 // Graceful termination & shutdown handlers
+const SHUTDOWN_SENTINEL_PATH = path.join(__dirname, '.shutdown_pending.json');
 let isShuttingDown = false;
+
 async function handleGracefulShutdown(signal) {
     if (isShuttingDown) return;
     isShuttingDown = true;
     console.log(`[SYNC AGENT] Clean shutdown signal (${signal}) received. Dispatching System OFF alert...`);
+
+    // STEP 1: Write sentinel file SYNCHRONOUSLY (0ms, survives even if process is killed 1ms later)
+    // On next boot, checkAndDispatchPcBootAlert will read this and send the missed shutdown alert.
     try {
-        await dispatchSystemStatusAlert('offline', `Clean Shutdown: ${signal}`);
-    } catch (e) {}
+        const now = new Date();
+        fs.writeFileSync(SHUTDOWN_SENTINEL_PATH, JSON.stringify({
+            signal,
+            shutdownAt: now.toISOString(),
+            shutdownAtMs: Date.now(),
+            timeStr: formatTimeAMPM(now),
+            dateStr: formatDateString(now)
+        }));
+        console.log('[SYNC AGENT] ✅ Shutdown sentinel written (guaranteed delivery on next boot).');
+    } catch (e) {
+        console.warn('[SYNC AGENT] Could not write shutdown sentinel:', e.message);
+    }
+
+    // STEP 2: Attempt async Firestore/FCM write in parallel (best-effort — may be killed by OS)
+    // Skip EOD digest on shutdown to save time for the critical status write
+    try {
+        const now = new Date();
+        const timeStr = formatTimeAMPM(now);
+        const dateStr = formatDateString(now);
+        const isOnline = false;
+        const title = `🔴 Store System Turned OFF | ${timeStr}`;
+        const body = `Cobb Pundri POS shut down on ${dateStr} at ${timeStr} (${signal}). Store system is now closed.`;
+        const alertId = `sys_offline_${Date.now()}`;
+        const payload = {
+            type: 'system_status', status: 'offline', reason: signal,
+            title, body, url: '/?tab=dashboard',
+            createdAt: Date.now(), timestamp: FieldValue.serverTimestamp()
+        };
+
+        // Race: complete as much as possible within 4 seconds before process.exit
+        await Promise.race([
+            (async () => {
+                if (db) {
+                    await db.collection('stores').doc(STORE_ID).collection('data').doc('system_status').set({
+                        status: 'offline', isOnline: false,
+                        lastHeartbeat: FieldValue.serverTimestamp(),
+                        lastSeenMillis: Date.now(),
+                        lastShutdownTime: FieldValue.serverTimestamp(),
+                        lastShutdownTimeFormatted: `${dateStr}, ${timeStr}`,
+                        machineName: os.hostname(), platform: os.platform(),
+                        lastStatusChange: FieldValue.serverTimestamp()
+                    }, { merge: true });
+                    await db.collection('stores').doc(STORE_ID).collection('checkout_notifications').doc(alertId).set(payload);
+                    console.log('[SYNC AGENT] ✅ Shutdown alert written to Firestore.');
+                }
+            })(),
+            new Promise(resolve => setTimeout(resolve, 4000))
+        ]);
+    } catch (e) {
+        console.warn('[SYNC AGENT] Shutdown Firestore write note (sentinel is the backup):', e.message);
+    }
+
     process.exit(0);
 }
 
@@ -818,6 +933,47 @@ async function checkAndDispatchPcBootAlert() {
     // Calculate approximate epoch (ms) when this PC booted
     const bootEpochMs = Date.now() - Math.round(uptimeSec * 1000);
     const bootRecordPath = path.join(__dirname, '.last_boot_alert.json');
+
+    // --- STEP 0: Check for a missed shutdown sentinel from the previous session ---
+    // If the process was killed by Windows before the async write completed, we deliver it now.
+    try {
+        if (fs.existsSync(SHUTDOWN_SENTINEL_PATH)) {
+            const sentinel = JSON.parse(fs.readFileSync(SHUTDOWN_SENTINEL_PATH, 'utf8'));
+            console.log(`[SYNC AGENT] 📋 Found missed shutdown sentinel from ${sentinel.shutdownAt}. Dispatching retroactive shutdown alert...`);
+
+            // Only send if it's recent (within 48 hours) to avoid stale alerts
+            const ageMs = Date.now() - (sentinel.shutdownAtMs || 0);
+            if (ageMs < 48 * 60 * 60 * 1000) {
+                const title = `🔴 Store System Turned OFF | ${sentinel.timeStr}`;
+                const body = `Cobb Pundri POS shut down on ${sentinel.dateStr} at ${sentinel.timeStr} (${sentinel.signal || 'Clean Shutdown'}). Store system is now closed.`;
+                const alertId = `sys_offline_${sentinel.shutdownAtMs || Date.now()}`;
+                const payload = {
+                    type: 'system_status', status: 'offline',
+                    reason: sentinel.signal || 'Clean Shutdown',
+                    title, body, url: '/?tab=dashboard',
+                    createdAt: sentinel.shutdownAtMs || Date.now(),
+                    retroactive: true,
+                    timestamp: FieldValue.serverTimestamp()
+                };
+                if (db) {
+                    await db.collection('stores').doc(STORE_ID).collection('data').doc('system_status').set({
+                        lastShutdownTimeFormatted: `${sentinel.dateStr}, ${sentinel.timeStr}`,
+                        lastShutdownTime: FieldValue.serverTimestamp()
+                    }, { merge: true });
+                    await db.collection('stores').doc(STORE_ID).collection('checkout_notifications').doc(alertId).set(payload).catch(() => {});
+                    console.log(`[SYNC AGENT] ✅ Retroactive shutdown alert dispatched to phone: ${title}`);
+                }
+            } else {
+                console.log('[SYNC AGENT] Shutdown sentinel is too old (>48h). Skipping retroactive alert.');
+            }
+
+            // Clear sentinel — it has been processed
+            fs.unlinkSync(SHUTDOWN_SENTINEL_PATH);
+        }
+    } catch (e) {
+        console.warn('[SYNC AGENT] Error processing shutdown sentinel:', e.message);
+        try { fs.unlinkSync(SHUTDOWN_SENTINEL_PATH); } catch (_) {}
+    }
 
     let alreadyAlerted = false;
     try {
