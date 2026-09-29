@@ -1174,5 +1174,17 @@
     "reason": "checkout",
     "status": "sent",
     "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-09-29T17:37:00.352567",
+    "date": "2026-09-29",
+    "time": "05:37 PM",
+    "billNo": "STST27-00754   ",
+    "cmId": "ST01127000STST27-00754",
+    "customerName": "Ramniwas Hajwana",
+    "phone": "9992376703",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
   }
 ]

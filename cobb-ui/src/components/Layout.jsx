@@ -532,413 +532,437 @@ const Layout = ({
       {/* Right Operations & Telemetry Rail (Double Sidebar Layout) */}
       <aside
         style={{ contain: 'paint' }}
-        className={`hidden lg:flex flex-col shrink-0 z-30 transition-[width] duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] will-change-[width] transform-gpu ${
+        className={`hidden lg:flex flex-col shrink-0 z-30 transition-[width] duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] will-change-[width] transform-gpu relative p-[1.5px] ${
           isRightSidebarCollapsed ? 'w-[68px]' : 'w-[280px]'
-        } lg:my-4 lg:mr-4 lg:ml-2 lg:h-[calc(100vh-32px)] lg:rounded-[2rem] border overflow-hidden ${
+        } lg:my-4 lg:mr-4 lg:ml-2 lg:h-[calc(100vh-32px)] lg:rounded-[2rem] overflow-hidden ${
           darkMode
-            ? 'bg-[#0e1320] border-[#1c2436] shadow-[0_8px_32px_0_rgba(0,0,0,0.5)] text-white'
-            : 'bg-white border-slate-200 shadow-[0_8px_30px_rgb(0,0,0,0.06)] text-slate-800'
+            ? 'shadow-[0_8px_32px_0_rgba(0,0,0,0.6)] text-white'
+            : 'shadow-[0_8px_30px_rgb(0,0,0,0.08)] text-slate-800'
         }`}
       >
-        {/* Top Header / Collapse Toggle */}
-        <div className={`p-3.5 pb-3 flex items-center justify-between border-b gap-2 ${
-          darkMode ? 'border-white/[0.06]' : 'border-slate-100'
-        }`}>
-          <div className={`flex items-center gap-2 min-w-0 overflow-hidden transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
-            isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-full opacity-100'
-          }`}>
-            <div className="w-8 h-8 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0">
-              <Activity className="w-4 h-4" />
-            </div>
-            <div className="min-w-0 whitespace-nowrap">
-              <span className="font-black text-xs uppercase tracking-wider block leading-none">Operations</span>
-              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight block mt-0.5">Control Rail</span>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={toggleRightSidebar}
-            className={`p-1.5 rounded-xl border transition-all duration-300 cursor-pointer shrink-0 ${
-              isRightSidebarCollapsed ? 'mx-auto' : ''
-            } ${
-              darkMode ? 'bg-[#0b0f19] border-[#1c2436] text-slate-400 hover:text-white hover:bg-[#141a2c]' : 'bg-slate-100 border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-200'
-            }`}
-            title={isRightSidebarCollapsed ? "Expand sidebar rail" : "Collapse sidebar rail"}
-          >
-            <ChevronRight className={`w-4 h-4 transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
-              isRightSidebarCollapsed ? 'rotate-180' : 'rotate-0'
-            }`} />
-          </button>
+        {/* Luminous Cybernetic Border Beam */}
+        <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-[2rem]">
+          <div className="absolute -inset-[150%] m-auto aspect-square bg-[conic-gradient(from_0deg,transparent_0deg,transparent_270deg,rgba(56,189,248,0.25)_300deg,rgba(168,85,247,0.75)_335deg,rgba(236,72,153,0.85)_350deg,rgba(56,189,248,0.95)_360deg)] animate-border-beam opacity-85 blur-[1.5px]" />
         </div>
 
-        {/* Scrollable Rail Content */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-3.5 transition-opacity duration-300 ease-in-out">
-          {/* 1. Store Selector */}
-          <div
-            onClick={() => { if (isRightSidebarCollapsed) setIsRightSidebarCollapsed(false); }}
-            className={`p-2 rounded-2xl border transition-all duration-300 flex items-center gap-2 overflow-hidden ${
-              isRightSidebarCollapsed ? 'cursor-pointer hover:border-blue-400/50 justify-center' : ''
-            } ${
-              darkMode ? 'bg-[#0b0e17]/80 border-white/[0.06]' : 'bg-slate-50 border-slate-200/80'
-            }`}
-            title={`Active Store: ${AVAILABLE_STORES.find(s => s.id === activeStore)?.name || 'Store'} (Click to switch)`}
-          >
-            <div className="w-8 h-8 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0">
-              <Store className="w-4 h-4" />
-            </div>
-            <div className={`flex-1 min-w-0 transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
+        {/* Inner Solid Rail Shell */}
+        <div className={`relative flex flex-col h-full w-full rounded-[calc(2rem-1.5px)] overflow-hidden z-10 ${
+          darkMode ? 'bg-[#0d121f]' : 'bg-white'
+        }`}>
+          {/* Ambient Vertical Radar Scanner */}
+          <div className="pointer-events-none absolute inset-x-0 h-24 bg-gradient-to-b from-transparent via-cyan-400/[0.06] to-transparent animate-telemetry-scan z-0" />
+
+          {/* Top Header / Collapse Toggle */}
+          <div className={`p-3.5 pb-3 flex items-center justify-between border-b gap-2 relative z-10 ${
+            darkMode ? 'border-white/[0.06] bg-[#0d121f]/90' : 'border-slate-100 bg-white/90'
+          }`}>
+            <div className={`flex items-center gap-2 min-w-0 overflow-hidden transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
               isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-full opacity-100'
             }`}>
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Store Outlet</span>
-                <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">
-                  {AVAILABLE_STORES.find(s => s.id === activeStore)?.shortName || 'STORE'}
-                </span>
+              <div className="relative w-8 h-8 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0">
+                <span className="absolute inset-0 rounded-xl border border-cyan-400/50 animate-sonar-pulse pointer-events-none" />
+                <Activity className="w-4 h-4 relative z-10 animate-ambient-glow" />
               </div>
-              <select
-                value={activeStore}
-                onChange={(e) => switchStore(e.target.value)}
-                className={`w-full text-xs font-bold rounded-lg py-1 px-1.5 focus:outline-none cursor-pointer border ${
-                  darkMode ? 'border-[#1e2638] text-white bg-[#0f1422]' : 'border-slate-200 text-slate-800 bg-white shadow-xs'
-                }`}
-                title="Switch Cobb Store Branch"
-              >
-                {AVAILABLE_STORES.map(store => (
-                  <option key={store.id} value={store.id} className={darkMode ? "bg-[#0b0f19] text-white py-1" : "bg-white text-slate-800 py-1"}>
-                    {store.name}
-                  </option>
-                ))}
-              </select>
+              <div className="min-w-0 whitespace-nowrap">
+                <span className="font-black text-xs uppercase tracking-wider block leading-none">Operations</span>
+                <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tight block mt-0.5">Control Rail</span>
+              </div>
             </div>
+            <button
+              type="button"
+              onClick={toggleRightSidebar}
+              className={`p-1.5 rounded-xl border transition-all duration-300 cursor-pointer shrink-0 ${
+                isRightSidebarCollapsed ? 'mx-auto' : ''
+              } ${
+                darkMode ? 'bg-[#0b0f19] border-[#1c2436] text-slate-400 hover:text-white hover:bg-[#141a2c]' : 'bg-slate-100 border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+              }`}
+              title={isRightSidebarCollapsed ? "Expand sidebar rail" : "Collapse sidebar rail"}
+            >
+              <ChevronRight className={`w-4 h-4 transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
+                isRightSidebarCollapsed ? 'rotate-180' : 'rotate-0'
+              }`} />
+            </button>
           </div>
 
-          {/* 2. Role Switcher Pill */}
-          <div
-            className={`p-2 rounded-2xl border flex items-center gap-2 overflow-hidden transition-all duration-300 ${
-              isRightSidebarCollapsed ? 'justify-center cursor-pointer' : 'justify-between'
-            } ${darkMode ? 'bg-[#0b0e17]/80 border-white/[0.06]' : 'bg-slate-50 border-slate-200/80'}`}
-            onClick={() => {
-              if (isRightSidebarCollapsed) {
-                const cycle = { owner: 'manager', manager: 'cashier', cashier: 'owner' };
-                handleRoleSwitch(cycle[currentRole] || 'owner');
-              }
-            }}
-            title={`Role: ${currentRole} (Click to switch)`}
-          >
-            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${
-              currentRole === 'owner'
-                ? 'bg-amber-500/15 border-amber-500/30 text-amber-400'
-                : currentRole === 'manager'
-                  ? 'bg-blue-500/15 border-blue-500/30 text-blue-400'
-                  : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
-            }`}>
-              {currentRole === 'owner' ? <ShieldCheck className="w-4 h-4" /> : <ShieldAlert className="w-4 h-4" />}
-            </div>
-            <div className={`flex-1 min-w-0 flex items-center justify-between gap-1 transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
-              isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-full opacity-100'
-            }`}>
-              <div className="min-w-0">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">Role Access</span>
-                <span className={`text-xs font-black truncate block ${
-                  currentRole === 'owner' ? 'text-amber-400' : currentRole === 'manager' ? 'text-blue-400' : 'text-emerald-400'
-                }`}>
-                  {currentRole === 'owner' ? '👑 Owner' : currentRole === 'manager' ? '👔 Manager' : '🧾 Cashier'}
-                </span>
+          {/* Scrollable Rail Content */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-3.5 transition-opacity duration-300 ease-in-out relative z-10">
+            {/* 1. Store Selector */}
+            <div
+              onClick={() => { if (isRightSidebarCollapsed) setIsRightSidebarCollapsed(false); }}
+              className={`p-2 rounded-2xl border transition-all duration-300 flex items-center gap-2 overflow-hidden group relative ${
+                isRightSidebarCollapsed ? 'cursor-pointer hover:border-blue-400/50 justify-center' : ''
+              } ${
+                darkMode ? 'bg-[#0b0e17]/80 border-white/[0.06]' : 'bg-slate-50 border-slate-200/80'
+              }`}
+              title={`Active Store: ${AVAILABLE_STORES.find(s => s.id === activeStore)?.name || 'Store'} (Click to switch)`}
+            >
+              <div className="pointer-events-none absolute -inset-full bg-gradient-to-r from-transparent via-white/[0.06] to-transparent -translate-x-[150%] group-hover:translate-x-[150%] transition-transform duration-1000 transform -skew-x-25" />
+              <div className="w-8 h-8 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0">
+                <Store className="w-4 h-4" />
               </div>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
+              <div className={`flex-1 min-w-0 transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
+                isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-full opacity-100'
+              }`}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Store Outlet</span>
+                  <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                    {AVAILABLE_STORES.find(s => s.id === activeStore)?.shortName || 'STORE'}
+                  </span>
+                </div>
+                <select
+                  value={activeStore}
+                  onChange={(e) => switchStore(e.target.value)}
+                  className={`w-full text-xs font-bold rounded-lg py-1 px-1.5 focus:outline-none cursor-pointer border ${
+                    darkMode ? 'border-[#1e2638] text-white bg-[#0f1422]' : 'border-slate-200 text-slate-800 bg-white shadow-xs'
+                  }`}
+                  title="Switch Cobb Store Branch"
+                >
+                  {AVAILABLE_STORES.map(store => (
+                    <option key={store.id} value={store.id} className={darkMode ? "bg-[#0b0f19] text-white py-1" : "bg-white text-slate-800 py-1"}>
+                      {store.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* 2. Role Switcher Pill */}
+            <div
+              className={`p-2 rounded-2xl border flex items-center gap-2 overflow-hidden transition-all duration-300 group relative ${
+                isRightSidebarCollapsed ? 'justify-center cursor-pointer' : 'justify-between'
+              } ${darkMode ? 'bg-[#0b0e17]/80 border-white/[0.06]' : 'bg-slate-50 border-slate-200/80'}`}
+              onClick={() => {
+                if (isRightSidebarCollapsed) {
                   const cycle = { owner: 'manager', manager: 'cashier', cashier: 'owner' };
                   handleRoleSwitch(cycle[currentRole] || 'owner');
-                }}
-                className={`px-2 py-1 rounded-xl text-[10px] font-bold border transition-all cursor-pointer shrink-0 ${
-                  darkMode ? 'bg-white/10 hover:bg-white/20 text-slate-200 border-white/15' : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300 shadow-xs'
+                }
+              }}
+              title={`Role: ${currentRole} (Click to switch)`}
+            >
+              <div className="pointer-events-none absolute -inset-full bg-gradient-to-r from-transparent via-white/[0.06] to-transparent -translate-x-[150%] group-hover:translate-x-[150%] transition-transform duration-1000 transform -skew-x-25" />
+              <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${
+                currentRole === 'owner'
+                  ? 'bg-amber-500/15 border-amber-500/30 text-amber-400'
+                  : currentRole === 'manager'
+                    ? 'bg-blue-500/15 border-blue-500/30 text-blue-400'
+                    : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
+              }`}>
+                {currentRole === 'owner' ? <ShieldCheck className="w-4 h-4" /> : <ShieldAlert className="w-4 h-4" />}
+              </div>
+              <div className={`flex-1 min-w-0 flex items-center justify-between gap-1 transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
+                isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-full opacity-100'
+              }`}>
+                <div className="min-w-0">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">Role Access</span>
+                  <span className={`text-xs font-black truncate block ${
+                    currentRole === 'owner' ? 'text-amber-400' : currentRole === 'manager' ? 'text-blue-400' : 'text-emerald-400'
+                  }`}>
+                    {currentRole === 'owner' ? '👑 Owner' : currentRole === 'manager' ? '👔 Manager' : '🧾 Cashier'}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const cycle = { owner: 'manager', manager: 'cashier', cashier: 'owner' };
+                    handleRoleSwitch(cycle[currentRole] || 'owner');
+                  }}
+                  className={`px-2 py-1 rounded-xl text-[10px] font-bold border transition-all cursor-pointer shrink-0 ${
+                    darkMode ? 'bg-white/10 hover:bg-white/20 text-slate-200 border-white/15' : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300 shadow-xs'
+                  }`}
+                  title="Switch Role (PIN protected)"
+                >
+                  PIN Switch
+                </button>
+              </div>
+            </div>
+
+            {/* 3. Global Search */}
+            <div
+              onClick={() => { if (isRightSidebarCollapsed) setIsRightSidebarCollapsed(false); }}
+              className={`relative flex items-center p-2 rounded-2xl border transition-all duration-300 overflow-hidden group ${
+                isRightSidebarCollapsed ? 'justify-center cursor-pointer hover:border-slate-500' : ''
+              } ${
+                darkMode ? 'bg-[#0b0e17]/80 border-white/[0.06]' : 'bg-slate-50 border-slate-200/80'
+              }`}
+              title="Search: Bill / Item / Phone (Click to expand)"
+            >
+              <div className="w-8 h-8 rounded-xl bg-slate-500/10 border border-slate-500/20 flex items-center justify-center text-slate-400 shrink-0">
+                <Search className="w-4 h-4" />
+              </div>
+              <div className={`flex-1 min-w-0 relative ml-2 transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
+                isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-full opacity-100'
+              }`}>
+                <input
+                  type="text"
+                  placeholder="Search: Bill / Item / Phone..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={handleGlobalSearch}
+                  className={`w-full pr-7 py-1 text-xs font-medium focus:outline-none bg-transparent ${
+                    darkMode ? 'text-white placeholder-slate-500' : 'text-slate-800 placeholder-slate-400'
+                  }`}
+                />
+                <kbd className={`absolute right-0 top-1 px-1.5 py-0.5 text-[9px] font-mono font-semibold rounded border pointer-events-none ${
+                  darkMode ? 'bg-[#151b2a] border-[#252f44] text-slate-400' : 'bg-slate-200 border-slate-300 text-slate-600'
+                }`}>
+                  ↵
+                </kbd>
+              </div>
+            </div>
+
+            {/* 4. Live Systems Telemetry */}
+            <div className="space-y-2">
+              <p className={`text-[10px] font-bold uppercase tracking-wider px-1 transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] overflow-hidden whitespace-nowrap ${
+                isRightSidebarCollapsed ? 'h-0 opacity-0 my-0 py-0' : 'h-4 opacity-100'
+              } ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                Hardware & Telemetry
+              </p>
+
+              {/* POS Power & Online Status */}
+              <button
+                type="button"
+                onClick={() => setShowPowerModal(true)}
+                className={`w-full p-2 rounded-2xl border transition-all duration-300 flex items-center gap-2 overflow-hidden text-left cursor-pointer group relative ${
+                  isRightSidebarCollapsed ? 'justify-center' : 'justify-between'
+                } ${
+                  (systemStatus?.isOnline ?? true)
+                    ? darkMode
+                      ? 'bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/30 text-emerald-400'
+                      : 'bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-700'
+                    : systemStatus?.status === 'unresponsive'
+                      ? darkMode
+                        ? 'bg-amber-500/15 hover:bg-amber-500/25 border-amber-500/30 text-amber-300 animate-pulse'
+                        : 'bg-amber-50 hover:bg-amber-100 border-amber-200 text-amber-700 animate-pulse'
+                      : darkMode
+                        ? 'bg-rose-500/15 hover:bg-rose-500/25 border-rose-500/30 text-rose-300'
+                        : 'bg-rose-50 hover:bg-rose-100 border-rose-200 text-rose-700'
                 }`}
-                title="Switch Role (PIN protected)"
+                title="Store POS Hardware & Power Status"
               >
-                PIN Switch
+                <div className="pointer-events-none absolute -inset-full bg-gradient-to-r from-transparent via-white/[0.08] to-transparent -translate-x-[150%] group-hover:translate-x-[150%] transition-transform duration-1000 transform -skew-x-25" />
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0">
+                  <span className="relative flex h-3 w-3">
+                    {(systemStatus?.isOnline ?? true) && (
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    )}
+                    <span className={`relative inline-flex rounded-full h-3 w-3 shadow-[0_0_8px_rgba(16,185,129,0.7)] ${
+                      (systemStatus?.isOnline ?? true) ? 'bg-emerald-500' : systemStatus?.status === 'unresponsive' ? 'bg-amber-500' : 'bg-rose-500'
+                    }`}></span>
+                  </span>
+                </div>
+                <div className={`flex-1 min-w-0 flex items-center justify-between transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
+                  isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-full opacity-100'
+                }`}>
+                  <div className="min-w-0">
+                    <p className="text-xs font-black tracking-tight truncate">
+                      {(systemStatus?.isOnline ?? true) ? 'POS Online' : systemStatus?.status === 'unresponsive' ? 'POS Power Cut' : 'POS Closed'}
+                    </p>
+                    <p className="text-[9.5px] opacity-70 truncate">Hardware & Power</p>
+                  </div>
+                  <ChevronRight className="w-3.5 h-3.5 opacity-60 group-hover:opacity-100 transition-opacity shrink-0" />
+                </div>
+              </button>
+
+              {/* Systems Watchdog & Health */}
+              <button
+                type="button"
+                onClick={() => setShowHealthModal(true)}
+                className={`w-full p-2 rounded-2xl border transition-all duration-300 flex items-center gap-2 overflow-hidden text-left cursor-pointer group relative ${
+                  isRightSidebarCollapsed ? 'justify-center' : 'justify-between'
+                } ${
+                  darkMode ? 'bg-[#0b0e17]/80 hover:bg-[#121828] border-white/[0.06]' : 'bg-slate-50 hover:bg-slate-100 border-slate-200/80'
+                }`}
+                title="System Health, Watchdog & Backups"
+              >
+                <div className="pointer-events-none absolute -inset-full bg-gradient-to-r from-transparent via-white/[0.08] to-transparent -translate-x-[150%] group-hover:translate-x-[150%] transition-transform duration-1000 transform -skew-x-25" />
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0 relative">
+                  <Activity className="w-4 h-4" />
+                  <span className={`absolute -top-1 -right-1 w-2 h-2 rounded-full shadow-[0_0_6px_rgba(16,185,129,0.8)] ${
+                    healthStatus.overall === 'healthy' ? 'bg-emerald-500' : 'bg-amber-500'
+                  }`} />
+                </div>
+                <div className={`flex-1 min-w-0 flex items-center justify-between transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
+                  isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-full opacity-100'
+                }`}>
+                  <div className="min-w-0">
+                    <p className={`text-xs font-bold uppercase tracking-wider truncate ${
+                      healthStatus.overall === 'healthy' ? 'text-emerald-400' : healthStatus.overall === 'needs_qr_scan' ? 'text-amber-400' : 'text-rose-400'
+                    }`}>
+                      {healthStatus.overall === 'healthy' ? 'Systems Healthy' : healthStatus.overall === 'needs_qr_scan' ? 'Scan QR' : 'Attention'}
+                    </p>
+                    <p className="text-[9.5px] text-slate-400 truncate">DevOps Watchdog</p>
+                  </div>
+                  {healthStatus.inboundAlertsCount > 0 ? (
+                    <span className="px-1.5 py-0.5 text-[9px] font-black rounded-full bg-rose-500 text-white animate-pulse shrink-0">
+                      {healthStatus.inboundAlertsCount}
+                    </span>
+                  ) : (
+                    <ChevronRight className="w-3.5 h-3.5 text-slate-400 opacity-60 group-hover:opacity-100 transition-opacity shrink-0" />
+                  )}
+                </div>
+              </button>
+
+              {/* Push & Notification Bar Alert Pill */}
+              <button
+                type="button"
+                onClick={() => setShowAlertModal(true)}
+                className={`w-full p-2 rounded-2xl border transition-all duration-300 flex items-center gap-2 overflow-hidden text-left cursor-pointer group active:scale-[0.98] relative ${
+                  isRightSidebarCollapsed ? 'justify-center' : 'justify-between'
+                } ${
+                  notificationsEnabled
+                    ? darkMode
+                      ? 'bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/30 text-emerald-400'
+                      : 'bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-700'
+                    : darkMode
+                      ? 'bg-amber-500/15 hover:bg-amber-500/25 border-amber-500/30 text-amber-300 animate-pulse'
+                      : 'bg-amber-50 hover:bg-amber-100 border-amber-200 text-amber-700 animate-pulse'
+                }`}
+                title="Phone Notification Bar Alerts (Click to test / view)"
+              >
+                <div className="pointer-events-none absolute -inset-full bg-gradient-to-r from-transparent via-white/[0.08] to-transparent -translate-x-[150%] group-hover:translate-x-[150%] transition-transform duration-1000 transform -skew-x-25" />
+                <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                  notificationsEnabled ? 'text-emerald-400 bg-emerald-500/20' : 'text-amber-400 bg-amber-500/20'
+                }`}>
+                  {notificationsEnabled ? <BellRing className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
+                </div>
+                <div className={`flex-1 min-w-0 flex items-center justify-between transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
+                  isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-full opacity-100'
+                }`}>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold truncate">
+                      {notificationsEnabled ? 'Push Alerts Live' : 'Enable Alerts'}
+                    </p>
+                    <p className="text-[9.5px] opacity-75 truncate">Firebase Notification Bar</p>
+                  </div>
+                  <span className={`w-2 h-2 rounded-full shrink-0 shadow-[0_0_8px_rgba(16,185,129,0.8)] ${notificationsEnabled ? 'bg-emerald-500' : 'bg-amber-500 animate-ping'}`} />
+                </div>
+              </button>
+            </div>
+
+            {/* 5. Quick Actions Dock */}
+            <div className="space-y-2">
+              <p className={`text-[10px] font-bold uppercase tracking-wider px-1 transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] overflow-hidden whitespace-nowrap ${
+                isRightSidebarCollapsed ? 'h-0 opacity-0 my-0 py-0' : 'h-4 opacity-100'
+              } ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                Quick Actions
+              </p>
+
+              {/* AI Copilot */}
+              <button
+                type="button"
+                onClick={() => setActiveTab('copilot')}
+                className={`w-full p-2 rounded-2xl font-bold text-xs flex items-center gap-2.5 transition-all duration-300 shadow-xs cursor-pointer border overflow-hidden group relative ${
+                  isRightSidebarCollapsed ? 'justify-center' : ''
+                } ${
+                  activeTab === 'copilot'
+                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-purple-400 shadow-md shadow-purple-500/30 ring-1 ring-purple-400'
+                    : darkMode
+                      ? 'bg-purple-950/30 hover:bg-purple-900/50 text-purple-300 border-purple-800/50'
+                      : 'bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200'
+                }`}
+                title="Cobb AI Copilot"
+              >
+                <div className="pointer-events-none absolute -inset-full bg-gradient-to-r from-transparent via-white/[0.12] to-transparent -translate-x-[150%] group-hover:translate-x-[150%] transition-transform duration-1000 transform -skew-x-25" />
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0">
+                  <Sparkles className="w-4 h-4 text-purple-400 animate-pulse" />
+                </div>
+                <span className={`truncate whitespace-nowrap transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
+                  isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-full opacity-100'
+                }`}>
+                  Cobb AI Copilot
+                </span>
+              </button>
+
+              {/* EOD Cash Recon */}
+              <button
+                type="button"
+                onClick={() => setShowReconModal(true)}
+                className={`w-full p-2 rounded-2xl font-bold text-xs bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-2.5 transition-all duration-300 shadow-xs cursor-pointer overflow-hidden group relative ${
+                  isRightSidebarCollapsed ? 'justify-center' : ''
+                }`}
+                title="EOD Cash Register Reconciliation"
+              >
+                <div className="pointer-events-none absolute -inset-full bg-gradient-to-r from-transparent via-white/[0.15] to-transparent -translate-x-[150%] group-hover:translate-x-[150%] transition-transform duration-1000 transform -skew-x-25" />
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0">
+                  <Calculator className="w-4 h-4" />
+                </div>
+                <span className={`truncate whitespace-nowrap transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
+                  isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-full opacity-100'
+                }`}>
+                  EOD Cash Recon
+                </span>
+              </button>
+
+              {/* Daily EOD Report */}
+              <button
+                type="button"
+                onClick={handleGenerateEodReport}
+                className={`w-full p-2 rounded-2xl font-bold text-xs bg-indigo-600 hover:bg-indigo-500 text-white flex items-center gap-2.5 transition-all duration-300 shadow-xs cursor-pointer overflow-hidden group relative ${
+                  isRightSidebarCollapsed ? 'justify-center' : ''
+                }`}
+                title="Generate Daily EOD Report for Owner"
+              >
+                <div className="pointer-events-none absolute -inset-full bg-gradient-to-r from-transparent via-white/[0.15] to-transparent -translate-x-[150%] group-hover:translate-x-[150%] transition-transform duration-1000 transform -skew-x-25" />
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0">
+                  <Send className="w-4 h-4" />
+                </div>
+                <span className={`truncate whitespace-nowrap transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
+                  isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-full opacity-100'
+                }`}>
+                  Daily EOD Report
+                </span>
+              </button>
+
+              {/* POS Setup & DB */}
+              <button
+                type="button"
+                onClick={() => setShowSetupModal(true)}
+                className={`w-full p-2 rounded-2xl font-bold text-xs flex items-center gap-2.5 transition-all duration-300 border cursor-pointer overflow-hidden group relative ${
+                  isRightSidebarCollapsed ? 'justify-center' : ''
+                } ${
+                  darkMode
+                    ? 'bg-[#0b0f19] text-blue-400 hover:bg-[#121828] hover:text-white border-[#1e2638]'
+                    : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200'
+                }`}
+                title="Configure Database, Presets & Store Profile"
+              >
+                <div className="pointer-events-none absolute -inset-full bg-gradient-to-r from-transparent via-white/[0.08] to-transparent -translate-x-[150%] group-hover:translate-x-[150%] transition-transform duration-1000 transform -skew-x-25" />
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0">
+                  <Database className="w-4 h-4 text-blue-400" />
+                </div>
+                <span className={`truncate whitespace-nowrap transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
+                  isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-full opacity-100'
+                }`}>
+                  POS Setup & DB
+                </span>
               </button>
             </div>
           </div>
 
-          {/* 3. Global Search */}
-          <div
-            onClick={() => { if (isRightSidebarCollapsed) setIsRightSidebarCollapsed(false); }}
-            className={`relative flex items-center p-2 rounded-2xl border transition-all duration-300 overflow-hidden ${
-              isRightSidebarCollapsed ? 'justify-center cursor-pointer hover:border-slate-500' : ''
-            } ${
-              darkMode ? 'bg-[#0b0e17]/80 border-white/[0.06]' : 'bg-slate-50 border-slate-200/80'
-            }`}
-            title="Search: Bill / Item / Phone (Click to expand)"
-          >
-            <div className="w-8 h-8 rounded-xl bg-slate-500/10 border border-slate-500/20 flex items-center justify-center text-slate-400 shrink-0">
-              <Search className="w-4 h-4" />
-            </div>
-            <div className={`flex-1 min-w-0 relative ml-2 transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
-              isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-full opacity-100'
-            }`}>
-              <input
-                type="text"
-                placeholder="Search: Bill / Item / Phone..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={handleGlobalSearch}
-                className={`w-full pr-7 py-1 text-xs font-medium focus:outline-none bg-transparent ${
-                  darkMode ? 'text-white placeholder-slate-500' : 'text-slate-800 placeholder-slate-400'
-                }`}
-              />
-              <kbd className={`absolute right-0 top-1 px-1.5 py-0.5 text-[9px] font-mono font-semibold rounded border pointer-events-none ${
-                darkMode ? 'bg-[#151b2a] border-[#252f44] text-slate-400' : 'bg-slate-200 border-slate-300 text-slate-600'
-              }`}>
-                ↵
-              </kbd>
-            </div>
-          </div>
-
-          {/* 4. Live Systems Telemetry */}
-          <div className="space-y-2">
-            <p className={`text-[10px] font-bold uppercase tracking-wider px-1 transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] overflow-hidden whitespace-nowrap ${
-              isRightSidebarCollapsed ? 'h-0 opacity-0 my-0 py-0' : 'h-4 opacity-100'
-            } ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-              Hardware & Telemetry
-            </p>
-
-            {/* POS Power & Online Status */}
-            <button
-              type="button"
-              onClick={() => setShowPowerModal(true)}
-              className={`w-full p-2 rounded-2xl border transition-all duration-300 flex items-center gap-2 overflow-hidden text-left cursor-pointer group ${
+          {/* Footer / Theme & Dark Mode Controls */}
+          <div className={`p-2.5 border-t mt-auto relative z-10 ${
+            darkMode ? 'border-white/[0.06] bg-[#0c101c]' : 'border-slate-100 bg-slate-50'
+          }`}>
+            <div
+              onClick={() => setDarkMode(!darkMode)}
+              className={`p-1.5 rounded-xl border flex items-center gap-2 cursor-pointer transition-all duration-300 overflow-hidden group relative ${
                 isRightSidebarCollapsed ? 'justify-center' : 'justify-between'
               } ${
-                (systemStatus?.isOnline ?? true)
-                  ? darkMode
-                    ? 'bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/30 text-emerald-400'
-                    : 'bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-700'
-                  : systemStatus?.status === 'unresponsive'
-                    ? darkMode
-                      ? 'bg-amber-500/15 hover:bg-amber-500/25 border-amber-500/30 text-amber-300 animate-pulse'
-                      : 'bg-amber-50 hover:bg-amber-100 border-amber-200 text-amber-700 animate-pulse'
-                    : darkMode
-                      ? 'bg-rose-500/15 hover:bg-rose-500/25 border-rose-500/30 text-rose-300'
-                      : 'bg-rose-50 hover:bg-rose-100 border-rose-200 text-rose-700'
+                darkMode ? 'bg-[#0b0f19] hover:bg-[#121828] border-[#1e2638] text-amber-400' : 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700'
               }`}
-              title="Store POS Hardware & Power Status"
+              title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
             >
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0">
-                <span className="relative flex h-3 w-3">
-                  {(systemStatus?.isOnline ?? true) && (
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  )}
-                  <span className={`relative inline-flex rounded-full h-3 w-3 ${
-                    (systemStatus?.isOnline ?? true) ? 'bg-emerald-500' : systemStatus?.status === 'unresponsive' ? 'bg-amber-500' : 'bg-rose-500'
-                  }`}></span>
-                </span>
+              <div className="pointer-events-none absolute -inset-full bg-gradient-to-r from-transparent via-white/[0.06] to-transparent -translate-x-[150%] group-hover:translate-x-[150%] transition-transform duration-1000 transform -skew-x-25" />
+              <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0">
+                {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
               </div>
-              <div className={`flex-1 min-w-0 flex items-center justify-between transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
+              <span className={`text-xs font-semibold whitespace-nowrap transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
                 isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-full opacity-100'
-              }`}>
-                <div className="min-w-0">
-                  <p className="text-xs font-black tracking-tight truncate">
-                    {(systemStatus?.isOnline ?? true) ? 'POS Online' : systemStatus?.status === 'unresponsive' ? 'POS Power Cut' : 'POS Closed'}
-                  </p>
-                  <p className="text-[9.5px] opacity-70 truncate">Hardware & Power</p>
-                </div>
-                <ChevronRight className="w-3.5 h-3.5 opacity-60 group-hover:opacity-100 transition-opacity shrink-0" />
-              </div>
-            </button>
-
-            {/* Systems Watchdog & Health */}
-            <button
-              type="button"
-              onClick={() => setShowHealthModal(true)}
-              className={`w-full p-2 rounded-2xl border transition-all duration-300 flex items-center gap-2 overflow-hidden text-left cursor-pointer group ${
-                isRightSidebarCollapsed ? 'justify-center' : 'justify-between'
-              } ${
-                darkMode ? 'bg-[#0b0e17]/80 hover:bg-[#121828] border-white/[0.06]' : 'bg-slate-50 hover:bg-slate-100 border-slate-200/80'
-              }`}
-              title="System Health, Watchdog & Backups"
-            >
-              <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0 relative">
-                <Activity className="w-4 h-4" />
-                <span className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${
-                  healthStatus.overall === 'healthy' ? 'bg-emerald-500' : 'bg-amber-500'
-                }`} />
-              </div>
-              <div className={`flex-1 min-w-0 flex items-center justify-between transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
-                isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-full opacity-100'
-              }`}>
-                <div className="min-w-0">
-                  <p className={`text-xs font-bold uppercase tracking-wider truncate ${
-                    healthStatus.overall === 'healthy' ? 'text-emerald-400' : healthStatus.overall === 'needs_qr_scan' ? 'text-amber-400' : 'text-rose-400'
-                  }`}>
-                    {healthStatus.overall === 'healthy' ? 'Systems Healthy' : healthStatus.overall === 'needs_qr_scan' ? 'Scan QR' : 'Attention'}
-                  </p>
-                  <p className="text-[9.5px] text-slate-400 truncate">DevOps Watchdog</p>
-                </div>
-                {healthStatus.inboundAlertsCount > 0 ? (
-                  <span className="px-1.5 py-0.5 text-[9px] font-black rounded-full bg-rose-500 text-white animate-pulse shrink-0">
-                    {healthStatus.inboundAlertsCount}
-                  </span>
-                ) : (
-                  <ChevronRight className="w-3.5 h-3.5 text-slate-400 opacity-60 group-hover:opacity-100 transition-opacity shrink-0" />
-                )}
-              </div>
-            </button>
-
-            {/* Push & Notification Bar Alert Pill */}
-            <button
-              type="button"
-              onClick={() => setShowAlertModal(true)}
-              className={`w-full p-2 rounded-2xl border transition-all duration-300 flex items-center gap-2 overflow-hidden text-left cursor-pointer group active:scale-[0.98] ${
-                isRightSidebarCollapsed ? 'justify-center' : 'justify-between'
-              } ${
-                notificationsEnabled
-                  ? darkMode
-                    ? 'bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/30 text-emerald-400'
-                    : 'bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-700'
-                  : darkMode
-                    ? 'bg-amber-500/15 hover:bg-amber-500/25 border-amber-500/30 text-amber-300 animate-pulse'
-                    : 'bg-amber-50 hover:bg-amber-100 border-amber-200 text-amber-700 animate-pulse'
-              }`}
-              title="Phone Notification Bar Alerts (Click to test / view)"
-            >
-              <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
-                notificationsEnabled ? 'text-emerald-400 bg-emerald-500/20' : 'text-amber-400 bg-amber-500/20'
-              }`}>
-                {notificationsEnabled ? <BellRing className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
-              </div>
-              <div className={`flex-1 min-w-0 flex items-center justify-between transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
-                isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-full opacity-100'
-              }`}>
-                <div className="min-w-0">
-                  <p className="text-xs font-bold truncate">
-                    {notificationsEnabled ? 'Push Alerts Live' : 'Enable Alerts'}
-                  </p>
-                  <p className="text-[9.5px] opacity-75 truncate">Firebase Notification Bar</p>
-                </div>
-                <span className={`w-2 h-2 rounded-full shrink-0 ${notificationsEnabled ? 'bg-emerald-500' : 'bg-amber-500 animate-ping'}`} />
-              </div>
-            </button>
-          </div>
-
-          {/* 5. Quick Actions Dock */}
-          <div className="space-y-2">
-            <p className={`text-[10px] font-bold uppercase tracking-wider px-1 transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] overflow-hidden whitespace-nowrap ${
-              isRightSidebarCollapsed ? 'h-0 opacity-0 my-0 py-0' : 'h-4 opacity-100'
-            } ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-              Quick Actions
-            </p>
-
-            {/* AI Copilot */}
-            <button
-              type="button"
-              onClick={() => setActiveTab('copilot')}
-              className={`w-full p-2 rounded-2xl font-bold text-xs flex items-center gap-2.5 transition-all duration-300 shadow-xs cursor-pointer border overflow-hidden ${
-                isRightSidebarCollapsed ? 'justify-center' : ''
-              } ${
-                activeTab === 'copilot'
-                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-purple-400 shadow-md shadow-purple-500/30 ring-1 ring-purple-400'
-                  : darkMode
-                    ? 'bg-purple-950/30 hover:bg-purple-900/50 text-purple-300 border-purple-800/50'
-                    : 'bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200'
-              }`}
-              title="Cobb AI Copilot"
-            >
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0">
-                <Sparkles className="w-4 h-4 text-purple-400 animate-pulse" />
-              </div>
-              <span className={`truncate whitespace-nowrap transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
-                isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-full opacity-100'
-              }`}>
-                Cobb AI Copilot
+              } ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                {darkMode ? 'Dark Mode' : 'Light Mode'}
               </span>
-            </button>
-
-            {/* EOD Cash Recon */}
-            <button
-              type="button"
-              onClick={() => setShowReconModal(true)}
-              className={`w-full p-2 rounded-2xl font-bold text-xs bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-2.5 transition-all duration-300 shadow-xs cursor-pointer overflow-hidden ${
-                isRightSidebarCollapsed ? 'justify-center' : ''
-              }`}
-              title="EOD Cash Register Reconciliation"
-            >
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0">
-                <Calculator className="w-4 h-4" />
-              </div>
-              <span className={`truncate whitespace-nowrap transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
-                isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-full opacity-100'
-              }`}>
-                EOD Cash Recon
-              </span>
-            </button>
-
-            {/* Daily EOD Report */}
-            <button
-              type="button"
-              onClick={handleGenerateEodReport}
-              className={`w-full p-2 rounded-2xl font-bold text-xs bg-indigo-600 hover:bg-indigo-500 text-white flex items-center gap-2.5 transition-all duration-300 shadow-xs cursor-pointer overflow-hidden ${
-                isRightSidebarCollapsed ? 'justify-center' : ''
-              }`}
-              title="Generate Daily EOD Report for Owner"
-            >
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0">
-                <Send className="w-4 h-4" />
-              </div>
-              <span className={`truncate whitespace-nowrap transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
-                isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-full opacity-100'
-              }`}>
-                Daily EOD Report
-              </span>
-            </button>
-
-            {/* POS Setup & DB */}
-            <button
-              type="button"
-              onClick={() => setShowSetupModal(true)}
-              className={`w-full p-2 rounded-2xl font-bold text-xs flex items-center gap-2.5 transition-all duration-300 border cursor-pointer overflow-hidden ${
-                isRightSidebarCollapsed ? 'justify-center' : ''
-              } ${
-                darkMode
-                  ? 'bg-[#0b0f19] text-blue-400 hover:bg-[#121828] hover:text-white border-[#1e2638]'
-                  : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200'
-              }`}
-              title="Configure Database, Presets & Store Profile"
-            >
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0">
-                <Database className="w-4 h-4 text-blue-400" />
-              </div>
-              <span className={`truncate whitespace-nowrap transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
-                isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-full opacity-100'
-              }`}>
-                POS Setup & DB
-              </span>
-            </button>
-          </div>
-        </div>
-
-        {/* Footer / Theme & Dark Mode Controls */}
-        <div className={`p-2.5 border-t mt-auto ${
-          darkMode ? 'border-white/[0.06] bg-[#0c101c]' : 'border-slate-100 bg-slate-50'
-        }`}>
-          <div
-            onClick={() => setDarkMode(!darkMode)}
-            className={`p-1.5 rounded-xl border flex items-center gap-2 cursor-pointer transition-all duration-300 overflow-hidden ${
-              isRightSidebarCollapsed ? 'justify-center' : 'justify-between'
-            } ${
-              darkMode ? 'bg-[#0b0f19] hover:bg-[#121828] border-[#1e2638] text-amber-400' : 'bg-slate-100 hover:bg-slate-200 border-slate-200 text-slate-700'
-            }`}
-            title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
-          >
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0">
-              {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
             </div>
-            <span className={`text-xs font-semibold whitespace-nowrap transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
-              isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-full opacity-100'
-            } ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-              {darkMode ? 'Dark Mode' : 'Light Mode'}
-            </span>
           </div>
         </div>
       </aside>
