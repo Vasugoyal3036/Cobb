@@ -533,7 +533,7 @@ const Layout = ({
       <aside
         style={{ contain: 'paint' }}
         className={`hidden lg:flex flex-col shrink-0 z-30 transition-[width] duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] will-change-[width] transform-gpu relative p-[1.5px] ${
-          isRightSidebarCollapsed ? 'w-[68px]' : 'w-[280px]'
+          isRightSidebarCollapsed ? 'w-[80px]' : 'w-[280px]'
         } lg:my-4 lg:mr-4 lg:ml-2 lg:h-[calc(100vh-32px)] lg:rounded-[2rem] overflow-hidden ${
           darkMode
             ? 'shadow-[0_8px_32px_0_rgba(0,0,0,0.6)] text-white'
