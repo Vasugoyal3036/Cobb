@@ -249,7 +249,7 @@ const Layout = ({
       )}
 
       {/* Sidebar Navigation - Glassmorphism Floating Theme */}
-      <div className={`fixed lg:static inset-y-0 left-0 w-64 lg:my-4 lg:ml-4 lg:mr-2 lg:h-[calc(100vh-32px)] lg:rounded-[2rem] flex flex-col z-40 transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} ${darkMode ? 'bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] shadow-[0_8px_32px_0_rgba(0,0,0,0.36)]' : 'bg-white/80 backdrop-blur-xl border border-slate-200/50 shadow-[0_8px_30px_rgb(0,0,0,0.04)]'}`}>
+      <div className={`fixed lg:static inset-y-0 left-0 w-64 lg:my-4 lg:ml-4 lg:mr-2 lg:h-[calc(100vh-32px)] lg:rounded-[2rem] flex flex-col z-40 transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? 'translate-y-0' : '-translate-x-full lg:translate-y-0'} ${darkMode ? 'bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] shadow-[0_8px_32px_0_rgba(0,0,0,0.36)]' : 'bg-white/80 backdrop-blur-xl border border-slate-200/50 shadow-[0_8px_30px_rgb(0,0,0,0.04)]'}`}>
         <div className={`p-5 pb-4 flex justify-between items-center border-b ${darkMode ? 'border-white/[0.06]' : 'border-slate-100'}`}>
           <div className="flex items-center gap-3">
             <OrsLogo size={42} />
@@ -556,8 +556,8 @@ const Layout = ({
           <div className={`p-3.5 pb-3 flex items-center justify-between border-b gap-2 relative z-10 ${
             darkMode ? 'border-white/[0.06] bg-[#0d121f]/90' : 'border-slate-100 bg-white/90'
           }`}>
-            <div className={`flex items-center gap-2 min-w-0 overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
-              isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none blur-md translate-x-4' : 'w-full opacity-100 blur-0 translate-x-0'
+            <div className={`flex items-center gap-2 min-w-0 overflow-hidden transition-all duration-500 delay-[0ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+              isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none blur-md -translate-y-4' : 'w-full opacity-100 blur-0 translate-y-0'
             }`}>
               <div className="relative w-8 h-8 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0">
                 <span className="absolute inset-0 rounded-xl border border-cyan-400/50 animate-sonar-pulse pointer-events-none" />
@@ -600,8 +600,8 @@ const Layout = ({
               <div className="w-8 h-8 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0">
                 <Store className="w-4 h-4" />
               </div>
-              <div className={`flex-1 min-w-0 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
-                isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none blur-md translate-x-4' : 'w-full opacity-100 blur-0 translate-x-0'
+              <div className={`flex-1 min-w-0 transition-all duration-500 delay-[35ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+                isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none blur-md -translate-y-4' : 'w-full opacity-100 blur-0 translate-y-0'
               }`}>
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Store Outlet</span>
@@ -649,8 +649,8 @@ const Layout = ({
               }`}>
                 {currentRole === 'owner' ? <ShieldCheck className="w-4 h-4" /> : <ShieldAlert className="w-4 h-4" />}
               </div>
-              <div className={`flex-1 min-w-0 flex items-center justify-between gap-1 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
-                isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none blur-md translate-x-4' : 'w-full opacity-100 blur-0 translate-x-0'
+              <div className={`flex-1 min-w-0 flex items-center justify-between gap-1 transition-all duration-500 delay-[70ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+                isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none blur-md -translate-y-4' : 'w-full opacity-100 blur-0 translate-y-0'
               }`}>
                 <div className="min-w-0">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-0.5">Role Access</span>
@@ -690,8 +690,8 @@ const Layout = ({
               <div className="w-8 h-8 rounded-xl bg-slate-500/10 border border-slate-500/20 flex items-center justify-center text-slate-400 shrink-0">
                 <Search className="w-4 h-4" />
               </div>
-              <div className={`flex-1 min-w-0 relative ml-2 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
-                isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none blur-md translate-x-4' : 'w-full opacity-100 blur-0 translate-x-0'
+              <div className={`flex-1 min-w-0 relative ml-2 transition-all duration-500 delay-[105ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+                isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none blur-md -translate-y-4' : 'w-full opacity-100 blur-0 translate-y-0'
               }`}>
                 <input
                   type="text"
@@ -751,8 +751,8 @@ const Layout = ({
                     }`}></span>
                   </span>
                 </div>
-                <div className={`flex-1 min-w-0 flex items-center justify-between transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
-                  isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none blur-md translate-x-4' : 'w-full opacity-100 blur-0 translate-x-0'
+                <div className={`flex-1 min-w-0 flex items-center justify-between transition-all duration-500 delay-[140ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+                  isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none blur-md -translate-y-4' : 'w-full opacity-100 blur-0 translate-y-0'
                 }`}>
                   <div className="min-w-0">
                     <p className="text-xs font-black tracking-tight truncate">
@@ -782,8 +782,8 @@ const Layout = ({
                     healthStatus.overall === 'healthy' ? 'bg-emerald-500' : 'bg-amber-500'
                   }`} />
                 </div>
-                <div className={`flex-1 min-w-0 flex items-center justify-between transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
-                  isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none blur-md translate-x-4' : 'w-full opacity-100 blur-0 translate-x-0'
+                <div className={`flex-1 min-w-0 flex items-center justify-between transition-all duration-500 delay-[175ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+                  isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none blur-md -translate-y-4' : 'w-full opacity-100 blur-0 translate-y-0'
                 }`}>
                   <div className="min-w-0">
                     <p className={`text-xs font-bold uppercase tracking-wider truncate ${
@@ -826,8 +826,8 @@ const Layout = ({
                 }`}>
                   {notificationsEnabled ? <BellRing className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
                 </div>
-                <div className={`flex-1 min-w-0 flex items-center justify-between transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
-                  isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none blur-md translate-x-4' : 'w-full opacity-100 blur-0 translate-x-0'
+                <div className={`flex-1 min-w-0 flex items-center justify-between transition-all duration-500 delay-[210ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+                  isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none blur-md -translate-y-4' : 'w-full opacity-100 blur-0 translate-y-0'
                 }`}>
                   <div className="min-w-0">
                     <p className="text-xs font-bold truncate">
@@ -867,8 +867,8 @@ const Layout = ({
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0">
                   <Sparkles className="transition-transform duration-700 group-hover:rotate-[360deg] w-4 h-4 text-purple-400 animate-pulse" />
                 </div>
-                <span className={`truncate whitespace-nowrap transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
-                  isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none blur-md translate-x-4' : 'w-full opacity-100 blur-0 translate-x-0'
+                <span className={`truncate whitespace-nowrap transition-all duration-500 delay-[245ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+                  isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none blur-md -translate-y-4' : 'w-full opacity-100 blur-0 translate-y-0'
                 }`}>
                   Cobb AI Copilot
                 </span>
@@ -887,8 +887,8 @@ const Layout = ({
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0">
                   <Calculator className="transition-transform duration-700 group-hover:rotate-[360deg] w-4 h-4" />
                 </div>
-                <span className={`truncate whitespace-nowrap transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
-                  isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none blur-md translate-x-4' : 'w-full opacity-100 blur-0 translate-x-0'
+                <span className={`truncate whitespace-nowrap transition-all duration-500 delay-[280ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+                  isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none blur-md -translate-y-4' : 'w-full opacity-100 blur-0 translate-y-0'
                 }`}>
                   EOD Cash Recon
                 </span>
@@ -907,8 +907,8 @@ const Layout = ({
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0">
                   <Send className="w-4 h-4" />
                 </div>
-                <span className={`truncate whitespace-nowrap transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
-                  isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none blur-md translate-x-4' : 'w-full opacity-100 blur-0 translate-x-0'
+                <span className={`truncate whitespace-nowrap transition-all duration-500 delay-[315ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+                  isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none blur-md -translate-y-4' : 'w-full opacity-100 blur-0 translate-y-0'
                 }`}>
                   Daily EOD Report
                 </span>
@@ -931,8 +931,8 @@ const Layout = ({
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0">
                   <Database className="transition-transform duration-700 group-hover:rotate-[360deg] w-4 h-4 text-blue-400" />
                 </div>
-                <span className={`truncate whitespace-nowrap transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
-                  isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none blur-md translate-x-4' : 'w-full opacity-100 blur-0 translate-x-0'
+                <span className={`truncate whitespace-nowrap transition-all duration-500 delay-[350ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+                  isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none blur-md -translate-y-4' : 'w-full opacity-100 blur-0 translate-y-0'
                 }`}>
                   POS Setup & DB
                 </span>
@@ -957,8 +957,8 @@ const Layout = ({
               <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0">
                 {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
               </div>
-              <span className={`text-xs font-semibold whitespace-nowrap transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
-                isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none blur-md translate-x-4' : 'w-full opacity-100 blur-0 translate-x-0'
+              <span className={`text-xs font-semibold whitespace-nowrap transition-all duration-500 delay-[385ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+                isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none blur-md -translate-y-4' : 'w-full opacity-100 blur-0 translate-y-0'
               } ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
                 {darkMode ? 'Dark Mode' : 'Light Mode'}
               </span>
