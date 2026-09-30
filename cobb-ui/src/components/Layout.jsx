@@ -322,9 +322,7 @@ const Layout = ({
               darkMode ? 'bg-[#0b0f19] border-[#1c2436] text-slate-400 hover:text-white hover:bg-[#141a2c]' : 'bg-slate-100 border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-200'
             }`}
           >
-            <ChevronRight className={`w-4 h-4 transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
-              isLeftSidebarCollapsed ? 'rotate-0' : 'rotate-180'
-            }`} />
+            <Menu className="w-4 h-4 transition-transform duration-500 hover:scale-110" />
           </button>
         </div>
 
