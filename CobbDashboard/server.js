@@ -655,34 +655,64 @@ app.get('/api/inventory/quick-scan', async (req, res) => {
             FROM SKU_NAMES s WITH (NOLOCK)
             LEFT JOIN PMT01106 p WITH (NOLOCK) ON s.product_Code = p.product_code
             WHERE s.article_no = @art
-            ORDER BY s.para2_order, s.para2_name
+            ORDER BY s.para1_name, s.para2_order, s.para2_name
         `);
 
         const rows = variantsRes.recordset || [];
         const totalStock = rows.reduce((sum, r) => sum + Math.max(0, r.stock || 0), 0);
         const mrp = rows[0]?.mrp || 0;
-        const color = rows[0]?.color || '';
 
+        // Group variants by color
+        const colorMap = {};
+        rows.forEach(r => {
+            const clr = (r.color || 'Standard').trim();
+            if (!colorMap[clr]) {
+                colorMap[clr] = {
+                    color: clr,
+                    totalStock: 0,
+                    sizes: []
+                };
+            }
+            colorMap[clr].totalStock += Math.max(0, r.stock || 0);
+            colorMap[clr].sizes.push({
+                size: (r.size || 'Standard').trim(),
+                stock: Math.max(0, r.stock || 0),
+                barcode: r.barcode,
+                sizeOrder: r.sizeOrder || 99
+            });
+        });
+
+        const colors = Object.values(colorMap).map(c => {
+            c.sizes.sort((a, b) => a.sizeOrder - b.sizeOrder);
+            return c;
+        });
+
+        // Aggregated sizes across all colors
         const sizeMap = {};
         rows.forEach(r => {
-            const sz = r.size;
+            const sz = (r.size || 'Standard').trim();
             if (!sizeMap[sz]) {
-                sizeMap[sz] = { size: sz, stock: 0, barcode: r.barcode };
+                sizeMap[sz] = { size: sz, stock: 0, barcode: r.barcode, sizeOrder: r.sizeOrder || 99 };
             }
             sizeMap[sz].stock += Math.max(0, r.stock || 0);
         });
+        const sizes = Object.values(sizeMap).sort((a, b) => a.sizeOrder - b.sizeOrder);
 
-        const sizes = Object.values(sizeMap);
+        // Detect if query matched a specific barcode/variant
+        const matchedVariant = rows.find(r => r.barcode === query) || rows[0];
+        const scannedColor = matchedVariant ? matchedVariant.color : (colors[0]?.color || '');
 
         return res.json({
             success: true,
             articleNo: matchedArticle,
             itemName: matchedItemName,
             sectionName: matchedSection,
-            color,
+            color: scannedColor,
             mrp,
             totalStock,
             sizes,
+            colors,
+            scannedBarcode: query,
             variants: rows
         });
     } catch (err) {
