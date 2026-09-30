@@ -92,7 +92,7 @@ const GoodsInTransitTab = ({ darkMode, API_BASE }) => {
     }
   });
   const [loading, setLoading] = useState(false);
-
+  const [viewMode, setViewMode] = useState('grouped');
   useEffect(() => {
     const fetchTransitData = async () => {
       if (!API_BASE) return;
@@ -268,6 +268,20 @@ const GoodsInTransitTab = ({ darkMode, API_BASE }) => {
               {/* Table Data */}
               <div className="flex justify-between items-end mb-2 px-1">
                 <span className={`text-xs font-semibold ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Purchase/Challan Details</span>
+                <div className={`flex rounded-lg overflow-hidden border ${darkMode ? 'border-slate-700' : 'border-slate-300'}`}>
+                  <button 
+                    onClick={() => setViewMode('grouped')}
+                    className={`px-3 py-1 text-xs font-bold transition-colors ${viewMode === 'grouped' ? 'bg-blue-600 text-white' : (darkMode ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200')}`}
+                  >
+                    Grouped
+                  </button>
+                  <button 
+                    onClick={() => setViewMode('detailed')}
+                    className={`px-3 py-1 text-xs font-bold transition-colors ${viewMode === 'detailed' ? 'bg-blue-600 text-white' : (darkMode ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200')}`}
+                  >
+                    Detailed
+                  </button>
+                </div>
               </div>
               
               <div className={`rounded-lg border overflow-y-auto overflow-x-auto max-h-[50vh] custom-scrollbar ${darkMode ? 'border-slate-700' : 'border-slate-300'}`}>
@@ -276,6 +290,7 @@ const GoodsInTransitTab = ({ darkMode, API_BASE }) => {
                     <tr>
                       <th className="px-4 py-3 border-r border-slate-700/50">Category (Desc)</th>
                       <th className="px-4 py-3 border-r border-slate-700/50">Color (P1)</th>
+                      <th className="px-4 py-3 border-r border-slate-700/50">Size (P2)</th>
                       <th className="px-4 py-3 border-r border-slate-700/50 text-center">Total Qty</th>
                       <th className="px-4 py-3 border-r border-slate-700/50 text-right">Avg MRP</th>
                       <th className="px-4 py-3 text-right">Total Value</th>
@@ -293,40 +308,56 @@ const GoodsInTransitTab = ({ darkMode, API_BASE }) => {
                       if (!sourceItems || sourceItems.length === 0) {
                           return (
                             <tr>
-                              <td colSpan="5" className={`px-4 py-8 text-center ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                              <td colSpan="6" className={`px-4 py-8 text-center ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
                                 No item-level details found for this dispatch.
                               </td>
                             </tr>
                           );
                       }
 
-                      // Group by category and color
-                      const grouped = sourceItems.reduce((acc, item) => {
-                        const key = `${item.desc || 'UNKNOWN'}|${item.p1 || 'UNKNOWN'}`;
-                        if (!acc[key]) {
-                          acc[key] = {
-                            desc: item.desc || 'UNKNOWN',
-                            p1: item.p1 || 'UNKNOWN',
-                            qty: 0,
-                            mrpSum: 0,
-                            count: 0
-                          };
-                        }
-                        acc[key].qty += (item.qty || 1);
-                        acc[key].mrpSum += (item.mrp || 0) * (item.qty || 1);
-                        acc[key].count += 1;
-                        return acc;
-                      }, {});
-                      
-                      return Object.values(grouped).map((g, idx) => (
-                        <tr key={idx} className={`hover:bg-blue-500/5 transition-colors ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                          <td className={`px-4 py-2.5 font-bold border-r ${darkMode ? 'border-slate-800 text-blue-400' : 'border-slate-200 text-blue-600'}`}>{g.desc}</td>
-                          <td className={`px-4 py-2.5 border-r ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>{g.p1}</td>
-                          <td className={`px-4 py-2.5 border-r text-center font-bold ${darkMode ? 'border-slate-800 text-emerald-400 bg-emerald-500/10' : 'border-slate-200 text-emerald-600 bg-emerald-50'}`}>{g.qty} Pcs</td>
-                          <td className="px-4 py-2.5 border-r text-right">₹{Math.round(g.mrpSum / g.qty).toLocaleString('en-IN')}</td>
-                          <td className="px-4 py-2.5 text-right font-mono font-bold">₹{g.mrpSum.toLocaleString('en-IN')}</td>
-                        </tr>
-                      ));
+                      if (viewMode === 'grouped') {
+                        // Group by category, color, and size
+                        const grouped = sourceItems.reduce((acc, item) => {
+                          const key = `${item.desc || 'UNKNOWN'}|${item.p1 || 'UNKNOWN'}|${item.p2 || 'UNKNOWN'}`;
+                          if (!acc[key]) {
+                            acc[key] = {
+                              desc: item.desc || 'UNKNOWN',
+                              p1: item.p1 || 'UNKNOWN',
+                              p2: item.p2 || 'UNKNOWN',
+                              qty: 0,
+                              mrpSum: 0,
+                              count: 0
+                            };
+                          }
+                          acc[key].qty += (item.qty || 1);
+                          acc[key].mrpSum += (item.mrp || 0) * (item.qty || 1);
+                          acc[key].count += 1;
+                          return acc;
+                        }, {});
+                        
+                        return Object.values(grouped).map((g, idx) => (
+                          <tr key={idx} className={`hover:bg-blue-500/5 transition-colors ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                            <td className={`px-4 py-2.5 font-bold border-r ${darkMode ? 'border-slate-800 text-blue-400' : 'border-slate-200 text-blue-600'}`}>{g.desc}</td>
+                            <td className={`px-4 py-2.5 border-r ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>{g.p1}</td>
+                            <td className={`px-4 py-2.5 border-r ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>{g.p2}</td>
+                            <td className={`px-4 py-2.5 border-r text-center font-bold ${darkMode ? 'border-slate-800 text-emerald-400 bg-emerald-500/10' : 'border-slate-200 text-emerald-600 bg-emerald-50'}`}>{g.qty} Pcs</td>
+                            <td className="px-4 py-2.5 border-r text-right">₹{Math.round(g.mrpSum / g.qty).toLocaleString('en-IN')}</td>
+                            <td className="px-4 py-2.5 text-right font-mono font-bold">₹{g.mrpSum.toLocaleString('en-IN')}</td>
+                          </tr>
+                        ));
+                      } else {
+                        // Detailed view
+                        return sourceItems.map((item, idx) => (
+                          <tr key={idx} className={`hover:bg-blue-500/5 transition-colors ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
+                            <td className={`px-4 py-2.5 font-bold border-r ${darkMode ? 'border-slate-800 text-blue-400' : 'border-slate-200 text-blue-600'}`}>{item.desc || 'UNKNOWN'}</td>
+                            <td className={`px-4 py-2.5 border-r ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>{item.p1 || 'UNKNOWN'}</td>
+                            <td className={`px-4 py-2.5 border-r ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>{item.p2 || 'UNKNOWN'}</td>
+                            <td className={`px-4 py-2.5 border-r text-center font-bold ${darkMode ? 'border-slate-800 text-emerald-400 bg-emerald-500/10' : 'border-slate-200 text-emerald-600 bg-emerald-50'}`}>{item.qty || 1} Pcs</td>
+                            <td className="px-4 py-2.5 border-r text-right">₹{(item.mrp || 0).toLocaleString('en-IN')}</td>
+                            <td className="px-4 py-2.5 text-right font-mono font-bold">₹{((item.mrp || 0) * (item.qty || 1)).toLocaleString('en-IN')}</td>
+                          </tr>
+                        ));
+                      }
                     })()}
                   </tbody>
                 </table>
