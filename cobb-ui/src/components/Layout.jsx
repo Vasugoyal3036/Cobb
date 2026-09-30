@@ -267,6 +267,11 @@ const Layout = ({
         e.preventDefault();
         toggleRightSidebar();
       }
+      // Ctrl + M to toggle left sidebar
+      else if (e.ctrlKey && e.key.toLowerCase() === 'm') {
+        e.preventDefault();
+        setIsLeftSidebarCollapsed(p => !p);
+      }
       // Alt + 1, 2, 3 for roles
       else if (e.altKey && e.key === '1') {
         e.preventDefault();
