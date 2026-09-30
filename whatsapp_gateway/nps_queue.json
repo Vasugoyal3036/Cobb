@@ -126,7 +126,8 @@
     "billNo": "s",
     "scheduledAt": 1790747990556,
     "createdAt": 1790746190556,
-    "status": "pending"
+    "status": "sent",
+    "sentAt": 1790748000003
   },
   {
     "id": "nps_1790746190663_s12e",
@@ -135,7 +136,8 @@
     "billNo": "s",
     "scheduledAt": 1790747990663,
     "createdAt": 1790746190663,
-    "status": "pending"
+    "status": "sent",
+    "sentAt": 1790748000003
   },
   {
     "id": "nps_1790746190726_3bvb",
@@ -144,7 +146,8 @@
     "billNo": "s",
     "scheduledAt": 1790747990726,
     "createdAt": 1790746190727,
-    "status": "pending"
+    "status": "sent",
+    "sentAt": 1790748000003
   },
   {
     "id": "nps_1790746190841_8mfq",
@@ -153,6 +156,7 @@
     "billNo": "s",
     "scheduledAt": 1790747990841,
     "createdAt": 1790746190841,
-    "status": "pending"
+    "status": "sent",
+    "sentAt": 1790748000003
   }
 ]

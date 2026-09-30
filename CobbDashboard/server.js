@@ -2363,195 +2363,6 @@ app.get('/api/financials/gst-summary', async (req, res) => {
     }
 });
 
-// 2. Comprehensive Store Owner EOD Closing Digest
-const EOD_DEFAULT_RECIPIENTS = ['9138122820', '8708788707', '9034522000', '9466422821'];
-
-async function generateEodSummaryReport(targetDate = null, labelSuffix = null) {
-    const dateFilter = targetDate 
-        ? `CM_TIME >= '${targetDate}' AND CM_TIME < DATEADD(day, 1, '${targetDate}')`
-        : `CM_TIME >= CAST(GETDATE() AS DATE)`;
-
-    const batch = await sql.query(`
-        -- 1. Sales & Bills
-        SELECT 
-            COUNT(CM_ID) as BillCount,
-            ISNULL(SUM(NET_AMOUNT), 0) as GrossSales,
-            ISNULL(SUM(DISCOUNT_AMOUNT), 0) as TotalDiscount,
-            ISNULL(SUM(TOTAL_GST_AMOUNT), 0) as TaxCollected,
-            ISNULL(SUM(NET_AMOUNT - TOTAL_GST_AMOUNT), 0) as NetSales
-        FROM CMM01106 WITH (NOLOCK)
-        WHERE ${dateFilter} AND CANCELLED = 0;
-
-        -- 2. Payment Modes
-        SELECT 
-            ISNULL(SUM(p.CASH_AMOUNT), 0) as Cash,
-            ISNULL(SUM(p.CC_AMOUNT), 0) - ISNULL(SUM(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0)), 0) as Card,
-            ISNULL(SUM(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0)), 0) as UPI
-        FROM CMM01106 m WITH (NOLOCK)
-        LEFT JOIN VW_BILL_PAYMODE p WITH (NOLOCK) ON m.CM_ID = p.MEMO_ID AND p.XN_TYPE = 'SLS'
-        LEFT JOIN VW_WL_CASHMEMOLIST w WITH (NOLOCK) ON m.CM_ID = w.MEMO_ID
-        WHERE ${dateFilter} AND m.CANCELLED = 0;
-
-        -- 3. Today's Exchanges
-        SELECT 
-            COUNT(DISTINCT m.CM_ID) as ExchangeBills,
-            ISNULL(SUM(ABS(d.NET)), 0) as ExchangeValue,
-            ISNULL(SUM(m.NET_AMOUNT), 0) as NetUpsellDiff
-        FROM CMD01106 d WITH (NOLOCK)
-        JOIN CMM01106 m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
-        WHERE d.QUANTITY < 0 AND m.CANCELLED = 0 AND ${dateFilter};
-
-        -- 4. Top Category of the Day
-        SELECT TOP 1 
-            ISNULL(e.SUB_SECTION_NAME, 'Apparel') as TopCategory, 
-            SUM(d.QUANTITY) as UnitsSold,
-            ISNULL(SUM(d.NET), 0) as CategorySales
-        FROM CMD01106 d WITH (NOLOCK)
-        JOIN CMM01106 m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
-        JOIN SKU c WITH (NOLOCK) ON d.PRODUCT_CODE = c.PRODUCT_CODE
-        JOIN ARTICLE a WITH (NOLOCK) ON c.ARTICLE_CODE = a.ARTICLE_CODE
-        LEFT JOIN SECTIOND e WITH (NOLOCK) ON a.SUB_SECTION_CODE = e.SUB_SECTION_CODE
-        WHERE d.QUANTITY > 0 AND m.CANCELLED = 0 AND ${dateFilter}
-        GROUP BY e.SUB_SECTION_NAME
-        ORDER BY UnitsSold DESC;
-    `);
-
-    const summary = batch.recordsets[0]?.[0] || {};
-    const pay = batch.recordsets[1]?.[0] || {};
-    const exch = batch.recordsets[2]?.[0] || {};
-    const topCat = batch.recordsets[3]?.[0] || {};
-
-    const dateStr = targetDate 
-        ? new Date(targetDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-        : new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-    const fmt = (n) => `₹${Number(Math.round(n || 0)).toLocaleString('en-IN')}`;
-
-    const expensesManager = require('./expenses_manager');
-    const pettyCash = targetDate ? { totalSpent: 0, items: [], totalCount: 0 } : expensesManager.getSummary();
-    const netExpectedDrawerCash = Math.max(0, (pay.Cash || 0) - (pettyCash.totalSpent || 0));
-
-    const expenseLines = pettyCash.items.length > 0
-        ? pettyCash.items.slice(0, 5).map(e => `  • ${e.categoryIcon || '•'} ${e.categoryLabel}: ${fmt(e.amount)} (${e.description || 'Routine'})`).join('\n')
-        : '  • No petty cash expenses logged today';
-
-    const closingTag = labelSuffix !== null ? labelSuffix : " (Store Closing Digest)";
-
-    const text = 
-`📊 *COBB PUNDRI — STORE CLOSING DIGEST*
-━━━━━━━━━━━━━━━━━━━━━━━━
-📅 *Date:* ${dateStr}${closingTag}
-🏪 *Store:* Cobb Apparels, Fatehpur Road, Pundri
-
-💰 *SALES PERFORMANCE:*
-• Total Net Sales: *${fmt(summary.GrossSales)}*
-• Total Bills Processed: *${summary.BillCount || 0} Bills*
-• Total Customer Discounts Given: *${fmt(summary.TotalDiscount)}*
-• Tax (GST) Collected: *${fmt(summary.TaxCollected)}*
-
-💳 *DRAWER & COLLECTIONS:*
-• 💵 Gross Cash Sales: *${fmt(pay.Cash)}*
-• ☕ Pocket Khata Expenses: *- ${fmt(pettyCash.totalSpent)}*
-• 🪙 Net Expected Drawer Cash: *${fmt(netExpectedDrawerCash)}*
-• 📱 UPI / Online: *${fmt(pay.UPI)}*
-• 💳 Card (POS Swipe): *${fmt(pay.Card)}*
-
-🧾 *TODAY'S COUNTER EXPENSES (${pettyCash.totalCount || 0}):*
-${expenseLines}
-
-🔄 *EXCHANGES & REPLACEMENTS:*
-• Exchange Bills Handled: *${exch.ExchangeBills || 0}*
-• Total Returned Merchandise: *${fmt(exch.ExchangeValue)}*
-• Net Upsell Collected: *${(exch.NetUpsellDiff || 0) >= 0 ? '+' : ''}${fmt(exch.NetUpsellDiff)}*
-
-🏆 *TOP PERFORMING CATEGORY:*
-• Best Seller: *${topCat.TopCategory || 'Apparel'}* (${topCat.UnitsSold || 0} units sold)
-━━━━━━━━━━━━━━━━━━━━━━━━
-✨ Automated EOD Store Intelligence System`;
-
-    return {
-        text,
-        summary: {
-            grossSales: summary.GrossSales || 0,
-            billCount: summary.BillCount || 0,
-            discounts: summary.TotalDiscount || 0,
-            gst: summary.TaxCollected || 0,
-            cash: pay.Cash || 0,
-            pettyCashSpent: pettyCash.totalSpent || 0,
-            netExpectedDrawerCash,
-            card: pay.Card || 0,
-            upi: pay.UPI || 0,
-            exchangeBills: exch.ExchangeBills || 0,
-            exchangeValue: exch.ExchangeValue || 0,
-            upsellCollected: exch.NetUpsellDiff || 0,
-            topCategory: topCat.TopCategory || 'Apparel',
-            topCategoryUnits: topCat.UnitsSold || 0
-        },
-        recipients: EOD_DEFAULT_RECIPIENTS
-    };
-}
-
-app.get('/api/reports/eod-summary', async (req, res) => {
-    try {
-        const report = await generateEodSummaryReport(req.query.date || null);
-        res.json(report);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-async function dispatchEodReport(targetDate = null, labelSuffix = null, customRecipients = null) {
-    return; // Disabled per user request
-    try {
-        const report = await generateEodSummaryReport(targetDate, labelSuffix);
-        const targets = customRecipients && Array.isArray(customRecipients) && customRecipients.length > 0
-            ? customRecipients
-            : EOD_DEFAULT_RECIPIENTS;
-
-        const results = [];
-        for (const rawNumber of targets) {
-            const clean = String(rawNumber).replace(/[^0-9]/g, '');
-            const formatted = clean.length === 10 ? `91${clean}` : clean;
-            try {
-                const response = await fetch('http://localhost:3000/send', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ number: formatted, message: report.text })
-                });
-                const data = await response.json().catch(() => ({}));
-                const ok = response.ok && !data.error;
-                results.push({ number: clean, success: ok, data });
-            } catch (sendErr) {
-                results.push({ number: clean, success: false, error: sendErr.message });
-            }
-        }
-
-        const deliveredCount = results.filter(r => r.success).length;
-        if (deliveredCount > 0) {
-            const dateToLog = targetDate || new Date().toLocaleDateString('en-CA');
-            try {
-                fs.writeFileSync(path.join(__dirname, 'sent_eod_date.txt'), dateToLog, 'utf8');
-            } catch (e) {}
-            console.log(`[EOD DISPATCH] Successfully delivered EOD digest for ${dateToLog} to ${deliveredCount}/${targets.length} recipients.`);
-            return { success: true, results, report: report.text, deliveredCount };
-        } else {
-            console.warn(`[EOD DISPATCH WARNING] No recipients successfully received EOD digest. sent_eod_date.txt NOT updated.`);
-            return { success: false, results, report: report.text, deliveredCount: 0 };
-        }
-    } catch (err) {
-        console.error('[EOD DISPATCH ERROR]:', err.message);
-        return { success: false, error: err.message };
-    }
-}
-
-app.post('/api/reports/eod-summary/send', async (req, res) => {
-    try {
-        const result = await dispatchEodReport(req.body?.date || null, null, req.body?.recipients || null);
-        res.json(result);
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
 // 3. Size Matrix & Inventory Heatmap Endpoint
 app.get('/api/inventory/size-matrix', async (req, res) => {
     try {
@@ -3848,7 +3659,7 @@ ${notes ? `\n📝 Notes: ${notes}` : ''}
         // Auto-dispatch EOD closing digest to the 4 owners upon night closing save
         setTimeout(async () => {
             try {
-                await dispatchEodReport(null, ' (Store Closing Digest)');
+                // await dispatchEodReport (DISABLED)(null, ' (Store Closing Digest)');
             } catch (e) {
                 console.error('[AUTO EOD ON CLOSING SAVE ERROR]:', e.message);
             }
@@ -4445,7 +4256,7 @@ app.listen(PORT, () => {
 
                 if (billCount > 0) {
                     console.log(`[AUTO EOD] 9:30 PM scheduled closing trigger (${hour}:${String(minute).padStart(2, '0')}) active for ${todayStr} (${billCount} bills). Auto-dispatching EOD digest to owners...`);
-                    await dispatchEodReport(todayStr, ' (Store Closing Digest)');
+                    // await dispatchEodReport (DISABLED)(todayStr, ' (Store Closing Digest)');
                 }
             }
 
@@ -4467,7 +4278,7 @@ app.listen(PORT, () => {
                 const billCount = checkQuery.recordset[0]?.billCount || 0;
                 if (billCount > 0) {
                     console.log(`[AUTO EOD RECOVERY] Found ${billCount} bills from yesterday. Sending recovered night closing digest...`);
-                    await dispatchEodReport(yesterdayStr, ' (Recovered Night Closing)');
+                    // await dispatchEodReport (DISABLED)(yesterdayStr, ' (Recovered Night Closing)');
                 } else {
                     try {
                         fs.writeFileSync(sentFilePath, yesterdayStr, 'utf8');
@@ -4515,7 +4326,7 @@ async function handleProcessTermination(signal) {
             }
             if (lastSentDate !== todayStr) {
                 console.log(`[PROCESS TERMINATION] Evening shutdown at ${hour}:${String(minute).padStart(2, '0')}. Dispatching EOD digest for ${todayStr}...`);
-                await dispatchEodReport(todayStr, ' (Store Closing Digest)');
+                // await dispatchEodReport (DISABLED)(todayStr, ' (Store Closing Digest)');
             }
         }
     } catch (e) {

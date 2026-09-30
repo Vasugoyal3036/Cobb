@@ -124,8 +124,6 @@ const operationalEndpoints = [
     "/api/reconciliation/latest",
     "/api/gateway/status",
     "/api/system/health",
-    { url: "/api/reports/eod-summary", docName: "reports_eod-summary" },
-    { url: "/api/reports/eod-summary", docName: "eod_summary" },
     { url: "/api/sales/cancelled?limit=15", docName: "sales_cancelled" },
     "/api/alterations",
     "/api/parcels/transit"
@@ -541,7 +539,7 @@ async function checkAndDispatchCancelledBillAlerts() {
 // --- AUTOMATED EOD (END OF DAY) STORE DIGEST DISPATCHER ---
 let lastDispatchedEodDate = '';
 
-async function dispatchEodDigestAlert(isScheduled = false) {
+async function // dispatchEodDigestAlert (DISABLED)(isScheduled = false) {
     return; // Disabled per user request
     if (!db) return;
     const todayStr = new Date().toISOString().split('T')[0];
@@ -729,7 +727,7 @@ async function dispatchSystemStatusAlert(status, reason = '') {
         // 4. If system is shutting down, trigger EOD Closing Digest automatically
         if (status === 'offline') {
             console.log('[SYNC AGENT] 🌙 Store is shutting down. Dispatching closing EOD Digest...');
-            await dispatchEodDigestAlert(false);
+            await // dispatchEodDigestAlert (DISABLED)(false);
         }
     } catch (err) {
         console.error(`[SYNC AGENT] Error dispatching system ${status} alert:`, err.message);
@@ -1046,7 +1044,7 @@ function startSyncAgent() {
         setInterval(() => {
             const now = new Date();
             if (now.getHours() === 21 && now.getMinutes() >= 45 && now.getMinutes() <= 55) {
-                dispatchEodDigestAlert(true);
+                // dispatchEodDigestAlert (DISABLED)(true);
             }
         }, 60 * 1000);
     } else {
