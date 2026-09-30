@@ -161,7 +161,8 @@ const standardEndpoints = [
     "/api/broadcast/status",
     "/api/crm/anniversaries-today",
     { url: "/api/staff/leaderboard?period=bundle", docName: "staff_leaderboard" },
-    "/api/staff/config"
+    "/api/staff/config",
+    { url: "/api/inventory/broken-sizes", docName: "inventory_broken-sizes" }
 ];
 
 // Tier 3: Deep Analytics & Heavy Catalog (Every 60 minutes)

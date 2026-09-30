@@ -374,52 +374,144 @@ app.get('/api/analytics/monthly-products', async (req, res) => {
 // STOCK HEALTH TILES — Dashboard Bento Row 2
 // ===================================================================
 
-// 1. Broken Size Runs — styles where core sizes (32-40) are out but other sizes sit
+// 1. Broken Size Runs — styles where core sizes (38/40/42 or 30/32/34) are out but tail sizes sit
 app.get('/api/inventory/broken-sizes', async (req, res) => {
     try {
-        const result = await sql.query(`
-            ;WITH ArticleSizes AS (
-                SELECT
+        const query = `
+            ;WITH ArticleAllSizes AS (
+                SELECT 
                     s.article_no AS ArticleNo,
-                    MAX(ISNULL(s.article_name, s.section_name + ' / ' + s.sub_section_name)) AS ArticleName,
+                    MAX(ISNULL(s.article_name, s.section_name)) AS ArticleName,
                     MAX(ISNULL(s.section_name, 'Apparel')) AS Category,
-                    ISNULL(s.para2_name, 'Standard') AS Size,
-                    SUM(p.quantity_in_stock) AS SizeStock
-                FROM PMT01106 p WITH (NOLOCK)
-                INNER JOIN SKU_NAMES s WITH (NOLOCK) ON p.product_code = s.product_Code
-                WHERE p.quantity_in_stock >= 0
-                GROUP BY s.article_no, s.para2_name, s.article_name, s.section_name, s.sub_section_name
+                    MAX(ISNULL(s.para1_name, 'Standard')) AS Color,
+                    LTRIM(RTRIM(CASE WHEN CHARINDEX('(', s.para2_name) > 0 THEN LEFT(s.para2_name, CHARINDEX('(', s.para2_name) - 1) ELSE s.para2_name END)) AS Size,
+                    ISNULL(SUM(p.quantity_in_stock), 0) AS SizeStock
+                FROM SKU_NAMES s WITH (NOLOCK)
+                LEFT JOIN PMT01106 p WITH (NOLOCK) ON s.product_Code = p.product_code
+                WHERE s.article_no IS NOT NULL AND s.article_no <> ''
+                GROUP BY s.article_no, s.para2_name
             ),
-            ArticleTotals AS (
-                SELECT
-                    ArticleNo,
-                    MAX(ArticleName) AS ArticleName,
-                    MAX(Category) AS Category,
-                    SUM(SizeStock) AS TotalStock,
-                    COUNT(DISTINCT Size) AS TotalSizeCount,
-                    SUM(CASE WHEN Size IN ('30','32','34','36','38','40','S','M','L','XL') AND SizeStock = 0 THEN 1 ELSE 0 END) AS CoreSizesOut,
-                    SUM(CASE WHEN Size IN ('30','32','34','36','38','40','S','M','L','XL') THEN 1 ELSE 0 END) AS CoreSizesTotal,
-                    SUM(CASE WHEN SizeStock > 0 THEN 1 ELSE 0 END) AS SizesInStock,
-                    SUM(CASE WHEN SizeStock = 0 THEN 1 ELSE 0 END) AS SizesOutOfStock
-                FROM ArticleSizes
+            ActiveArticles AS (
+                SELECT ArticleNo
+                FROM ArticleAllSizes
                 GROUP BY ArticleNo
                 HAVING SUM(SizeStock) > 0
             )
-            SELECT TOP 100
-                at2.ArticleNo,
-                at2.ArticleName,
-                at2.Category,
-                at2.TotalStock,
-                at2.TotalSizeCount,
-                at2.CoreSizesOut,
-                at2.CoreSizesTotal,
-                at2.SizesInStock,
-                at2.SizesOutOfStock
-            FROM ArticleTotals at2
-            WHERE at2.CoreSizesOut > 0 AND at2.CoreSizesTotal > 0
-            ORDER BY at2.CoreSizesOut DESC, at2.TotalStock DESC
-        `);
-        res.json(result.recordset);
+            SELECT 
+                a.ArticleNo,
+                a.ArticleName,
+                a.Category,
+                a.Color,
+                a.Size,
+                a.SizeStock
+            FROM ArticleAllSizes a
+            INNER JOIN ActiveArticles act ON a.ArticleNo = act.ArticleNo
+            ORDER BY a.ArticleNo, a.Size
+        `;
+        const result = await sql.query(query);
+        const rows = result.recordset || [];
+
+        const articles = {};
+        for (const row of rows) {
+            if (!articles[row.ArticleNo]) {
+                articles[row.ArticleNo] = {
+                    articleNo: row.ArticleNo,
+                    articleName: row.ArticleName,
+                    category: row.Category,
+                    color: row.Color,
+                    totalStock: 0,
+                    sizes: {}
+                };
+            }
+            const s = String(row.Size || 'STD').trim().toUpperCase();
+            articles[row.ArticleNo].sizes[s] = (articles[row.ArticleNo].sizes[s] || 0) + (row.SizeStock || 0);
+            articles[row.ArticleNo].totalStock += (row.SizeStock || 0);
+        }
+
+        const brokenList = [];
+        let totalLostRevenue = 0;
+        let criticalHoles = 0;
+        let tailHeavy = 0;
+
+        for (const art of Object.values(articles)) {
+            if (art.totalStock < 2) continue;
+            const s = art.sizes;
+            const nameUpper = (art.articleName + ' ' + art.category).toUpperCase();
+            const isTrouser = nameUpper.includes('TROUSER') || nameUpper.includes('JEAN') || nameUpper.includes('CHINO') || nameUpper.includes('DENIM') || nameUpper.includes('PANT');
+
+            const coreSizes = isTrouser ? ['30', '32', '34'] : ['38', '40', '42', 'M', 'L', 'XL'];
+            const missingCore = [];
+            const inStockSizes = [];
+            let coreStock = 0;
+            let tailStock = 0;
+
+            for (const [sz, qty] of Object.entries(s)) {
+                if (coreSizes.includes(sz)) {
+                    if (qty === 0) missingCore.push(sz);
+                    else inStockSizes.push({ size: sz, qty, isCore: true });
+                    coreStock += qty;
+                } else {
+                    if (qty > 0) inStockSizes.push({ size: sz, qty, isCore: false });
+                    tailStock += qty;
+                }
+            }
+
+            if (missingCore.length > 0 && art.totalStock >= 3) {
+                let severity = 'MODERATE';
+                let reason = '';
+                const estimatedLoss = missingCore.length * 1500;
+
+                if (coreStock === 0 && tailStock > 0) {
+                    severity = 'TAIL_HEAVY';
+                    reason = `All core sizes (${coreSizes.slice(0, 3).join('/')}) are zero, while ${tailStock} tail pcs sit unsold.`;
+                    tailHeavy++;
+                } else if (missingCore.includes('40') || missingCore.includes('32')) {
+                    severity = 'CRITICAL_HOLE';
+                    reason = `Sweet-spot size (${isTrouser ? '32' : '40'}) is sold out! Walkouts occurring daily.`;
+                    criticalHoles++;
+                } else {
+                    reason = `Missing core size ${missingCore.join(', ')} with ${art.totalStock} total pcs in other sizes.`;
+                }
+
+                totalLostRevenue += estimatedLoss;
+
+                brokenList.push({
+                    articleNo: art.articleNo,
+                    articleName: art.articleName,
+                    category: art.category,
+                    color: art.color,
+                    type: isTrouser ? 'Bottomwear' : 'Topwear',
+                    totalStock: art.totalStock,
+                    coreStock,
+                    tailStock,
+                    missingCore,
+                    allSizes: s,
+                    inStockSizes,
+                    severity,
+                    reason,
+                    estimatedLoss,
+                    recommendedAction: severity === 'TAIL_HEAVY'
+                        ? 'Clearance markdown or bundle discount on extreme sizes'
+                        : `Urgent replenishment of sizes: ${missingCore.join(', ')}`
+                });
+            }
+        }
+
+        brokenList.sort((a, b) => {
+            const rank = { CRITICAL_HOLE: 1, TAIL_HEAVY: 2, MODERATE: 3 };
+            return (rank[a.severity] - rank[b.severity]) || (b.totalStock - a.totalStock);
+        });
+
+        res.json({
+            summary: {
+                totalBrokenArticles: brokenList.length,
+                totalLostRevenuePotential: totalLostRevenue,
+                criticalHoles,
+                tailHeavy,
+                scannedAt: new Date().toISOString()
+            },
+            items: brokenList
+        });
     } catch (err) {
         console.error('Broken sizes error:', err);
         res.status(500).json({ error: err.message });
