@@ -12,12 +12,11 @@ export default function ReorderTab(props) {
   const [indentResult, setIndentResult] = useState(null);
   const [copied, setCopied] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [targetWeeks, setTargetWeeks] = useState(4.0);
   const pageSize = 30;
 
   useEffect(() => {
     fetchSuggestions();
-  }, [targetWeeks]);
+  }, []);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -26,7 +25,7 @@ export default function ReorderTab(props) {
   const fetchSuggestions = async () => {
     setLoading(true);
     try {
-      const res = await axios.get(`${API_BASE}/api/inventory/reorder-suggestions?targetWeeks=${targetWeeks}`);
+      const res = await axios.get(`${API_BASE}/api/inventory/reorder-suggestions`);
       setData(res.data || []);
       
       const initialSelection = {};
@@ -118,7 +117,7 @@ export default function ReorderTab(props) {
               </div>
               <div>
                 <h2 className={`text-lg font-black tracking-tight leading-tight ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-                  Auto Replenishment System
+                  Reorder Radar
                 </h2>
                 <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{filteredData.length} critical items</p>
               </div>
@@ -137,18 +136,6 @@ export default function ReorderTab(props) {
               onChange={(e) => setSearch(e.target.value)}
               className={`w-full pl-9 pr-4 py-2 border rounded-xl text-sm focus:outline-none focus:border-indigo-500 shadow-sm transition-colors ${darkMode ? 'bg-[#1a2333] border-[#232e47] text-white placeholder-slate-500' : 'bg-white border-slate-200 text-slate-900'}`}
             />
-          </div>
-          <div className="mt-3 flex items-center justify-between">
-            <label className={`text-xs font-bold ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Target Cover (Weeks)</label>
-            <select
-              value={targetWeeks}
-              onChange={(e) => setTargetWeeks(parseFloat(e.target.value))}
-              className={`text-xs font-bold px-2 py-1 border rounded-lg focus:outline-none ${darkMode ? 'bg-[#1a2333] border-[#232e47] text-white' : 'bg-white border-slate-200 text-slate-900'}`}
-            >
-              <option value="2.0">2 Weeks (Fast)</option>
-              <option value="4.0">4 Weeks (Standard)</option>
-              <option value="8.0">8 Weeks (Bulk)</option>
-            </select>
           </div>
         </div>
 
@@ -233,9 +220,9 @@ export default function ReorderTab(props) {
           {/* Header */}
           <div className={`p-6 border-b flex justify-between items-center ${darkMode ? 'border-[#232e47] bg-slate-900/50' : 'border-slate-100 bg-slate-50'}`}>
             <div>
-              <span className="text-[10px] uppercase font-black text-indigo-600 tracking-widest">Active Plan</span>
+              <span className="text-[10px] uppercase font-black text-indigo-600 tracking-widest">Active Draft</span>
               <h3 className={`text-2xl font-black mt-1 flex items-center ${darkMode ? 'text-white' : 'text-slate-800'}`}>
-                <ClipboardList className="w-6 h-6 mr-3 text-indigo-500" /> ARS Replenishment Indent
+                <ClipboardList className="w-6 h-6 mr-3 text-indigo-500" /> Indent Cart
               </h3>
             </div>
             <div className="flex gap-4 items-center text-right">
