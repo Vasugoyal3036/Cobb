@@ -518,7 +518,7 @@ const Layout = ({
                   onClick={() => setShowHealthModal(true)}
                   className="px-3 py-1.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-200 border border-slate-600/40 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
                 >
-                  <Activity className="w-3.5 h-3.5 text-blue-400" />
+                  <Activity className="transition-transform duration-700 group-hover:rotate-[360deg] w-3.5 h-3.5 text-blue-400" />
                   <span>Network Health</span>
                 </button>
               </div>
@@ -532,8 +532,8 @@ const Layout = ({
       {/* Right Operations & Telemetry Rail (Double Sidebar Layout) */}
       <aside
         style={{ contain: 'paint' }}
-        className={`hidden lg:flex flex-col shrink-0 z-30 transition-[width] duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] will-change-[width] transform-gpu relative p-[1.5px] ${
-          isRightSidebarCollapsed ? 'w-[80px] [transform:perspective(1500px)_rotateY(-15deg)] opacity-80' : 'w-[280px] [transform:perspective(1500px)_rotateY(0deg)] opacity-100'
+        className={`hidden lg:flex flex-col shrink-0 z-30 transition-[width] duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] will-change-[width] transform-gpu relative p-[2.5px] ${
+          isRightSidebarCollapsed ? 'w-[80px]  opacity-80' : 'w-[280px]  opacity-100'
         } lg:my-4 lg:mr-4 lg:ml-2 lg:h-[calc(100vh-32px)] lg:rounded-[2rem] overflow-hidden ${
           darkMode
             ? 'shadow-[0_8px_32px_0_rgba(0,0,0,0.6)] text-white'
@@ -542,7 +542,7 @@ const Layout = ({
       >
         {/* Luminous Cybernetic Border Beam */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-[2rem]">
-          <div className="absolute -inset-[150%] m-auto aspect-square bg-[conic-gradient(from_0deg,transparent_0deg,transparent_270deg,rgba(56,189,248,0.25)_300deg,rgba(168,85,247,0.75)_335deg,rgba(236,72,153,0.85)_350deg,rgba(56,189,248,0.95)_360deg)] animate-border-beam opacity-85 blur-[1.5px]" />
+          <div className="absolute -inset-[150%] m-auto aspect-square bg-[conic-gradient(from_0deg,transparent_0deg,transparent_270deg,rgba(56,189,248,0.25)_300deg,rgba(168,85,247,0.75)_335deg,rgba(236,72,153,0.85)_350deg,rgba(56,189,248,0.95)_360deg)] animate-border-beam opacity-100 blur-[2px]" />
         </div>
 
         {/* Inner Solid Rail Shell */}
@@ -561,7 +561,7 @@ const Layout = ({
             }`}>
               <div className="relative w-8 h-8 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0">
                 <span className="absolute inset-0 rounded-xl border border-cyan-400/50 animate-sonar-pulse pointer-events-none" />
-                <Activity className="w-4 h-4 relative z-10 animate-ambient-glow" />
+                <Activity className="transition-transform duration-700 group-hover:rotate-[360deg] w-4 h-4 relative z-10 animate-ambient-glow" />
               </div>
               <div className="min-w-0 whitespace-nowrap">
                 <span className="font-black text-xs uppercase tracking-wider block leading-none">Operations</span>
@@ -579,7 +579,7 @@ const Layout = ({
               title={isRightSidebarCollapsed ? "Expand sidebar rail" : "Collapse sidebar rail"}
             >
               <ChevronRight className={`w-4 h-4 transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
-                isRightSidebarCollapsed ? 'rotate-180' : 'rotate-[360deg]'
+                isRightSidebarCollapsed ? 'rotate-180' : 'rotate-0'
               }`} />
             </button>
           </div>
@@ -777,7 +777,7 @@ const Layout = ({
               >
                 <div className="pointer-events-none absolute -inset-full bg-gradient-to-r from-transparent via-white/[0.08] to-transparent -translate-x-[150%] group-hover:translate-x-[150%] transition-transform duration-1000 transform -skew-x-25" />
                 <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0 relative">
-                  <Activity className="w-4 h-4" />
+                  <Activity className="transition-transform duration-700 group-hover:rotate-[360deg] w-4 h-4" />
                   <span className={`absolute -top-1 -right-1 w-2 h-2 rounded-full shadow-[0_0_6px_rgba(16,185,129,0.8)] ${
                     healthStatus.overall === 'healthy' ? 'bg-emerald-500' : 'bg-amber-500'
                   }`} />
@@ -865,7 +865,7 @@ const Layout = ({
               >
                 <div className="pointer-events-none absolute -inset-full bg-gradient-to-r from-transparent via-white/[0.12] to-transparent -translate-x-[150%] group-hover:translate-x-[150%] transition-transform duration-1000 transform -skew-x-25" />
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0">
-                  <Sparkles className="w-4 h-4 text-purple-400 animate-pulse" />
+                  <Sparkles className="transition-transform duration-700 group-hover:rotate-[360deg] w-4 h-4 text-purple-400 animate-pulse" />
                 </div>
                 <span className={`truncate whitespace-nowrap transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
                   isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-full opacity-100'
@@ -885,7 +885,7 @@ const Layout = ({
               >
                 <div className="pointer-events-none absolute -inset-full bg-gradient-to-r from-transparent via-white/[0.15] to-transparent -translate-x-[150%] group-hover:translate-x-[150%] transition-transform duration-1000 transform -skew-x-25" />
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0">
-                  <Calculator className="w-4 h-4" />
+                  <Calculator className="transition-transform duration-700 group-hover:rotate-[360deg] w-4 h-4" />
                 </div>
                 <span className={`truncate whitespace-nowrap transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
                   isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-full opacity-100'
@@ -929,7 +929,7 @@ const Layout = ({
               >
                 <div className="pointer-events-none absolute -inset-full bg-gradient-to-r from-transparent via-white/[0.08] to-transparent -translate-x-[150%] group-hover:translate-x-[150%] transition-transform duration-1000 transform -skew-x-25" />
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0">
-                  <Database className="w-4 h-4 text-blue-400" />
+                  <Database className="transition-transform duration-700 group-hover:rotate-[360deg] w-4 h-4 text-blue-400" />
                 </div>
                 <span className={`truncate whitespace-nowrap transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
                   isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-full opacity-100'
@@ -1118,7 +1118,7 @@ const Layout = ({
                   }}
                   className="w-full py-2 rounded-xl font-bold text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 border border-white/10 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-[0.98] mt-1"
                 >
-                  <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                  <Sparkles className="transition-transform duration-700 group-hover:rotate-[360deg] w-3.5 h-3.5 text-amber-400" />
                   <span>Test Standard Sale Alert</span>
                 </button>
 

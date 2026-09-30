@@ -24,7 +24,7 @@
 }
 
 .animate-border-beam {
-  animation: borderBeamRotate 7s linear infinite;
+  animation: borderBeamRotate 2.5s linear infinite;
 }
 
 /* 2. Ambient Telemetry Downward Radar Scanner */
