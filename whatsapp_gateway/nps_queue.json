@@ -20,36 +20,6 @@
     "sentAt": 1790515425477
   },
   {
-    "id": "nps_1790566828907_cy4w",
-    "phone": "918708788707",
-    "customerName": "Valued Customer",
-    "billNo": "s",
-    "scheduledAt": 1790568628907,
-    "createdAt": 1790566828907,
-    "status": "sent",
-    "sentAt": 1790570661808
-  },
-  {
-    "id": "nps_1790566829015_9upi",
-    "phone": "919034522000",
-    "customerName": "Valued Customer",
-    "billNo": "s",
-    "scheduledAt": 1790568629015,
-    "createdAt": 1790566829015,
-    "status": "sent",
-    "sentAt": 1790570661808
-  },
-  {
-    "id": "nps_1790566829055_ag22",
-    "phone": "919466422821",
-    "customerName": "Valued Customer",
-    "billNo": "s",
-    "scheduledAt": 1790568629055,
-    "createdAt": 1790566829055,
-    "status": "sent",
-    "sentAt": 1790570661808
-  },
-  {
     "id": "nps_1790600807226_11i2",
     "phone": "918708752471",
     "customerName": "Ujjwal",
@@ -58,36 +28,6 @@
     "createdAt": 1790600807226,
     "status": "sent",
     "sentAt": 1790602607510
-  },
-  {
-    "id": "nps_1790656462552_8zpz",
-    "phone": "918708788707",
-    "customerName": "Valued Customer",
-    "billNo": "s",
-    "scheduledAt": 1790658262552,
-    "createdAt": 1790656462553,
-    "status": "sent",
-    "sentAt": 1790658280922
-  },
-  {
-    "id": "nps_1790656462624_o9ua",
-    "phone": "919034522000",
-    "customerName": "Valued Customer",
-    "billNo": "s",
-    "scheduledAt": 1790658262624,
-    "createdAt": 1790656462624,
-    "status": "sent",
-    "sentAt": 1790658280922
-  },
-  {
-    "id": "nps_1790656462667_r0gd",
-    "phone": "919466422821",
-    "customerName": "Valued Customer",
-    "billNo": "s",
-    "scheduledAt": 1790658262667,
-    "createdAt": 1790656462667,
-    "status": "sent",
-    "sentAt": 1790658280922
   },
   {
     "id": "nps_1790668501163_l678",
@@ -120,43 +60,12 @@
     "sentAt": 1790688710670
   },
   {
-    "id": "nps_1790746190556_zdwp",
-    "phone": "919138122820",
-    "customerName": "Valued Customer",
-    "billNo": "s",
-    "scheduledAt": 1790747990556,
-    "createdAt": 1790746190556,
-    "status": "sent",
-    "sentAt": 1790748000003
-  },
-  {
-    "id": "nps_1790746190663_s12e",
-    "phone": "918708788707",
-    "customerName": "Valued Customer",
-    "billNo": "s",
-    "scheduledAt": 1790747990663,
-    "createdAt": 1790746190663,
-    "status": "sent",
-    "sentAt": 1790748000003
-  },
-  {
-    "id": "nps_1790746190726_3bvb",
-    "phone": "919034522000",
-    "customerName": "Valued Customer",
-    "billNo": "s",
-    "scheduledAt": 1790747990726,
-    "createdAt": 1790746190727,
-    "status": "sent",
-    "sentAt": 1790748000003
-  },
-  {
-    "id": "nps_1790746190841_8mfq",
-    "phone": "919466422821",
-    "customerName": "Valued Customer",
-    "billNo": "s",
-    "scheduledAt": 1790747990841,
-    "createdAt": 1790746190841,
-    "status": "sent",
-    "sentAt": 1790748000003
+    "id": "nps_1790772893262_t25m",
+    "phone": "919992051186",
+    "customerName": "Satpal",
+    "billNo": "",
+    "scheduledAt": 1790774693262,
+    "createdAt": 1790772893262,
+    "status": "pending"
   }
 ]

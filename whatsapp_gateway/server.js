@@ -28,6 +28,16 @@ const MAX_RECONNECT_ATTEMPTS = 5;
 let watchdogTimer = null;
 let consecutiveWatchdogFailures = 0;
 
+// --- OWNER PHONES DEFINITION ---
+const OWNER_PHONES = ['9138122820', '8708788707', '9034522000', '9466422821'];
+
+function isOwnerPhone(phone) {
+    if (!phone) return false;
+    const clean = String(phone).replace(/[^0-9]/g, '');
+    const tenDigit = clean.slice(-10);
+    return OWNER_PHONES.includes(tenDigit);
+}
+
 // --- PERSISTENT NPS 30-MINUTE SURVEY QUEUE ---
 const NPS_QUEUE_FILE = path.join(__dirname, 'nps_queue.json');
 
@@ -49,6 +59,10 @@ function saveNpsQueue(queue) {
 function queueNpsSurvey(phone, customerName = 'Valued Customer', billNo = '', delayMinutes = 30) {
     const cleanPhone = String(phone).replace(/[^0-9]/g, '');
     if (!cleanPhone || cleanPhone.length < 10) return;
+    if (isOwnerPhone(cleanPhone)) {
+        console.log(`[NPS QUEUE] Suppressing survey queue for owner phone ${cleanPhone}`);
+        return;
+    }
 
     const queue = loadNpsQueue();
     // Prevent duplicate pending surveys for same phone within 2 hours
@@ -294,6 +308,12 @@ async function initWhatsApp(isFresh = false) {
                 const lower = rawBody.toLowerCase();
                 const phone = msg.from.replace('@c.us', '');
                 const cleanPhone = phone.startsWith('91') && phone.length === 12 ? phone.slice(2) : phone;
+
+                // SUPPRESS ALL AUTOMATED REPLIES TO STORE OWNERS
+                if (isOwnerPhone(cleanPhone) || isOwnerPhone(phone)) {
+                    console.log(`[WHATSAPP INBOUND] Message from owner ${cleanPhone} ("${rawBody}") - suppressing automated reply.`);
+                    return;
+                }
 
                 console.log(`[WHATSAPP INBOUND] From ${cleanPhone}: "${rawBody}"`);
 
@@ -730,7 +750,7 @@ app.post('/send', async (req, res) => {
         // Auto-queue 30-minute customer feedback survey if this is a checkout bill dispatch
         const lowerMsg = (message || '').toLowerCase();
         const isBillDispatch = lowerMsg.includes('bill') || lowerMsg.includes('invoice') || lowerMsg.includes('cobb') || lowerMsg.includes('shopping') || lowerMsg.includes('total');
-        if (isBillDispatch && result.success) {
+        if (isBillDispatch && result.success && !isOwnerPhone(number)) {
             const customerNameMatch = message.match(/(?:Hello|Dear)\s+\*?([A-Za-z\s]+?)\*?(?:!|,)/i);
             const parsedName = customerNameMatch ? customerNameMatch[1].trim() : (req.body.customerName || 'Valued Customer');
             const billNoMatch = message.match(/(?:Bill|Inv(?:oice)?)\s*(?:No\.?|#)?\s*:?\s*\*?([A-Za-z0-9\/-]+)\*?/i);
