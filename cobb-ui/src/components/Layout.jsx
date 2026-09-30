@@ -238,6 +238,41 @@ const Layout = ({
 
   const roleInfo = ROLE_LABELS[currentRole] || ROLE_LABELS.owner;
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Ctrl + / to focus search
+      if (e.ctrlKey && e.key === '/') {
+        e.preventDefault();
+        const input = document.querySelector('input[placeholder*="Search"]');
+        if (input) {
+          setIsRightSidebarCollapsed(false);
+          setTimeout(() => input.focus(), 100);
+        }
+      }
+      // Ctrl + B to toggle right sidebar
+      else if (e.ctrlKey && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        toggleRightSidebar();
+      }
+      // Alt + 1, 2, 3 for roles
+      else if (e.altKey && e.key === '1') {
+        e.preventDefault();
+        handleRoleSwitch('owner');
+      }
+      else if (e.altKey && e.key === '2') {
+        e.preventDefault();
+        handleRoleSwitch('manager');
+      }
+      else if (e.altKey && e.key === '3') {
+        e.preventDefault();
+        handleRoleSwitch('cashier');
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isRightSidebarCollapsed]);
+
   return (
     <>
       {/* Mobile Drawer Overlay */}
