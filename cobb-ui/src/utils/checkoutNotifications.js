@@ -31,8 +31,8 @@ export const showSystemNotification = async (title, options = {}) => {
     badge: logoPng,
     vibrate: [300, 100, 300, 100, 300],
     renotify: true,
-    requireInteraction: false,
-    silent: true,
+    requireInteraction: true,
+    silent: false,
     ...options
   };
 

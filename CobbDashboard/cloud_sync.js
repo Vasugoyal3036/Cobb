@@ -113,6 +113,28 @@ if (serviceAccount) {
 const STORE_ID = process.env.STORE_ID || "DEMO_STORE_001";
 const LOCAL_API = process.env.LOCAL_API || `http://localhost:${process.env.PORT || 5000}`;
 
+// --- STORE OWNER WHATSAPP NOTIFICATION CONFIGURATION ---
+const OWNER_WHATSAPP_NUMBERS = (process.env.OWNER_WHATSAPP_NUMBERS
+    ? process.env.OWNER_WHATSAPP_NUMBERS.split(',').map(s => s.trim()).filter(Boolean)
+    : ['9138122820', '8708788707', '9034522000', '9466422821']);
+const WHATSAPP_GATEWAY_URL = process.env.WHATSAPP_GATEWAY_URL || 'http://localhost:3000/send';
+
+async function sendWhatsAppToOwners(message, tag = 'ALERT', targetNumbers = null) {
+    const recipients = targetNumbers || OWNER_WHATSAPP_NUMBERS;
+    if (!recipients || recipients.length === 0) return;
+    for (const phone of recipients) {
+        try {
+            await axios.post(WHATSAPP_GATEWAY_URL, {
+                number: phone,
+                message: message
+            }, { timeout: 8000 });
+            console.log(`[SYNC AGENT] 📲 WhatsApp [${tag}] dispatched to ${phone}`);
+        } catch (err) {
+            console.warn(`[SYNC AGENT] WhatsApp dispatch to ${phone} note:`, err.response?.data?.error || err.message);
+        }
+    }
+}
+
 // --- SMART TIERED SYNC ENDPOINTS ---
 // Tier 1: Real-Time Operational Data (Every 2 minutes)
 // Key daily numbers that need frequent updates for store owner visibility
@@ -430,6 +452,22 @@ async function checkAndDispatchCheckoutAlerts() {
                     console.error("[SYNC AGENT] FCM multicast error:", pushErr.message);
                 }
             }
+
+            // 3. Dispatch real-time WhatsApp alert to all 4 store owners
+            const waCheckoutText = 
+                `🧾 *NEW SALE RECORDED* — *Cobb Pundri*\n` +
+                `──────────────────────\n` +
+                `🔢 *Bill No:* #${billNo}\n` +
+                `💰 *Net Amount:* ₹${amount.toLocaleString('en-IN')} (${qty} item${qty > 1 ? 's' : ''})\n` +
+                (discountAmt > 0 ? `🏷️ *Gross / Disc:* ₹${grossAmt.toLocaleString('en-IN')} (Saved ₹${discountAmt.toLocaleString('en-IN')} • ${discountPct}% off)\n` : '') +
+                `👤 *Customer:* ${custDisplay}\n` +
+                `👔 *Salesperson:* ${staff}\n` +
+                `💳 *Payment:* ${pay}\n` +
+                `🕒 *Time:* ${formatTimeAMPM(new Date())}\n` +
+                `──────────────────────\n` +
+                `👉 *Phone Link:* https://cobb-store.web.app${clickUrl}`;
+
+            sendWhatsAppToOwners(waCheckoutText, `Checkout #${billNo}`).catch(() => {});
         }
     } catch (err) {
         // Silently skip if local server is busy or momentarily reloading
@@ -530,6 +568,20 @@ async function checkAndDispatchCancelledBillAlerts() {
                     }
                 }).catch(e => console.warn('[SYNC AGENT] Cancelled bill FCM push notice:', e.message));
             }
+
+            // Dispatch WhatsApp cancelled bill alert to 4 store owners
+            const waCancelledText = 
+                `⚠️ *CANCELLED BILL ALERT* — *Cobb Pundri*\n` +
+                `──────────────────────\n` +
+                `🔢 *Bill No:* #${billNo}\n` +
+                `💰 *Amount:* ₹${amount.toLocaleString('en-IN')}\n` +
+                `👤 *Customer:* ${cust}\n` +
+                `👔 *Salesperson:* ${staff}\n` +
+                `🕒 *Time:* ${formatTimeAMPM(new Date())}\n` +
+                `──────────────────────\n` +
+                `_Alert: This bill was cancelled at the counter._`;
+
+            sendWhatsAppToOwners(waCancelledText, `Cancelled #${billNo}`).catch(() => {});
         }
     } catch (err) {
         // Silently skip if endpoint momentarily busy
@@ -539,7 +591,7 @@ async function checkAndDispatchCancelledBillAlerts() {
 // --- AUTOMATED EOD (END OF DAY) STORE DIGEST DISPATCHER ---
 let lastDispatchedEodDate = '';
 
-async function // dispatchEodDigestAlert (DISABLED)(isScheduled = false) {
+async function dispatchEodDigestAlert(isScheduled = false) {
     return; // Disabled per user request
     if (!db) return;
     const todayStr = new Date().toISOString().split('T')[0];
@@ -724,10 +776,16 @@ async function dispatchSystemStatusAlert(status, reason = '') {
             }
         }
 
-        // 4. If system is shutting down, trigger EOD Closing Digest automatically
+        // 4. Dispatch WhatsApp system status message to all 4 store owners
+        const waStatusText = isOnline
+            ? `🟢 *STORE POS IS ONLINE* — *Cobb Pundri*\n──────────────────────\n🖥️ POS Counter Computer powered ON at ${timeStr} (${dateStr}).\n⚡ Billing counter & sync agent are active and ready.`
+            : `🔴 *STORE POS SHUT DOWN* — *Cobb Pundri*\n──────────────────────\n🕒 POS Counter Computer shut down at ${timeStr} (${dateStr})${reason ? ` [${reason}]` : ''}.\nStore system is now closed.`;
+
+        sendWhatsAppToOwners(waStatusText, `System ${status.toUpperCase()}`).catch(() => {});
+
+        // 5. If system is shutting down, trigger EOD Closing Digest automatically
         if (status === 'offline') {
-            console.log('[SYNC AGENT] 🌙 Store is shutting down. Dispatching closing EOD Digest...');
-            await // dispatchEodDigestAlert (DISABLED)(false);
+            // EOD Digest disabled per user request
         }
     } catch (err) {
         console.error(`[SYNC AGENT] Error dispatching system ${status} alert:`, err.message);
@@ -764,53 +822,53 @@ function listenForTestAlertsAndDispatchFcm() {
                     const data = docSnap.data();
                     if (!data || !data.isTest || data.fcmDispatched) return;
 
-                    console.log(`[SYNC AGENT] 🧪 Remote UI Test Alert detected (${testId}): "${data.title}". Dispatching FCM to registered phones...`);
+                    console.log(`[SYNC AGENT] 🧪 Remote UI Test Alert detected (${testId}): "${data.title}". Dispatching alerts...`);
 
                     try {
                         const tokenSnap = await db.collection("stores").doc(STORE_ID).collection("fcm_tokens").get();
-                        if (tokenSnap.empty) {
-                            console.warn('[SYNC AGENT] No registered FCM phone tokens found in Firestore.');
-                            return;
-                        }
-
-                        const rawTokens = tokenSnap.docs.map(d => d.data()?.token).filter(Boolean);
-                        if (rawTokens.length === 0) return;
+                        const rawTokens = tokenSnap.empty ? [] : tokenSnap.docs.map(d => d.data()?.token).filter(Boolean);
 
                         const title = data.title || '🧾 Test Sale Alert';
                         const body = data.body || 'A new test sale has been recorded.';
                         const url = data.url || '/?tab=livebills';
 
-                        const pushRes = await messaging.sendEachForMulticast({
-                            tokens: rawTokens,
-                            notification: {
-                                title,
-                                body
-                            },
-                            data: {
-                                type: data.type || 'sale',
-                                title,
-                                body,
-                                url,
-                                billNumber: String(data.billNumber || testId)
-                            },
-                            webpush: {
-                                headers: {
-                                    Urgency: 'high'
-                                },
-                                fcmOptions: { link: url },
+                        if (rawTokens.length > 0) {
+                            const pushRes = await messaging.sendEachForMulticast({
+                                tokens: rawTokens,
                                 notification: {
                                     title,
+                                    body
+                                },
+                                data: {
+                                    type: data.type || 'sale',
+                                    title,
                                     body,
-                                    icon: '/ors-logo.png',
-                                    badge: '/ors-logo.png',
-                                    tag: `cobb-test-${testId}`,
-                                    requireInteraction: 'true',
-                                    silent: 'true'
+                                    url,
+                                    billNumber: String(data.billNumber || testId)
+                                },
+                                webpush: {
+                                    headers: {
+                                        Urgency: 'high'
+                                    },
+                                    fcmOptions: { link: url },
+                                    notification: {
+                                        title,
+                                        body,
+                                        icon: '/ors-logo.png',
+                                        badge: '/ors-logo.png',
+                                        tag: `cobb-test-${testId}`,
+                                        requireInteraction: 'true'
+                                    }
                                 }
-                            }
-                        });
+                            });
+                            console.log(`[SYNC AGENT] 📲 FCM Test Alert dispatched: ${pushRes.successCount} succeeded, ${pushRes.failureCount} failed.`);
+                        }
 
-                        console.log(`[SYNC AGENT] 📲 FCM Test Alert dispatched: ${pushRes.successCount} succeeded, ${pushRes.failureCount} failed.`);
+                        // Also dispatch test to WhatsApp if requested (or to test number)
+                        const testPhone = data.testPhone || '8708788707';
+                        const waTestMsg = `🔔 *Cobb Pundri POS Alert Test*\n──────────────────────\n📌 *Title:* ${title}\n💬 *Details:* ${body}\n🔗 *Link:* https://cobb-store.web.app${url}\n🕒 *Time:* ${formatTimeAMPM(new Date())}`;
+                        sendWhatsAppToOwners(waTestMsg, 'TEST', [testPhone]).catch(() => {});
+
                         await docSnap.ref.update({ fcmDispatched: true }).catch(() => {});
                     } catch (err) {
                         console.error('[SYNC AGENT] Error dispatching test alert FCM:', err.message);
@@ -894,6 +952,50 @@ async function handleGracefulShutdown(signal) {
                     }, { merge: true });
                     await db.collection('stores').doc(STORE_ID).collection('checkout_notifications').doc(alertId).set(payload);
                     console.log('[SYNC AGENT] ✅ Shutdown alert written to Firestore.');
+
+                    // Dispatch FCM Push to phones before exiting
+                    if (messaging) {
+                        try {
+                            const tokenSnap = await db.collection("stores").doc(STORE_ID).collection("fcm_tokens").get();
+                            const rawTokens = tokenSnap.empty ? [] : tokenSnap.docs.map(d => d.data()?.token).filter(Boolean);
+                            if (rawTokens.length > 0) {
+                                await messaging.sendEachForMulticast({
+                                    tokens: rawTokens,
+                                    notification: { title, body },
+                                    data: {
+                                        type: 'system_status',
+                                        status: 'offline',
+                                        title,
+                                        body,
+                                        url: '/?tab=dashboard'
+                                    },
+                                    webpush: {
+                                        headers: { Urgency: 'high' },
+                                        fcmOptions: { link: '/?tab=dashboard' },
+                                        notification: {
+                                            title,
+                                            body,
+                                            icon: '/ors-logo.png',
+                                            badge: '/ors-logo.png',
+                                            tag: 'cobb-system-status',
+                                            requireInteraction: 'true'
+                                        }
+                                    }
+                                });
+                                console.log('[SYNC AGENT] 📲 Shutdown FCM push sent to phones.');
+                            }
+                        } catch (fcmErr) {
+                            console.warn('[SYNC AGENT] Shutdown FCM note:', fcmErr.message);
+                        }
+                    }
+
+                    // Dispatch WhatsApp Shutdown Alert to all 4 store owners
+                    const waShutdownText = 
+                        `🔴 *STORE POS SHUT DOWN* — *Cobb Pundri*\n` +
+                        `──────────────────────\n` +
+                        `🕒 POS Counter Computer shut down on ${dateStr} at ${timeStr} (${signal}).\n` +
+                        `Store system is now closed.`;
+                    await sendWhatsAppToOwners(waShutdownText, 'Shutdown');
                 }
             })(),
             new Promise(resolve => setTimeout(resolve, 4000))
@@ -962,6 +1064,13 @@ async function checkAndDispatchPcBootAlert() {
                     }, { merge: true });
                     await db.collection('stores').doc(STORE_ID).collection('checkout_notifications').doc(alertId).set(payload).catch(() => {});
                     console.log(`[SYNC AGENT] ✅ Retroactive shutdown alert dispatched to phone: ${title}`);
+
+                    const waRetroText = 
+                        `🔴 *STORE POS PREVIOUS SHUTDOWN REPORT* — *Cobb Pundri*\n` +
+                        `──────────────────────\n` +
+                        `🕒 POS Counter Computer shut down on ${sentinel.dateStr} at ${sentinel.timeStr}.\n` +
+                        `_Delivered upon reboot._`;
+                    sendWhatsAppToOwners(waRetroText, 'Retro Shutdown').catch(() => {});
                 }
             } else {
                 console.log('[SYNC AGENT] Shutdown sentinel is too old (>48h). Skipping retroactive alert.');
