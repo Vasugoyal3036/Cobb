@@ -112,11 +112,11 @@ router.get('/transit', async (req, res) => {
                     const itemsRes = await sql.query(`
                         SELECT TOP 500
                             d.PRODUCT_CODE as code,
-                            s.article_no as article,
-                            s.article_name as [desc],
-                            s.para1_name as p1,
-                            s.para2_name as p2,
-                            s.para3_name as p3,
+                            ISNULL(s.article_no, d.PRODUCT_CODE) as article,
+                            ISNULL(s.article_name, 'SKU ' + d.PRODUCT_CODE) as [desc],
+                            ISNULL(s.para1_name, 'N/A') as p1,
+                            ISNULL(s.para2_name, 'N/A') as p2,
+                            ISNULL(s.para3_name, 'N/A') as p3,
                             ISNULL(d.QUANTITY, 0) as qty,
                             d.mrp,
                             'PCS' as uom
@@ -182,11 +182,11 @@ router.get('/items', async (req, res) => {
         const itemsResult = await sql.query(`
             SELECT TOP 500
                 d.PRODUCT_CODE as code,
-                s.article_no as article,
-                s.article_name as [desc],
-                s.para1_name as p1,
-                s.para2_name as p2,
-                s.para3_name as p3,
+                ISNULL(s.article_no, d.PRODUCT_CODE) as article,
+                ISNULL(s.article_name, 'SKU ' + d.PRODUCT_CODE) as [desc],
+                ISNULL(s.para1_name, 'N/A') as p1,
+                ISNULL(s.para2_name, 'N/A') as p2,
+                ISNULL(s.para3_name, 'N/A') as p3,
                 ISNULL(d.QUANTITY, 0) as qty,
                 d.mrp,
                 'PCS' as uom
