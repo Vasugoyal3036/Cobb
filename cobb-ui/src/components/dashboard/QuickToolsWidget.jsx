@@ -27,6 +27,27 @@ const QuickToolsWidget = ({
   darkMode,
   setShowAlterationModal
 }) => {
+  const [selectedColor, setSelectedColor] = React.useState('ALL');
+
+  React.useEffect(() => {
+    setSelectedColor('ALL');
+  }, [quickScanResult?.articleNo]);
+
+  const getColorDot = (colorName) => {
+    const c = String(colorName || '').toLowerCase();
+    if (c.includes('black')) return '#0f172a';
+    if (c.includes('white')) return '#f8fafc';
+    if (c.includes('navy') || c.includes('blue')) return '#2563eb';
+    if (c.includes('red') || c.includes('maroon') || c.includes('burgundy')) return '#e11d48';
+    if (c.includes('green') || c.includes('olive') || c.includes('pista')) return '#16a34a';
+    if (c.includes('yellow') || c.includes('mustard')) return '#ca8a04';
+    if (c.includes('grey') || c.includes('gray')) return '#64748b';
+    if (c.includes('brown') || c.includes('beige') || c.includes('khaki') || c.includes('tan')) return '#d97706';
+    if (c.includes('pink') || c.includes('peach')) return '#ec4899';
+    if (c.includes('purple') || c.includes('violet')) return '#9333ea';
+    return '#3b82f6';
+  };
+
   if (dashboardZone !== 'all' && dashboardZone !== 'counter') {
     return null;
   }
@@ -180,36 +201,122 @@ const QuickToolsWidget = ({
               )}
             </div>
 
-            {/* Result Display: Sizes Matrix */}
-            {quickScanResult ? (
-              <div className="space-y-1.5">
-                <div className="flex justify-between items-center text-xs">
-                  <span className="text-slate-500 dark:text-slate-400 truncate max-w-[130px] font-medium">
-                    {quickScanResult.itemName} • {quickScanResult.color}
-                  </span>
-                  <span className="font-mono font-bold text-slate-700 dark:text-slate-200">
-                    ₹{quickScanResult.mrp?.toLocaleString('en-IN')}
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-1 max-h-16 overflow-y-auto pr-0.5">
-                  {quickScanResult.sizes.map((s, sIdx) => (
-                    <span
-                      key={sIdx}
-                      className={`px-1.5 py-0.5 rounded text-[10px] font-bold border flex items-center gap-1 ${
-                        s.stock > 3
-                          ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
-                          : s.stock > 0
-                            ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800'
-                            : 'bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700 opacity-50'
-                      }`}
-                    >
-                      <span>{s.size.split(' ')[0]}</span>
-                      <span className="font-mono">({s.stock})</span>
+            {/* Result Display: Colours & Sizes Matrix */}
+            {quickScanResult ? (() => {
+              const hasColors = Array.isArray(quickScanResult.colors) && quickScanResult.colors.length > 0;
+              const colorsList = hasColors
+                ? quickScanResult.colors
+                : [{
+                    color: quickScanResult.color || 'Standard',
+                    totalStock: quickScanResult.totalStock || 0,
+                    sizes: quickScanResult.sizes || []
+                  }];
+              
+              const colorsToRender = selectedColor === 'ALL'
+                ? colorsList
+                : colorsList.filter(c => c.color === selectedColor);
+
+              return (
+                <div className="space-y-2">
+                  {/* Article Name & Price */}
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-slate-500 dark:text-slate-400 truncate max-w-[150px] font-semibold" title={quickScanResult.itemName}>
+                      {quickScanResult.itemName}
                     </span>
-                  ))}
+                    {quickScanResult.mrp > 0 && (
+                      <span className="font-mono font-bold text-slate-700 dark:text-slate-200">
+                        ₹{quickScanResult.mrp?.toLocaleString('en-IN')}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Multiple Colours Filter Pills */}
+                  {colorsList.length > 1 && (
+                    <div className="flex items-center gap-1 overflow-x-auto pb-1 no-scrollbar -mx-0.5 px-0.5">
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setSelectedColor('ALL'); }}
+                        className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase transition-all whitespace-nowrap cursor-pointer ${
+                          selectedColor === 'ALL'
+                            ? 'bg-blue-600 text-white shadow-xs'
+                            : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white'
+                        }`}
+                      >
+                        All ({colorsList.length})
+                      </button>
+                      {colorsList.map((c, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setSelectedColor(c.color); }}
+                          className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer border ${
+                            selectedColor === c.color
+                              ? 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/40 font-extrabold shadow-xs'
+                              : 'bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border-slate-200/80 dark:border-slate-700/80 hover:border-slate-300'
+                          }`}
+                        >
+                          <span
+                            className="w-2 h-2 rounded-full border border-black/10 dark:border-white/20 shrink-0"
+                            style={{ backgroundColor: getColorDot(c.color) }}
+                          />
+                          <span>{c.color}</span>
+                          <span className="font-mono text-[9px] opacity-75">({c.totalStock})</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Colours & Sizes Matrix List */}
+                  <div className="space-y-2 max-h-40 overflow-y-auto pr-0.5 custom-scrollbar">
+                    {colorsToRender.map((cGroup, cIdx) => (
+                      <div
+                        key={cIdx}
+                        className="p-2 rounded-xl bg-slate-50/80 dark:bg-[#121829]/90 border border-slate-200/70 dark:border-[#1c2436] space-y-1.5"
+                      >
+                        {/* Colour Header */}
+                        <div className="flex items-center justify-between text-[11px]">
+                          <span className="font-extrabold flex items-center gap-1.5 text-slate-800 dark:text-slate-200 uppercase tracking-tight">
+                            <span
+                              className="w-2.5 h-2.5 rounded-full border border-black/10 dark:border-white/20 shadow-xs shrink-0"
+                              style={{ backgroundColor: getColorDot(cGroup.color) }}
+                            />
+                            <span>{cGroup.color}</span>
+                          </span>
+                          <span className="font-mono text-[10px] font-semibold text-slate-500 dark:text-slate-400">
+                            {cGroup.totalStock} in stock
+                          </span>
+                        </div>
+
+                        {/* Sizes with stock badges for this colour */}
+                        <div className="flex flex-wrap gap-1">
+                          {cGroup.sizes.map((s, sIdx) => {
+                            const isScannedSku = quickScanQuery && (s.barcode === quickScanQuery || s.barcode === quickScanResult.scannedBarcode);
+                            return (
+                              <span
+                                key={sIdx}
+                                className={`px-1.5 py-0.5 rounded text-[10px] font-bold border flex items-center gap-1 transition-all ${
+                                  isScannedSku
+                                    ? 'ring-2 ring-blue-500 bg-blue-500 text-white border-blue-600 shadow-sm'
+                                    : s.stock > 3
+                                      ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
+                                      : s.stock > 0
+                                        ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-800'
+                                        : 'bg-slate-100 dark:bg-slate-800/60 text-slate-400 border-slate-200 dark:border-slate-700 opacity-40'
+                                }`}
+                                title={s.barcode ? `Barcode: ${s.barcode}` : undefined}
+                              >
+                                <span>{s.size.split(' ')[0]}</span>
+                                <span className="font-mono">({s.stock})</span>
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ) : quickScanError ? (
+              );
+            })() : quickScanError ? (
               <div className="text-xs text-rose-400 font-semibold py-1">
                 ⚠️ {quickScanError}
               </div>
@@ -245,7 +352,9 @@ const QuickToolsWidget = ({
 
           <div className="pt-3 border-t border-slate-100 dark:border-[#1c2436] flex items-center justify-between text-xs">
             <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">
-              {quickScanResult ? `${quickScanResult.totalStock} in stock` : 'Gun Ready'}
+              {quickScanResult 
+                ? `${quickScanResult.totalStock} in stock${quickScanResult.colors?.length > 1 ? ` • ${quickScanResult.colors.length} Colours` : ''}` 
+                : 'Gun Ready'}
             </span>
             <button
               onClick={(e) => {

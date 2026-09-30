@@ -289,16 +289,86 @@ Total Bills: ${data.totalBills || 0} | AOV: ${formatCurrency(data.avgBillValue |
       if (res.data && res.data.success) {
         setQuickScanResult(res.data);
         setQuickScanError(null);
-      } else {
-        setQuickScanError(res.data?.message || 'Article / Barcode not found');
-        setQuickScanResult(null);
+        setQuickScanLoading(false);
+        return;
       }
     } catch (e) {
-      setQuickScanError('Lookup failed');
-      setQuickScanResult(null);
-    } finally {
-      setQuickScanLoading(false);
+      // Continue to offline / Firestore cache fallback
     }
+
+    // Client-side fallback from in-memory / Firestore synced inventory
+    if (Array.isArray(inventory) && inventory.length > 0) {
+      const qLower = q.toLowerCase();
+      // Match by exact SKU/barcode or exact ArticleNo
+      let matched = inventory.filter(item => 
+        (item.SKU && String(item.SKU).toLowerCase() === qLower) ||
+        (item.ArticleNo && String(item.ArticleNo).toLowerCase() === qLower)
+      );
+
+      // If not exact, try prefix match on ArticleNo
+      if (matched.length === 0) {
+        matched = inventory.filter(item => 
+          item.ArticleNo && String(item.ArticleNo).toLowerCase().startsWith(qLower)
+        );
+      }
+
+      if (matched.length > 0) {
+        const targetArticle = matched[0].ArticleNo;
+        const allVariants = inventory.filter(item => item.ArticleNo === targetArticle);
+        const itemName = allVariants[0].ItemName || allVariants[0].ProductType || targetArticle;
+        const totalStock = allVariants.reduce((sum, item) => sum + Math.max(0, Number(item.CurrentStock) || 0), 0);
+
+        // Group by Color
+        const colorMap = {};
+        allVariants.forEach(item => {
+          const clr = (item.Color || 'Standard').trim();
+          if (!colorMap[clr]) {
+            colorMap[clr] = { color: clr, totalStock: 0, sizes: [] };
+          }
+          const stockNum = Math.max(0, Number(item.CurrentStock) || 0);
+          colorMap[clr].totalStock += stockNum;
+          colorMap[clr].sizes.push({
+            size: (item.Size || 'Standard').trim(),
+            stock: stockNum,
+            barcode: item.SKU || ''
+          });
+        });
+
+        const colors = Object.values(colorMap);
+
+        // Aggregated sizes
+        const sizeMap = {};
+        allVariants.forEach(item => {
+          const sz = (item.Size || 'Standard').trim();
+          if (!sizeMap[sz]) {
+            sizeMap[sz] = { size: sz, stock: 0, barcode: item.SKU || '' };
+          }
+          sizeMap[sz].stock += Math.max(0, Number(item.CurrentStock) || 0);
+        });
+
+        const scannedVariant = allVariants.find(item => item.SKU && String(item.SKU).toLowerCase() === qLower) || allVariants[0];
+
+        setQuickScanResult({
+          success: true,
+          articleNo: targetArticle,
+          itemName: itemName,
+          color: scannedVariant?.Color || colors[0]?.color || '',
+          mrp: matched[0].mrp || 0,
+          totalStock: totalStock,
+          sizes: Object.values(sizeMap),
+          colors: colors,
+          scannedBarcode: q,
+          variants: allVariants
+        });
+        setQuickScanError(null);
+        setQuickScanLoading(false);
+        return;
+      }
+    }
+
+    setQuickScanError('Article / Barcode not found');
+    setQuickScanResult(null);
+    setQuickScanLoading(false);
   };
 
   const fetchStockHealth = React.useCallback(async () => {
