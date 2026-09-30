@@ -113,8 +113,8 @@ router.get('/transit', async (req, res) => {
                         SELECT TOP 500
                             d.PRODUCT_CODE as code,
                             ISNULL(s.article_no, d.PRODUCT_CODE) as article,
-                            ISNULL(s.article_name, 'SKU ' + d.PRODUCT_CODE) as [desc],
-                            ISNULL(s.para1_name, 'N/A') as p1,
+                            COALESCE(s.article_name, sm.product_name, 'SKU ' + d.PRODUCT_CODE) as [desc],
+                            COALESCE(s.para1_name, p1.para1_name, 'N/A') as p1,
                             ISNULL(s.para2_name, 'N/A') as p2,
                             ISNULL(s.para3_name, 'N/A') as p3,
                             ISNULL(d.QUANTITY, 0) as qty,
@@ -122,6 +122,8 @@ router.get('/transit', async (req, res) => {
                             'PCS' as uom
                         FROM docwsl_ind01106_mirror d WITH (NOLOCK)
                         LEFT JOIN SKU_NAMES s WITH (NOLOCK) ON d.PRODUCT_CODE = s.product_Code
+                        LEFT JOIN DOCWSL_SKU_MIRROR sm WITH (NOLOCK) ON d.PRODUCT_CODE = sm.product_code
+                        LEFT JOIN PARA1 p1 WITH (NOLOCK) ON sm.para1_code = p1.para1_code
                         WHERE d.INV_ID LIKE '%${invId}%'
                     `);
                     p.items = itemsRes.recordset || [];
@@ -183,8 +185,8 @@ router.get('/items', async (req, res) => {
             SELECT TOP 500
                 d.PRODUCT_CODE as code,
                 ISNULL(s.article_no, d.PRODUCT_CODE) as article,
-                ISNULL(s.article_name, 'SKU ' + d.PRODUCT_CODE) as [desc],
-                ISNULL(s.para1_name, 'N/A') as p1,
+                COALESCE(s.article_name, sm.product_name, 'SKU ' + d.PRODUCT_CODE) as [desc],
+                COALESCE(s.para1_name, p1.para1_name, 'N/A') as p1,
                 ISNULL(s.para2_name, 'N/A') as p2,
                 ISNULL(s.para3_name, 'N/A') as p3,
                 ISNULL(d.QUANTITY, 0) as qty,
@@ -192,6 +194,8 @@ router.get('/items', async (req, res) => {
                 'PCS' as uom
             FROM docwsl_ind01106_mirror d WITH (NOLOCK)
             LEFT JOIN SKU_NAMES s WITH (NOLOCK) ON d.PRODUCT_CODE = s.product_Code
+            LEFT JOIN DOCWSL_SKU_MIRROR sm WITH (NOLOCK) ON d.PRODUCT_CODE = sm.product_code
+            LEFT JOIN PARA1 p1 WITH (NOLOCK) ON sm.para1_code = p1.para1_code
             WHERE d.INV_ID = '${invId}' OR d.INV_ID LIKE '%${invId}%'
         `);
 
