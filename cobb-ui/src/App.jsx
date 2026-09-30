@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import DashboardBackground, { getThemeCardCSS } from './components/DashboardBackground';
-import {\n  Wallet, useToast } from './context/ToastContext';
+import { useToast } from './context/ToastContext';
 import DashboardTab from './components/tabs/DashboardTab';
 
 // Lazy-loaded secondary tabs & heavy modals for instant startup & lightweight bundle
