@@ -116,7 +116,8 @@ import {
   CreditCard,
   Smartphone,
   Coins,
-  Eye
+  Eye,
+  Wallet
 } from 'lucide-react';
 
 const isElectron = window.location.protocol === 'app:' || window.location.protocol === 'file:' || (typeof navigator !== 'undefined' && navigator.userAgent.toLowerCase().includes('electron'));
