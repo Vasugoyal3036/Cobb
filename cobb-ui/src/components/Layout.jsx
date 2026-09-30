@@ -441,7 +441,7 @@ const Layout = ({
       </div>
 
       {/* Main Content Area */}
-      <div className={`flex-1 overflow-auto relative min-w-0 pb-20 lg:pb-0 transition-colors duration-200 lg:my-4 lg:mx-2 lg:rounded-[2rem] border ${darkMode ? 'bg-[#0f1115] border-white/[0.05] shadow-[inset_0_0_40px_rgba(0,0,0,0.5)]' : 'bg-white border-slate-200/50 shadow-sm'}`}>
+      <div className={`flex-1 overflow-auto relative min-w-0 pb-24 lg:pb-0 transition-colors duration-200 lg:my-4 lg:mx-2 lg:rounded-[2rem] border ${darkMode ? 'bg-[#0f1115] border-white/[0.05] shadow-[inset_0_0_40px_rgba(0,0,0,0.5)]' : 'bg-white border-slate-200/50 shadow-sm'}`}>
 
         {/* Top App Bar (Mobile Only — Android-style single row) */}
         <header className={`lg:hidden px-4 py-2 border-b sticky top-0 z-30 transition-colors backdrop-blur-lg ${
@@ -450,16 +450,6 @@ const Layout = ({
           <div className="flex items-center justify-between gap-3">
             {/* Left: Hamburger + Brand */}
             <div className="flex items-center gap-3 shrink-0">
-              <button
-                type="button"
-                onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                className={`w-9 h-9 rounded-2xl flex items-center justify-center transition-colors cursor-pointer ${
-                  darkMode ? 'bg-white/[0.06] text-white active:bg-white/10' : 'bg-slate-100 text-slate-700 active:bg-slate-200'
-                }`}
-                title="Navigation menu"
-              >
-                {isMobileMenuOpen ? <X className="w-4.5 h-4.5" /> : <Menu className="w-4.5 h-4.5" />}
-              </button>
               <div className="flex items-center gap-2">
                 <OrsLogo size={32} showGlow={false} />
                 <div className="leading-tight">
