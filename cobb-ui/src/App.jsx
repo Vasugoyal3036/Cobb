@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import DashboardBackground, { getThemeCardCSS } from './components/DashboardBackground';
-import { useToast } from './context/ToastContext';
+import {\n  Wallet, useToast } from './context/ToastContext';
 import DashboardTab from './components/tabs/DashboardTab';
 
 // Lazy-loaded secondary tabs & heavy modals for instant startup & lightweight bundle
@@ -2760,78 +2760,34 @@ export default function App() {
           </div>
         )}
 
-                {/* BOTTOM NAVIGATION BAR (Android Material Design \u2014 MOBILE ONLY) */}
-        <div className={`lg:hidden fixed bottom-0 left-0 right-0 z-40 flex items-end justify-around px-2 pb-1 pt-1 ${
+                {/* BOTTOM NAVIGATION BAR (Android Material Design — MOBILE ONLY) */}
+        <div className={`lg:hidden fixed bottom-0 left-0 right-0 z-50 flex items-end justify-around px-2 pb-safe pt-1 ${
           darkMode
             ? 'bg-[#0d1017]/95 border-t border-white/[0.06] backdrop-blur-xl shadow-[0_-8px_24px_rgba(0,0,0,0.4)]'
             : 'bg-white/95 border-t border-slate-200/80 backdrop-blur-xl shadow-[0_-4px_20px_rgba(0,0,0,0.06)]'
-        }`}>
+        }`} style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 20px) + 8px)' }}>
 
-          {/* HOME */}
-          <button
-            onClick={() => { setActiveTab('dashboard'); setIsMobileMenuOpen(false); }}
-            className="flex flex-col items-center justify-center flex-1 py-1.5 gap-0.5 cursor-pointer group"
-          >
-            <div className={`flex items-center justify-center w-14 h-7 rounded-full transition-all duration-200 ${
-              activeTab === 'dashboard'
-                ? darkMode ? 'bg-blue-500/20' : 'bg-blue-100'
-                : 'bg-transparent'
-            }`}>
-              <LayoutDashboard className={`w-5 h-5 transition-colors ${
-                activeTab === 'dashboard'
-                  ? darkMode ? 'text-blue-400' : 'text-blue-600'
-                  : darkMode ? 'text-slate-400' : 'text-slate-500'
-              }`} />
-            </div>
-            <span className={`text-[10px] font-bold transition-colors ${
-              activeTab === 'dashboard'
-                ? darkMode ? 'text-blue-400' : 'text-blue-600'
-                : darkMode ? 'text-slate-500' : 'text-slate-400'
-            }`}>Home</span>
-          </button>
-
-          {/* LIVE BILLS */}
+          {/* SALES */}
           <button
             onClick={() => { setActiveTab('live'); setIsMobileMenuOpen(false); }}
             className="flex flex-col items-center justify-center flex-1 py-1.5 gap-0.5 cursor-pointer group"
           >
             <div className={`flex items-center justify-center w-14 h-7 rounded-full transition-all duration-200 ${
               activeTab === 'live'
-                ? darkMode ? 'bg-emerald-500/20' : 'bg-emerald-100'
+                ? darkMode ? 'bg-blue-500/20' : 'bg-blue-100'
                 : 'bg-transparent'
             }`}>
               <Receipt className={`w-5 h-5 transition-colors ${
                 activeTab === 'live'
-                  ? darkMode ? 'text-emerald-400' : 'text-emerald-600'
+                  ? darkMode ? 'text-blue-400' : 'text-blue-600'
                   : darkMode ? 'text-slate-400' : 'text-slate-500'
               }`} />
             </div>
             <span className={`text-[10px] font-bold transition-colors ${
               activeTab === 'live'
-                ? darkMode ? 'text-emerald-400' : 'text-emerald-600'
+                ? darkMode ? 'text-blue-400' : 'text-blue-600'
                 : darkMode ? 'text-slate-500' : 'text-slate-400'
-            }`}>Bills</span>
-          </button>
-
-          {/* AI COPILOT — CENTER FAB-STYLE */}
-          <button
-            onClick={() => { setActiveTab('copilot'); setIsMobileMenuOpen(false); }}
-            className="flex flex-col items-center justify-center flex-1 py-1.5 gap-0.5 cursor-pointer group relative"
-          >
-            <div className={`flex items-center justify-center w-14 h-8 rounded-full transition-all duration-200 shadow-lg ${
-              activeTab === 'copilot'
-                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 shadow-purple-500/40'
-                : darkMode
-                  ? 'bg-gradient-to-r from-purple-600/70 to-indigo-600/70 shadow-purple-500/20'
-                  : 'bg-gradient-to-r from-purple-500 to-indigo-500 shadow-purple-400/30'
-            }`}>
-              <Sparkles className="w-4.5 h-4.5 text-white" />
-            </div>
-            <span className={`text-[10px] font-bold transition-colors ${
-              activeTab === 'copilot'
-                ? darkMode ? 'text-purple-400' : 'text-purple-600'
-                : darkMode ? 'text-slate-500' : 'text-slate-400'
-            }`}>AI</span>
+            }`}>Sales</span>
           </button>
 
           {/* STOCK */}
@@ -2840,21 +2796,67 @@ export default function App() {
             className="flex flex-col items-center justify-center flex-1 py-1.5 gap-0.5 cursor-pointer group"
           >
             <div className={`flex items-center justify-center w-14 h-7 rounded-full transition-all duration-200 ${
-              ['inventory', 'deadstock'].includes(activeTab)
-                ? darkMode ? 'bg-orange-500/20' : 'bg-orange-100'
+              activeTab === 'inventory'
+                ? darkMode ? 'bg-amber-500/20' : 'bg-amber-100'
                 : 'bg-transparent'
             }`}>
               <Package className={`w-5 h-5 transition-colors ${
-                ['inventory', 'deadstock'].includes(activeTab)
-                  ? darkMode ? 'text-orange-400' : 'text-orange-600'
+                activeTab === 'inventory'
+                  ? darkMode ? 'text-amber-400' : 'text-amber-600'
                   : darkMode ? 'text-slate-400' : 'text-slate-500'
               }`} />
             </div>
             <span className={`text-[10px] font-bold transition-colors ${
-              ['inventory', 'deadstock'].includes(activeTab)
-                ? darkMode ? 'text-orange-400' : 'text-orange-600'
+              activeTab === 'inventory'
+                ? darkMode ? 'text-amber-400' : 'text-amber-600'
                 : darkMode ? 'text-slate-500' : 'text-slate-400'
             }`}>Stock</span>
+          </button>
+
+          {/* CLIENTS */}
+          <button
+            onClick={() => { setActiveTab('wardrobe'); setIsMobileMenuOpen(false); }}
+            className="flex flex-col items-center justify-center flex-1 py-1.5 gap-0.5 cursor-pointer group"
+          >
+            <div className={`flex items-center justify-center w-14 h-7 rounded-full transition-all duration-200 ${
+              activeTab === 'wardrobe'
+                ? darkMode ? 'bg-purple-500/20' : 'bg-purple-100'
+                : 'bg-transparent'
+            }`}>
+              <Shirt className={`w-5 h-5 transition-colors ${
+                activeTab === 'wardrobe'
+                  ? darkMode ? 'text-purple-400' : 'text-purple-600'
+                  : darkMode ? 'text-slate-400' : 'text-slate-500'
+              }`} />
+            </div>
+            <span className={`text-[10px] font-bold transition-colors ${
+              activeTab === 'wardrobe'
+                ? darkMode ? 'text-purple-400' : 'text-purple-600'
+                : darkMode ? 'text-slate-500' : 'text-slate-400'
+            }`}>Clients</span>
+          </button>
+
+          {/* KHATA */}
+          <button
+            onClick={() => { setActiveTab('pocket_khata'); setIsMobileMenuOpen(false); }}
+            className="flex flex-col items-center justify-center flex-1 py-1.5 gap-0.5 cursor-pointer group"
+          >
+            <div className={`flex items-center justify-center w-14 h-7 rounded-full transition-all duration-200 ${
+              activeTab === 'pocket_khata'
+                ? darkMode ? 'bg-emerald-500/20' : 'bg-emerald-100'
+                : 'bg-transparent'
+            }`}>
+              <Wallet className={`w-5 h-5 transition-colors ${
+                activeTab === 'pocket_khata'
+                  ? darkMode ? 'text-emerald-400' : 'text-emerald-600'
+                  : darkMode ? 'text-slate-400' : 'text-slate-500'
+              }`} />
+            </div>
+            <span className={`text-[10px] font-bold transition-colors ${
+              activeTab === 'pocket_khata'
+                ? darkMode ? 'text-emerald-400' : 'text-emerald-600'
+                : darkMode ? 'text-slate-500' : 'text-slate-400'
+            }`}>Khata</span>
           </button>
 
           {/* MORE / MENU */}
@@ -2876,10 +2878,9 @@ export default function App() {
               isMobileMenuOpen
                 ? darkMode ? 'text-slate-300' : 'text-slate-700'
                 : darkMode ? 'text-slate-500' : 'text-slate-400'
-            }`}>More</span>
+            }`}>Menu</span>
           </button>
         </div>
-
 
         {/* ESC/POS Thermal Receipt Modal */}
         {thermalModalConfig.isOpen && (
