@@ -112,11 +112,11 @@ router.get('/transit', async (req, res) => {
                     const itemsRes = await sql.query(`
                         SELECT TOP 500
                             d.PRODUCT_CODE as code,
-                            ISNULL(s.article_no, d.PRODUCT_CODE) as article,
+                            ISNULL(s.article_no, sm.article_code) as article,
                             COALESCE(s.article_name, sm.product_name, 'SKU ' + d.PRODUCT_CODE) as [desc],
                             COALESCE(s.para1_name, p1.para1_name, 'N/A') as p1,
-                            ISNULL(s.para2_name, 'N/A') as p2,
-                            ISNULL(s.para3_name, 'N/A') as p3,
+                            COALESCE(s.para2_name, p2.para2_name, 'N/A') as p2,
+                            COALESCE(s.para3_name, p3.para3_name, 'N/A') as p3,
                             ISNULL(d.QUANTITY, 0) as qty,
                             d.mrp,
                             'PCS' as uom
@@ -124,6 +124,8 @@ router.get('/transit', async (req, res) => {
                         LEFT JOIN SKU_NAMES s WITH (NOLOCK) ON d.PRODUCT_CODE = s.product_Code
                         LEFT JOIN DOCWSL_SKU_MIRROR sm WITH (NOLOCK) ON d.PRODUCT_CODE = sm.product_code
                         LEFT JOIN PARA1 p1 WITH (NOLOCK) ON sm.para1_code = p1.para1_code
+                        LEFT JOIN PARA2 p2 WITH (NOLOCK) ON sm.para2_code = p2.para2_code
+                        LEFT JOIN PARA3 p3 WITH (NOLOCK) ON sm.para3_code = p3.para3_code
                         WHERE d.INV_ID LIKE '%${invId}%'
                     `);
                     p.items = itemsRes.recordset || [];
@@ -184,11 +186,11 @@ router.get('/items', async (req, res) => {
         const itemsResult = await sql.query(`
             SELECT TOP 500
                 d.PRODUCT_CODE as code,
-                ISNULL(s.article_no, d.PRODUCT_CODE) as article,
+                ISNULL(s.article_no, sm.article_code) as article,
                 COALESCE(s.article_name, sm.product_name, 'SKU ' + d.PRODUCT_CODE) as [desc],
                 COALESCE(s.para1_name, p1.para1_name, 'N/A') as p1,
-                ISNULL(s.para2_name, 'N/A') as p2,
-                ISNULL(s.para3_name, 'N/A') as p3,
+                COALESCE(s.para2_name, p2.para2_name, 'N/A') as p2,
+                COALESCE(s.para3_name, p3.para3_name, 'N/A') as p3,
                 ISNULL(d.QUANTITY, 0) as qty,
                 d.mrp,
                 'PCS' as uom
@@ -196,6 +198,8 @@ router.get('/items', async (req, res) => {
             LEFT JOIN SKU_NAMES s WITH (NOLOCK) ON d.PRODUCT_CODE = s.product_Code
             LEFT JOIN DOCWSL_SKU_MIRROR sm WITH (NOLOCK) ON d.PRODUCT_CODE = sm.product_code
             LEFT JOIN PARA1 p1 WITH (NOLOCK) ON sm.para1_code = p1.para1_code
+            LEFT JOIN PARA2 p2 WITH (NOLOCK) ON sm.para2_code = p2.para2_code
+            LEFT JOIN PARA3 p3 WITH (NOLOCK) ON sm.para3_code = p3.para3_code
             WHERE d.INV_ID = '${invId}' OR d.INV_ID LIKE '%${invId}%'
         `);
 
