@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { playSound } from '../utils/sound';
 import RolePinModal from './RolePinModal';
 import axios from 'axios';
 import OrsLogo from './OrsLogo';
@@ -252,15 +251,6 @@ const Layout = ({
   const roleInfo = ROLE_LABELS[currentRole] || ROLE_LABELS.owner;
 
   
-  useEffect(() => {
-    const handleClick = (e) => {
-      const btn = e.target.closest('button');
-      if (btn) playSound('click');
-    };
-    document.addEventListener('click', handleClick);
-    return () => document.removeEventListener('click', handleClick);
-  }, []);
-
   useEffect(() => {
     const handleKeyDown = (e) => {
       // Ctrl + / to focus search
