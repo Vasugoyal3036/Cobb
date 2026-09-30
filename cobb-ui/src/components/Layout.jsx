@@ -193,6 +193,18 @@ const Layout = ({
   const [showThemePicker, setShowThemePicker] = useState(false);
   const [healthStatus, setHealthStatus] = useState({ overall: 'healthy', inboundAlertsCount: 0 });
   const [showPowerModal, setShowPowerModal] = useState(false);
+  const [isLeftSidebarCollapsed, setIsLeftSidebarCollapsed] = useState(() => {
+    try { return localStorage.getItem('cobb_left_sidebar_collapsed') === 'true'; } catch (e) { return false; }
+  });
+  
+  const toggleLeftSidebar = () => {
+    setIsLeftSidebarCollapsed(prev => {
+      const next = !prev;
+      try { localStorage.setItem('cobb_left_sidebar_collapsed', String(next)); } catch (e) {}
+      return next;
+    });
+  };
+
   const [isRightSidebarCollapsed, setIsRightSidebarCollapsed] = useState(() => {
     try {
       return localStorage.getItem('cobb_right_sidebar_collapsed') === 'true';
@@ -284,11 +296,11 @@ const Layout = ({
       )}
 
       {/* Sidebar Navigation - Glassmorphism Floating Theme */}
-      <div className={`fixed lg:static inset-y-0 left-0 w-64 lg:my-4 lg:ml-4 lg:mr-2 lg:h-[calc(100vh-32px)] lg:rounded-[2rem] flex flex-col z-40 transition-transform duration-300 ease-in-out ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} ${darkMode ? 'bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] shadow-[0_8px_32px_0_rgba(0,0,0,0.36)]' : 'bg-white/80 backdrop-blur-xl border border-slate-200/50 shadow-[0_8px_30px_rgb(0,0,0,0.04)]'}`}>
+      <div className={`fixed lg:static inset-y-0 left-0 lg:my-4 lg:ml-4 lg:mr-2 lg:h-[calc(100vh-32px)] lg:rounded-[2rem] flex flex-col z-40 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} ${isLeftSidebarCollapsed ? 'w-[80px]' : 'w-64'} ${darkMode ? 'bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] shadow-[0_8px_32px_0_rgba(0,0,0,0.36)]' : 'bg-white/80 backdrop-blur-xl border border-slate-200/50 shadow-[0_8px_30px_rgb(0,0,0,0.04)]'}`}>
         <div className={`p-5 pb-4 flex justify-between items-center border-b ${darkMode ? 'border-white/[0.06]' : 'border-slate-100'}`}>
           <div className="flex items-center gap-3">
             <OrsLogo size={42} />
-            <div>
+            <div className={`flex-1 min-w-0 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isLeftSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none blur-md -translate-y-4' : 'w-full opacity-100 blur-0 translate-y-0'}`}>
               <div className="flex items-center gap-1.5">
                 <span className={`text-lg font-black tracking-wider leading-none ${darkMode ? 'text-white' : 'text-slate-900'}`}>ORS</span>
                 <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">CRM</span>
@@ -304,12 +316,24 @@ const Layout = ({
           >
             <X className="w-5 h-5" />
           </button>
+          <button
+            onClick={toggleLeftSidebar}
+            className={`hidden lg:flex p-1.5 rounded-xl border transition-all duration-300 cursor-pointer shrink-0 ${
+              darkMode ? 'bg-[#0b0f19] border-[#1c2436] text-slate-400 hover:text-white hover:bg-[#141a2c]' : 'bg-slate-100 border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+            }`}
+          >
+            <ChevronRight className={`w-4 h-4 transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+              isLeftSidebarCollapsed ? 'rotate-0' : 'rotate-180'
+            }`} />
+          </button>
         </div>
 
         <nav className="flex-1 px-3 space-y-4 mt-6 overflow-y-auto custom-scrollbar">
           {filteredNavigation.map((cat, catIdx) => (
             <div key={catIdx} className="space-y-1">
-              <p className={`px-4 text-[10px] font-bold uppercase tracking-wider mb-2 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{cat.category}</p>
+              <p className={`px-4 text-[10px] font-bold uppercase tracking-wider mb-2 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] overflow-hidden whitespace-nowrap ${
+    isLeftSidebarCollapsed ? 'h-0 opacity-0 my-0 py-0' : 'h-4 opacity-100'
+  } ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{cat.category}</p>
               {cat.items.map((item) => {
                 const Icon = item.icon;
                 const isActive = activeTab === item.id;
@@ -329,10 +353,12 @@ const Layout = ({
                   <button
                     key={item.id}
                     onClick={() => { setActiveTab(item.id); setSearchQuery(''); setIsMobileMenuOpen(false); }}
-                    className={`w-full flex items-center px-4 py-2.5 transition-all duration-200 cursor-pointer relative group text-[13px] ${isActive ? activeColor : normalColor}`}
+                    className={`w-full flex items-center ${isLeftSidebarCollapsed ? 'justify-center px-0' : 'px-4'} py-2.5 transition-all duration-200 cursor-pointer relative group text-[13px] ${isActive ? activeColor : normalColor}`}
                   >
-                    <Icon className={`w-[18px] h-[18px] mr-4 transition-colors shrink-0 ${isActive ? "" : `opacity-70 group-hover:opacity-100 ${baseColorText}`}`} />
-                    <span className="truncate tracking-wide">{item.label}</span>
+                    <Icon className={`w-[18px] h-[18px] transition-colors shrink-0 ${isLeftSidebarCollapsed ? '' : 'mr-4'} ${isActive ? "" : `opacity-70 group-hover:opacity-100 ${baseColorText}`}`} />
+                    <span className={`truncate whitespace-nowrap transition-all duration-500 delay-[0ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
+    isLeftSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none blur-md -translate-y-4' : 'w-full opacity-100 blur-0 translate-y-0'
+  }`}>{item.label}</span>
                   </button>
                 );
               })}
