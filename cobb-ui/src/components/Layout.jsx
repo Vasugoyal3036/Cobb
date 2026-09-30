@@ -532,7 +532,7 @@ const Layout = ({
       {/* Right Operations & Telemetry Rail (Double Sidebar Layout) */}
       <aside
         style={{ contain: 'paint' }}
-        className={`hidden lg:flex flex-col shrink-0 z-30 transition-[width] duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] will-change-[width] transform-gpu relative p-[1.5px] ${
+        className={`hidden lg:flex flex-col shrink-0 z-30 transition-[width] duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] will-change-[width] transform-gpu relative p-[1.5px] ${
           isRightSidebarCollapsed ? 'w-[80px]' : 'w-[280px]'
         } lg:my-4 lg:mr-4 lg:ml-2 lg:h-[calc(100vh-32px)] lg:rounded-[2rem] overflow-hidden ${
           darkMode
@@ -556,7 +556,7 @@ const Layout = ({
           <div className={`p-3.5 pb-3 flex items-center justify-between border-b gap-2 relative z-10 ${
             darkMode ? 'border-white/[0.06] bg-[#0d121f]/90' : 'border-slate-100 bg-white/90'
           }`}>
-            <div className={`flex items-center gap-2 min-w-0 overflow-hidden transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
+            <div className={`flex items-center gap-2 min-w-0 overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
               isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-full opacity-100'
             }`}>
               <div className="relative w-8 h-8 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0">
@@ -578,7 +578,7 @@ const Layout = ({
               }`}
               title={isRightSidebarCollapsed ? "Expand sidebar rail" : "Collapse sidebar rail"}
             >
-              <ChevronRight className={`w-4 h-4 transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
+              <ChevronRight className={`w-4 h-4 transition-transform duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
                 isRightSidebarCollapsed ? 'rotate-180' : 'rotate-0'
               }`} />
             </button>
@@ -600,7 +600,7 @@ const Layout = ({
               <div className="w-8 h-8 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0">
                 <Store className="w-4 h-4" />
               </div>
-              <div className={`flex-1 min-w-0 transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
+              <div className={`flex-1 min-w-0 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
                 isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-full opacity-100'
               }`}>
                 <div className="flex items-center justify-between mb-1">
@@ -649,7 +649,7 @@ const Layout = ({
               }`}>
                 {currentRole === 'owner' ? <ShieldCheck className="w-4 h-4" /> : <ShieldAlert className="w-4 h-4" />}
               </div>
-              <div className={`flex-1 min-w-0 flex items-center justify-between gap-1 transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
+              <div className={`flex-1 min-w-0 flex items-center justify-between gap-1 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
                 isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-full opacity-100'
               }`}>
                 <div className="min-w-0">
@@ -690,7 +690,7 @@ const Layout = ({
               <div className="w-8 h-8 rounded-xl bg-slate-500/10 border border-slate-500/20 flex items-center justify-center text-slate-400 shrink-0">
                 <Search className="w-4 h-4" />
               </div>
-              <div className={`flex-1 min-w-0 relative ml-2 transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
+              <div className={`flex-1 min-w-0 relative ml-2 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
                 isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-full opacity-100'
               }`}>
                 <input
@@ -713,7 +713,7 @@ const Layout = ({
 
             {/* 4. Live Systems Telemetry */}
             <div className="space-y-2">
-              <p className={`text-[10px] font-bold uppercase tracking-wider px-1 transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] overflow-hidden whitespace-nowrap ${
+              <p className={`text-[10px] font-bold uppercase tracking-wider px-1 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] overflow-hidden whitespace-nowrap ${
                 isRightSidebarCollapsed ? 'h-0 opacity-0 my-0 py-0' : 'h-4 opacity-100'
               } ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                 Hardware & Telemetry
@@ -751,7 +751,7 @@ const Layout = ({
                     }`}></span>
                   </span>
                 </div>
-                <div className={`flex-1 min-w-0 flex items-center justify-between transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
+                <div className={`flex-1 min-w-0 flex items-center justify-between transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
                   isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-full opacity-100'
                 }`}>
                   <div className="min-w-0">
@@ -782,7 +782,7 @@ const Layout = ({
                     healthStatus.overall === 'healthy' ? 'bg-emerald-500' : 'bg-amber-500'
                   }`} />
                 </div>
-                <div className={`flex-1 min-w-0 flex items-center justify-between transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
+                <div className={`flex-1 min-w-0 flex items-center justify-between transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
                   isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-full opacity-100'
                 }`}>
                   <div className="min-w-0">
@@ -826,7 +826,7 @@ const Layout = ({
                 }`}>
                   {notificationsEnabled ? <BellRing className="w-4 h-4" /> : <Bell className="w-4 h-4" />}
                 </div>
-                <div className={`flex-1 min-w-0 flex items-center justify-between transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
+                <div className={`flex-1 min-w-0 flex items-center justify-between transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
                   isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-full opacity-100'
                 }`}>
                   <div className="min-w-0">
@@ -842,7 +842,7 @@ const Layout = ({
 
             {/* 5. Quick Actions Dock */}
             <div className="space-y-2">
-              <p className={`text-[10px] font-bold uppercase tracking-wider px-1 transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] overflow-hidden whitespace-nowrap ${
+              <p className={`text-[10px] font-bold uppercase tracking-wider px-1 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] overflow-hidden whitespace-nowrap ${
                 isRightSidebarCollapsed ? 'h-0 opacity-0 my-0 py-0' : 'h-4 opacity-100'
               } ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                 Quick Actions
@@ -867,7 +867,7 @@ const Layout = ({
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0">
                   <Sparkles className="w-4 h-4 text-purple-400 animate-pulse" />
                 </div>
-                <span className={`truncate whitespace-nowrap transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
+                <span className={`truncate whitespace-nowrap transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
                   isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-full opacity-100'
                 }`}>
                   Cobb AI Copilot
@@ -887,7 +887,7 @@ const Layout = ({
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0">
                   <Calculator className="w-4 h-4" />
                 </div>
-                <span className={`truncate whitespace-nowrap transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
+                <span className={`truncate whitespace-nowrap transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
                   isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-full opacity-100'
                 }`}>
                   EOD Cash Recon
@@ -907,7 +907,7 @@ const Layout = ({
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0">
                   <Send className="w-4 h-4" />
                 </div>
-                <span className={`truncate whitespace-nowrap transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
+                <span className={`truncate whitespace-nowrap transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
                   isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-full opacity-100'
                 }`}>
                   Daily EOD Report
@@ -931,7 +931,7 @@ const Layout = ({
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0">
                   <Database className="w-4 h-4 text-blue-400" />
                 </div>
-                <span className={`truncate whitespace-nowrap transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
+                <span className={`truncate whitespace-nowrap transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
                   isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-full opacity-100'
                 }`}>
                   POS Setup & DB
@@ -957,7 +957,7 @@ const Layout = ({
               <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0">
                 {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-600" />}
               </div>
-              <span className={`text-xs font-semibold whitespace-nowrap transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] ${
+              <span className={`text-xs font-semibold whitespace-nowrap transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${
                 isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-full opacity-100'
               } ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
                 {darkMode ? 'Dark Mode' : 'Light Mode'}
