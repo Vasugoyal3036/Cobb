@@ -542,6 +542,7 @@ async function checkAndDispatchCancelledBillAlerts() {
 let lastDispatchedEodDate = '';
 
 async function dispatchEodDigestAlert(isScheduled = false) {
+    return; // Disabled per user request
     if (!db) return;
     const todayStr = new Date().toISOString().split('T')[0];
     if (isScheduled && lastDispatchedEodDate === todayStr) {

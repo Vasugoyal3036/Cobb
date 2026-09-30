@@ -2500,6 +2500,7 @@ app.get('/api/reports/eod-summary', async (req, res) => {
 });
 
 async function dispatchEodReport(targetDate = null, labelSuffix = null, customRecipients = null) {
+    return; // Disabled per user request
     try {
         const report = await generateEodSummaryReport(targetDate, labelSuffix);
         const targets = customRecipients && Array.isArray(customRecipients) && customRecipients.length > 0
@@ -4407,6 +4408,7 @@ app.listen(PORT, () => {
     // --- AUTOMATIC EOD CLOSING DISPATCH & RECOVERY ENGINE ---
     let lastEodCheckTimestamp = 0;
     async function checkAndAutoDispatchEod() {
+        return; // Disabled per user request
         const nowMs = Date.now();
         if (nowMs - lastEodCheckTimestamp < 30000) return; // Run check every 30s
         lastEodCheckTimestamp = nowMs;
