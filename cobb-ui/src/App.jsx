@@ -26,6 +26,8 @@ const CustomerProfileModal = lazy(() => import('./components/CustomerProfileModa
 const SetupScreen = lazy(() => import('./components/SetupScreen'));
 const DepreciationClockTab = lazy(() => import('./components/tabs/DepreciationClockTab'));
 const WardrobePassportModal = lazy(() => import('./components/WardrobePassportModal'));
+const DenominationModal = lazy(() => import('./components/DenominationModal'));
+const SpeedBillingModal = lazy(() => import('./components/SpeedBillingModal'));
 
 import { fetchWithOfflineFallback, subscribeToData } from './utils/offlineDb';
 
@@ -971,6 +973,13 @@ export default function App() {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // F1 to jump to Speed Billing POS from anywhere
+      if (e.key === 'F1') {
+        e.preventDefault();
+        setActiveTab('speed_billing');
+        return;
+      }
+
       const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
       if (activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select') {
         return;
@@ -2313,6 +2322,26 @@ export default function App() {
             {/* 10. POCKET KHATA (COUNTER PETTY CASH & EXPENSE JOURNAL) */}
             {activeTab === 'pocket_khata' && (
               <PocketKhataTab {...appState} />
+            )}
+
+            {/* ZERO-MOUSE SPEED BILLING POS (F1-F12) */}
+            {activeTab === 'speed_billing' && (
+              <SpeedBillingModal
+                isOpen={true}
+                onClose={() => setActiveTab('dashboard')}
+                API_BASE={API_BASE}
+                activeStore={activeStore}
+                userRole={userRole}
+              />
+            )}
+
+            {/* 11. CASH DRAWER DENOMINATION & NIGHT CLOSING */}
+            {activeTab === 'denomination' && (
+              <DenominationModal
+                isOpen={true}
+                onClose={() => setActiveTab('pocket_khata')}
+                API_BASE={API_BASE}
+              />
             )}
 
 

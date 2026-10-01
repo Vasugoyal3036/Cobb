@@ -15,12 +15,12 @@ export const AVAILABLE_STORES = [
 export const ROLE_PERMISSIONS = {
   owner: null, // null = all tabs allowed
   manager: [
-    'copilot','dashboard','multistore','analytics','monthly','live',
+    'copilot','dashboard','speed_billing','multistore','analytics','monthly','live',
     'staff_leaderboard','pocket_khata','denomination','hold_desk','save_the_sale','returns',
     'alterations','topmovers','sizematrix','transit','deadstock','reorder',
     'smart_bundles','loyalty','vip','dormant','wardrobe','retention',
   ],
-  cashier: ['live','denomination','returns','alterations','hold_desk','save_the_sale','deadstock'],
+  cashier: ['speed_billing','live','denomination','returns','alterations','hold_desk','save_the_sale','deadstock'],
 };
 
 export const ROLE_LABELS = {

@@ -100,6 +100,7 @@ const navigationItems = [
 
   {
     category: "Operations", items: [
+      { id: "speed_billing", label: "⚡ Speed Billing (F1-POS)", icon: Zap, colorClass: "text-amber-500 hover:bg-slate-900 hover:text-white font-bold", activeColorClass: "bg-amber-500/15 text-amber-500 font-bold border-l-2 border-amber-500 shadow-sm shadow-amber-500/20" },
       { id: "live", label: "Transactions & Bills", icon: Receipt, colorClass: "text-blue-600 dark:text-blue-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-blue-500/15 text-blue-600 dark:text-blue-400 font-bold border-l-2 border-blue-500" },
       { id: "staff_leaderboard", label: "Staff Leaderboard & Incentives", icon: Trophy, colorClass: "text-amber-600 dark:text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold border-l-2 border-amber-500" },
       { id: "pocket_khata", label: "Pocket Khata (Expenses)", icon: Wallet, colorClass: "text-amber-600 dark:text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold border-l-2 border-amber-500" },
@@ -255,6 +256,12 @@ const Layout = ({
   
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // F1 to open Speed Billing POS
+      if (e.key === 'F1') {
+        e.preventDefault();
+        setActiveTab('speed_billing');
+        return;
+      }
       // Ctrl + / to focus search
       if (e.ctrlKey && e.key === '/') {
         e.preventDefault();

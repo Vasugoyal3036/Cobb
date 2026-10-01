@@ -1,5 +1,5 @@
 import React from 'react';
-import { Terminal, Barcode, Search, X, Calculator, AlarmClock, Wallet, ArrowRight, Scissors, Plus, Banknote } from 'lucide-react';
+import { Terminal, Barcode, Search, X, Calculator, AlarmClock, Wallet, ArrowRight, Scissors, Plus, Banknote, Zap } from 'lucide-react';
 import DenominationModal from '../DenominationModal';
 
 const QuickToolsWidget = ({
@@ -115,9 +115,18 @@ const QuickToolsWidget = ({
             <p className="text-[11px] text-slate-400">Barcode stock checker, quick offer calculator, holds &amp; pocket khata</p>
           </div>
         </div>
-        <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700">
-          POS Cashier Ready
-        </span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setActiveTab('speed_billing')}
+            className="text-xs font-black text-slate-950 bg-gradient-to-r from-amber-400 to-yellow-300 hover:from-amber-300 hover:to-yellow-200 px-3 py-1.5 rounded-xl shadow-md shadow-amber-500/20 flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+          >
+            <Zap className="w-3.5 h-3.5 fill-current" />
+            <span>[F1] Zero-Mouse Speed POS</span>
+          </button>
+          <span className="hidden sm:inline-block text-[11px] font-bold text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2.5 py-1 rounded-full border border-slate-200 dark:border-slate-700">
+            POS Cashier Ready
+          </span>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
