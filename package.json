@@ -1,0 +1,19 @@
+{
+  "name": "cobb-crm-system",
+  "version": "1.0.0",
+  "description": "Cobb Retail POS & CRM Ecosystem",
+  "type": "module",
+  "scripts": {
+    "test": "node tests/run_all_tests.js",
+    "test:sync": "node --test tests/suite1_cloud_sync.test.js",
+    "test:whatsapp": "node --test tests/suite2_whatsapp_gateway.test.js",
+    "test:backend": "node --test tests/suite3_backend_api_security.test.js",
+    "test:ui": "npm --prefix cobb-ui test",
+    "test:e2e": "node --test tests/suite5_e2e_flow.test.js",
+    "test:smoke": "node --test tests/suite6_packaging_smoke.test.js",
+    "test:concierge": "node --test tests/suite7_whatsapp_concierge.test.js",
+    "test:operations": "node --test tests/suite8_store_operations.test.js",
+    "test:thermal": "node --test tests/suite9_thermal_receipt.test.js",
+    "test:chaos": "node --test tests/suite10_chaos_and_stress.test.js"
+  }
+}

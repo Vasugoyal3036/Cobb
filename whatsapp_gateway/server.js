@@ -38,6 +38,10 @@ function isOwnerPhone(phone) {
     return OWNER_PHONES.includes(tenDigit);
 }
 
+// --- TWO-WAY CONCIERGE BOT CONFIGURATION ---
+// Set to false to disable all automated chatbot / concierge replies to incoming customer messages
+let enableInboundBot = false;
+
 // --- PERSISTENT NPS 30-MINUTE SURVEY QUEUE ---
 const NPS_QUEUE_FILE = path.join(__dirname, 'nps_queue.json');
 
@@ -317,6 +321,12 @@ async function initWhatsApp(isFresh = false) {
 
                 console.log(`[WHATSAPP INBOUND] From ${cleanPhone}: "${rawBody}"`);
 
+                // SUPPRESS ALL AUTOMATED CHATBOT / CONCIERGE REPLIES
+                if (!enableInboundBot) {
+                    console.log(`[WHATSAPP INBOUND] Two-way bot disabled - suppressing automated reply to ${cleanPhone}.`);
+                    return;
+                }
+
                 // Anti-spam cooldown: max 1 automated reply per 4 seconds to the same phone
                 const now = Date.now();
                 if (inboundCooldown.has(phone) && now - inboundCooldown.get(phone) < 4000) {
@@ -530,8 +540,23 @@ app.get('/status', (req, res) => {
         isReady: isClientReady,
         qrCodeUrl: currentQrCodeUrl,
         hasClient: !!client,
-        reconnectAttempts: reconnectAttempts
+        reconnectAttempts: reconnectAttempts,
+        inboundBotEnabled: enableInboundBot
     });
+});
+
+app.get('/bot-status', (req, res) => {
+    res.json({ enabled: enableInboundBot });
+});
+
+app.post('/bot-toggle', (req, res) => {
+    if (typeof req.body.enabled === 'boolean') {
+        enableInboundBot = req.body.enabled;
+    } else {
+        enableInboundBot = !enableInboundBot;
+    }
+    console.log(`[WHATSAPP] Inbound two-way concierge bot is now ${enableInboundBot ? 'ENABLED' : 'DISABLED'}.`);
+    res.json({ success: true, enabled: enableInboundBot });
 });
 
 

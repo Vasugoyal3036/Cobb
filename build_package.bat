@@ -47,6 +47,8 @@ if exist "cloudflared.exe" copy "cloudflared.exe" "%OUTPUT_PATH%\cloudflared.exe
 
 echo [5/6] Copying Launcher and Docs...
 copy "start_local.bat" "%OUTPUT_PATH%\start_local.bat" /Y >nul
+copy "diagnose_system.bat" "%OUTPUT_PATH%\diagnose_system.bat" /Y >nul
+copy "diagnose_system.js" "%OUTPUT_PATH%\diagnose_system.js" /Y >nul
 copy "README.md" "%OUTPUT_PATH%\README.md" /Y >nul
 copy "architecture_breakdown.md" "%OUTPUT_PATH%\architecture_breakdown.md" /Y >nul
 

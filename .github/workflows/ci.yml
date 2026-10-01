@@ -1,0 +1,39 @@
+name: Cobb POS & CRM Automated Quality CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    name: Run All 10 Automated Test Suites
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install CobbDashboard Dependencies
+        run: |
+          cd CobbDashboard
+          npm ci --prefer-offline || npm install
+
+      - name: Install cobb-ui Dependencies
+        run: |
+          cd cobb-ui
+          npm ci --prefer-offline || npm install
+
+      - name: Install whatsapp_gateway Dependencies
+        run: |
+          cd whatsapp_gateway
+          npm ci --prefer-offline || npm install
+
+      - name: Execute Complete 10-Tier Test Battery
+        run: npm test

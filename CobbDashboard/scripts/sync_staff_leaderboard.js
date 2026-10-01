@@ -21,6 +21,18 @@ async function run() {
 
             await db.doc('stores/DEMO_STORE_001/data/staff_leaderboard').set(res.data);
             console.log('✅ Successfully synced staff_leaderboard to Firestore!');
+
+            const dailyRes = await axios.get('http://127.0.0.1:5000/api/staff/daily');
+            if (dailyRes.data) {
+                await db.doc('stores/DEMO_STORE_001/data/staff_daily_history').set(dailyRes.data);
+                console.log(`✅ Successfully synced staff_daily_history (${dailyRes.data.totalDays} days) to Firestore!`);
+            }
+
+            const cfgRes = await axios.get('http://127.0.0.1:5000/api/staff/config');
+            if (cfgRes.data) {
+                await db.doc('stores/DEMO_STORE_001/data/staff_config').set(cfgRes.data);
+                console.log('✅ Successfully synced staff_config to Firestore!');
+            }
         }
     } catch (e) {
         console.error('Sync failed:', e.message);

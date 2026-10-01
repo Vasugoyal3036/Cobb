@@ -161,6 +161,7 @@ const standardEndpoints = [
     "/api/broadcast/status",
     "/api/crm/anniversaries-today",
     { url: "/api/staff/leaderboard?period=bundle", docName: "staff_leaderboard" },
+    { url: "/api/staff/daily", docName: "staff_daily_history" },
     "/api/staff/config",
     { url: "/api/inventory/broken-sizes", docName: "inventory_broken-sizes" }
 ];
@@ -881,6 +882,85 @@ function listenForTestAlertsAndDispatchFcm() {
         });
 }
 
+// Real-time listener for Staff Names & Target changes from Phone Link
+function listenForStaffConfigChanges() {
+    if (!db) return;
+    console.log("[SYNC AGENT] 👂 Listening for Staff Name updates from Phone Link...");
+
+    db.collection("stores").doc(STORE_ID).collection("data").doc("staff_config")
+        .onSnapshot(async (snapshot) => {
+            if (!snapshot.exists) return;
+            const cloudData = snapshot.data();
+            if (!cloudData) return;
+
+            const cloudOverrides = cloudData.staffOverrides || (cloudData.staff && cloudData.staff.staffOverrides);
+            if (!cloudOverrides || typeof cloudOverrides !== 'object') return;
+
+            const configPath = path.join(__dirname, 'staff_config.json');
+            let localConfig = {};
+            try {
+                if (fs.existsSync(configPath)) {
+                    localConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+                }
+            } catch (e) {}
+
+            const localOverrides = localConfig.staffOverrides || {};
+            let hasChanges = false;
+
+            for (const [code, override] of Object.entries(cloudOverrides)) {
+                if (!override || !override.name) continue;
+                const cleanCode = String(code).trim();
+                const cleanName = String(override.name).trim();
+                const cleanTarget = Number(override.target) || 400000;
+
+                const existing = localOverrides[cleanCode];
+                if (!existing || existing.name !== cleanName || existing.target !== cleanTarget) {
+                    hasChanges = true;
+                    localOverrides[cleanCode] = {
+                        name: cleanName,
+                        target: cleanTarget
+                    };
+
+                    // Update SQL EMPLOYEE table
+                    try {
+                        const { sql } = require('./db');
+                        if (sql) {
+                            const escapedName = cleanName.replace(/'/g, "''");
+                            await sql.query(`
+                                IF EXISTS (SELECT 1 FROM EMPLOYEE WHERE RTRIM(emp_code) = '${cleanCode}')
+                                    UPDATE EMPLOYEE SET emp_name = '${escapedName}' WHERE RTRIM(emp_code) = '${cleanCode}';
+                                ELSE
+                                    INSERT INTO EMPLOYEE (emp_code, emp_name) VALUES ('${cleanCode}', '${escapedName}');
+                            `);
+                            console.log(`[SYNC AGENT] 👤 Updated SQL EMPLOYEE record from cloud: ${cleanCode} -> ${cleanName}`);
+                        }
+                    } catch (sqlErr) {
+                        console.warn('[SYNC AGENT] SQL EMPLOYEE update note:', sqlErr.message);
+                    }
+                }
+            }
+
+            if (hasChanges) {
+                localConfig.staffOverrides = localOverrides;
+                try {
+                    fs.writeFileSync(configPath, JSON.stringify(localConfig, null, 2), 'utf8');
+                    console.log('[SYNC AGENT] 💾 Successfully merged cloud staffOverrides into staff_config.json');
+
+                    // Run sync script to rebuild bundle and sync back to cloud
+                    const { exec } = require('child_process');
+                    exec('node scripts/sync_staff_leaderboard.js', { cwd: __dirname }, (err) => {
+                        if (err) console.warn('[SYNC AGENT] Staff re-sync notice:', err.message);
+                        else console.log('[SYNC AGENT] 🔄 Staff Leaderboard re-synced with new salesman names.');
+                    });
+                } catch (e) {
+                    console.error('[SYNC AGENT] Error saving updated staff_config.json:', e.message);
+                }
+            }
+        }, (err) => {
+            console.warn('[SYNC AGENT] Staff config listener notice:', err.message);
+        });
+}
+
 // Periodic heartbeat pulse so Phone Link Watchdog can detect power cuts / crashes within 2 minutes
 async function updateHeartbeat() {
     if (!db) return;
@@ -1143,6 +1223,7 @@ function startSyncAgent() {
         checkAndDispatchCheckoutAlerts();
         checkAndDispatchCancelledBillAlerts();
         listenForTestAlertsAndDispatchFcm();
+        listenForStaffConfigChanges();
         setInterval(() => syncEndpointList(operationalEndpoints, 'Operational Tier'), OPERATIONAL_INTERVAL);
         setInterval(() => syncEndpointList(standardEndpoints, 'Standard Tier'), STANDARD_INTERVAL);
         setInterval(() => syncEndpointList(deepAnalyticsEndpoints, 'Deep Analytics Tier'), DEEP_ANALYTICS_INTERVAL);
