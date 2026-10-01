@@ -1,8 +1,8 @@
 import { db, hasConfig, authPromise } from './firebase';
 import { collection, doc, setDoc, query, orderBy, limit, onSnapshot, serverTimestamp } from 'firebase/firestore';
 
-// Sound removed per user preference - no-op chime function maintained for backward-compatibility
-export const playCheckoutChime = () => {};
+import { playCheckoutChime, speakCheckoutVoice } from './sound';
+export { playCheckoutChime, speakCheckoutVoice };
 
 // Check if browser notifications are currently enabled
 export const isNotificationGranted = () => {
@@ -207,8 +207,17 @@ export const subscribeToCheckoutNotifications = (storeId = 'DEMO_STORE_001', onN
           processedNotificationIds.add(notifId);
           const data = notifDoc.data();
 
-          // 1. Play Cash Register Chime
+          // 1. Play Cash Register Chime & Soundbox Voice Announcement
           playCheckoutChime();
+          const spokenAmt = data.amount || data.netAmount || data.Amount || 0;
+          if (spokenAmt > 0) {
+            setTimeout(() => {
+              speakCheckoutVoice({
+                amount: spokenAmt,
+                paymentMode: data.payMode || data.paymentMode || 'UPI'
+              });
+            }, 350);
+          }
 
           // 2. Vibrate phone if supported
           if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {

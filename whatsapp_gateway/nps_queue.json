@@ -96,7 +96,8 @@
     "billNo": "",
     "scheduledAt": 1790858584128,
     "createdAt": 1790856784128,
-    "status": "pending"
+    "status": "sent",
+    "sentAt": 1790858597941
   },
   {
     "id": "nps_1790857237623_tmxc",

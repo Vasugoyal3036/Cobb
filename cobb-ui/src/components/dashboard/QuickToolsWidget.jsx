@@ -1,5 +1,6 @@
 import React from 'react';
-import { Terminal, Barcode, Search, X, Calculator, AlarmClock, Wallet, ArrowRight, Scissors, Plus } from 'lucide-react';
+import { Terminal, Barcode, Search, X, Calculator, AlarmClock, Wallet, ArrowRight, Scissors, Plus, Banknote } from 'lucide-react';
+import DenominationModal from '../DenominationModal';
 
 const QuickToolsWidget = ({
   dashboardZone,
@@ -28,6 +29,7 @@ const QuickToolsWidget = ({
   setShowAlterationModal
 }) => {
   const [selectedColor, setSelectedColor] = React.useState('ALL');
+  const [showDenominationModal, setShowDenominationModal] = React.useState(false);
 
   React.useEffect(() => {
     setSelectedColor('ALL');
@@ -560,9 +562,14 @@ const QuickToolsWidget = ({
           </div>
 
           <div className="pt-3 border-t border-slate-100 dark:border-[#1c2436] flex items-center justify-between text-xs">
-            <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
-              Drawer Safe
-            </span>
+            <button
+              onClick={() => setShowDenominationModal(true)}
+              className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 px-2.5 py-1 rounded-lg border border-emerald-500/20 flex items-center gap-1 cursor-pointer transition shadow-xs"
+              title="Count Physical Notes & Settle Drawer"
+            >
+              <Banknote className="w-3 h-3" />
+              <span>Count Drawer</span>
+            </button>
             {typeof setActiveTab === 'function' && (
               <button
                 onClick={() => setActiveTab('pocket_khata')}
@@ -576,6 +583,11 @@ const QuickToolsWidget = ({
         </div>
 
       </div>
+
+      <DenominationModal
+        isOpen={showDenominationModal}
+        onClose={() => setShowDenominationModal(false)}
+      />
     </div>
   );
 };

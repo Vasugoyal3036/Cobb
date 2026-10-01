@@ -19,11 +19,13 @@ import {
   RotateCcw,
   Receipt,
   User,
-  ShieldCheck
+  ShieldCheck,
+  Banknote
 } from 'lucide-react';
 import axios from 'axios';
 import { useToast } from '../../context/ToastContext';
 import AlterationSlipModal from '../AlterationSlipModal';
+import DenominationModal from '../DenominationModal';
 
 export default function PocketKhataTab(props) {
   const {
@@ -39,6 +41,7 @@ export default function PocketKhataTab(props) {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showAlterationModal, setShowAlterationModal] = useState(false);
+  const [showDenominationModal, setShowDenominationModal] = useState(false);
   const [summary, setSummary] = useState({
     date: new Date().toISOString().split('T')[0],
     totalSpent: 0,
@@ -154,6 +157,18 @@ export default function PocketKhataTab(props) {
         </div>
 
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowDenominationModal(true)}
+            className={`p-2 px-3 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold ${
+              darkMode 
+                ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25 shadow-sm' 
+                : 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 shadow-xs'
+            }`}
+            title="Count Physical Cash Notes & Reconcile Drawer"
+          >
+            <Banknote className="w-3.5 h-3.5" />
+            <span>Count Notes &amp; Close</span>
+          </button>
           <button
             onClick={() => setShowAlterationModal(true)}
             className={`p-2 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold ${
@@ -512,6 +527,12 @@ export default function PocketKhataTab(props) {
         isOpen={showAlterationModal}
         onClose={() => setShowAlterationModal(false)}
         darkMode={darkMode}
+      />
+
+      <DenominationModal
+        isOpen={showDenominationModal}
+        onClose={() => setShowDenominationModal(false)}
+        API_BASE={API_BASE}
       />
     </div>
   );
