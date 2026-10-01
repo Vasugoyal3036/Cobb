@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import { db, hasConfig } from '../../utils/firebase';
 import { doc, getDoc } from 'firebase/firestore';
+import { resolveCloudCopilotQuery } from '../../utils/cloudCopilotFallback';
 
 const STORAGE_KEY = 'cobb_copilot_messages_v2';
 
@@ -296,143 +297,89 @@ export default function ChatbotTab({ API_BASE = 'http://localhost:5000', darkMod
     setLoading(true);
 
     try {
-      const res = await fetch(`${API_BASE}/api/ai/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ message: query })
-      });
+      // Check if running on remote Firebase hosting without live tunnel
+      const isRemoteHosting = !API_BASE && typeof window !== 'undefined' && 
+        (window.location.hostname.includes('web.app') || window.location.hostname.includes('firebaseapp.com'));
 
-      if (!res.ok) {
-        throw new Error(`Server returned HTTP ${res.status}`);
-      }
+      if (!isRemoteHosting) {
+        const res = await fetch(`${API_BASE}/api/ai/chat`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ message: query })
+        });
 
-      const data = await res.json();
-      const botMsg = {
-        id: 'bot_' + Date.now(),
-        sender: 'bot',
-        text: data.answer || "I received an answer without text.",
-        metrics: data.metrics || [],
-        products: data.products || [],
-        actions: data.actions || [],
-        table: data.table || null,
-        chips: data.chips || [],
-        sqlUsed: data.sqlUsed || null,
-        intent: data.intent || 'GENERAL',
-        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-      };
+        const contentType = res.headers.get('content-type') || '';
+        if (res.ok && contentType.includes('application/json')) {
+          const data = await res.json();
+          const botMsg = {
+            id: 'bot_' + Date.now(),
+            sender: 'bot',
+            text: data.answer || "I received an answer without text.",
+            metrics: data.metrics || [],
+            products: data.products || [],
+            actions: data.actions || [],
+            table: data.table || null,
+            chips: data.chips || [],
+            sqlUsed: data.sqlUsed || null,
+            intent: data.intent || 'GENERAL',
+            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          };
 
-      setMessages(prev => [...prev, botMsg]);
-    } catch (err) {
-      console.warn("Chatbot backend fetch failed, attempting cloud intelligence fallback:", err);
-
-      let fallbackAnswer = null;
-      const q = query.toLowerCase();
-
-      // Attempt smart offline/cloud retrieval if db is configured
-      if (hasConfig && db) {
-        try {
-          const storeId = localStorage.getItem('cobb_active_store') === 'STORE_02' ? 'STORE_002' : 'DEMO_STORE_001';
-
-          // 1. Expense / Khata Questions ("how much expense was today", "khata", "kharcha")
-          if (q.includes('expense') || q.includes('khata') || q.includes('kharcha') || q.includes('spent') || q.includes('spending')) {
-            const expDoc = await getDoc(doc(db, 'stores', storeId, 'data', 'expenses_today'));
-            if (expDoc.exists()) {
-              const expData = expDoc.data().summary || expDoc.data();
-              const spent = Number(expData.totalSpent || 0);
-              const count = Number(expData.totalCount || 0);
-              const catSummary = (expData.categories || []).map(c => `**${c.name}**: ₹${c.amount}`).join(', ');
-
-              fallbackAnswer = {
-                text: `📊 **Today's Pocket Khata Expenses (${storeId}):**\n\n• **Total Spent:** ₹${spent.toLocaleString('en-IN')}\n• **Total Entries:** ${count}\n${catSummary ? `• **Breakdown:** ${catSummary}` : '• No category expenses recorded today yet.'}`,
-                metrics: [
-                  { label: "Today's Expenses", value: `₹${spent.toLocaleString('en-IN')}`, change: `${count} items`, positive: false }
-                ],
-                chips: [
-                  { label: "💰 View Today's Sales & UPI", query: "what is today's total sales and UPI split" },
-                  { label: "🏆 Check Staff Leaderboard", query: "who is the top sales staff today" }
-                ],
-                actions: [
-                  { label: "Open Pocket Khata Desk", type: "NAVIGATE_TAB", target: "khata" }
-                ]
-              };
-            }
-          }
-
-          // 2. Sales & UPI Split Questions ("what is today's total sales and upi split", "collection", "cash", "upi")
-          if (!fallbackAnswer && (q.includes('sales') || q.includes('upi') || q.includes('split') || q.includes('collection') || q.includes('cash') || q.includes('card') || q.includes('revenue') || q.includes('today'))) {
-            const salesDoc = await getDoc(doc(db, 'stores', storeId, 'data', 'sales_overview'));
-            if (salesDoc.exists()) {
-              const salesData = salesDoc.data().today || salesDoc.data();
-              const totalSales = Number(salesData.TotalSales || 0);
-              const bills = Number(salesData.BillCount || 0);
-              const upi = Number(salesData.UPIAmount || 0);
-              const cash = Number(salesData.CashAmount || 0);
-              const card = Number(salesData.CardAmount || 0);
-
-              fallbackAnswer = {
-                text: `💰 **Today's Store Sales & Payment Summary (${storeId}):**\n\n• **Gross Sales:** ₹${totalSales.toLocaleString('en-IN')}\n• **Bills Generated:** ${bills} bills\n• **UPI Payment:** ₹${upi.toLocaleString('en-IN')}\n• **Cash Collection:** ₹${cash.toLocaleString('en-IN')}\n• **Card Swipes:** ₹${card.toLocaleString('en-IN')}`,
-                metrics: [
-                  { label: "Gross Sales", value: `₹${totalSales.toLocaleString('en-IN')}`, positive: true },
-                  { label: "UPI Received", value: `₹${upi.toLocaleString('en-IN')}`, positive: true },
-                  { label: "Cash In Till", value: `₹${cash.toLocaleString('en-IN')}`, positive: true }
-                ],
-                chips: [
-                  { label: "📋 Today's Expenses", query: "how much expense was today" },
-                  { label: "🏆 Staff Leaderboard", query: "who is top salesperson" }
-                ],
-                actions: [
-                  { label: "Open Sales Dashboard", type: "NAVIGATE_TAB", target: "dashboard" }
-                ]
-              };
-            }
-          }
-
-          // 3. Staff & Leaderboard Questions
-          if (!fallbackAnswer && (q.includes('staff') || q.includes('leaderboard') || q.includes('champion') || q.includes('incentive') || q.includes('commission') || q.includes('performer'))) {
-            const staffDoc = await getDoc(doc(db, 'stores', storeId, 'data', 'staff_leaderboard'));
-            if (staffDoc.exists()) {
-              const staffData = staffDoc.data();
-              const periodData = staffData.periods?.this_month || staffData.periods?.all_time || staffData;
-              const ranked = (periodData.staff || []).filter(s => !s.isUnassigned);
-              const champ = ranked[0];
-
-              if (champ) {
-                fallbackAnswer = {
-                  text: `🏆 **Store Staff Leaderboard:**\n\n• **Top Champion:** **${champ.name}** (#${champ.empCode})\n• **Sales Attributed:** ₹${Number(champ.totalSales).toLocaleString('en-IN')} (${champ.billCount} bills)\n• **Commission Accrued:** ₹${champ.totalPayout.toLocaleString('en-IN')}\n• **Quota Progress:** ${champ.achievementPct}%`,
-                  metrics: [
-                    { label: "Store Champion", value: champ.name, positive: true },
-                    { label: "Sales Volume", value: `₹${Number(champ.totalSales).toLocaleString('en-IN')}`, positive: true },
-                    { label: "Incentive Earned", value: `₹${champ.totalPayout.toLocaleString('en-IN')}`, positive: true }
-                  ],
-                  chips: [
-                    { label: "📅 Sep '26 Leaderboard", query: "staff performance in september 2026" },
-                    { label: "💰 Today's sales summary", query: "what is today's total sales and UPI split" }
-                  ],
-                  actions: [
-                    { label: "Open Staff Leaderboard", type: "NAVIGATE_TAB", target: "leaderboard" }
-                  ]
-                };
-              }
-            }
-          }
-        } catch (fsErr) {
-          console.error("Cloud copilot fallback failed:", fsErr);
+          setMessages(prev => [...prev, botMsg]);
+          return;
         }
       }
 
-      if (fallbackAnswer) {
+      // If remote or live backend didn't return JSON, resolve from synced Cloud Firestore
+      const cloudFallback = await resolveCloudCopilotQuery(query);
+      if (cloudFallback) {
         const botMsg = {
           id: 'bot_cloud_' + Date.now(),
           sender: 'bot',
-          text: fallbackAnswer.text,
-          metrics: fallbackAnswer.metrics || [],
-          products: [],
-          actions: fallbackAnswer.actions || [],
-          table: null,
-          chips: fallbackAnswer.chips || [],
+          text: cloudFallback.text,
+          metrics: cloudFallback.metrics || [],
+          products: cloudFallback.products || [],
+          actions: cloudFallback.actions || [],
+          table: cloudFallback.table || null,
+          chips: cloudFallback.chips || [],
           sqlUsed: "Cloud Synced Intelligence (Offline/Phone Mode)",
+          intent: 'CLOUD_ASSIST',
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        setMessages(prev => [...prev, botMsg]);
+        return;
+      }
+
+      // Default fallback message if query could not be resolved from cloud
+      const errMsg = {
+        id: 'bot_note_' + Date.now(),
+        sender: 'bot',
+        text: `🏪 **Cloud Copilot Active:** Could not find specific data for *"${query}"* in the synced cloud database. You can ask for sales, UPI splits, expenses, inventory sizes (e.g. *size 40 shirts*), or staff commissions.`,
+        chips: [
+          { label: "👔 Size 40 shirts in stock", query: "size 40 shirts in stock" },
+          { label: "💰 Today's sales & UPI split", query: "what is today's total sales and UPI split" },
+          { label: "📝 Today's expenses", query: "how much expense was today" },
+          { label: "🏆 Top salesperson", query: "who is top salesperson" }
+        ],
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, errMsg]);
+    } catch (err) {
+      console.warn("Copilot execution error, attempting emergency cloud fallback:", err);
+      const cloudFallback = await resolveCloudCopilotQuery(query);
+      if (cloudFallback) {
+        const botMsg = {
+          id: 'bot_cloud_' + Date.now(),
+          sender: 'bot',
+          text: cloudFallback.text,
+          metrics: cloudFallback.metrics || [],
+          products: cloudFallback.products || [],
+          actions: cloudFallback.actions || [],
+          table: cloudFallback.table || null,
+          chips: cloudFallback.chips || [],
+          sqlUsed: "Cloud Synced Intelligence (Emergency Fallback)",
           intent: 'CLOUD_ASSIST',
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
@@ -441,11 +388,11 @@ export default function ChatbotTab({ API_BASE = 'http://localhost:5000', darkMod
         const errMsg = {
           id: 'bot_err_' + Date.now(),
           sender: 'bot',
-          text: `⚠️ **Connection note:** Could not connect to the live desktop POS engine (${err.message}). When away from the store, Copilot answers sales, UPI splits, expenses, and staff queries from the synced cloud database.`,
+          text: `⚠️ **Connection note:** When away from the store desktop engine, Copilot answers sales, UPI splits, expenses, and inventory sizes directly from cloud telemetry.`,
           chips: [
+            { label: "👔 Size 40 shirts in stock", query: "size 40 shirts in stock" },
             { label: "💰 Today's sales & UPI split", query: "what is today's total sales and UPI split" },
-            { label: "📝 Today's expenses", query: "how much expense was today" },
-            { label: "🏆 Top salesperson", query: "who is top salesperson" }
+            { label: "📝 Today's expenses", query: "how much expense was today" }
           ],
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         };
