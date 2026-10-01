@@ -2331,7 +2331,7 @@ export default function App() {
                 onClose={() => setActiveTab('dashboard')}
                 API_BASE={API_BASE}
                 activeStore={activeStore}
-                userRole={userRole}
+                userRole={currentRole}
               />
             )}
 
