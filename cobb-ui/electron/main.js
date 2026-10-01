@@ -17,7 +17,7 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 
 
 // Register custom protocol scheme before app is ready
 protocol.registerSchemesAsPrivileged([
-  { scheme: 'app', privileges: { secure: true, standard: true, supportFetchAPI: true, corsEnabled: true } }
+  { scheme: 'app', privileges: { secure: true, standard: true, supportFetchAPI: true, corsEnabled: true, bypassCSP: true } }
 ]);
 
 let win;
@@ -43,7 +43,7 @@ function startBackendServices() {
 
   // 1. Check and start Backend Server if not running
   try {
-    const req = http.get('http://localhost:5000/api/sales/overview', (res) => {
+    const req = http.get('http://127.0.0.1:5000/api/sales/overview', (res) => {
       console.log('[Electron] Backend server is already running on port 5000');
     });
     req.on('error', () => {

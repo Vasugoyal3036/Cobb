@@ -126,24 +126,36 @@ const isTunnel = window.location.hostname.includes('trycloudflare.com') || windo
 const isLocalEnvironment = isLocalhost || isTunnel;
 
 const resolveApiBase = () => {
+  // 1. Electron Desktop App: ALWAYS connect directly to local POS backend on 127.0.0.1:5000
+  if (isElectron) return 'http://127.0.0.1:5000';
+
+  // 2. Tunnel access in browser
   if (isTunnel) return window.location.origin;
-  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
-  if (import.meta.env.VITE_API_BASE) return import.meta.env.VITE_API_BASE;
+
+  // 3. Environment variable override (if defined and non-empty)
+  if (import.meta.env.VITE_API_URL && typeof import.meta.env.VITE_API_URL === 'string' && import.meta.env.VITE_API_URL.trim() !== '') {
+    return import.meta.env.VITE_API_URL.trim();
+  }
+  if (import.meta.env.VITE_API_BASE && typeof import.meta.env.VITE_API_BASE === 'string' && import.meta.env.VITE_API_BASE.trim() !== '') {
+    return import.meta.env.VITE_API_BASE.trim();
+  }
+
+  // 4. Host-based resolution
   if (typeof window !== 'undefined') {
     const host = window.location.hostname;
-    if (host.includes('vercel.app') || host.includes('web.app') || host.includes('firebaseapp.com')) {
-      return 'http://localhost:5000';
+    // Phone Link (Firebase Hosting / Vercel): Cloud SaaS Firestore mode
+    if (host.includes('web.app') || host.includes('firebaseapp.com') || host.includes('vercel.app')) {
+      return '';
     }
-    // If accessing from phone via local Wi-Fi IP (e.g. 192.168.x.x, 10.x.x.x, 172.x.x.x)
+    // Local LAN (e.g. tablet on store Wi-Fi)
     if (host.startsWith('192.168.') || host.startsWith('10.') || host.startsWith('172.')) {
       return `http://${host}:5000`;
     }
-    // Remote browser on other domain
-    if (host !== 'localhost' && host !== '127.0.0.1' && !isElectron) {
-      return 'http://localhost:5000';
+    if (host === 'localhost' || host === '127.0.0.1') {
+      return 'http://127.0.0.1:5000';
     }
   }
-  return 'http://localhost:5000';
+  return 'http://127.0.0.1:5000';
 };
 const API_BASE = resolveApiBase();
 
@@ -171,7 +183,19 @@ const getActiveStoreId = () => {
 const originalAxiosGet = axios.get;
 
 axios.get = async (url, config) => {
-  const targetUrl = url.startsWith('http') ? url : `${API_BASE}${url}`;
+  let targetUrl = url;
+  if (!targetUrl.startsWith('http')) {
+    targetUrl = API_BASE ? `${API_BASE}${url}` : url;
+  }
+  // Standardize localhost to 127.0.0.1 in Electron to avoid IPv6 loopback hiccups
+  if (isElectron && targetUrl.includes('localhost:5000')) {
+    targetUrl = targetUrl.replace('localhost:5000', '127.0.0.1:5000');
+  }
+
+  // In Desktop Electron, ALWAYS bypass cloud interceptors and fetch straight from local backend
+  if (isElectron) {
+    return originalAxiosGet(targetUrl, config);
+  }
 
   // 1. If we have an active live tunnel API_BASE (ngrok/Cloudflare) or are local, prioritize live real-time backend!
   // This guarantees the phone link receives real-time, 100% updated data directly from the POS.

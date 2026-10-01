@@ -14,7 +14,8 @@ process.env.VITE_PUBLIC = f ? o.join(process.env.APP_ROOT, "public") : m, i.regi
 		secure: !0,
 		standard: !0,
 		supportFetchAPI: !0,
-		corsEnabled: !0
+		corsEnabled: !0,
+		bypassCSP: !0
 	}
 }]);
 var h, g = null;
@@ -32,7 +33,7 @@ function _() {
 	let t = o.dirname(e);
 	o.join(t, "cloud_sync.js");
 	try {
-		u.get("http://localhost:5000/api/sales/overview", (e) => {
+		u.get("http://127.0.0.1:5000/api/sales/overview", (e) => {
 			console.log("[Electron] Backend server is already running on port 5000");
 		}).on("error", () => {
 			console.log("[Electron] Starting backend server from:", e), g = l("node", [e], {
