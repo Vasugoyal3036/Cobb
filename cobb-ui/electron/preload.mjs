@@ -20,7 +20,9 @@ contextBridge.exposeInMainWorld('ipcRenderer', {
   },
 });
 
-// Expose openExternal so the renderer can open URLs in the system browser
+// Expose electronAPI so the renderer can interact with native POS hardware and shell
 contextBridge.exposeInMainWorld('electronAPI', {
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
+  kickCashDrawer: () => ipcRenderer.invoke('kick-cash-drawer'),
+  printSilentThermal: (options) => ipcRenderer.invoke('print-silent-thermal', options),
 });

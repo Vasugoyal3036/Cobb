@@ -16,6 +16,10 @@ e.exposeInMainWorld("ipcRenderer", {
 		let [n, ...r] = e;
 		return t.invoke(n, ...r);
 	}
-}), e.exposeInMainWorld("electronAPI", { openExternal: (e) => t.invoke("open-external", e) });
+}), e.exposeInMainWorld("electronAPI", {
+	openExternal: (e) => t.invoke("open-external", e),
+	kickCashDrawer: () => t.invoke("kick-cash-drawer"),
+	printSilentThermal: (e) => t.invoke("print-silent-thermal", e)
+});
 //#endregion
 export {};

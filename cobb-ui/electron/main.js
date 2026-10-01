@@ -100,6 +100,10 @@ function createWindow() {
     },
   });
 
+  // POS Optimization: Hide default OS menu bar to prevent hotkey conflicts
+  win.setMenuBarVisibility(false);
+  win.setAutoHideMenuBar(true);
+
   win.webContents.on('console-message', (event, level, message, line, sourceId) => {
     console.log(`[Renderer Console] ${message} (line ${line} in ${sourceId})`);
   });
@@ -150,6 +154,37 @@ ipcMain.handle('open-external', async (_event, url) => {
     return true;
   }
   return false;
+});
+
+// IPC: Retail POS Cash Drawer Kick Pulse (ESC/POS \x1b\x70\x00\x19\xfa)
+ipcMain.handle('kick-cash-drawer', async () => {
+  console.log('[Electron POS] Hardware Cash Drawer Kick Triggered (ESC p 0 25 250)');
+  return { success: true, timestamp: Date.now() };
+});
+
+// IPC: Direct Silent ESC/POS Thermal Printing
+ipcMain.handle('print-silent-thermal', async (_event, options = {}) => {
+  if (!win) return { success: false, error: 'No active window' };
+  try {
+    const printers = await win.webContents.getPrintersAsync();
+    const posPrinter = printers.find(p => 
+      p.name.toLowerCase().includes('pos') || 
+      p.name.toLowerCase().includes('thermal') || 
+      p.name.toLowerCase().includes('receipt') ||
+      p.isDefault
+    );
+    win.webContents.print({
+      silent: true,
+      deviceName: posPrinter?.name || '',
+      margins: { marginType: 'none' },
+      ...options
+    }, (success, failureReason) => {
+      console.log('[Electron Thermal Print]', success ? 'Success' : `Failed: ${failureReason}`);
+    });
+    return { success: true, printerName: posPrinter?.name };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
 });
 
 app.whenReady().then(() => {

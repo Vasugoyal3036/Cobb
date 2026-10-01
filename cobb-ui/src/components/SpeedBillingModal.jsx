@@ -539,7 +539,10 @@ export default function SpeedBillingModal({
 
   // Instant Thermal Print & Drawer Kick
   const handleInstantPrintAndDrawer = () => {
-    // 1. Kick cash drawer via POS ESC/POS sequence (or console pulse)
+    // 1. Kick cash drawer via Electron native IPC if in desktop app
+    if (typeof window !== 'undefined' && window.electronAPI?.kickCashDrawer) {
+      window.electronAPI.kickCashDrawer();
+    }
     console.log('[POS Speed Billing] Pulse Drawer Kick: ESC p 0 25 250');
     // 2. Trigger thermal print
     triggerThermalPrint('speed-billing-receipt');

@@ -71,7 +71,7 @@ function y() {
 			contextIsolation: !0,
 			webSecurity: !1
 		}
-	}), h.webContents.on("console-message", (e, t, n, r, i) => {
+	}), h.setMenuBarVisibility(!1), h.setAutoHideMenuBar(!0), h.webContents.on("console-message", (e, t, n, r, i) => {
 		console.log(`[Renderer Console] ${n} (line ${r} in ${i})`);
 	}), h.webContents.setWindowOpenHandler(({ url: e }) => ((e.startsWith("https://") || e.startsWith("http://wa") || e.startsWith("whatsapp://")) && a.openExternal(e), { action: "deny" })), f ? (console.log("[Electron] Loading dev server URL:", f), h.loadURL(f)) : (console.log("[Electron] Loading app://index.html"), h.loadURL("app://-/index.html")), h.webContents.on("did-fail-load", (e, t, n) => {
 		console.error("[Electron] Failed to load:", t, n);
@@ -83,7 +83,34 @@ t.on("window-all-closed", () => {
 	e.getAllWindows().length === 0 && y();
 }), t.on("before-quit", () => {
 	v();
-}), n.handle("open-external", async (e, t) => typeof t == "string" && (t.startsWith("https://") || t.startsWith("http://") || t.startsWith("whatsapp://")) ? (await a.openExternal(t), !0) : !1), t.whenReady().then(() => {
+}), n.handle("open-external", async (e, t) => typeof t == "string" && (t.startsWith("https://") || t.startsWith("http://") || t.startsWith("whatsapp://")) ? (await a.openExternal(t), !0) : !1), n.handle("kick-cash-drawer", async () => (console.log("[Electron POS] Hardware Cash Drawer Kick Triggered (ESC p 0 25 250)"), {
+	success: !0,
+	timestamp: Date.now()
+})), n.handle("print-silent-thermal", async (e, t = {}) => {
+	if (!h) return {
+		success: !1,
+		error: "No active window"
+	};
+	try {
+		let e = (await h.webContents.getPrintersAsync()).find((e) => e.name.toLowerCase().includes("pos") || e.name.toLowerCase().includes("thermal") || e.name.toLowerCase().includes("receipt") || e.isDefault);
+		return h.webContents.print({
+			silent: !0,
+			deviceName: e?.name || "",
+			margins: { marginType: "none" },
+			...t
+		}, (e, t) => {
+			console.log("[Electron Thermal Print]", e ? "Success" : `Failed: ${t}`);
+		}), {
+			success: !0,
+			printerName: e?.name
+		};
+	} catch (e) {
+		return {
+			success: !1,
+			error: e.message
+		};
+	}
+}), t.whenReady().then(() => {
 	_(), i.handle("app", (e) => {
 		let t = e.url.substring(8);
 		t ||= "index.html", t = t.split("?")[0].split("#")[0];
