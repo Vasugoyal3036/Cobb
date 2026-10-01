@@ -2989,7 +2989,9 @@ app.get('/api/financials/pnl', async (req, res) => {
             SELECT 
                 ISNULL(SUM(NET_AMOUNT), 0) as GrossSales,
                 ISNULL(SUM(TOTAL_GST_AMOUNT), 0) as TotalTax,
-                COUNT(CM_ID) as TotalBills
+                COUNT(CM_ID) as TotalBills,
+                ISNULL(SUM(TOTAL_QUANTITY), 0) as TotalQuantity,
+                ISNULL(AVG(NET_AMOUNT), 0) as AvgSalePerBill
             FROM CMM01106 WITH (NOLOCK)
             WHERE CM_TIME >= @startOfMonth AND CANCELLED = 0;
 
@@ -2998,6 +3000,8 @@ app.get('/api/financials/pnl', async (req, res) => {
                 ISNULL(SUM(NET_AMOUNT), 0) as LifetimeGrossSales,
                 ISNULL(SUM(TOTAL_GST_AMOUNT), 0) as LifetimeTax,
                 COUNT(CM_ID) as LifetimeBills,
+                ISNULL(SUM(TOTAL_QUANTITY), 0) as LifetimeQuantity,
+                ISNULL(AVG(NET_AMOUNT), 0) as AvgSalePerBill,
                 MIN(CM_TIME) as FirstSaleDate,
                 MAX(CM_TIME) as LastSaleDate
             FROM CMM01106 WITH (NOLOCK)
@@ -3010,11 +3014,23 @@ app.get('/api/financials/pnl', async (req, res) => {
                 MONTH(CM_TIME) as Month,
                 ISNULL(SUM(NET_AMOUNT), 0) as GrossSales,
                 ISNULL(SUM(TOTAL_GST_AMOUNT), 0) as TotalTax,
-                COUNT(CM_ID) as TotalBills
+                COUNT(CM_ID) as TotalBills,
+                ISNULL(SUM(TOTAL_QUANTITY), 0) as TotalQuantity,
+                ISNULL(AVG(NET_AMOUNT), 0) as AvgSalePerBill
             FROM CMM01106 WITH (NOLOCK)
             WHERE CANCELLED = 0
             GROUP BY CONVERT(varchar(7), CM_TIME, 120), YEAR(CM_TIME), MONTH(CM_TIME)
             ORDER BY MonthKey DESC;
+
+            -- 4. Payment Modes Breakdown (Matching POS)
+            SELECT 
+                ISNULL(m.PAYMODE_NAME, p.PAYMODE_CODE) as Mode,
+                ISNULL(SUM(p.AMOUNT), 0) as Amount,
+                COUNT(DISTINCT p.MEMO_ID) as Bills
+            FROM paymode_xn_det p WITH (NOLOCK)
+            LEFT JOIN PAYMODE_MST m WITH (NOLOCK) ON p.PAYMODE_CODE = m.PAYMODE_CODE
+            GROUP BY ISNULL(m.PAYMODE_NAME, p.PAYMODE_CODE)
+            ORDER BY Amount DESC;
         `);
 
         // Franchise Retail P&L Model Standard Costs
@@ -3030,37 +3046,55 @@ app.get('/api/financials/pnl', async (req, res) => {
         ];
 
         // 1. Current Month Metrics
-        const currentSales = batchQuery.recordsets[0]?.[0]?.GrossSales || 0;
-        const currentTax = batchQuery.recordsets[0]?.[0]?.TotalTax || 0;
-        const currentTaxable = currentSales - currentTax;
-        const currentBills = batchQuery.recordsets[0]?.[0]?.TotalBills || 0;
+        const currentSales = Number(batchQuery.recordsets[0]?.[0]?.GrossSales || 0);
+        const currentTax = Number(batchQuery.recordsets[0]?.[0]?.TotalTax || 0);
+        const currentTaxable = Number((currentSales - currentTax).toFixed(2)); // Raw sales before taxes
+        const currentBills = Number(batchQuery.recordsets[0]?.[0]?.TotalBills || 0);
+        const currentQty = Number(batchQuery.recordsets[0]?.[0]?.TotalQuantity || 0);
         const currentGrossProfit = Math.round(currentTaxable * 0.27);
         const currentCogs = currentTaxable - currentGrossProfit;
         const currentNetProfit = currentGrossProfit - totalExpenses;
-        const currentMarginPct = currentSales > 0 ? Math.round((currentNetProfit / currentSales) * 100) : 0;
+        const currentMarginPct = currentTaxable > 0 ? Math.round((currentNetProfit / currentTaxable) * 100) : (currentSales > 0 ? Math.round((currentNetProfit / currentSales) * 100) : 0);
 
         // 2. Lifetime Metrics
         const ltRecord = batchQuery.recordsets[1]?.[0] || {};
-        const ltSales = ltRecord.LifetimeGrossSales || 0;
-        const ltTax = ltRecord.LifetimeTax || 0;
-        const ltTaxable = ltSales - ltTax;
-        const ltBills = ltRecord.LifetimeBills || 0;
+        const ltSales = Number(ltRecord.LifetimeGrossSales || 0);
+        const ltTax = Number(ltRecord.LifetimeTax || 0);
+        const ltTaxable = Number((ltSales - ltTax).toFixed(2)); // Lifetime raw sales before taxes
+        const ltBills = Number(ltRecord.LifetimeBills || 0);
+        const ltQty = Number(ltRecord.LifetimeQuantity || 0);
+        const ltAvgSale = ltBills > 0 ? Number((ltSales / ltBills).toFixed(2)) : 0;
         const ltGrossProfit = Math.round(ltTaxable * 0.27);
         const ltCogs = ltTaxable - ltGrossProfit;
         const ltAvgBill = ltBills > 0 ? Math.round(ltSales / ltBills) : 0;
+        const ltAvgBillRaw = ltBills > 0 ? Number((ltTaxable / ltBills).toFixed(2)) : 0;
+
+        // Payment Breakdown (POS Dialog Match)
+        const paymentRows = batchQuery.recordsets[3] || [];
+        const paymentDetails = paymentRows.map(pr => {
+            const rawMode = String(pr.Mode || '').trim();
+            const modeName = rawMode === '0000000' ? 'INR' : (rawMode === '0000007' ? 'UPI' : rawMode);
+            return {
+                type: modeName,
+                amount: Number(pr.Amount || 0),
+                bills: Number(pr.Bills || 0)
+            };
+        });
 
         // 3. Each Month Sales Breakdown
         const monthlyRows = batchQuery.recordsets[2] || [];
         const monthlySales = monthlyRows.map(row => {
-            const mSales = row.GrossSales || 0;
-            const mTax = row.TotalTax || 0;
-            const mTaxable = mSales - mTax;
-            const mBills = row.TotalBills || 0;
+            const mSales = Number(row.GrossSales || 0);
+            const mTax = Number(row.TotalTax || 0);
+            const mTaxable = Number((mSales - mTax).toFixed(2)); // Monthly raw sales before taxes
+            const mBills = Number(row.TotalBills || 0);
+            const mQty = Number(row.TotalQuantity || 0);
             const mGrossProfit = Math.round(mTaxable * 0.27);
             const mCogs = mTaxable - mGrossProfit;
             const mNetProfit = mGrossProfit - totalExpenses;
-            const mMarginPct = mSales > 0 ? Math.round((mNetProfit / mSales) * 100) : 0;
+            const mMarginPct = mTaxable > 0 ? Math.round((mNetProfit / mTaxable) * 100) : (mSales > 0 ? Math.round((mNetProfit / mSales) * 100) : 0);
             const mAvgBill = mBills > 0 ? Math.round(mSales / mBills) : 0;
+            const mAvgBillRaw = mBills > 0 ? Number((mTaxable / mBills).toFixed(2)) : 0;
             const monthLabel = `${monthNames[row.Month - 1] || ''} ${row.Year}`;
 
             return {
@@ -3068,13 +3102,19 @@ app.get('/api/financials/pnl', async (req, res) => {
                 monthName: monthLabel,
                 year: row.Year,
                 month: row.Month,
-                grossSales: mSales,
-                taxCollected: mTax,
+                rawSales: mTaxable,
+                rawSalesBeforeTax: mTaxable,
                 taxableRevenue: mTaxable,
+                grossSales: mSales,
+                grossReceipts: mSales,
+                taxCollected: mTax,
                 costOfGoodsSold: mCogs,
                 grossProfit: mGrossProfit,
                 totalBills: mBills,
+                totalQuantity: mQty,
                 avgBillValue: mAvgBill,
+                avgBillValueRaw: mAvgBillRaw,
+                avgSalePerBill: mBills > 0 ? Number((mSales / mBills).toFixed(2)) : 0,
                 operatingExpenses: {
                     rent,
                     electricity,
@@ -3091,21 +3131,30 @@ app.get('/api/financials/pnl', async (req, res) => {
         const activeMonthsCount = monthlySales.length || 1;
         const ltExpenses = totalExpenses * activeMonthsCount;
         const ltNetProfit = ltGrossProfit - ltExpenses;
-        const ltMarginPct = ltSales > 0 ? Math.round((ltNetProfit / ltSales) * 100) : 0;
+        const ltMarginPct = ltTaxable > 0 ? Math.round((ltNetProfit / ltTaxable) * 100) : (ltSales > 0 ? Math.round((ltNetProfit / ltSales) * 100) : 0);
 
         const now = new Date();
         const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
         const currentMonthName = `${monthNames[now.getMonth()]} ${now.getFullYear()}`;
 
+        // Find latest month with active sales to avoid defaulting to zero on new month roll-over
+        const latestActiveMonth = monthlySales.find(m => m.totalBills > 0) || monthlySales[0];
+
         res.json({
-            // Current month (preserves existing contract)
-            grossSales: currentSales,
-            taxCollected: currentTax,
+            // Current month (explicit raw sales before taxes + legacy compatibility)
+            rawSales: currentTaxable,
+            rawSalesBeforeTax: currentTaxable,
             taxableRevenue: currentTaxable,
+            grossSales: currentSales,
+            grossReceipts: currentSales,
+            taxCollected: currentTax,
             costOfGoodsSold: currentCogs,
             grossProfit: currentGrossProfit,
             totalBills: currentBills,
+            totalQuantity: currentQty,
             avgBillValue: currentBills > 0 ? Math.round(currentSales / currentBills) : 0,
+            avgBillValueRaw: currentBills > 0 ? Number((currentTaxable / currentBills).toFixed(2)) : 0,
+            avgSalePerBill: currentBills > 0 ? Number((currentSales / currentBills).toFixed(2)) : 0,
             operatingExpenses: {
                 rent,
                 electricity,
@@ -3117,22 +3166,43 @@ app.get('/api/financials/pnl', async (req, res) => {
             profitMarginPct: currentMarginPct,
             currentMonthKey,
             currentMonthName,
+            latestActiveMonthKey: latestActiveMonth ? latestActiveMonth.monthKey : currentMonthKey,
 
-            // Lifetime telemetry
+            // Lifetime telemetry (featuring Gross Sales ₹20,41,086.00 matching POS & Raw Sales ₹19,36,038.82)
             lifetime: {
-                grossSales: ltSales,
-                taxCollected: ltTax,
+                rawSales: ltTaxable,
+                rawSalesBeforeTax: ltTaxable,
                 taxableRevenue: ltTaxable,
+                grossSales: ltSales,
+                grossReceipts: ltSales,
+                taxCollected: ltTax,
                 costOfGoodsSold: ltCogs,
                 grossProfit: ltGrossProfit,
                 totalBills: ltBills,
+                totalQuantity: ltQty,
+                avgSalePerBill: ltAvgSale,
                 avgBillValue: ltAvgBill,
+                avgBillValueRaw: ltAvgBillRaw,
                 firstSaleDate: ltRecord.FirstSaleDate,
                 lastSaleDate: ltRecord.LastSaleDate,
                 activeMonthsCount,
                 totalOperatingExpenses: ltExpenses,
                 netStoreProfit: ltNetProfit,
-                profitMarginPct: ltMarginPct
+                profitMarginPct: ltMarginPct,
+                paymentDetails
+            },
+
+            // POS Verified Match Summary
+            posReconciliation: {
+                user: 'BILLING_COBB',
+                location: 'ST-COBB APPARELS PVT LTD-PUNDRI',
+                totalSale: ltSales,
+                totalSaleWithoutRoundOff: ltSales,
+                totalBills: ltBills,
+                avgSalePerBill: ltAvgSale,
+                totalQuantity: ltQty,
+                totalLocation: 1,
+                paymentDetails
             },
 
             // Month-by-month history

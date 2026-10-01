@@ -1198,5 +1198,17 @@
     "reason": "checkout",
     "status": "sent",
     "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-09-30T18:24:53.307107",
+    "date": "2026-09-30",
+    "time": "06:24 PM",
+    "billNo": "STST27-00756   ",
+    "cmId": "ST01127000STST27-00756",
+    "customerName": "Satpal",
+    "phone": "9992051186",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
   }
 ]

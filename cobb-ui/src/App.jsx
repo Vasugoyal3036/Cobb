@@ -216,10 +216,14 @@ axios.get = async (url, config) => {
   return originalAxiosGet(targetUrl, config);
 };
 
-// Local Cache Helpers for Instant 0ms Page Renders
+// Local Cache Helpers for Instant 0ms Page Renders (Cache Version v4 - purges stale Sep 27 snapshots)
+const CACHE_PREFIX = 'cobb_cache_v4_';
 const getLocalCache = (key, fallback) => {
   try {
-    const item = localStorage.getItem('cobb_cache_' + key);
+    if (localStorage.getItem('cobb_cache_' + key)) {
+      localStorage.removeItem('cobb_cache_' + key);
+    }
+    const item = localStorage.getItem(CACHE_PREFIX + key);
     return item ? JSON.parse(item) : fallback;
   } catch (e) {
     return fallback;
@@ -228,7 +232,7 @@ const getLocalCache = (key, fallback) => {
 
 const setLocalCache = (key, val) => {
   try {
-    localStorage.setItem('cobb_cache_' + key, JSON.stringify(val));
+    localStorage.setItem(CACHE_PREFIX + key, JSON.stringify(val));
   } catch (e) {}
 };
 
@@ -531,6 +535,41 @@ export default function App() {
     } catch (e) {}
   }, []);
 
+  const [isRefreshingPnl, setIsRefreshingPnl] = useState(false);
+  const [isRefreshingMonthly, setIsRefreshingMonthly] = useState(false);
+
+  const fetchPnl = async () => {
+    setIsRefreshingPnl(true);
+    try {
+      const res = await axios.get(`${API_BASE}/api/financials/pnl`);
+      if (!res?.data?.error && res?.data) {
+        setPnlData(res.data);
+        setLocalCache('pnlData', res.data);
+      }
+      return res.data;
+    } catch (e) {
+      console.error('[PNL] Refresh error:', e);
+    } finally {
+      setIsRefreshingPnl(false);
+    }
+  };
+
+  const fetchMonthlyProducts = async () => {
+    setIsRefreshingMonthly(true);
+    try {
+      const res = await axios.get(`${API_BASE}/api/analytics/monthly-products`);
+      if (!res?.data?.error && Array.isArray(res.data)) {
+        setMonthlyProducts(res.data);
+        setLocalCache('monthlyProducts', res.data);
+      }
+      return res.data;
+    } catch (e) {
+      console.error('[MONTHLY] Refresh error:', e);
+    } finally {
+      setIsRefreshingMonthly(false);
+    }
+  };
+
   const handleOpenBillFromNotification = (alertData) => {
     setActiveCheckoutAlert(null);
     if (alertData?.type === 'eod_summary') {
@@ -756,6 +795,18 @@ export default function App() {
         }
       }).catch(console.error);
       axios.get(`${API_BASE}/api/reconciliation/latest`).then(res => { if(!res?.data?.error) setReconData(res.data); }).catch(console.error);
+      axios.get(`${API_BASE}/api/financials/pnl`).then(res => {
+        if (!res?.data?.error && res?.data) {
+          setPnlData(res.data);
+          setLocalCache('pnlData', res.data);
+        }
+      }).catch(console.error);
+      axios.get(`${API_BASE}/api/analytics/monthly-products`).then(res => {
+        if (!res?.data?.error && Array.isArray(res.data)) {
+          setMonthlyProducts(res.data);
+          setLocalCache('monthlyProducts', res.data);
+        }
+      }).catch(console.error);
     }, 300);
   }, []);
 
@@ -764,9 +815,9 @@ export default function App() {
     if (['inventory', 'deadstock'].includes(activeTab) && (!deadStock || deadStock.length === 0)) {
       subscribeToData('dead-stock', `${API_BASE}/api/inventory/dead-stock`, setDeadStock);
     }
-    if (activeTab === 'monthly' && (!monthlyProducts || monthlyProducts.length === 0)) {
+    if (activeTab === 'monthly') {
       axios.get(`${API_BASE}/api/analytics/monthly-products`).then(res => {
-        if(!res?.data?.error) {
+        if(!res?.data?.error && Array.isArray(res.data)) {
           setMonthlyProducts(res.data);
           setLocalCache('monthlyProducts', res.data);
         }
@@ -825,9 +876,9 @@ export default function App() {
     if (activeTab === 'smart_bundles' && (!bundles || bundles.length === 0)) {
       fetchBundles();
     }
-    if (activeTab === 'pnl' && (!pnlData || Object.keys(pnlData).length === 0)) {
+    if (activeTab === 'pnl') {
       axios.get(`${API_BASE}/api/financials/pnl`).then(res => {
-        if (!res?.data?.error) {
+        if (!res?.data?.error && res?.data) {
           setPnlData(res.data);
           setLocalCache('pnlData', res.data);
         }
@@ -1592,6 +1643,10 @@ export default function App() {
     onOpenWardrobePassport: openWardrobePassport,
     pnlData: typeof pnlData !== 'undefined' ? pnlData : undefined,
     setPnlData: typeof setPnlData !== 'undefined' ? setPnlData : undefined,
+    fetchPnl,
+    isRefreshingPnl,
+    fetchMonthlyProducts,
+    isRefreshingMonthly,
     retentionData: typeof retentionData !== 'undefined' ? retentionData : undefined,
     setRetentionData: typeof setRetentionData !== 'undefined' ? setRetentionData : undefined,
     reconData: typeof reconData !== 'undefined' ? reconData : undefined,
