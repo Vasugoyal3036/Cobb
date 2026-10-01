@@ -160,6 +160,11 @@ export default function StaffLeaderboardTab({ API_BASE = 'http://localhost:5000'
   const staffList = leaderboardData?.staff || [];
   const summary = leaderboardData?.summary || {};
 
+  // Extract month-by-month historical data from bundle
+  const availableMonths = rawBundle?.availableMonths || [];
+  const monthlyHistory = rawBundle?.monthlyHistory || [];
+  const selectedMonthObj = availableMonths.find(m => m.key === period);
+
   // Separate ranked named staff from unassigned direct counter
   const rankedStaff = staffList.filter(s => !s.isUnassigned);
   const unassignedSales = staffList.find(s => s.isUnassigned);
@@ -194,6 +199,7 @@ export default function StaffLeaderboardTab({ API_BASE = 'http://localhost:5000'
 
         {/* Action Buttons & Period Selector */}
         <div className="flex items-center gap-2 flex-wrap">
+          {/* Quick Rolling Periods */}
           <div className="flex bg-slate-100 dark:bg-slate-800/80 p-1 rounded-2xl border border-slate-200 dark:border-slate-700/80 text-xs font-semibold">
             {[
               { id: 'today', label: 'Today' },
@@ -216,6 +222,37 @@ export default function StaffLeaderboardTab({ API_BASE = 'http://localhost:5000'
             ))}
           </div>
 
+          {/* Month-by-Month Historical Selector */}
+          {availableMonths.length > 0 && (
+            <div className="flex items-center bg-slate-100 dark:bg-slate-800/80 p-1 rounded-2xl border border-slate-200 dark:border-slate-700/80 text-xs font-semibold gap-1">
+              <span className="text-slate-400 dark:text-slate-500 px-2 flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider">
+                <Calendar className="w-3.5 h-3.5 text-amber-500" />
+                Month:
+              </span>
+              {availableMonths.map(m => {
+                const isSelected = period === m.key;
+                return (
+                  <button
+                    key={m.key}
+                    onClick={() => setPeriod(m.key)}
+                    className={`px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 ${
+                      isSelected
+                        ? 'bg-amber-500 text-white font-bold shadow-md shadow-amber-500/20'
+                        : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <span>{m.shortLabel || m.label}</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-md font-mono ${
+                      isSelected ? 'bg-amber-600/70 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
+                    }`}>
+                      {m.totalBills}b
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
           <button
             onClick={() => setShowConfigModal(true)}
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 shadow-sm transition"
@@ -233,6 +270,35 @@ export default function StaffLeaderboardTab({ API_BASE = 'http://localhost:5000'
           </button>
         </div>
       </div>
+
+      {/* Active Month Indicator Banner */}
+      {selectedMonthObj && (
+        <div className="bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-transparent border border-amber-500/30 p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm animate-in fade-in duration-200">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-amber-500 text-slate-950 rounded-xl font-black text-xs flex items-center gap-1 shadow">
+              <Calendar className="w-4 h-4" />
+              MONTH FILTER
+            </div>
+            <div>
+              <div className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <span>{selectedMonthObj.label} Performance & Leaderboard</span>
+                <span className="text-xs font-normal text-amber-600 dark:text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 font-mono">
+                  {selectedMonthObj.key}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Total Store Gross: <strong className="text-slate-700 dark:text-slate-200 font-bold">₹{selectedMonthObj.grossSales.toLocaleString('en-IN')}</strong> • {selectedMonthObj.totalBills} bills • {selectedMonthObj.totalQuantity} items sold
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setPeriod('all_time')}
+            className="self-start sm:self-center text-xs font-bold px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition"
+          >
+            Reset to All Time
+          </button>
+        </div>
+      )}
 
       {/* KPI Overview Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -583,6 +649,126 @@ export default function StaffLeaderboardTab({ API_BASE = 'http://localhost:5000'
           </table>
         </div>
       </div>
+
+      {/* Month-by-Month Progression & Champions Breakdown */}
+      {monthlyHistory.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-sm p-6 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 rounded-lg">
+                  <Calendar className="w-4 h-4" />
+                </div>
+                <h3 className="text-lg font-black text-slate-900 dark:text-white">
+                  Month-by-Month Performance History
+                </h3>
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                Track salesperson milestones, monthly store champions, and commission payouts over time
+              </p>
+            </div>
+            <span className="text-xs font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-full w-fit">
+              {monthlyHistory.length} Recorded Months
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {monthlyHistory.map(m => {
+              const isCurrentPeriod = period === m.monthKey;
+              return (
+                <div
+                  key={m.monthKey}
+                  className={`p-5 rounded-2xl border transition-all ${
+                    isCurrentPeriod
+                      ? 'border-amber-500 bg-amber-500/5 shadow-md shadow-amber-500/10 ring-1 ring-amber-500/30'
+                      : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-850 hover:border-slate-300 dark:hover:border-slate-700'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-base font-black text-slate-900 dark:text-white">
+                          {m.label}
+                        </h4>
+                        {isCurrentPeriod && (
+                          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-amber-500 text-white rounded-full">
+                            Active View
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        {m.totalBills} Bills • {m.totalQuantity} Items Sold
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={() => setPeriod(m.monthKey)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 ${
+                        isCurrentPeriod
+                          ? 'bg-amber-500 text-white shadow'
+                          : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700'
+                      }`}
+                    >
+                      {isCurrentPeriod ? 'Viewing' : 'View Month'}
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {/* Monthly Metrics Summary */}
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200/80 dark:border-slate-800">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
+                        Gross Store Sales
+                      </span>
+                      <span className="text-lg font-black text-slate-900 dark:text-white">
+                        ₹{m.grossSales.toLocaleString('en-IN')}
+                      </span>
+                    </div>
+
+                    <div className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200/80 dark:border-slate-800">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-0.5">
+                        Staff Incentive
+                      </span>
+                      <span className="text-lg font-black text-emerald-600 dark:text-emerald-400">
+                        ₹{m.totalCommission.toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Monthly Champion Feature */}
+                  {m.champion ? (
+                    <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent p-3 rounded-xl border border-amber-500/20 flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg bg-amber-400 text-slate-950 font-black flex items-center justify-center text-xs shadow-sm">
+                          👑
+                        </div>
+                        <div>
+                          <div className="text-xs font-black text-slate-900 dark:text-white flex items-center gap-1.5">
+                            <span>{m.champion.name}</span>
+                            <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold">
+                              Month Champion
+                            </span>
+                          </div>
+                          <span className="text-[11px] text-slate-500">
+                            ₹{m.champion.totalSales.toLocaleString('en-IN')} sales ({m.champion.bills} bills)
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-lg border border-emerald-500/20">
+                        +₹{m.champion.commission} Payout
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="text-xs text-slate-400 italic p-2 bg-slate-100 dark:bg-slate-800 rounded-xl text-center">
+                      Direct Counter Sales Only
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Staff Drill-Down Modal */}
       {selectedStaff && (

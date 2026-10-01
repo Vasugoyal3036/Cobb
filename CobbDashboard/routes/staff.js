@@ -50,7 +50,52 @@ function saveStaffConfig(cfg) {
     }
 }
 
+const monthNames = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+];
+
+async function getAvailableMonths() {
+    try {
+        const result = await sql.query(`
+            SELECT 
+                CONVERT(varchar(7), CM_TIME, 120) as MonthKey,
+                YEAR(CM_TIME) as Year,
+                MONTH(CM_TIME) as Month,
+                COUNT(DISTINCT CM_ID) as TotalBills,
+                ISNULL(SUM(TOTAL_QUANTITY), 0) as TotalQuantity,
+                ISNULL(SUM(NET_AMOUNT), 0) as GrossSales
+            FROM CMM01106 WITH (NOLOCK)
+            WHERE CANCELLED = 0
+            GROUP BY CONVERT(varchar(7), CM_TIME, 120), YEAR(CM_TIME), MONTH(CM_TIME)
+            ORDER BY MonthKey DESC
+        `);
+
+        return (result.recordset || []).map(r => ({
+            key: r.MonthKey,
+            year: Number(r.Year),
+            month: Number(r.Month),
+            label: `${monthNames[Number(r.Month) - 1]} ${r.Year}`,
+            shortLabel: `${monthNames[Number(r.Month) - 1].slice(0, 3)} '${String(r.Year).slice(2)}`,
+            totalBills: Number(r.TotalBills) || 0,
+            totalQuantity: Number(r.TotalQuantity) || 0,
+            grossSales: Math.round(Number(r.GrossSales) || 0)
+        }));
+    } catch (e) {
+        console.error('[StaffRoute] Error fetching available months:', e.message);
+        return [];
+    }
+}
+
 function getDateClause(period) {
+    if (!period) return '1=1';
+
+    // Support month-by-month: YYYY-MM (e.g. '2026-09')
+    if (/^\d{4}-\d{2}$/.test(period)) {
+        const [year, month] = period.split('-').map(Number);
+        return `m.CM_TIME >= DATEFROMPARTS(${year}, ${month}, 1) AND m.CM_TIME < DATEADD(month, 1, DATEFROMPARTS(${year}, ${month}, 1))`;
+    }
+
     switch (period) {
         case 'today':
             return 'm.CM_TIME >= CAST(GETDATE() AS DATE)';
@@ -256,13 +301,50 @@ router.get('/leaderboard', async (req, res) => {
 
     try {
         if (period === 'bundle') {
-            const [today, yesterday, thisWeek, thisMonth, allTime] = await Promise.all([
+            const [today, yesterday, thisWeek, thisMonth, allTime, availableMonths] = await Promise.all([
                 getLeaderboardForPeriod('today', config),
                 getLeaderboardForPeriod('yesterday', config),
                 getLeaderboardForPeriod('this_week', config),
                 getLeaderboardForPeriod('this_month', config),
-                getLeaderboardForPeriod('all_time', config)
+                getLeaderboardForPeriod('all_time', config),
+                getAvailableMonths()
             ]);
+
+            // Fetch each historical month in parallel
+            const monthPeriods = {};
+            const monthlyHistory = [];
+
+            await Promise.all(availableMonths.map(async (m) => {
+                const mData = await getLeaderboardForPeriod(m.key, config);
+                monthPeriods[m.key] = mData;
+
+                const rankedStaff = (mData.staff || []).filter(s => !s.isUnassigned);
+                const champion = rankedStaff[0] || null;
+                const totalCommission = rankedStaff.reduce((sum, s) => sum + (s.totalPayout || 0), 0);
+                const staffSales = rankedStaff.reduce((sum, s) => sum + (s.totalSales || 0), 0);
+
+                monthlyHistory.push({
+                    monthKey: m.key,
+                    label: m.label,
+                    shortLabel: m.shortLabel,
+                    grossSales: m.grossSales,
+                    staffSales,
+                    totalBills: m.totalBills,
+                    totalQuantity: m.totalQuantity,
+                    activeStaffCount: rankedStaff.length,
+                    totalCommission,
+                    champion: champion ? {
+                        name: champion.name,
+                        empCode: champion.empCode,
+                        totalSales: champion.totalSales,
+                        commission: champion.totalPayout,
+                        bills: champion.billCount
+                    } : null
+                });
+            }));
+
+            // Sort monthly history descending by monthKey
+            monthlyHistory.sort((a, b) => b.monthKey.localeCompare(a.monthKey));
 
             return res.json({
                 period: 'bundle',
@@ -271,8 +353,11 @@ router.get('/leaderboard', async (req, res) => {
                     yesterday,
                     this_week: thisWeek,
                     this_month: thisMonth,
-                    all_time: allTime
+                    all_time: allTime,
+                    ...monthPeriods
                 },
+                availableMonths,
+                monthlyHistory,
                 summary: allTime.summary,
                 staff: allTime.staff,
                 config: allTime.config
@@ -283,6 +368,16 @@ router.get('/leaderboard', async (req, res) => {
         res.json(data);
     } catch (err) {
         console.error('[StaffRoute] Leaderboard error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/staff/months
+router.get('/months', async (req, res) => {
+    try {
+        const availableMonths = await getAvailableMonths();
+        res.json({ success: true, availableMonths });
+    } catch (err) {
         res.status(500).json({ error: err.message });
     }
 });
