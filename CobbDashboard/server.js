@@ -49,18 +49,6 @@ const alterationsRouter = require('./routes/alterations');
 app.use('/api/alterations', alterationsRouter);
 
 
-// Stores Network endpoint (Feature 2 — Save-The-Sale)
-const STORES_NETWORK_FILE = path.join(__dirname, 'stores_network.json');
-app.get('/api/stores/network', (req, res) => {
-    try {
-        const raw = fs.readFileSync(STORES_NETWORK_FILE, 'utf8');
-        res.json(JSON.parse(raw));
-    } catch (e) {
-        res.json({ stores: [] });
-    }
-});
-
-
 const GlobalNodeCache = require('node-cache');
 const globalApiCache = new GlobalNodeCache({ stdTTL: 180 }); // Default fallback
 

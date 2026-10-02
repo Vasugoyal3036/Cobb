@@ -14,7 +14,6 @@ const LoyaltyTab = lazy(() => import('./components/tabs/LoyaltyTab'));
 const ExchangeTab = lazy(() => import('./components/tabs/ExchangeTab'));
 const PocketKhataTab = lazy(() => import('./components/tabs/PocketKhataTab'));
 const HoldDeskTab = lazy(() => import('./components/tabs/HoldDeskTab'));
-const SaveTheSaleTab = lazy(() => import('./components/tabs/SaveTheSaleTab'));
 const ChatbotTab = lazy(() => import('./components/tabs/ChatbotTab'));
 const AlterationsTab = lazy(() => import('./components/tabs/AlterationsTab'));
 const GoodsInTransitTab = lazy(() => import('./components/tabs/GoodsInTransitTab'));
@@ -2308,10 +2307,6 @@ export default function App() {
               <HoldDeskTab darkMode={darkMode} />
             )}
 
-            {/* 13. MULTI-STORE SAVE-THE-SALE NETWORK */}
-            {activeTab === 'save_the_sale' && (
-              <SaveTheSaleTab darkMode={darkMode} />
-            )}
 
 
 
