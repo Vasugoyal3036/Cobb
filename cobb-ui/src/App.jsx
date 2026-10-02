@@ -343,7 +343,6 @@ export default function App() {
   // Smart Bundling State
   let [bundles, setBundles] = useState(() => getLocalCache('bundles', [])); if (!Array.isArray(bundles)) bundles = [];
   const [isLoadingBundles, setIsLoadingBundles] = useState(false);
-  const [publishedBundles, setPublishedBundles] = useState(new Set());
 
 
   const fetchBundles = async () => {
@@ -1610,8 +1609,6 @@ export default function App() {
     setBundles: typeof setBundles !== 'undefined' ? setBundles : undefined,
     isLoadingBundles: typeof isLoadingBundles !== 'undefined' ? isLoadingBundles : undefined,
     setIsLoadingBundles: typeof setIsLoadingBundles !== 'undefined' ? setIsLoadingBundles : undefined,
-    publishedBundles: typeof publishedBundles !== 'undefined' ? publishedBundles : undefined,
-    setPublishedBundles: typeof setPublishedBundles !== 'undefined' ? setPublishedBundles : undefined,
     fetchBundles: typeof fetchBundles !== 'undefined' ? fetchBundles : undefined,
     globalCustomers: typeof globalCustomers !== 'undefined' ? globalCustomers : undefined,
     setGlobalCustomers: typeof setGlobalCustomers !== 'undefined' ? setGlobalCustomers : undefined,
