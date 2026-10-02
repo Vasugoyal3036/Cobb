@@ -39,7 +39,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import axios from 'axios';
-import { playCheckoutChime, speakCheckoutVoice } from '../utils/sound';
+import { playBarcodeBeep, playScanErrorBeep, playCheckoutChime, speakCheckoutVoice } from '../utils/sound';
 import { triggerThermalPrint, DEFAULT_STORE_INFO } from '../utils/thermalReceipt';
 
 // Common Cobb Apparel Demo Catalog for instant offline/speed scan
@@ -91,7 +91,11 @@ export default function SpeedBillingModal({
   const [searchResults, setSearchResults] = useState([]);
   const [isSearchingDb, setIsSearchingDb] = useState(false);
   const [variantPicker, setVariantPicker] = useState(null);
+  const [gunDetected, setGunDetected] = useState(false);
+  const [scanPulse, setScanPulse] = useState(false);
+  const [lastScannedBarcode, setLastScannedBarcode] = useState(null);
   const barcodeInputRef = useRef(null);
+  const scannerBufferRef = useRef({ buffer: '', lastKeyTime: 0 });
 
   // Customer Details & Loyalty
   const [customerPhone, setCustomerPhone] = useState('');
@@ -389,7 +393,14 @@ export default function SpeedBillingModal({
   }, [billNumber]);
 
   // Add Item to Cart (from Quick Catalog or Live DB scan)
-  const addItemToCart = useCallback((itemData) => {
+  const addItemToCart = useCallback((itemData, isGun = false) => {
+    // Sound & Visual Laser Feedback
+    playBarcodeBeep();
+    setScanPulse(true);
+    setLastScannedBarcode(itemData.barcode);
+    if (isGun) setGunDetected(true);
+    setTimeout(() => setScanPulse(false), 500);
+
     setCart(prev => {
       const existingIdx = prev.findIndex(item => item.barcode === itemData.barcode);
       if (existingIdx >= 0) {
@@ -427,9 +438,12 @@ export default function SpeedBillingModal({
   }, [staffList]);
 
   // Add Item by Barcode or Code (Query Live DB or local Catalog)
-  const handleAddItemByQuery = useCallback(async (query) => {
+  const handleAddItemByQuery = useCallback(async (query, isGun = false) => {
     const q = (query || searchInput).trim();
-    if (!q) return;
+    if (!q) {
+      playScanErrorBeep();
+      return;
+    }
 
     // 1. Instant check in QUICK_CATALOG for instant response
     const quickMatch = QUICK_CATALOG.find(
@@ -437,7 +451,7 @@ export default function SpeedBillingModal({
     );
 
     if (quickMatch) {
-      addItemToCart(quickMatch);
+      addItemToCart(quickMatch, isGun);
       return;
     }
 
@@ -456,7 +470,7 @@ export default function SpeedBillingModal({
             category: exact.color || 'Apparel',
             mrp: exact.mrp || 1499,
             stock: exact.stock || 0
-          });
+          }, isGun);
           setIsSearchingDb(false);
           return;
         } else {
@@ -470,7 +484,9 @@ export default function SpeedBillingModal({
           return;
         }
       }
-    } catch {}
+    } catch {
+      // ignore
+    }
 
     // 3. Fallback: Create dynamic standard scanned line item
     setIsSearchingDb(false);
@@ -481,7 +497,7 @@ export default function SpeedBillingModal({
       category: 'Apparel',
       mrp: 1499,
       stock: 5
-    });
+    }, isGun);
   }, [searchInput, addItemToCart, API_BASE]);
 
   // Fast Key Event Handler (F1 - F12)
@@ -489,6 +505,40 @@ export default function SpeedBillingModal({
     if (!isOpen) return;
 
     const handleKeyDown = (e) => {
+      // --- BARCODE GUN HARDWARE AUTO-DETECTION STREAM ---
+      const now = Date.now();
+      const diff = now - scannerBufferRef.current.lastKeyTime;
+      scannerBufferRef.current.lastKeyTime = now;
+
+      // Barcode guns send Enter as suffix after high-speed bursts (<85ms interval)
+      if (e.key === 'Enter') {
+        const buf = scannerBufferRef.current.buffer.trim();
+        scannerBufferRef.current.buffer = '';
+        if (buf.length >= 3 && diff < 85) {
+          e.preventDefault();
+          handleAddItemByQuery(buf, true);
+          return;
+        }
+      } else if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        if (diff > 120) {
+          scannerBufferRef.current.buffer = e.key;
+        } else {
+          scannerBufferRef.current.buffer += e.key;
+        }
+
+        // Auto-detect hardware scanner burst (< 55ms per keystroke)
+        if (scannerBufferRef.current.buffer.length >= 3 && diff < 55) {
+          setGunDetected(true);
+          const isInput = e.target?.tagName === 'INPUT' || e.target?.tagName === 'TEXTAREA';
+          if (!isInput || e.target !== barcodeInputRef.current) {
+            if (barcodeInputRef.current) {
+              barcodeInputRef.current.focus();
+              barcodeInputRef.current.value = scannerBufferRef.current.buffer;
+            }
+          }
+        }
+      }
+
       // F1: Focus Barcode / Search
       if (e.key === 'F1') {
         e.preventDefault();
@@ -950,12 +1000,27 @@ _Thank you for choosing Cobb! For sizing alterations or exchanges, please quote 
                   }
                 }}
                 placeholder="Scan Barcode / SKU / Article Name & Press Enter..."
-                className="w-full pl-20 pr-32 py-3.5 bg-slate-900 border-2 border-slate-700 focus:border-amber-400 rounded-2xl text-base font-mono text-white placeholder-slate-500 focus:outline-none focus:ring-4 focus:ring-amber-500/20 transition shadow-inner"
+                className={`w-full pl-20 pr-64 py-3.5 bg-slate-900 border-2 rounded-2xl text-base font-mono text-white placeholder-slate-500 focus:outline-none transition shadow-inner ${
+                  scanPulse
+                    ? 'border-emerald-400 ring-4 ring-emerald-500/30 bg-emerald-950/20'
+                    : 'border-slate-700 focus:border-amber-400 focus:ring-4 focus:ring-amber-500/20'
+                }`}
               />
               <div className="absolute right-3 flex items-center gap-2">
+                <span
+                  title={gunDetected ? "Physical USB/Bluetooth barcode gun active & ready" : "Laser Gun Auto-Detection Active"}
+                  className={`px-2.5 py-1 rounded-xl text-[10px] font-mono font-bold transition flex items-center gap-1.5 ${
+                    scanPulse || gunDetected
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs'
+                      : 'bg-slate-800 text-slate-400 border border-slate-700'
+                  }`}
+                >
+                  <Zap className={`w-3.5 h-3.5 ${scanPulse ? 'animate-bounce text-emerald-400' : 'text-amber-400'}`} />
+                  <span>{scanPulse ? '⚡ SCANNED!' : (gunDetected ? '⚡ GUN ACTIVE' : '⚡ GUN DETECT')}</span>
+                </span>
                 <button
                   onClick={() => handleAddItemByQuery()}
-                  className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1 transition shadow-md"
+                  className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs flex items-center gap-1 transition shadow-md cursor-pointer"
                 >
                   <Plus className="w-4 h-4" /> Add Line
                 </button>

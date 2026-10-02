@@ -36,7 +36,11 @@ export const playSound = (type = 'click') => {
     osc.connect(gain);
     gain.connect(ctx.destination);
 
-    if (type === 'click') {
+    if (type === 'barcode' || type === 'scan') {
+      playBarcodeBeep(ctx);
+    } else if (type === 'error' || type === 'scan_error') {
+      playScanErrorBeep(ctx);
+    } else if (type === 'click') {
       osc.type = 'sine';
       osc.frequency.setValueAtTime(600, ctx.currentTime);
       osc.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.05);
@@ -63,6 +67,67 @@ export const playSound = (type = 'click') => {
   } catch (e) {
     // Ignore autoplay or audio context constraints
   }
+};
+
+/**
+ * High-speed sharp laser blip sound (Honeywell / Zebra scanner beep emulation)
+ * ~2450Hz sine blip for 45ms
+ */
+export const playBarcodeBeep = (externalCtx = null) => {
+  const { soundEnabled } = getSoundSettings();
+  if (!soundEnabled) return;
+  if (typeof window === 'undefined' || (!window.AudioContext && !window.webkitAudioContext)) return;
+
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    const ctx = externalCtx || new AudioContextClass();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(2450, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(2100, ctx.currentTime + 0.045);
+
+    gain.gain.setValueAtTime(0.35, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.045);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.045);
+  } catch (e) {}
+};
+
+/**
+ * Double low warning buzz when barcode is invalid or out of stock
+ */
+export const playScanErrorBeep = (externalCtx = null) => {
+  const { soundEnabled } = getSoundSettings();
+  if (!soundEnabled) return;
+  if (typeof window === 'undefined' || (!window.AudioContext && !window.webkitAudioContext)) return;
+
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    const ctx = externalCtx || new AudioContextClass();
+
+    [0, 0.08].forEach((start) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(220, ctx.currentTime + start);
+
+      gain.gain.setValueAtTime(0.2, ctx.currentTime + start);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + start + 0.05);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(ctx.currentTime + start);
+      osc.stop(ctx.currentTime + start + 0.05);
+    });
+  } catch (e) {}
 };
 
 /**
