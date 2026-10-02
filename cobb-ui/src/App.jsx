@@ -76,7 +76,6 @@ import {
   UserCheck,
   ShoppingBag,
   Sparkles,
-  Wand2,
   TrendingDown,
   Activity,
   Megaphone,
@@ -303,8 +302,6 @@ export default function App() {
   }));
 
   const [returnsData, setReturnsData] = useState(() => getLocalCache('returnsData', null));
-  const [smartCoordinate, setSmartCoordinate] = useState({ data: null, loading: false, itemText: '' });
-  const [showCoordinateModal, setShowCoordinateModal] = useState(false);
 
   // Thermal Slip Modal State
   const [thermalModalConfig, setThermalModalConfig] = useState({
@@ -482,13 +479,8 @@ export default function App() {
   const [activeOutfitMatch, setActiveOutfitMatch] = useState(null);
   const [outfitPitch, setOutfitPitch] = useState('');
   const [isGeneratingOutfit, setIsGeneratingOutfit] = useState(false);
-  const [campaignEvent, setCampaignEvent] = useState('Autumn Collection Drop');
-  const [campaignAudience, setCampaignAudience] = useState('All VIP Customers');
-  const [campaignDraft, setCampaignDraft] = useState('');
-  const [isGeneratingCampaign, setIsGeneratingCampaign] = useState(false);
 
   // Removed AI state
-  const [openProductType, setOpenProductType] = useState(null);
   const [openMonth, setOpenMonth] = useState(null);
   const [selectedCalendarDay, setSelectedCalendarDay] = useState(null);
   const [expandedBillId, setExpandedBillId] = useState(null);
@@ -1292,21 +1284,6 @@ export default function App() {
     }
   };
 
-  const handleGenerateCampaign = async () => {
-    setIsGeneratingCampaign(true);
-    try {
-      const res = await axios.post(`${API_BASE}/api/ai/campaign-builder`, {
-        event: campaignEvent,
-        audience: campaignAudience
-      });
-      setCampaignDraft(res.data.message);
-    } catch (err) {
-      alert(`AI Failed: ${err.response?.data?.error || err.message}`);
-    } finally {
-      setIsGeneratingCampaign(false);
-    }
-  };
-
   const handleSaveReconciliation = async () => {
     const counted = parseFloat(countedCashInput) || 0;
     const system = overviewStats.today.CashAmount || 0;
@@ -1601,10 +1578,6 @@ export default function App() {
     setOverviewStats: typeof setOverviewStats !== 'undefined' ? setOverviewStats : undefined,
     returnsData: typeof returnsData !== 'undefined' ? returnsData : undefined,
     setReturnsData: typeof setReturnsData !== 'undefined' ? setReturnsData : undefined,
-    smartCoordinate: typeof smartCoordinate !== 'undefined' ? smartCoordinate : undefined,
-    setSmartCoordinate: typeof setSmartCoordinate !== 'undefined' ? setSmartCoordinate : undefined,
-    showCoordinateModal: typeof showCoordinateModal !== 'undefined' ? showCoordinateModal : undefined,
-    setShowCoordinateModal: typeof setShowCoordinateModal !== 'undefined' ? setShowCoordinateModal : undefined,
     bundles: typeof bundles !== 'undefined' ? bundles : undefined,
     setBundles: typeof setBundles !== 'undefined' ? setBundles : undefined,
     isLoadingBundles: typeof isLoadingBundles !== 'undefined' ? isLoadingBundles : undefined,
@@ -1733,16 +1706,6 @@ export default function App() {
     setOutfitPitch: typeof setOutfitPitch !== 'undefined' ? setOutfitPitch : undefined,
     isGeneratingOutfit: typeof isGeneratingOutfit !== 'undefined' ? isGeneratingOutfit : undefined,
     setIsGeneratingOutfit: typeof setIsGeneratingOutfit !== 'undefined' ? setIsGeneratingOutfit : undefined,
-    campaignEvent: typeof campaignEvent !== 'undefined' ? campaignEvent : undefined,
-    setCampaignEvent: typeof setCampaignEvent !== 'undefined' ? setCampaignEvent : undefined,
-    campaignAudience: typeof campaignAudience !== 'undefined' ? campaignAudience : undefined,
-    setCampaignAudience: typeof setCampaignAudience !== 'undefined' ? setCampaignAudience : undefined,
-    campaignDraft: typeof campaignDraft !== 'undefined' ? campaignDraft : undefined,
-    setCampaignDraft: typeof setCampaignDraft !== 'undefined' ? setCampaignDraft : undefined,
-    isGeneratingCampaign: typeof isGeneratingCampaign !== 'undefined' ? isGeneratingCampaign : undefined,
-    setIsGeneratingCampaign: typeof setIsGeneratingCampaign !== 'undefined' ? setIsGeneratingCampaign : undefined,
-    openProductType: typeof openProductType !== 'undefined' ? openProductType : undefined,
-    setOpenProductType: typeof setOpenProductType !== 'undefined' ? setOpenProductType : undefined,
     openMonth: typeof openMonth !== 'undefined' ? openMonth : undefined,
     setOpenMonth: typeof setOpenMonth !== 'undefined' ? setOpenMonth : undefined,
     selectedCalendarDay: typeof selectedCalendarDay !== 'undefined' ? selectedCalendarDay : undefined,
@@ -1769,7 +1732,6 @@ export default function App() {
     openCustomerCard: typeof openCustomerCard !== 'undefined' ? openCustomerCard : undefined,
     handleGenerateAI: typeof handleGenerateAI !== 'undefined' ? handleGenerateAI : undefined,
     handleGenerateOutfitMatch: typeof handleGenerateOutfitMatch !== 'undefined' ? handleGenerateOutfitMatch : undefined,
-    handleGenerateCampaign: typeof handleGenerateCampaign !== 'undefined' ? handleGenerateCampaign : undefined,
     handleSaveReconciliation: typeof handleSaveReconciliation !== 'undefined' ? handleSaveReconciliation : undefined,
     handleGenerateEodReport: typeof handleGenerateEodReport !== 'undefined' ? handleGenerateEodReport : undefined,
     handleMasterRestock: typeof handleMasterRestock !== 'undefined' ? handleMasterRestock : undefined,
@@ -1779,7 +1741,6 @@ export default function App() {
     handleGlobalSearch: typeof handleGlobalSearch !== 'undefined' ? handleGlobalSearch : undefined,
     renderLogLine: typeof renderLogLine !== 'undefined' ? renderLogLine : undefined,
     persona: typeof persona !== 'undefined' ? persona : undefined,
-    handleGenerateSmartCoordinate: typeof handleGenerateSmartCoordinate !== 'undefined' ? handleGenerateSmartCoordinate : undefined,
     openThermalModal
   };
 
@@ -2808,63 +2769,6 @@ export default function App() {
                     <span>{isSendingEod ? 'Dispatching...' : 'Send WhatsApp to 4 Owners'}</span>
                   </button>
                 </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-                {/* Smart AI Style Coordinate Modal */}
-        {showCoordinateModal && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
-              <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-indigo-50/50 dark:bg-indigo-950/30">
-                <h3 className="text-xl font-black text-indigo-900 dark:text-indigo-200 flex items-center gap-2">
-                  <Wand2 className="w-5 h-5 text-indigo-500" /> AI Style Coordinate Maker
-                </h3>
-                <button onClick={() => setShowCoordinateModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer">
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              <div className="p-6 space-y-4">
-                <div>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Purchased Items</p>
-                  <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800 text-sm font-medium text-slate-700 dark:text-slate-200">
-                    {smartCoordinate.itemText}
-                  </div>
-                </div>
-                
-                <div>
-                  <p className="text-xs font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-widest mb-2">AI Coordinate Match</p>
-                  <div className="min-h-32 flex flex-col justify-center">
-                    {smartCoordinate.loading ? (
-                      <div className="flex flex-col items-center justify-center py-8">
-                        <RefreshCw className="w-8 h-8 text-indigo-500 animate-spin mb-3" />
-                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400 animate-pulse">Generating the perfect styling combination...</p>
-                      </div>
-                    ) : (
-                      <div className="bg-indigo-50/60 dark:bg-indigo-950/30 p-5 rounded-2xl border border-indigo-100 dark:border-indigo-900/40 shadow-inner">
-                        <p className="text-indigo-950 dark:text-indigo-200 whitespace-pre-wrap text-sm leading-relaxed font-medium">
-                          {smartCoordinate.data}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 flex justify-end gap-3">
-                <button onClick={() => setShowCoordinateModal(false)} className="px-5 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer text-sm">
-                  Close
-                </button>
-                <button 
-                  disabled={smartCoordinate.loading}
-                  onClick={() => {
-                    const text = encodeURIComponent(smartCoordinate.data);
-                    window.open(`https://wa.me/?text=${text}`, '_blank');
-                  }} 
-                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer text-sm disabled:opacity-50"
-                >
-                  <Send className="w-4 h-4" /> Share on WhatsApp
-                </button>
               </div>
             </div>
           </div>
