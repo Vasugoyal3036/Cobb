@@ -21,8 +21,6 @@ app.use(express.json());
 const { router: authRouter, checkRole } = require('./routes/auth');
 app.use('/api/auth', authRouter);
 
-const tunnelRouter = require('./routes/tunnel');
-app.use('/api/tunnel', tunnelRouter);
 
 const configRouter = require('./routes/config');
 app.use('/api/config', configRouter);
