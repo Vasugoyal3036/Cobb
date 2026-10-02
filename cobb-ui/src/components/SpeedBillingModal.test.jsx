@@ -64,6 +64,21 @@ describe('SpeedBillingModal (Zero-Mouse F1-F12 POS)', () => {
     expect(screen.getByText(/PROMO: FLAT50/i)).toBeDefined();
   });
 
+  it('applies Buy 3 Get 70% Off promo (b3_70)', async () => {
+    await React.act(async () => {
+      render(<SpeedBillingModal isOpen={true} onClose={vi.fn()} />);
+    });
+
+    const b3Btn = screen.getByRole('button', { name: /B3 @ 70% Off/i });
+    await React.act(async () => {
+      fireEvent.click(b3Btn);
+    });
+
+    // 70% of 1899 is 1329
+    expect(screen.getAllByText(/-₹1329/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/PROMO: BUY 3 @ 70% OFF/i)).toBeDefined();
+  });
+
   it('opens F8 Split Tender (Cash + UPI) modal', async () => {
     await React.act(async () => {
       render(<SpeedBillingModal isOpen={true} onClose={vi.fn()} />);

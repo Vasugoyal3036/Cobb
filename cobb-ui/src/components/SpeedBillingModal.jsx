@@ -100,7 +100,7 @@ export default function SpeedBillingModal({
   const [isLookingUpCustomer, setIsLookingUpCustomer] = useState(false);
   const [redeemedPoints, setRedeemedPoints] = useState(0);
 
-  // Active Promo Preset ('none' | 'b1g3' | 'b2g5' | 'flat50' | 'flat60')
+  // Active Promo Preset ('none' | 'b3_70' | 'b1g3' | 'b2g5' | 'flat50' | 'flat60')
   const [activePromo, setActivePromo] = useState('none');
 
   // Bill Generation
@@ -226,6 +226,16 @@ export default function SpeedBillingModal({
   // Computed Cart Items with Promos applied
   const processedCart = useMemo(() => {
     if (cart.length === 0) return [];
+
+    if (activePromo === 'b3_70') {
+      const totalUnits = cart.reduce((sum, it) => sum + it.qty, 0);
+      return cart.map(item => ({
+        ...item,
+        effectiveDiscPct: 70,
+        effectiveDiscFlat: Math.round((item.mrp * item.qty * 70) / 100),
+        promoTag: totalUnits >= 3 ? 'B3 @ 70% OFF' : 'B3 @ 70%'
+      }));
+    }
 
     if (activePromo === 'flat50') {
       return cart.map(item => ({
@@ -875,7 +885,7 @@ _Thank you for choosing Cobb! For sizing alterations or exchanges, please quote 
                 {activePromo !== 'none' && (
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-500/20 text-purple-300 border border-purple-500/40 flex items-center gap-1">
                     <Sparkles className="w-3 h-3 text-purple-400" />
-                    PROMO: {activePromo.toUpperCase()}
+                    PROMO: {activePromo === 'b3_70' ? 'BUY 3 @ 70% OFF' : activePromo.toUpperCase()}
                   </span>
                 )}
               </div>
@@ -975,6 +985,18 @@ _Thank you for choosing Cobb! For sizing alterations or exchanges, please quote 
               <span>Offers (F5):</span>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                onClick={() => setActivePromo('b3_70')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-black transition flex items-center gap-1 ${
+                  activePromo === 'b3_70'
+                    ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30 ring-2 ring-amber-400'
+                    : 'bg-slate-800 text-amber-300 hover:bg-amber-950/40'
+                }`}
+              >
+                <Sparkles className="w-3 h-3 text-yellow-300" />
+                <span>B3 @ 70% Off</span>
+              </button>
+
               <button
                 onClick={() => setActivePromo('b1g3')}
                 className={`px-2.5 py-1 rounded-lg text-xs font-black transition flex items-center gap-1 ${
@@ -1768,6 +1790,26 @@ _Thank you for choosing Cobb! For sizing alterations or exchanges, please quote 
             </p>
 
             <div className="space-y-2.5 mb-6">
+              <button
+                onClick={() => {
+                  setActivePromo('b3_70');
+                  setActiveModal(null);
+                }}
+                className={`w-full p-4 rounded-2xl border text-left transition flex items-center justify-between ${
+                  activePromo === 'b3_70'
+                    ? 'bg-amber-950/60 border-amber-500 text-white'
+                    : 'bg-slate-950 border-slate-800 hover:border-amber-500/50 text-slate-300'
+                }`}
+              >
+                <div>
+                  <div className="font-bold text-sm text-amber-300 flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-yellow-400" /> Buy 3 Get 70% Off (B3@70%)
+                  </div>
+                  <div className="text-xs text-slate-400 mt-0.5">70% discount applied across items when buying 3+ garments</div>
+                </div>
+                {activePromo === 'b3_70' && <CheckCircle2 className="w-5 h-5 text-amber-400" />}
+              </button>
+
               <button
                 onClick={() => {
                   setActivePromo('b1g3');
