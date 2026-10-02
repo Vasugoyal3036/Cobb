@@ -57,7 +57,7 @@ function loadNpsQueue() {
 function saveNpsQueue(queue) {
     try {
         fs.writeFileSync(NPS_QUEUE_FILE, JSON.stringify(queue, null, 2), 'utf8');
-    } catch (e) {}
+    } catch (e) { }
 }
 
 function queueNpsSurvey(phone, customerName = 'Valued Customer', billNo = '', delayMinutes = 30) {
@@ -137,7 +137,7 @@ function cleanStaleLocksAndCaches() {
             const fullPath = path.join(profileDir, entry.name);
             if (entry.isDirectory()) {
                 if (ephemeralCacheNames.includes(entry.name)) {
-                    try { fs.rmSync(fullPath, { recursive: true, force: true }); } catch (e) {}
+                    try { fs.rmSync(fullPath, { recursive: true, force: true }); } catch (e) { }
                 }
             } else {
                 // Remove ONLY Chromium process locks (do NOT touch LevelDB LOCK files inside databases)
@@ -146,7 +146,7 @@ function cleanStaleLocksAndCaches() {
                     entry.name === 'DevToolsActivePort' ||
                     entry.name === '.parentlock'
                 ) {
-                    try { fs.unlinkSync(fullPath); } catch (e) {}
+                    try { fs.unlinkSync(fullPath); } catch (e) { }
                 }
             }
         }
@@ -158,9 +158,9 @@ function cleanStaleLocksAndCaches() {
             for (const entry of defaultEntries) {
                 const fullPath = path.join(defaultDir, entry.name);
                 if (entry.isDirectory() && ephemeralCacheNames.includes(entry.name)) {
-                    try { fs.rmSync(fullPath, { recursive: true, force: true }); } catch (e) {}
+                    try { fs.rmSync(fullPath, { recursive: true, force: true }); } catch (e) { }
                 } else if (entry.isFile() && (entry.name.includes('Singleton') || entry.name === '.parentlock')) {
-                    try { fs.unlinkSync(fullPath); } catch (e) {}
+                    try { fs.unlinkSync(fullPath); } catch (e) { }
                 }
             }
         }
@@ -180,18 +180,18 @@ async function killBrowserProcesses() {
             if (client.pupBrowser) {
                 const pid = client.pupBrowser.process()?.pid;
                 if (pid) {
-                    try { execSync(`taskkill /PID ${pid} /T /F 2>NUL`, { windowsHide: true }); } catch (e) {}
+                    try { execSync(`taskkill /PID ${pid} /T /F 2>NUL`, { windowsHide: true }); } catch (e) { }
                 }
             }
-            await client.destroy().catch(() => {});
-        } catch (e) {}
+            await client.destroy().catch(() => { });
+        } catch (e) { }
         client = null;
     }
 
     // 2. Kill any orphaned Chromium/Puppeteer processes holding the session locks
     try {
         execSync('powershell -WindowStyle Hidden -Command "Get-CimInstance Win32_Process | Where-Object { ($_.CommandLine -match \'session-cobb-pos-session\' -or ($_.ExecutablePath -match \'puppeteer\' -and $_.ProcessId -ne $PID)) } | Invoke-CimMethod -MethodName Terminate"', { windowsHide: true });
-    } catch (e) {}
+    } catch (e) { }
 
     // Brief cooldown for Windows file handle release
     await new Promise(r => setTimeout(r, 600));
@@ -344,7 +344,7 @@ async function initWhatsApp(isFresh = false) {
                             await client.sendMessage(msg.from, reply);
                             return;
                         }
-                    } catch (e) {}
+                    } catch (e) { }
 
                     await client.sendMessage(msg.from, `🏆 *Cobb VIP Loyalty*\n\nThank you for reaching out! To redeem points at checkout, simply quote your registered mobile number: *${cleanPhone}*.\n\n_Reply 2: Alterations | 3: Catalog | 4: Offers_`);
                     return;
@@ -366,7 +366,7 @@ async function initWhatsApp(isFresh = false) {
                                 return;
                             }
                         }
-                    } catch (e) {}
+                    } catch (e) { }
 
                     await client.sendMessage(msg.from, `✂️ *Cobb Alterations Desk*\n\nNo active alteration slips were found under mobile number *${cleanPhone}*.\n\nIf you recently dropped off garments, please verify your mobile number or visit the billing counter with your slip token! 🛍️\n\n_Reply 1: Points | 3: Catalog | 4: Offers_`);
                     return;
@@ -389,7 +389,7 @@ async function initWhatsApp(isFresh = false) {
                                 return;
                             }
                         }
-                    } catch (e) {}
+                    } catch (e) { }
 
                     await client.sendMessage(msg.from, `🛍️ *Cobb New Arrivals*\n\nOur fresh collection has arrived in-store!\n• Premium Formal & Linen Shirts\n• Italian Slim-Fit Trousers & Chinos\n• Fine Tailored Suits & Blazers\n\nVisit us today for exclusive in-store trials! 👔\n\n_Reply 1: Points | 2: Alterations_`);
                     return;
@@ -414,7 +414,7 @@ async function initWhatsApp(isFresh = false) {
                                     return;
                                 }
                             }
-                        } catch (e) {}
+                        } catch (e) { }
                     }
                     await client.sendMessage(msg.from, `🛍️ *Reserve an Item*\n\nPlease reply in the format:\n*RESERVE <ArticleCode>*\n\nExample: *RESERVE CFDH3378*\n_Reply 3 to view trending article codes._`);
                     return;
@@ -453,7 +453,7 @@ async function initWhatsApp(isFresh = false) {
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ phone: cleanPhone, message: rawBody, type: 'grievance_low_nps' })
                         });
-                    } catch (e) {}
+                    } catch (e) { }
                     return;
                 }
 
@@ -467,7 +467,7 @@ async function initWhatsApp(isFresh = false) {
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ phone: cleanPhone, message: rawBody, type: 'support_request' })
                         });
-                    } catch (e) {}
+                    } catch (e) { }
                     return;
                 }
 
@@ -491,7 +491,7 @@ async function initWhatsApp(isFresh = false) {
                 if (fs.existsSync(sessionPath)) {
                     fs.rmSync(sessionPath, { recursive: true, force: true });
                 }
-            } catch (e) {}
+            } catch (e) { }
             initWhatsApp(true);
         });
 
@@ -518,7 +518,7 @@ function scheduleReconnect() {
     reconnectAttempts++;
     // Exponential backoff capped at 30s. NEVER wipe the session on reconnect!
     const delay = Math.min(reconnectAttempts * 5000, 30000);
-    console.log(`[WHATSAPP] Scheduling reconnect attempt ${reconnectAttempts} in ${delay/1000}s (preserving session)...`);
+    console.log(`[WHATSAPP] Scheduling reconnect attempt ${reconnectAttempts} in ${delay / 1000}s (preserving session)...`);
     setTimeout(async () => {
         isReconnecting = false;
         await initWhatsApp(false); // ALWAYS preserve saved session!
@@ -647,18 +647,18 @@ function isUnregisteredError(err) {
     if (!err) return false;
     const msg = String(err?.message || err || '').toLowerCase();
     return msg.includes('no lid') ||
-           msg.includes('wid error') ||
-           msg.includes('not-authorized') ||
-           msg.includes('invalid jid') ||
-           msg.includes('no-such-user') ||
-           msg.includes('not registered') ||
-           msg.includes('unregistered') ||
-           msg.includes('not-registered') ||
-           msg.includes('no user') ||
-           msg.includes('user not found') ||
-           msg.includes('marked as unregistered') ||
-           msg.includes('invalid number') ||
-           msg.includes('cannot read properties of undefined');
+        msg.includes('wid error') ||
+        msg.includes('not-authorized') ||
+        msg.includes('invalid jid') ||
+        msg.includes('no-such-user') ||
+        msg.includes('not registered') ||
+        msg.includes('unregistered') ||
+        msg.includes('not-registered') ||
+        msg.includes('no user') ||
+        msg.includes('user not found') ||
+        msg.includes('marked as unregistered') ||
+        msg.includes('invalid number') ||
+        msg.includes('cannot read properties of undefined');
 }
 
 async function dispatchMessage(number, message, mediaPath) {
@@ -705,7 +705,7 @@ async function flushOutbox() {
     if (!isClientReady || !client || outboxQueue.length === 0 || isFlushingOutbox) return;
     isFlushingOutbox = true;
     console.log(`[OUTBOX] Auto-flushing ${outboxQueue.length} buffered checkout message(s)...`);
-    
+
     while (outboxQueue.length > 0 && isClientReady && client) {
         const item = outboxQueue.shift();
         try {
