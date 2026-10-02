@@ -48,23 +48,23 @@ function getUrgency(minLeft, status) {
 
 const urgencyStyles = {
   ok: {
-    badge: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
-    card: 'border-slate-800 bg-slate-900/60',
+    badge: 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-400 dark:border-emerald-500/30',
+    card: 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60 shadow-sm',
     glow: '',
   },
   warning: {
-    badge: 'bg-amber-500/15 text-amber-400 border-amber-500/30',
-    card: 'border-amber-500/30 bg-amber-950/10',
+    badge: 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-500/15 dark:text-amber-400 dark:border-amber-500/30',
+    card: 'border-amber-300/80 bg-amber-50/70 dark:border-amber-500/30 dark:bg-amber-950/10 shadow-sm',
     glow: 'shadow-amber-500/10',
   },
   critical: {
-    badge: 'bg-rose-500/15 text-rose-400 border-rose-500/30 animate-pulse',
-    card: 'border-rose-500/30 bg-rose-950/10',
+    badge: 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-500/15 dark:text-rose-400 dark:border-rose-500/30 animate-pulse',
+    card: 'border-rose-300/80 bg-rose-50/70 dark:border-rose-500/30 dark:bg-rose-950/10 shadow-sm',
     glow: 'shadow-rose-500/10',
   },
   expired: {
-    badge: 'bg-slate-700 text-slate-400 border-slate-600',
-    card: 'border-slate-800 bg-slate-900/30 opacity-60',
+    badge: 'bg-slate-200 text-slate-600 border-slate-300 dark:bg-slate-700 dark:text-slate-400 dark:border-slate-600',
+    card: 'border-slate-200 bg-slate-100/70 dark:border-slate-800 dark:bg-slate-900/30 opacity-60 shadow-xs',
     glow: '',
   },
 };
@@ -225,7 +225,7 @@ export default function HoldDeskTab({ darkMode }) {
         <div className="flex gap-2">
           <button
             onClick={() => fetchHolds()}
-            className="p-2 rounded-xl border border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800 transition-all"
+            className={`p-2 rounded-xl border transition-all cursor-pointer ${darkMode ? 'border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800' : 'border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}
           >
             <RefreshCw className="w-4 h-4" />
           </button>
@@ -244,7 +244,7 @@ export default function HoldDeskTab({ darkMode }) {
         {[
           { label: 'Active Holds', value: activeHolds.length, icon: Tag, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/20' },
           { label: 'Expiring < 30 min', value: expiringHolds.length, icon: Clock, color: 'text-rose-400', bg: 'bg-rose-500/10 border-rose-500/20' },
-          { label: 'Pending Release', value: expiredHolds.length, icon: AlertTriangle, color: 'text-slate-400', bg: 'bg-slate-800/50 border-slate-700/50' },
+          { label: 'Pending Release', value: expiredHolds.length, icon: AlertTriangle, color: darkMode ? 'text-slate-400' : 'text-slate-600', bg: darkMode ? 'bg-slate-800/50 border-slate-700/50' : 'bg-slate-100 border-slate-200' },
         ].map(({ label, value, icon: Icon, color, bg }) => (
           <div key={label} className={`rounded-2xl border p-4 ${bg}`}>
             <div className={`flex items-center gap-2 text-xs font-semibold uppercase tracking-wide mb-1 ${color}`}>
@@ -282,13 +282,13 @@ export default function HoldDeskTab({ darkMode }) {
                 className={`w-full px-4 py-2.5 rounded-xl text-sm border focus:outline-none focus:ring-2 focus:ring-amber-500 ${darkMode ? 'bg-slate-950 border-slate-700 text-slate-100 placeholder-slate-500' : 'bg-white border-slate-200 text-slate-800'}`}
               />
               {invResults.length > 0 && (
-                <div className="absolute left-0 right-0 top-full mt-1 z-30 bg-slate-900 border border-slate-700 rounded-xl overflow-hidden shadow-2xl">
+                <div className={`absolute left-0 right-0 top-full mt-1 z-30 border rounded-xl overflow-hidden shadow-2xl ${darkMode ? 'bg-slate-900 border-slate-700 text-slate-200' : 'bg-white border-slate-200 text-slate-800'}`}>
                   {invResults.map((item, i) => (
                     <button
                       key={i}
                       type="button"
                       onClick={() => pickArticle(item)}
-                      className="w-full text-left px-4 py-2.5 hover:bg-slate-800 transition-colors flex items-center justify-between text-sm"
+                      className={`w-full text-left px-4 py-2.5 transition-colors flex items-center justify-between text-sm ${darkMode ? 'hover:bg-slate-800 text-slate-200' : 'hover:bg-slate-50 text-slate-800'}`}
                     >
                       <span className="text-slate-200 font-medium">{item.ItemName || item.ArticleName}</span>
                       <span className="text-slate-500 text-xs">{item.ArticleNo} · {item.Size || item.para2_name || ''}</span>
@@ -370,7 +370,7 @@ export default function HoldDeskTab({ darkMode }) {
               >
                 {submitting ? 'Creating Hold...' : '🏷️ Create Hold Slip'}
               </button>
-              <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2.5 border border-slate-700 text-slate-400 hover:text-white rounded-xl text-sm font-bold">
+              <button type="button" onClick={() => setShowForm(false)} className={`px-4 py-2.5 border rounded-xl text-sm font-bold transition-colors cursor-pointer ${darkMode ? 'border-slate-700 text-slate-400 hover:text-white' : 'border-slate-300 text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}>
                 Cancel
               </button>
             </div>
@@ -417,7 +417,7 @@ export default function HoldDeskTab({ darkMode }) {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className={`font-bold text-sm truncate ${darkMode ? 'text-slate-100' : 'text-slate-800'}`}>{hold.articleName}</span>
-                            {hold.size && <span className="text-xs px-2 py-0.5 rounded-lg bg-slate-800 text-slate-300 font-semibold">Size {hold.size}</span>}
+                            {hold.size && <span className={`text-xs px-2 py-0.5 rounded-lg font-semibold ${darkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-700 border border-slate-200'}`}>Size {hold.size}</span>}
                             {hold.articleNo && <span className="text-xs text-slate-500">#{hold.articleNo}</span>}
                           </div>
                           <div className="flex items-center gap-3 mt-1 text-xs text-slate-400 flex-wrap">

@@ -79,12 +79,7 @@
   animation: ambientGlowPulse 3.5s ease-in-out infinite;
 }
 
-/* Enlarge everything on mobile globally */
-@media (max-width: 640px) {
-  html {
-    font-size: 112.5% !important; /* Scales all rem units (text, padding, margins) by 12.5% */
-  }
-}
+
 
 /* Light Mode Defaults */
 body {

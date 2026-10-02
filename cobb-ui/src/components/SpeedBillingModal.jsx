@@ -615,9 +615,9 @@ export default function SpeedBillingModal({
       </header>
 
       {/* 2. MAIN SPLIT CONTENT */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
         {/* LEFT COLUMN: SCANNER & CART ITEMS (65%) */}
-        <div className="w-full lg:w-[65%] flex flex-col border-r border-slate-800 bg-slate-950/60 p-4 overflow-hidden">
+        <div className="w-full lg:w-[65%] flex flex-col border-b lg:border-b-0 lg:border-r border-slate-800 bg-slate-950/60 p-4 overflow-visible lg:overflow-hidden shrink-0 lg:shrink">
           {/* F1: FAST BARCODE SCANNER INPUT */}
           <div className="mb-4">
             <div className="relative flex items-center">

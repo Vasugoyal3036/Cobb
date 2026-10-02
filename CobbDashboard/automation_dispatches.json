@@ -1258,5 +1258,41 @@
     "reason": "checkout",
     "status": "sent",
     "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-10-01T18:58:39.075385",
+    "date": "2026-10-01",
+    "time": "06:58 PM",
+    "billNo": "STST27-00761   ",
+    "cmId": "ST01127000STST27-00761",
+    "customerName": "Krishan",
+    "phone": "9896915455",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-10-01T20:03:59.527666",
+    "date": "2026-10-01",
+    "time": "08:03 PM",
+    "billNo": "STST27-00762   ",
+    "cmId": "ST01127000STST27-00762",
+    "customerName": "Ankit Kumar",
+    "phone": "9541767807",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-10-02T10:31:02.716089",
+    "date": "2026-10-02",
+    "time": "10:31 AM",
+    "billNo": "STST27-00763   ",
+    "cmId": "ST01127000STST27-00763",
+    "customerName": "Kawar Pal Keorak",
+    "phone": "7015955081",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
   }
 ]

@@ -161,19 +161,19 @@ export default function SaveTheSaleTab({ darkMode }) {
               <Loader className="absolute right-3 top-3 w-4 h-4 text-slate-400 animate-spin" />
             )}
             {searchResults.length > 0 && (
-              <div className="absolute left-0 right-0 top-full mt-1 z-30 bg-slate-900 border border-slate-700 rounded-xl overflow-hidden shadow-2xl">
+              <div className={`absolute left-0 right-0 top-full mt-1 z-30 border rounded-xl overflow-hidden shadow-2xl ${darkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-200 shadow-lg'}`}>
                 {searchResults.map((item, i) => (
                   <button
                     key={i}
                     onClick={() => pickArticle(item)}
-                    className="w-full text-left px-4 py-3 hover:bg-slate-800 transition-colors flex items-center justify-between text-sm border-b border-slate-800 last:border-0"
+                    className={`w-full text-left px-4 py-3 transition-colors flex items-center justify-between text-sm border-b last:border-0 ${darkMode ? 'hover:bg-slate-800 border-slate-800 text-slate-200' : 'hover:bg-slate-50 border-slate-100 text-slate-800'}`}
                   >
                     <div>
-                      <p className="text-slate-200 font-semibold">{item.ItemName || item.ArticleName}</p>
+                      <p className={`font-semibold ${darkMode ? 'text-slate-200' : 'text-slate-800'}`}>{item.ItemName || item.ArticleName}</p>
                       <p className="text-slate-500 text-xs mt-0.5">{item.ArticleNo} · {item.section_name || ''}</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      {item.Size && <span className="text-xs px-2 py-0.5 rounded-lg bg-slate-700 text-slate-300">Sz {item.Size}</span>}
+                      {item.Size && <span className={`text-xs px-2 py-0.5 rounded-lg ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-slate-100 text-slate-700 border border-slate-200'}`}>Sz {item.Size}</span>}
                       <ChevronRight className="w-4 h-4 text-slate-500" />
                     </div>
                   </button>
@@ -248,7 +248,7 @@ export default function SaveTheSaleTab({ darkMode }) {
                       <Store className="w-4 h-4 text-emerald-400" />
                       <span className={`font-bold text-sm ${darkMode ? 'text-slate-100' : 'text-slate-800'}`}>{store.name}</span>
                       {store.distanceKm && (
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-slate-700 text-slate-300 flex items-center gap-1">
+                        <span className={`text-xs px-2 py-0.5 rounded-full flex items-center gap-1 ${darkMode ? 'bg-slate-700 text-slate-300' : 'bg-slate-200 text-slate-700'}`}>
                           <MapPin className="w-2.5 h-2.5" /> {store.distanceKm} km away
                         </span>
                       )}
@@ -303,13 +303,13 @@ export default function SaveTheSaleTab({ darkMode }) {
                     )}
                     <button
                       onClick={() => setEditingMsg(editingMsg === store.id ? null : store.id)}
-                      className="flex items-center gap-1 px-3 py-1 border border-slate-700 text-slate-400 hover:text-white rounded-xl text-xs font-semibold transition-all"
+                      className={`flex items-center gap-1 px-3 py-1 border rounded-xl text-xs font-semibold transition-all cursor-pointer ${darkMode ? 'border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800' : 'border-slate-300 text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}
                     >
                       <Edit2 className="w-3 h-3" /> Edit Msg
                     </button>
                     <button
                       onClick={() => handleCopyMsg(store)}
-                      className="flex items-center gap-1 px-3 py-1 border border-slate-700 text-slate-400 hover:text-white rounded-xl text-xs font-semibold transition-all"
+                      className={`flex items-center gap-1 px-3 py-1 border rounded-xl text-xs font-semibold transition-all cursor-pointer ${darkMode ? 'border-slate-700 text-slate-400 hover:text-white hover:bg-slate-800' : 'border-slate-300 text-slate-600 hover:text-slate-900 hover:bg-slate-100'}`}
                     >
                       <Copy className="w-3 h-3" /> Copy
                     </button>

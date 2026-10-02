@@ -206,21 +206,20 @@ export default function ExchangeTab(props) {
   const exchangeRate = returnsData?.exchangeRatePct || returnsData?.returnRatePct || 0;
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 min-h-screen bg-slate-50">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="space-y-6">
 
         {/* HEADER & POLICY CALLOUT */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
           <div>
             <div className="flex items-center gap-3">
               <div className="w-11 h-11 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-600 shadow-sm">
                 <ArrowRightLeft className="w-6 h-6" />
               </div>
               <div>
-                <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white dark:text-white tracking-tight flex items-center gap-2">
                   Product Exchanges & Replacements
                 </h2>
-                <p className="text-xs sm:text-sm text-slate-500 font-medium mt-0.5">
+                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium mt-0.5">
                   Real-time exchange register, cashier verification desk, and item replacement calculator.
                 </p>
               </div>
@@ -228,14 +227,14 @@ export default function ExchangeTab(props) {
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 text-amber-800 dark:text-amber-300 text-xs font-bold">
               <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
               <span>Store Policy: 14-Day Exchange Only • No Cash Refunds</span>
             </div>
             <button
               onClick={handleRefreshData}
               disabled={isRefreshing}
-              className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 shadow-sm transition-all"
+              className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm transition-all"
               title="Refresh Exchange Data"
             >
               <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-amber-600' : ''}`} />
@@ -245,41 +244,41 @@ export default function ExchangeTab(props) {
 
         {/* TOP METRIC CARDS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Today's Exchanges</span>
-              <span className="text-xs px-2 py-0.5 rounded-md font-bold bg-amber-50 text-amber-700 border border-amber-200">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Today's Exchanges</span>
+              <span className="text-xs px-2 py-0.5 rounded-md font-bold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
                 Today
               </span>
             </div>
             <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-3xl font-black text-slate-900">{todayCount}</span>
+              <span className="text-3xl font-black text-slate-900 dark:text-white">{todayCount}</span>
               <span className="text-xs font-semibold text-slate-500">items</span>
             </div>
-            <div className="mt-2 text-xs text-slate-500 flex items-center justify-between border-t border-slate-100 pt-2">
+            <div className="mt-2 text-xs text-slate-500 dark:text-slate-400 flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-2">
               <span>Exchange Credit Value:</span>
-              <span className="font-bold text-slate-800">{formatCurrency(todayValue)}</span>
+              <span className="font-bold text-slate-800 dark:text-slate-200">{formatCurrency(todayValue)}</span>
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Monthly Exchanges</span>
-              <span className="text-xs px-2 py-0.5 rounded-md font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+              <span className="text-xs px-2 py-0.5 rounded-md font-bold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800">
                 This Month
               </span>
             </div>
             <div className="mt-3 flex items-baseline gap-2">
-              <span className="text-3xl font-black text-slate-900">{monthlyCount}</span>
+              <span className="text-3xl font-black text-slate-900 dark:text-white">{monthlyCount}</span>
               <span className="text-xs font-semibold text-slate-500">items</span>
             </div>
-            <div className="mt-2 text-xs text-slate-500 flex items-center justify-between border-t border-slate-100 pt-2">
+            <div className="mt-2 text-xs text-slate-500 dark:text-slate-400 flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-2">
               <span>Total Exchanged Value:</span>
-              <span className="font-bold text-slate-800">{formatCurrency(monthlyValue)}</span>
+              <span className="font-bold text-slate-800 dark:text-slate-200">{formatCurrency(monthlyValue)}</span>
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition-shadow">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Exchange Rate %</span>
               <span className={`text-xs px-2 py-0.5 rounded-md font-bold ${exchangeRate <= 4 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : exchangeRate <= 8 ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-rose-50 text-rose-700 border border-rose-200'}`}>
@@ -292,7 +291,7 @@ export default function ExchangeTab(props) {
               </span>
               <span className="text-xs font-semibold text-slate-500">of {returnsData?.totalMonthlyBills || 0} bills</span>
             </div>
-            <div className="mt-2 text-xs text-slate-500 flex items-center justify-between border-t border-slate-100 pt-2">
+            <div className="mt-2 text-xs text-slate-500 dark:text-slate-400 flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-2">
               <span>Policy Compliance:</span>
               <span className="font-bold text-emerald-600 flex items-center gap-1">
                 <CheckCircle2 className="w-3.5 h-3.5" /> 100% Exchange Only
@@ -317,13 +316,13 @@ export default function ExchangeTab(props) {
         </div>
 
         {/* NAVIGATION SUB-TABS */}
-        <div className="flex border-b border-slate-200 gap-2 overflow-x-auto">
+        <div className="flex border-b border-slate-200 dark:border-slate-800 gap-2 overflow-x-auto">
           <button
             onClick={() => setActiveView('desk')}
             className={`px-5 py-3 font-bold text-sm border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${
               activeView === 'desk'
-                ? 'border-amber-500 text-amber-600 bg-amber-50/50'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
+                ? 'border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/30'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
             <Receipt className="w-4 h-4" />
@@ -333,8 +332,8 @@ export default function ExchangeTab(props) {
             onClick={() => setActiveView('register')}
             className={`px-5 py-3 font-bold text-sm border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${
               activeView === 'register'
-                ? 'border-amber-500 text-amber-600 bg-amber-50/50'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
+                ? 'border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/30'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
             <RotateCcw className="w-4 h-4" />
@@ -344,8 +343,8 @@ export default function ExchangeTab(props) {
             onClick={() => setActiveView('insights')}
             className={`px-5 py-3 font-bold text-sm border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${
               activeView === 'insights'
-                ? 'border-amber-500 text-amber-600 bg-amber-50/50'
-                : 'border-transparent text-slate-500 hover:text-slate-800'
+                ? 'border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-950/30'
+                : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
             }`}
           >
             <Shirt className="w-4 h-4" />
@@ -363,13 +362,13 @@ export default function ExchangeTab(props) {
             <div className="lg:col-span-7 space-y-6">
 
               {/* SEARCH BOX */}
-              <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
-                <h3 className="text-base font-bold text-slate-800 flex items-center gap-2 mb-1">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
+                <h3 className="text-base font-bold text-slate-800 dark:text-white flex items-center gap-2 mb-1">
                   <Search className="w-5 h-5 text-amber-500" />
                   Look Up Original Customer Bill
                 </h3>
-                <p className="text-xs text-slate-500 mb-4">
-                  Enter the original Invoice Number (e.g., <span className="font-mono text-slate-700">CM-2024-001</span>) or 10-digit customer mobile number.
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                  Enter the original Invoice Number (e.g., <span className="font-mono text-slate-700 dark:text-slate-300">CM-2024-001</span>) or 10-digit customer mobile number.
                 </p>
 
                 <form onSubmit={handleBillLookup} className="flex gap-2">
@@ -379,7 +378,7 @@ export default function ExchangeTab(props) {
                       value={lookupQuery}
                       onChange={(e) => setLookupQuery(e.target.value)}
                       placeholder="Type Bill No or Mobile Number..."
-                      className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all"
+                      className="w-full pl-10 pr-4 py-3 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500 transition-all"
                     />
                     <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                   </div>
@@ -394,7 +393,7 @@ export default function ExchangeTab(props) {
                 </form>
 
                 {lookupError && (
-                  <div className="mt-3 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+                  <div className="mt-3 p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-2">
                     <AlertTriangle className="w-4 h-4 shrink-0" />
                     <span>{lookupError}</span>
                   </div>
@@ -403,11 +402,11 @@ export default function ExchangeTab(props) {
 
               {/* BILL DETAILS & ELIGIBILITY */}
               {selectedBill ? (
-                <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden animate-in fade-in duration-300">
-                  <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex flex-wrap items-center justify-between gap-3">
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden animate-in fade-in duration-300">
+                  <div className="p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="font-mono font-black text-slate-900 text-base">{selectedBill.BillNumber}</span>
+                        <span className="font-mono font-black text-slate-900 dark:text-white text-base">{selectedBill.BillNumber}</span>
                         <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${
                           selectedBill.DaysAgo <= 14
                             ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
@@ -417,14 +416,14 @@ export default function ExchangeTab(props) {
                         </span>
                       </div>
                       <p className="text-xs text-slate-500 mt-1">
-                        Billed on: <span className="font-semibold text-slate-700">{new Date(selectedBill.BillTime).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span> ({selectedBill.DaysAgo} days ago)
+                        Billed on: <span className="font-semibold text-slate-700 dark:text-slate-300">{new Date(selectedBill.BillTime).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span> ({selectedBill.DaysAgo} days ago)
                       </p>
                     </div>
 
                     <div className="text-right">
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Customer</span>
-                      <p className="text-sm font-black text-slate-800">{selectedBill.CustomerName?.trim() || 'Guest Shopper'}</p>
-                      <p className="text-xs font-mono text-slate-500">{selectedBill.Phone || 'No Phone'}</p>
+                      <p className="text-sm font-black text-slate-800 dark:text-white">{selectedBill.CustomerName?.trim() || 'Guest Shopper'}</p>
+                      <p className="text-xs font-mono text-slate-500 dark:text-slate-400">{selectedBill.Phone || 'No Phone'}</p>
                     </div>
                   </div>
 
@@ -447,8 +446,8 @@ export default function ExchangeTab(props) {
                               onClick={() => setSelectedItemToExchange(item)}
                               className={`p-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
                                 isSelected
-                                  ? 'bg-amber-50/70 border-amber-400 shadow-sm ring-1 ring-amber-400'
-                                  : 'bg-white border-slate-200 hover:border-slate-300'
+                                  ? 'bg-amber-50/70 dark:bg-amber-950/40 border-amber-400 dark:border-amber-500 shadow-sm ring-1 ring-amber-400'
+                                  : 'bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600'
                               }`}
                             >
                               <div className="flex items-center gap-3">
@@ -458,13 +457,13 @@ export default function ExchangeTab(props) {
                                   {isSelected ? '✓' : idx + 1}
                                 </div>
                                 <div>
-                                  <h4 className="text-sm font-bold text-slate-900">{item.ArticleName}</h4>
+                                  <h4 className="text-sm font-bold text-slate-900 dark:text-white">{item.ArticleName}</h4>
                                   <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-500">
-                                    <span className="bg-slate-100 px-2 py-0.5 rounded font-mono text-[11px]">{item.ArticleNo || 'SKU'}</span>
+                                    <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded font-mono text-[11px] text-slate-700 dark:text-slate-300">{item.ArticleNo || 'SKU'}</span>
                                     <span>•</span>
-                                    <span>Size: <strong className="text-slate-700">{item.Size || 'Standard'}</strong></span>
+                                    <span>Size: <strong className="text-slate-700 dark:text-slate-200">{item.Size || 'Standard'}</strong></span>
                                     <span>•</span>
-                                    <span>Color: <strong className="text-slate-700">{item.Color || 'Standard'}</strong></span>
+                                    <span>Color: <strong className="text-slate-700 dark:text-slate-200">{item.Color || 'Standard'}</strong></span>
                                     <span>•</span>
                                     <span>Qty: {Math.abs(item.Quantity)}</span>
                                   </div>
@@ -487,11 +486,11 @@ export default function ExchangeTab(props) {
                   </div>
                 </div>
               ) : (
-                <div className="bg-white rounded-2xl border border-slate-200/80 p-12 text-center shadow-sm">
-                  <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-50 flex items-center justify-center text-amber-500 mb-3">
+                <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 p-12 text-center shadow-sm">
+                  <div className="w-14 h-14 mx-auto rounded-2xl bg-amber-50 dark:bg-amber-950/40 flex items-center justify-center text-amber-500 mb-3">
                     <Receipt className="w-7 h-7" />
                   </div>
-                  <h4 className="text-base font-bold text-slate-800">No Bill Selected</h4>
+                  <h4 className="text-base font-bold text-slate-800 dark:text-white">No Bill Selected</h4>
                   <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
                     Search for the original cash memo using the search bar above to verify the 14-day exchange eligibility and calculate replacement values.
                   </p>
@@ -503,9 +502,9 @@ export default function ExchangeTab(props) {
             <div className="lg:col-span-5 space-y-6">
 
               {/* EXCHANGE VALUE CALCULATOR */}
-              <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-5">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-5">
+                <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+                  <h3 className="text-base font-bold text-slate-800 dark:text-white flex items-center gap-2">
                     <ArrowRightLeft className="w-5 h-5 text-amber-500" />
                     2. Replacement & Delta Calculator
                   </h3>
@@ -520,7 +519,7 @@ export default function ExchangeTab(props) {
                   <select
                     value={exchangeReason}
                     onChange={(e) => setExchangeReason(e.target.value)}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
                   >
                     <option value="Size Mismatch (Too Small)">Size Mismatch (Too Small - Needs Bigger Size)</option>
                     <option value="Size Mismatch (Too Big)">Size Mismatch (Too Big - Needs Smaller Size)</option>
@@ -543,7 +542,7 @@ export default function ExchangeTab(props) {
                       value={replacementItemName}
                       onChange={(e) => setReplacementItemName(e.target.value)}
                       placeholder="e.g. Cobb Slim-Fit Shirt (Size 42)"
-                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-medium text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
                     />
                   </div>
 
@@ -556,27 +555,27 @@ export default function ExchangeTab(props) {
                       value={replacementPrice}
                       onChange={(e) => setReplacementPrice(e.target.value)}
                       placeholder={selectedItemToExchange ? `${Math.abs(selectedItemToExchange.NetPrice)}` : '0.00'}
-                      className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500 font-mono"
+                      className="w-full p-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-bold text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500 font-mono"
                     />
                   </div>
                 </div>
 
                 {/* CALCULATION SUMMARY CARD */}
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2.5 text-xs">
+                <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 space-y-2.5 text-xs">
                   <div className="flex justify-between text-slate-600">
                     <span>Original Item Credit Value:</span>
-                    <span className="font-bold text-slate-900 font-mono">
+                    <span className="font-bold text-slate-900 dark:text-white font-mono">
                       {formatCurrency(Math.abs(originalCredit))}
                     </span>
                   </div>
                   <div className="flex justify-between text-slate-600">
                     <span>New Replacement Item Price:</span>
-                    <span className="font-bold text-slate-900 font-mono">
+                    <span className="font-bold text-slate-900 dark:text-white font-mono">
                       {newPriceNum > 0 ? formatCurrency(newPriceNum) : 'Same Value'}
                     </span>
                   </div>
-                  <div className="border-t border-slate-200 pt-2.5 flex justify-between items-baseline">
-                    <span className="font-bold text-slate-700 uppercase tracking-wider text-[11px]">
+                  <div className="border-t border-slate-200 dark:border-slate-800 pt-2.5 flex justify-between items-baseline">
+                    <span className="font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider text-[11px]">
                       {priceDifference > 0 ? 'Amount to Collect (Upsell):' : priceDifference < 0 ? 'Credit Balance to Issue:' : 'Balance to Collect:'}
                     </span>
                     <span className={`text-xl font-black font-mono ${
@@ -596,7 +595,7 @@ export default function ExchangeTab(props) {
                 </div>
 
                 {priceDifference < 0 && (
-                  <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-start gap-2">
+                  <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs flex items-start gap-2">
                     <Info className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                     <span><strong>No Cash Refund Policy:</strong> Customer should select an additional item to utilize remaining balance or be issued a store exchange credit voucher.</span>
                   </div>
@@ -624,7 +623,7 @@ export default function ExchangeTab(props) {
                 </div>
 
                 {/* STORE ADDRESS & GOOGLE REVIEW SETTINGS ACCORDION */}
-                <div className="pt-2 border-t border-slate-100">
+                <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
                   <button
                     type="button"
                     onClick={() => setShowLinkSettings(!showLinkSettings)}
@@ -638,7 +637,7 @@ export default function ExchangeTab(props) {
                   </button>
 
                   {showLinkSettings && (
-                    <div className="mt-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200 space-y-3 animate-in fade-in duration-200">
+                    <div className="mt-3 p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 space-y-3 animate-in fade-in duration-200">
                       <div>
                         <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">
                           Store Address (Included in WhatsApp slip)
@@ -648,7 +647,7 @@ export default function ExchangeTab(props) {
                           value={storeAddress}
                           onChange={(e) => handleUpdateStoreAddress(e.target.value)}
                           placeholder="e.g. Cobb Apparels, Fatehpur Road, Pundri"
-                          className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-medium focus:ring-1 focus:ring-amber-500 focus:outline-none"
+                          className="w-full p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-medium text-slate-900 dark:text-white focus:ring-1 focus:ring-amber-500 focus:outline-none"
                         />
                       </div>
 
@@ -661,7 +660,7 @@ export default function ExchangeTab(props) {
                           value={storeMapLink}
                           onChange={(e) => handleUpdateStoreMap(e.target.value)}
                           placeholder="https://maps.app.goo.gl/..."
-                          className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-medium focus:ring-1 focus:ring-amber-500 focus:outline-none font-mono text-[11px]"
+                          className="w-full p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-medium text-slate-900 dark:text-white focus:ring-1 focus:ring-amber-500 focus:outline-none font-mono text-[11px]"
                         />
                       </div>
 
@@ -674,7 +673,7 @@ export default function ExchangeTab(props) {
                           value={googleReviewLink}
                           onChange={(e) => handleUpdateReviewLink(e.target.value)}
                           placeholder="https://search.google.com/local/writereview?placeid=..."
-                          className="w-full p-2 bg-white border border-slate-200 rounded-lg text-xs font-medium focus:ring-1 focus:ring-amber-500 focus:outline-none font-mono text-[11px]"
+                          className="w-full p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg text-xs font-medium text-slate-900 dark:text-white focus:ring-1 focus:ring-amber-500 focus:outline-none font-mono text-[11px]"
                         />
                       </div>
                       <p className="text-[10px] text-slate-400">Settings are saved locally on this device.</p>
@@ -701,10 +700,10 @@ export default function ExchangeTab(props) {
         {/* VIEW 2: RECENT EXCHANGES REGISTER */}
         {/* ==================================================================== */}
         {activeView === 'register' && (
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden space-y-4 p-5">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden space-y-4 p-5">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
-                <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
                   <Receipt className="w-5 h-5 text-amber-500" />
                   Store Exchanges Register
                 </h3>
@@ -721,15 +720,15 @@ export default function ExchangeTab(props) {
                   placeholder="Filter by Bill, Customer, Article..."
                   value={registerSearch}
                   onChange={(e) => setRegisterSearch(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:bg-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
                 />
               </div>
             </div>
 
-            <div className="overflow-x-auto border border-slate-100 rounded-xl">
+            <div className="overflow-x-auto border border-slate-100 dark:border-slate-800 rounded-xl">
               <table className="min-w-full text-left">
                 <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200">
+                  <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800">
                     <th className="px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Invoice #</th>
                     <th className="px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Customer Name</th>
                     <th className="px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Mobile Number</th>
@@ -739,42 +738,42 @@ export default function ExchangeTab(props) {
                     <th className="px-5 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Date</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {recentExchanges.length > 0 ? (
                     recentExchanges.map((ret, idx) => (
-                      <tr key={idx} className="hover:bg-amber-50/30 transition-colors">
-                        <td className="px-5 py-3.5 font-mono text-sm font-bold text-slate-800">
+                      <tr key={idx} className="hover:bg-amber-50/30 dark:hover:bg-slate-800/40 transition-colors">
+                        <td className="px-5 py-3.5 font-mono text-sm font-bold text-slate-800 dark:text-slate-200">
                           {ret.BillNumber || 'POS-MEMO'}
                         </td>
                         <td className="px-5 py-3.5">
                           <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-full bg-amber-100 border border-amber-200 text-amber-700 font-black flex items-center justify-center text-xs shrink-0">
+                            <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 font-black flex items-center justify-center text-xs shrink-0">
                               {(ret.CustomerName?.trim() || 'G')[0].toUpperCase()}
                             </div>
-                            <span className="text-sm font-bold text-slate-900 whitespace-nowrap">
+                            <span className="text-sm font-bold text-slate-900 dark:text-white whitespace-nowrap">
                               {ret.CustomerName?.trim() || 'Guest Shopper'}
                             </span>
                           </div>
                         </td>
                         <td className="px-5 py-3.5 font-mono text-xs text-slate-600 whitespace-nowrap">
                           {ret.Phone ? (
-                            <span className="bg-slate-100 px-2 py-1 rounded-md text-slate-700 font-semibold">{ret.Phone}</span>
+                            <span className="bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md text-slate-700 dark:text-slate-300 font-semibold">{ret.Phone}</span>
                           ) : (
                             <span className="text-slate-400 italic">No Phone</span>
                           )}
                         </td>
                         <td className="px-5 py-3.5">
-                          <span className="text-sm font-bold text-slate-800 block">
+                          <span className="text-sm font-bold text-slate-800 dark:text-slate-200 block">
                             {ret.ArticleDetails || 'Exchanged Item'}
                           </span>
                           <div className="flex flex-wrap items-center gap-1.5 mt-1 text-[11px] text-slate-500">
                             {ret.Size && <span className="bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded font-semibold">Size: {ret.Size}</span>}
-                            {ret.Color && <span className="bg-slate-100 px-1.5 py-0.5 rounded font-medium text-slate-700">Color: {ret.Color}</span>}
+                            {ret.Color && <span className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded font-medium text-slate-700 dark:text-slate-300">Color: {ret.Color}</span>}
                             <span className="text-slate-400">({ret.ItemCount || 1} pc)</span>
                           </div>
                         </td>
                         <td className="px-5 py-3.5">
-                          <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700">
+                          <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
                             {ret.Category || 'Apparel'}
                           </span>
                         </td>
@@ -815,7 +814,7 @@ export default function ExchangeTab(props) {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
             {/* TOP EXCHANGED CATEGORIES */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-6 space-y-4">
               <div className="border-b border-slate-100 pb-3">
                 <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
                   <Tag className="w-5 h-5 text-amber-500" />
@@ -832,14 +831,14 @@ export default function ExchangeTab(props) {
                     const currentUnits = cat.ExchangedUnits || cat.ReturnedUnits || 0;
                     const barWidth = Math.max((currentUnits / maxUnits) * 100, 10);
                     return (
-                      <div key={idx} className="p-3 rounded-xl bg-slate-50 border border-slate-100 hover:border-amber-200 transition-all">
+                      <div key={idx} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 hover:border-amber-200 dark:hover:border-amber-700/60 transition-all">
                         <div className="flex justify-between items-center mb-1.5">
-                          <span className="text-sm font-bold text-slate-800">{cat.Category}</span>
+                          <span className="text-sm font-bold text-slate-800 dark:text-slate-200">{cat.Category}</span>
                           <span className="text-xs font-bold text-amber-700 bg-amber-100/70 px-2 py-0.5 rounded-md">
                             {currentUnits} units exchanged
                           </span>
                         </div>
-                        <div className="w-full bg-slate-200 rounded-full h-2">
+                        <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
                           <div
                             className="bg-amber-500 h-2 rounded-full transition-all duration-500"
                             style={{ width: `${barWidth}%` }}
@@ -863,7 +862,7 @@ export default function ExchangeTab(props) {
             </div>
 
             {/* SIZING & FIT RECOMMENDATIONS */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-6 space-y-4">
               <div className="border-b border-slate-100 pb-3">
                 <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
                   <Shirt className="w-5 h-5 text-amber-500" />
@@ -875,32 +874,32 @@ export default function ExchangeTab(props) {
               </div>
 
               <div className="space-y-3">
-                <div className="p-4 rounded-xl bg-amber-50/60 border border-amber-200/80">
-                  <div className="flex items-center gap-2 text-amber-900 font-bold text-sm">
+                <div className="p-4 rounded-xl bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-800/40">
+                  <div className="flex items-center gap-2 text-amber-900 dark:text-amber-200 font-bold text-sm">
                     <Sparkles className="w-4 h-4 text-amber-600" />
                     <span>Slim-Fit Shirts: Suggest 1 Size Up</span>
                   </div>
-                  <p className="text-xs text-amber-800/80 mt-1 leading-relaxed">
+                  <p className="text-xs text-amber-800/80 dark:text-amber-300/80 mt-1 leading-relaxed">
                     Over 65% of shirt exchanges are from Size 40 to 42. Floor staff should proactively encourage trial room fittings or advise customers on tapered cuts.
                   </p>
                 </div>
 
-                <div className="p-4 rounded-xl bg-indigo-50/60 border border-indigo-200/80">
-                  <div className="flex items-center gap-2 text-indigo-900 font-bold text-sm">
+                <div className="p-4 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/20 border border-indigo-200/80 dark:border-indigo-800/40">
+                  <div className="flex items-center gap-2 text-indigo-900 dark:text-indigo-200 font-bold text-sm">
                     <ArrowRightLeft className="w-4 h-4 text-indigo-600" />
                     <span>Trousers Length & Waist Alterations</span>
                   </div>
-                  <p className="text-xs text-indigo-800/80 mt-1 leading-relaxed">
+                  <p className="text-xs text-indigo-800/80 dark:text-indigo-300/80 mt-1 leading-relaxed">
                     Offering complimentary hem and waist alterations at initial checkout reduces post-purchase trouser exchanges by up to 40%.
                   </p>
                 </div>
 
-                <div className="p-4 rounded-xl bg-emerald-50/60 border border-emerald-200/80">
-                  <div className="flex items-center gap-2 text-emerald-900 font-bold text-sm">
+                <div className="p-4 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-800/40">
+                  <div className="flex items-center gap-2 text-emerald-900 dark:text-emerald-200 font-bold text-sm">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                     <span>Exchange Upsell Opportunity</span>
                   </div>
-                  <p className="text-xs text-emerald-800/80 mt-1 leading-relaxed">
+                  <p className="text-xs text-emerald-800/80 dark:text-emerald-300/80 mt-1 leading-relaxed">
                     When a customer brings an item for exchange, staff should introduce them to our coordinated bundles (e.g. matching belt or jacket) to turn the exchange into an upsell.
                   </p>
                 </div>
@@ -909,8 +908,6 @@ export default function ExchangeTab(props) {
 
           </div>
         )}
-
-      </div>
     </div>
   );
 }

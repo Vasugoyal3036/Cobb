@@ -458,7 +458,17 @@ const Layout = ({
         }`}>
           <div className="flex items-center justify-between gap-3">
             {/* Left: Hamburger + Brand */}
-            <div className="flex items-center gap-3 shrink-0">
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => typeof setIsMobileMenuOpen === 'function' && setIsMobileMenuOpen(true)}
+                className={`p-1.5 -ml-1 rounded-xl transition-colors cursor-pointer ${
+                  darkMode ? 'text-slate-300 hover:text-white hover:bg-white/10 active:bg-white/20' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 active:bg-slate-200'
+                }`}
+                title="Open Navigation Menu"
+              >
+                <Menu className="w-5 h-5" />
+              </button>
               <div className="flex items-center gap-2">
                 <OrsLogo size={32} showGlow={false} />
                 <div className="leading-tight">

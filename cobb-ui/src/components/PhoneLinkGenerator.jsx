@@ -45,10 +45,10 @@ const PhoneLinkGenerator = ({ API_BASE }) => {
     : null;
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-5">
+    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-6 space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h4 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+          <h4 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
             <Smartphone className="w-5 h-5 text-blue-500" /> Share to Phone
           </h4>
           <p className="text-xs text-slate-400 mt-1">
@@ -60,7 +60,7 @@ const PhoneLinkGenerator = ({ API_BASE }) => {
             <Wifi className="w-3 h-3" /> Live
           </span>
         ) : (
-          <span className="flex items-center gap-1.5 text-xs font-bold text-slate-400 bg-slate-100 px-3 py-1.5 rounded-full">
+          <span className="flex items-center gap-1.5 text-xs font-bold text-slate-400 bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full text-slate-400 dark:text-slate-500">
             <WifiOff className="w-3 h-3" /> Offline
           </span>
         )}
@@ -95,12 +95,12 @@ const PhoneLinkGenerator = ({ API_BASE }) => {
           </p>
 
           {/* URL Display */}
-          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-3">
+          <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-4 py-3">
             <input
               type="text"
               readOnly
               value={tunnelUrl}
-              className="flex-1 bg-transparent text-sm font-mono text-slate-700 outline-none truncate"
+              className="flex-1 bg-transparent text-sm font-mono text-slate-700 dark:text-slate-300 outline-none truncate"
             />
             <button
               onClick={copyLink}
@@ -116,13 +116,13 @@ const PhoneLinkGenerator = ({ API_BASE }) => {
               href={tunnelUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 transition-colors"
+              className="flex-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-bold py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 transition-colors"
             >
               <ExternalLink className="w-4 h-4" /> Open in Browser
             </a>
             <button
               onClick={stopTunnel}
-              className="flex-1 bg-red-50 hover:bg-red-100 text-red-600 font-bold py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 transition-colors border border-red-200"
+              className="flex-1 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-300 font-bold py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 transition-colors border border-red-200 dark:border-red-800"
             >
               <WifiOff className="w-4 h-4" /> Stop Sharing
             </button>

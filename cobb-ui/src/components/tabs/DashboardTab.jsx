@@ -110,6 +110,10 @@ const DashboardTab = (props) => {
   const [calcOffer, setCalcOffer] = React.useState('b3_70');
   const [b1g3Items, setB1g3Items] = React.useState([1700, 1800, 1900]);
   
+  // Wardrobe Profiler Search & Filter State
+  const [wardrobeSearchQuery, setWardrobeSearchQuery] = React.useState('');
+  const [wardrobePersonaFilter, setWardrobePersonaFilter] = React.useState('ALL');
+
   // Alteration Slip Modal state
   const [showAlterationModal, setShowAlterationModal] = React.useState(false);
 
@@ -838,7 +842,7 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
             </p>
           </div>
         ) : (
-          <div className="p-4 sm:p-6 lg:p-8 space-y-8">
+          <div className="space-y-8">
             <div className="border-b border-slate-200 dark:border-slate-800 pb-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
                 <h3 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center">
@@ -1290,7 +1294,7 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
                               <th className="py-3.5 px-4 text-center whitespace-nowrap">Action</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
+                          <tbody className="divide-y divide-slate-100 dark:divide-slate-800 dark:divide-slate-800 font-medium">
                             {/* Summary All-Time Store Total Row (POS Reconciled) */}
                             <tr
                               onClick={() => setSelectedPnlMonth('all')}
@@ -1752,7 +1756,7 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
                               <th className="py-3 px-6 text-right whitespace-nowrap">% of Raw Sales (Before Tax)</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60 font-medium text-slate-700 dark:text-slate-200">
+                          <tbody className="divide-y divide-slate-100 dark:divide-slate-800 dark:divide-slate-700/60 font-medium text-slate-700 dark:text-slate-200">
                             {/* SECTION 1: INFLOW */}
                             <tr className="bg-slate-50/70 dark:bg-slate-800/60 font-black text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                               <td colSpan={4} className="py-2.5 px-6">
@@ -1970,7 +1974,7 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
         <div className="p-4 sm:p-6 lg:p-8 space-y-8">
           <div className="border-b border-slate-200 pb-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <h3 className="text-2xl font-bold text-slate-800 flex items-center">
+              <h3 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center">
                 <Send className="w-6 h-6 mr-3 text-emerald-600" /> Billed Customer Group & Mass Offer Broadcast
               </h3>
               <p className="text-sm text-slate-500 mt-1">Send 1-click WhatsApp offer broadcasts to every customer who has ever shopped at Cobb Pundri.</p>
@@ -1979,7 +1983,7 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
               <button
                 onClick={handleSyncBroadcastGroup}
                 disabled={isSyncingGroup}
-                className="px-4 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-600 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-sm disabled:opacity-50"
+                className="px-4 py-2 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 hover:bg-emerald-600 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-sm disabled:opacity-50"
               >
                 <RefreshCw className={`w-4 h-4 ${isSyncingGroup ? 'animate-spin' : ''}`} />
                 <span>{isSyncingGroup ? 'Syncing POS...' : 'Sync Billed Customers'}</span>
@@ -1996,13 +2000,13 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
 
           {/* Metric Summary Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Customers in Group</p>
               <h4 className="text-3xl font-black text-emerald-600 mt-2">{broadcastGroupCount} Billed Contacts</h4>
               <p className="text-xs text-slate-400 mt-1">Saved in local database group</p>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Broadcast Engine Status</p>
               <h4 className={`text-2xl font-black mt-2 ${broadcastStatus.isRunning ? 'text-amber-600 animate-pulse' : 'text-slate-800'}`}>
                 {broadcastStatus.isRunning ? '● BROADCASTING' : '● READY'}
@@ -2010,13 +2014,13 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
               <p className="text-xs text-slate-400 mt-1">{broadcastStatus.isRunning ? `Processing ${broadcastStatus.currentIndex}/${broadcastStatus.total}` : 'Standing by for offer dispatch'}</p>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Messages Dispatched</p>
               <h4 className="text-3xl font-black text-blue-600 mt-2">{broadcastStatus.sentCount} / {broadcastStatus.total || broadcastGroupCount}</h4>
               <p className="text-xs text-slate-400 mt-1">Delivered via WhatsApp Bridge</p>
             </div>
 
-            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+            <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Failed / Skipped</p>
               <h4 className="text-3xl font-black text-rose-600 mt-2">{broadcastStatus.failedCount}</h4>
               <p className="text-xs text-slate-400 mt-1">Invalid or unreachable numbers</p>
@@ -2024,29 +2028,29 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
           </div>
 
           {/* Offer Broadcast Composer Card with Anti-Ban Guardrails */}
-          <div className="bg-white p-4 sm:p-6 lg:p-8 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+          <div className="bg-white dark:bg-slate-900 p-4 sm:p-6 lg:p-8 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
             {/* Anti-Ban Shield Banner */}
-            <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+            <div className="bg-emerald-50/80 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-800/60 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-600/30 shrink-0">
                   <CheckCircle className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-black text-emerald-950 flex items-center gap-1.5">
+                  <h4 className="text-sm font-black text-emerald-950 dark:text-emerald-100 flex items-center gap-1.5">
                     🛡️ Anti-Ban Protection Engine Active
                   </h4>
-                  <p className="text-xs text-emerald-700 mt-0.5">
+                  <p className="text-xs text-emerald-700 dark:text-emerald-300 mt-0.5">
                     Protects your WhatsApp Business number with <strong>Human-Pacing Delays (20-38s)</strong>, <strong>Batch Cooldowns</strong>, and <strong>Spin-Tax Text Variations</strong>.
                   </p>
                 </div>
               </div>
-              <span className="px-2.5 py-1 bg-white text-emerald-800 text-[10px] font-black rounded-lg border border-emerald-300 uppercase tracking-wide shrink-0 shadow-xs">
+              <span className="px-2.5 py-1 bg-white dark:bg-slate-900 text-emerald-800 dark:text-emerald-300 text-[10px] font-black rounded-lg border border-emerald-300 dark:border-emerald-800 uppercase tracking-wide shrink-0 shadow-xs">
                 100% Ban-Proof Safeguard
               </span>
             </div>
 
             {/* Safety Configuration Controls */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-slate-50 dark:bg-slate-950/60 rounded-xl border border-slate-200 dark:border-slate-800">
               <div>
                 <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1.5">
                   Pacing Speed Mode
@@ -2057,7 +2061,7 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
                     onClick={() => setSafetyMode('ultra')}
                     className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold border transition-all cursor-pointer ${safetyMode === 'ultra'
                         ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                        : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
                       }`}
                   >
                     🛡️ Ultra-Safe (20-38s)
@@ -2067,7 +2071,7 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
                     onClick={() => setSafetyMode('balanced')}
                     className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold border transition-all cursor-pointer ${safetyMode === 'balanced'
                         ? 'bg-blue-600 text-white border-blue-700 shadow-xs'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                        : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
                       }`}
                   >
                     ⚡ Balanced (12-22s)
@@ -2082,7 +2086,7 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
                 <select
                   value={batchSize}
                   onChange={(e) => setBatchSize(Number(e.target.value))}
-                  className="w-full bg-white border border-slate-200 rounded-lg py-1.5 px-3 text-xs font-bold text-slate-700 focus:outline-none cursor-pointer"
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg py-1.5 px-3 text-xs font-bold text-slate-700 dark:text-slate-200 focus:outline-none cursor-pointer"
                 >
                   <option value={15}>15 messages per batch (3 min cool-down)</option>
                   <option value={20}>20 messages per batch (3 min cool-down - Recommended)</option>
@@ -2091,7 +2095,7 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
               </div>
 
               <div className="flex items-center pt-5">
-                <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700">
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700 dark:text-slate-300">
                   <input
                     type="checkbox"
                     checked={includeOptOut}
@@ -2105,11 +2109,11 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
 
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-100 pb-4 gap-3">
               <div>
-                <h4 className="font-bold text-slate-800 text-lg flex items-center">
+                <h4 className="font-bold text-slate-800 dark:text-white text-lg flex items-center">
                   <Sparkles className="w-5 h-5 mr-2 text-indigo-600" /> Compose Preset Offer Broadcast
                 </h4>
                 <p className="text-xs text-slate-500 mt-0.5">
-                  Supports <code className="bg-slate-100 px-1 py-0.5 rounded text-indigo-600 font-bold">{"{name}"}</code> and Spin-tax <code className="bg-slate-100 px-1 py-0.5 rounded text-indigo-600 font-bold">{"{Hello|Hi|Dear}"}</code> to rotate greetings and evade duplicate-content filters.
+                  Supports <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-indigo-600 dark:text-indigo-400 font-bold">{"{name}"}</code> and Spin-tax <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-indigo-600 dark:text-indigo-400 font-bold">{"{Hello|Hi|Dear}"}</code> to rotate greetings and evade duplicate-content filters.
                 </p>
               </div>
 
@@ -2117,19 +2121,19 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
               <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => setBroadcastMsg('{🎉 SPECIAL OFFER|🏷️ EXCLUSIVE DEAL|✨ VIP INVITATION} FROM COBB PUNDRI!\n\n{Hello|Dear|Hi} *{name}*! 👋\n\nEnjoy *BUY 2 GET 1 FREE* on all Suits, Formals, & Denim Collections this week at Cobb Pundri! 🏷️✨\n\n-----------------------------------\n📍 *Store Location:*\nhttps://maps.app.goo.gl/HxgE1M25h32oWY2H9?g_st=ac\n-----------------------------------\n\nShow this WhatsApp message at counter to claim your deal!\n\nWarm Regards,\n*Parbhat Goyal*\nCobb Pundri')}
-                  className="px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white rounded-lg text-xs font-bold transition-all cursor-pointer border border-indigo-100"
+                  className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-600 hover:text-white rounded-lg text-xs font-bold transition-all cursor-pointer border border-indigo-100 dark:border-indigo-900/50"
                 >
                   🏷️ Buy 2 Get 1 Free (Spin-tax)
                 </button>
                 <button
                   onClick={() => setBroadcastMsg('{👑 VIP REWARD|💎 EXCLUSIVE PRIVILEGE} FROM COBB PUNDRI\n\n{Dear|Hello|Greetings} *{name}*, 👋\n\nThank you for being one of our top valued customers! Enjoy an *INSTANT ₹500 VIP DISCOUNT* on your next invoice at Cobb Pundri this week. ✨\n\n-----------------------------------\n📍 *Store Location:*\nhttps://maps.app.goo.gl/HxgE1M25h32oWY2H9?g_st=ac\n-----------------------------------\n\nValid on minimum bill value of ₹2,999. Valid till Sunday!\n\nWarm Regards,\n*Parbhat Goyal*\nCobb Pundri')}
-                  className="px-3 py-1.5 bg-amber-50 text-amber-700 hover:bg-amber-600 hover:text-white rounded-lg text-xs font-bold transition-all cursor-pointer border border-amber-100"
+                  className="px-3 py-1.5 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 hover:bg-amber-600 hover:text-white rounded-lg text-xs font-bold transition-all cursor-pointer border border-amber-100 dark:border-amber-900/50"
                 >
                   👑 VIP ₹500 Discount
                 </button>
                 <button
                   onClick={() => setBroadcastMsg('{✨ NEW COLLECTION ARRIVAL|👔 FRESH FASHION DROP} AT COBB PUNDRI\n\n{Hello|Hi|Dear} *{name}*! 👋\n\nFresh stock of Premium Festive Suits, Blazers, & Smart Shirts just arrived at Cobb Pundri! Drop by today for exclusive early-bird fitting. 🛍️\n\n-----------------------------------\n📍 *Store Location:*\nhttps://maps.app.goo.gl/HxgE1M25h32oWY2H9?g_st=ac\n-----------------------------------\n\nWarm Regards,\n*Parbhat Goyal*\nCobb Pundri')}
-                  className="px-3 py-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white rounded-lg text-xs font-bold transition-all cursor-pointer border border-emerald-100"
+                  className="px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-600 hover:text-white rounded-lg text-xs font-bold transition-all cursor-pointer border border-emerald-100 dark:border-emerald-900/50"
                 >
                   ✨ New Festival Collection
                 </button>
@@ -2140,7 +2144,7 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
               value={broadcastMsg}
               onChange={(e) => setBroadcastMsg(e.target.value)}
               rows={6}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm font-sans focus:outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all leading-relaxed shadow-inner"
+              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl p-4 text-sm font-sans focus:outline-none focus:bg-white dark:focus:bg-slate-900 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all leading-relaxed shadow-inner"
               placeholder="Type your offer broadcast text here..."
             />
 
@@ -2201,10 +2205,10 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
           </div>
 
           {/* Billed Customer Group Database Table */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-6">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden p-6">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
               <div>
-                <h4 className="font-bold text-slate-800 text-lg">Billed Customer Group Database</h4>
+                <h4 className="font-bold text-slate-800 dark:text-white text-lg">Billed Customer Group Database</h4>
                 <p className="text-xs text-slate-500 mt-0.5">Complete local roster of all customer contacts synced from POS billing history.</p>
               </div>
               <div className="relative w-full sm:w-72">
@@ -2214,7 +2218,7 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
                   value={groupSearchQuery}
                   onChange={(e) => setGroupSearchQuery(e.target.value)}
                   placeholder="Search group by Name or Phone..."
-                  className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:bg-white focus:border-indigo-500"
+                  className="w-full pl-9 pr-4 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-xl text-xs focus:outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-indigo-500"
                 />
               </div>
             </div>
@@ -2222,7 +2226,7 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
             <div className="overflow-x-auto custom-scrollbar">
               <table className="w-full text-left text-sm border-collapse">
                 <thead>
-                  <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase text-[11px]">
+                  <tr className="border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold uppercase text-[11px]">
                     <th className="pb-3 pr-4 whitespace-nowrap">#</th>
                     <th className="pb-3 px-3 whitespace-nowrap">Customer Name</th>
                     <th className="pb-3 px-3 whitespace-nowrap">Phone Number</th>
@@ -2231,18 +2235,18 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
                     <th className="pb-3 pl-4 text-right whitespace-nowrap">Last Bill Date</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {broadcastGroup
                     .filter(c =>
                       c.customerName?.toLowerCase().includes(groupSearchQuery.toLowerCase()) ||
                       c.phone?.includes(groupSearchQuery)
                     )
                     .map((c, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                      <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                         <td className="py-3 pr-4 text-xs font-mono text-slate-400 whitespace-nowrap">{idx + 1}</td>
-                        <td className="py-3 px-3 font-bold text-slate-800 whitespace-nowrap">{c.customerName || 'Valued Customer'}</td>
-                        <td className="py-3 px-3 font-mono text-xs text-slate-600 whitespace-nowrap">+91 {c.phone}</td>
-                        <td className="py-3 px-3 text-right font-bold text-slate-700 text-xs whitespace-nowrap">{c.totalBills || 1} Bills</td>
+                        <td className="py-3 px-3 font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap">{c.customerName || 'Valued Customer'}</td>
+                        <td className="py-3 px-3 font-mono text-xs text-slate-600 dark:text-slate-400 whitespace-nowrap">+91 {c.phone}</td>
+                        <td className="py-3 px-3 text-right font-bold text-slate-700 dark:text-slate-300 text-xs whitespace-nowrap">{c.totalBills || 1} Bills</td>
                         <td className="py-3 px-3 text-right font-black text-emerald-600 whitespace-nowrap">{formatCurrency(c.totalSpent || 0)}</td>
                         <td className="py-3 pl-4 text-right text-xs font-mono text-slate-400 whitespace-nowrap">
                           {c.lastBilledAt ? new Date(c.lastBilledAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Recent'}
@@ -2262,7 +2266,7 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
         <div className="p-4 sm:p-6 lg:p-8 space-y-8">
           <div className="border-b border-slate-200 pb-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <h3 className="text-2xl font-bold text-slate-800 flex items-center">
+              <h3 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center">
                 <Flame className="w-6 h-6 mr-3 text-rose-600 animate-pulse" /> Top-Moving Leaderboard & Size Demand Matrix
               </h3>
               <p className="text-sm text-slate-500 mt-1">Real-time analysis of your highest-selling articles and size demand distribution from POS sales.</p>
@@ -2306,7 +2310,7 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
           {topMoversData?.topArticles && topMoversData.topArticles.length >= 3 && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* #1 GOLD PODIUM */}
-              <div className="bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-white p-6 rounded-2xl border-2 border-amber-400 shadow-md relative overflow-hidden">
+              <div className="bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-white dark:from-amber-950/30 dark:via-amber-900/10 dark:to-slate-900 p-6 rounded-2xl border-2 border-amber-400 dark:border-amber-500/60 shadow-md relative overflow-hidden">
                 <div className="absolute -right-3 -top-3 w-16 h-16 bg-amber-400/20 rounded-full flex items-center justify-center pointer-events-none">
                   <Trophy className="w-8 h-8 text-amber-500" />
                 </div>
@@ -2314,9 +2318,9 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
                   <span className="px-2.5 py-1 bg-amber-400 text-amber-950 font-black text-xs rounded-full uppercase tracking-wide">🥇 #1 Bestseller</span>
                   <span className="text-xs font-bold text-amber-700">{topMoversData.topArticles[0].Category}</span>
                 </div>
-                <h4 className="text-2xl font-black text-slate-900">{topMoversData.topArticles[0].ArticleNo}</h4>
-                <p className="text-xs font-semibold text-slate-600 mt-1">{topMoversData.topArticles[0].ArticleName}</p>
-                <div className="mt-4 pt-4 border-t border-amber-200/60 flex justify-between items-end">
+                <h4 className="text-2xl font-black text-slate-900 dark:text-white">{topMoversData.topArticles[0].ArticleNo}</h4>
+                <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mt-1">{topMoversData.topArticles[0].ArticleName}</p>
+                <div className="mt-4 pt-4 border-t border-amber-200/60 dark:border-amber-900/50 flex justify-between items-end">
                   <div>
                     <p className="text-[10px] uppercase font-bold text-slate-400">Total Units Sold</p>
                     <p className="text-2xl font-black text-amber-600">{topMoversData.topArticles[0].TotalUnitsSold} Units</p>
@@ -2329,17 +2333,17 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
               </div>
 
               {/* #2 SILVER PODIUM */}
-              <div className="bg-gradient-to-br from-slate-200/40 via-slate-100/20 to-white p-6 rounded-2xl border border-slate-300 shadow-sm relative overflow-hidden">
+              <div className="bg-gradient-to-br from-slate-200/40 via-slate-100/20 to-white dark:from-slate-800/40 dark:via-slate-800/20 dark:to-slate-900 p-6 rounded-2xl border border-slate-300 dark:border-slate-700 shadow-sm relative overflow-hidden">
                 <div className="flex items-center gap-2 mb-3">
                   <span className="px-2.5 py-1 bg-slate-200 text-slate-800 font-black text-xs rounded-full uppercase tracking-wide">🥈 #2 Bestseller</span>
                   <span className="text-xs font-bold text-slate-500">{topMoversData.topArticles[1].Category}</span>
                 </div>
-                <h4 className="text-2xl font-black text-slate-900">{topMoversData.topArticles[1].ArticleNo}</h4>
-                <p className="text-xs font-semibold text-slate-600 mt-1">{topMoversData.topArticles[1].ArticleName}</p>
-                <div className="mt-4 pt-4 border-t border-slate-200 flex justify-between items-end">
+                <h4 className="text-2xl font-black text-slate-900 dark:text-white">{topMoversData.topArticles[1].ArticleNo}</h4>
+                <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mt-1">{topMoversData.topArticles[1].ArticleName}</p>
+                <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-800 flex justify-between items-end">
                   <div>
                     <p className="text-[10px] uppercase font-bold text-slate-400">Total Units Sold</p>
-                    <p className="text-2xl font-black text-slate-700">{topMoversData.topArticles[1].TotalUnitsSold} Units</p>
+                    <p className="text-2xl font-black text-slate-700 dark:text-slate-200">{topMoversData.topArticles[1].TotalUnitsSold} Units</p>
                   </div>
                   <div className="text-right">
                     <p className="text-[10px] uppercase font-bold text-slate-400">Revenue</p>
@@ -2349,17 +2353,17 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
               </div>
 
               {/* #3 BRONZE PODIUM */}
-              <div className="bg-gradient-to-br from-amber-700/10 via-amber-800/5 to-white p-6 rounded-2xl border border-amber-700/30 shadow-sm relative overflow-hidden">
+              <div className="bg-gradient-to-br from-amber-700/10 via-amber-800/5 to-white dark:from-amber-950/20 dark:via-amber-900/10 dark:to-slate-900 p-6 rounded-2xl border border-amber-700/30 dark:border-amber-700/50 shadow-sm relative overflow-hidden">
                 <div className="flex items-center gap-2 mb-3">
                   <span className="px-2.5 py-1 bg-amber-700/20 text-amber-900 font-black text-xs rounded-full uppercase tracking-wide">🥉 #3 Bestseller</span>
                   <span className="text-xs font-bold text-amber-800">{topMoversData.topArticles[2].Category}</span>
                 </div>
-                <h4 className="text-2xl font-black text-slate-900">{topMoversData.topArticles[2].ArticleNo}</h4>
-                <p className="text-xs font-semibold text-slate-600 mt-1">{topMoversData.topArticles[2].ArticleName}</p>
-                <div className="mt-4 pt-4 border-t border-amber-200 flex justify-between items-end">
+                <h4 className="text-2xl font-black text-slate-900 dark:text-white">{topMoversData.topArticles[2].ArticleNo}</h4>
+                <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mt-1">{topMoversData.topArticles[2].ArticleName}</p>
+                <div className="mt-4 pt-4 border-t border-amber-200 dark:border-amber-900/50 flex justify-between items-end">
                   <div>
                     <p className="text-[10px] uppercase font-bold text-slate-400">Total Units Sold</p>
-                    <p className="text-2xl font-black text-amber-800">{topMoversData.topArticles[2].TotalUnitsSold} Units</p>
+                    <p className="text-2xl font-black text-amber-800 dark:text-amber-300">{topMoversData.topArticles[2].TotalUnitsSold} Units</p>
                   </div>
                   <div className="text-right">
                     <p className="text-[10px] uppercase font-bold text-slate-400">Revenue</p>
@@ -2371,9 +2375,9 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
 
           )}
           {/* Size Demand Matrix Distribution Section */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
             <div>
-              <h4 className="font-bold text-slate-800 text-lg flex items-center">
+              <h4 className="font-bold text-slate-800 dark:text-white text-lg flex items-center">
                 <Grid className="w-5 h-5 mr-2 text-indigo-600" /> Size Demand Distribution Matrix
               </h4>
               <p className="text-xs text-slate-500 mt-0.5">Identifies exact customer size preferences to optimize warehouse re-orders without dead inventory.</p>
@@ -2384,12 +2388,12 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
                 const maxUnits = topMoversData.sizeDemand[0]?.TotalUnitsSold || 1;
                 const pct = ((s.TotalUnitsSold / maxUnits) * 100).toFixed(0);
                 return (
-                  <div key={idx} className="bg-slate-50 p-4 rounded-xl border border-slate-200/80 space-y-2">
+                  <div key={idx} className="bg-slate-50 dark:bg-slate-800/40 p-4 rounded-xl border border-slate-200/80 dark:border-slate-700/60 space-y-2">
                     <div className="flex justify-between items-center">
-                      <span className="font-mono font-bold text-sm text-slate-800">{s.Size}</span>
+                      <span className="font-mono font-bold text-sm text-slate-800 dark:text-white">{s.Size}</span>
                       <span className="font-black text-xs text-indigo-600">{s.TotalUnitsSold} Units Sold</span>
                     </div>
-                    <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
+                    <div className="w-full bg-slate-200 dark:bg-slate-700 h-2.5 rounded-full overflow-hidden">
                       <div className="bg-indigo-600 h-full rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
                     </div>
                     <div className="flex justify-between text-[10px] text-slate-400">
@@ -2403,10 +2407,10 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
           </div>
 
           {/* Top 15 Bestselling Articles Table */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-6">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden p-6">
             <div className="flex justify-between items-center mb-6">
               <div>
-                <h4 className="font-bold text-slate-800 text-lg">Top 15 Bestselling Articles Leaderboard</h4>
+                <h4 className="font-bold text-slate-800 dark:text-white text-lg">Top 15 Bestselling Articles Leaderboard</h4>
                 <p className="text-xs text-slate-500 mt-0.5">Ranked strictly by historical unit sales volume from POS cash memos.</p>
               </div>
             </div>
@@ -2424,14 +2428,14 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
                     <th className="pb-3 pl-4 text-right whitespace-nowrap">Warehouse Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {topMoversData?.topArticles && topMoversData.topArticles.map((art, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                    <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                       <td className="py-3 pr-4 font-mono font-bold text-xs whitespace-nowrap">
                         {idx === 0 ? '🥇 #1' : idx === 1 ? '🥈 #2' : idx === 2 ? '🥉 #3' : `#${idx + 1}`}
                       </td>
-                      <td className="py-3 px-3 font-mono font-black text-slate-900 text-xs whitespace-nowrap">{art.ArticleNo}</td>
-                      <td className="py-3 px-3 font-bold text-slate-800 whitespace-nowrap">{art.ArticleName}</td>
+                      <td className="py-3 px-3 font-mono font-black text-slate-900 dark:text-white text-xs whitespace-nowrap">{art.ArticleNo}</td>
+                      <td className="py-3 px-3 font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap">{art.ArticleName}</td>
                       <td className="py-3 px-3 text-xs text-slate-500 whitespace-nowrap">{art.Category}</td>
                       <td className="py-3 px-3 text-right font-black text-indigo-600 whitespace-nowrap">{art.TotalUnitsSold} Units</td>
                       <td className="py-3 px-3 text-right font-black text-emerald-600 whitespace-nowrap">{formatCurrency(art.TotalRevenue)}</td>
@@ -2456,95 +2460,321 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
 
       )}
       {/* CUSTOMER WARDROBE PROFILER */}
-      {activeTab === 'wardrobe' && (
-        <div className="p-4 sm:p-6 lg:p-8">
-          <div className="border-b border-slate-200 pb-5 mb-8 flex justify-between items-center">
-            <div>
-              <h3 className="text-2xl font-bold text-slate-800 flex items-center">
-                <Shirt className="w-6 h-6 mr-3 text-purple-600" /> Customer Wardrobe Profiler & AI Classification
-              </h3>
-              <p className="text-sm text-slate-500 mt-1">Smart customer style preferences based on WizApp purchase history.</p>
-            </div>
-          </div>
+      {activeTab === 'wardrobe' && (() => {
+        const profiles = Array.isArray(wardrobeProfiles) ? wardrobeProfiles : [];
+        const totalLtv = profiles.reduce((sum, p) => sum + (Number(p.TotalSpent) || 0), 0);
+        const avgLtv = profiles.length > 0 ? Math.round(totalLtv / profiles.length) : 0;
+        const totalVisitsCount = profiles.reduce((sum, p) => sum + (Number(p.TotalVisits) || 0), 0);
+        const avgVisits = profiles.length > 0 ? (totalVisitsCount / profiles.length).toFixed(1) : '1.0';
 
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-6">
-            <div className="flex justify-between items-center mb-4">
-              <h4 className="font-bold text-slate-800 text-lg">Classified Customer Wardrobes</h4>
-              <span className="text-xs font-semibold text-slate-400">Showing {wardrobeProfiles?.length || 0} Profiles</span>
+        const personaCounts = {};
+        profiles.forEach(p => {
+          const pers = p.Persona || 'Casual';
+          personaCounts[pers] = (personaCounts[pers] || 0) + 1;
+        });
+        const dominantPersona = Object.entries(personaCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'VIP Formal Elite';
+
+        const filtered = profiles.filter(c => {
+          const q = (wardrobeSearchQuery || '').trim().toLowerCase();
+          const matchesSearch = !q ||
+            c.CustomerName?.toLowerCase().includes(q) ||
+            c.Phone?.includes(q) ||
+            c.PrimaryStyle?.toLowerCase().includes(q);
+          
+          const matchesPersona = wardrobePersonaFilter === 'ALL' ||
+            (c.Persona && c.Persona.toLowerCase().includes(wardrobePersonaFilter.toLowerCase()));
+
+          return matchesSearch && matchesPersona;
+        });
+
+        const personaCategories = ['ALL', 'High Roller', 'Formal', 'Casual', 'Smart Casual'];
+
+        return (
+          <div className="space-y-6">
+            {/* Header */}
+            <div className="border-b border-slate-200 dark:border-slate-800 pb-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-purple-500/25 shrink-0">
+                    <Shirt className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
+                        Customer Wardrobe Profiler &amp; AI Classification
+                      </h3>
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-purple-500/15 text-purple-600 dark:text-purple-300 border border-purple-500/30">
+                        AI Persona Engine
+                      </span>
+                    </div>
+                    <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium mt-0.5">
+                      Smart customer style preferences, sizing intelligence, and 1-click WhatsApp outfit matching from POS history.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    axios.get(`${API_BASE}/api/analytics/wardrobe-profiles`).then(res => {
+                      if (res.data && setWardrobeProfiles) {
+                        setWardrobeProfiles(res.data);
+                        localStorage.setItem('cobb_wardrobeProfiles', JSON.stringify(res.data));
+                      }
+                    }).catch(console.error);
+                  }}
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-slate-800 shadow-sm transition-all flex items-center gap-2 cursor-pointer"
+                  title="Re-sync wardrobe profiles from POS"
+                >
+                  <RefreshCw className="w-4 h-4 text-purple-500" />
+                  <span>Sync Profiles</span>
+                </button>
+              </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-200 text-slate-500 font-bold uppercase text-[11px]">
-                    <th className="pb-3 pr-4 whitespace-nowrap">Customer Name</th>
-                    <th className="pb-3 px-3 whitespace-nowrap">Phone</th>
-                    <th className="pb-3 px-3 whitespace-nowrap">AI Persona Tag</th>
-                    <th className="pb-3 px-3 whitespace-nowrap">Primary Style Preference</th>
-                    <th className="pb-3 px-3 text-right whitespace-nowrap">Lifetime Value (LTV)</th>
-                    <th className="pb-3 px-3 text-right whitespace-nowrap">Total Visits</th>
-                    <th className="pb-3 pl-4 text-center whitespace-nowrap">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {wardrobeProfiles?.map((c, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                      <td className="py-3.5 pr-4 font-bold text-slate-800 whitespace-nowrap">{c.CustomerName?.trim() || 'Valued Shopper'}</td>
-                      <td className="py-3.5 px-3 text-xs font-mono text-slate-500 whitespace-nowrap">{c.Phone}</td>
-                      <td className="py-3.5 px-3 whitespace-nowrap">
-                        <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${c.Persona?.includes('High Roller') ? 'bg-amber-100 text-amber-800 border border-amber-200' :
-                          c.Persona?.includes('Formal') ? 'bg-purple-100 text-purple-800 border border-purple-200' :
-                            c.Persona?.includes('Casual') ? 'bg-blue-100 text-blue-800 border border-blue-200' :
-                              'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                          }`}>
-                          {c.Persona}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-3 text-xs font-semibold text-slate-600 whitespace-nowrap">{c.PrimaryStyle}</td>
-                      <td className="py-3.5 px-3 text-right font-black text-green-600 whitespace-nowrap">{formatCurrency(c.TotalSpent)}</td>
-                      <td className="py-3.5 px-3 text-right text-xs font-bold text-slate-700 whitespace-nowrap">{c.TotalVisits} Visits</td>
-                      <td className="py-3.5 pl-4 text-center whitespace-nowrap">
-                        <div className="flex items-center justify-center gap-1.5">
-                          <button
-                            onClick={() => {
-                              if (props.openWardrobePassport) {
-                                props.openWardrobePassport(c.Phone, c.CustomerName);
-                              } else {
-                                const msg = `Hello ${c.CustomerName?.trim() || 'Sir'}! 👋 We just added new ${c.PrimaryStyle} collections at Cobb Pundri matching your style! Drop by today to explore.`;
-                                window.open(`https://wa.me/${c.Phone?.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
-                              }
-                            }}
-                            className="px-3 py-1 bg-purple-50 text-purple-700 border border-purple-200 rounded-lg text-xs font-bold hover:bg-purple-600 hover:text-white transition-all cursor-pointer flex items-center gap-1"
-                          >
-                            👔 Wardrobe Passport
-                          </button>
-                          <button
-                            onClick={() => {
-                              const msg = `Hello ${c.CustomerName?.trim() || 'Sir'}! 👋 We just added new ${c.PrimaryStyle} collections at Cobb Pundri matching your style! Drop by today to explore.`;
-                              window.open(`https://wa.me/${c.Phone?.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
-                            }}
-                            className="p-1.5 bg-green-50 text-green-700 border border-green-200 rounded-lg text-xs font-bold hover:bg-green-600 hover:text-white transition-all cursor-pointer"
-                            title="WhatsApp Style Recommendation"
-                          >
-                            💬
-                          </button>
-                        </div>
-                      </td>
+            {/* TOP METRIC KPI CARDS */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Classified Profiles</span>
+                  <div className="w-7 h-7 rounded-xl bg-purple-500/15 flex items-center justify-center text-purple-500">
+                    <Users className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="mt-3 flex items-baseline gap-2">
+                  <span className="text-3xl font-black text-slate-900 dark:text-white">{profiles.length}</span>
+                  <span className="text-xs font-semibold text-slate-500">Shoppers</span>
+                </div>
+                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800 pt-2">
+                  Indexed from WizApp billing records
+                </p>
+              </div>
+
+              <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Dominant Persona</span>
+                  <div className="w-7 h-7 rounded-xl bg-amber-500/15 flex items-center justify-center text-amber-500">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <span className="text-xl sm:text-2xl font-black text-amber-500 truncate block">
+                    {dominantPersona}
+                  </span>
+                </div>
+                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800 pt-2">
+                  Primary customer apparel preference
+                </p>
+              </div>
+
+              <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Cumulative Wardrobe LTV</span>
+                  <div className="w-7 h-7 rounded-xl bg-emerald-500/15 flex items-center justify-center text-emerald-500">
+                    <DollarSign className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <span className="text-2xl sm:text-3xl font-black text-emerald-600 dark:text-emerald-400 font-mono">
+                    {formatCurrency(totalLtv)}
+                  </span>
+                </div>
+                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800 pt-2">
+                  Total historical spend across profiles
+                </p>
+              </div>
+
+              <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Average Shopper Spend</span>
+                  <div className="w-7 h-7 rounded-xl bg-blue-500/15 flex items-center justify-center text-blue-500">
+                    <Activity className="w-4 h-4" />
+                  </div>
+                </div>
+                <div className="mt-3">
+                  <span className="text-2xl sm:text-3xl font-black text-blue-600 dark:text-blue-400 font-mono">
+                    {formatCurrency(avgLtv)}
+                  </span>
+                </div>
+                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400 border-t border-slate-100 dark:border-slate-800 pt-2">
+                  Average ~{avgVisits} visits per client
+                </p>
+              </div>
+            </div>
+
+            {/* SEARCH AND PERSONA FILTER BAR */}
+            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+              {/* Persona filter pills */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 max-w-full custom-scrollbar">
+                {personaCategories.map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => setWardrobePersonaFilter(cat)}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
+                      wardrobePersonaFilter === cat
+                        ? 'bg-purple-600 text-white shadow-md shadow-purple-600/25'
+                        : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-800'
+                    }`}
+                  >
+                    {cat === 'ALL' ? 'All Personas' : cat}
+                  </button>
+                ))}
+              </div>
+
+              {/* Search input */}
+              <div className="relative w-full sm:w-72">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                <input
+                  type="text"
+                  value={wardrobeSearchQuery}
+                  onChange={(e) => setWardrobeSearchQuery(e.target.value)}
+                  placeholder="Filter name, phone, style..."
+                  className="w-full pl-9 pr-8 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+                {wardrobeSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setWardrobeSearchQuery('')}
+                    className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* WARDROBE PROFILES TABLE */}
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden p-6 space-y-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                <div>
+                  <h4 className="font-bold text-slate-800 dark:text-white text-lg">Classified Customer Wardrobes</h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Click <strong>Wardrobe Passport</strong> to inspect verified collar &amp; waist sizes, closet colors, and garment breakdown.
+                  </p>
+                </div>
+                <span className="text-xs font-semibold px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                  Showing {filtered.length} of {profiles.length} Profiles
+                </span>
+              </div>
+
+              <div className="overflow-x-auto rounded-xl border border-slate-100 dark:border-slate-800">
+                <table className="w-full text-left text-sm border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 font-bold uppercase text-[11px]">
+                      <th className="py-3 px-4 whitespace-nowrap">Customer Name</th>
+                      <th className="py-3 px-3 whitespace-nowrap">Phone</th>
+                      <th className="py-3 px-3 whitespace-nowrap">AI Persona Tag</th>
+                      <th className="py-3 px-3 whitespace-nowrap">Primary Style Preference</th>
+                      <th className="py-3 px-3 text-right whitespace-nowrap">Lifetime Value (LTV)</th>
+                      <th className="py-3 px-3 text-right whitespace-nowrap">Total Visits</th>
+                      <th className="py-3 px-4 text-center whitespace-nowrap">Action</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {filtered.length > 0 ? (
+                      filtered.map((c, idx) => (
+                        <tr key={idx} className="hover:bg-purple-50/30 dark:hover:bg-slate-800/40 transition-colors">
+                          <td className="py-3.5 px-4 font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-7 h-7 rounded-full bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300 font-black flex items-center justify-center text-xs shrink-0 border border-purple-200 dark:border-purple-800">
+                                {(c.CustomerName?.trim() || 'V')[0].toUpperCase()}
+                              </div>
+                              <span>{c.CustomerName?.trim() || 'Valued Shopper'}</span>
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-3 text-xs font-mono text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                            {c.Phone || '—'}
+                          </td>
+                          <td className="py-3.5 px-3 whitespace-nowrap">
+                            <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${
+                              c.Persona?.includes('High Roller')
+                                ? 'bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800/60'
+                                : c.Persona?.includes('Formal')
+                                ? 'bg-purple-100 dark:bg-purple-950/40 text-purple-800 dark:text-purple-300 border-purple-200 dark:border-purple-800/60'
+                                : c.Persona?.includes('Casual')
+                                ? 'bg-blue-100 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800/60'
+                                : 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60'
+                            }`}>
+                              {c.Persona || 'General Shopper'}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                            {c.PrimaryStyle || 'Mixed Collection'}
+                          </td>
+                          <td className="py-3.5 px-3 text-right font-black text-emerald-600 dark:text-emerald-400 whitespace-nowrap font-mono">
+                            {formatCurrency(c.TotalSpent)}
+                          </td>
+                          <td className="py-3.5 px-3 text-right text-xs font-bold text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                            {c.TotalVisits} Visits
+                          </td>
+                          <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (typeof props.openWardrobePassport === 'function') {
+                                    props.openWardrobePassport(c.Phone, c.CustomerName);
+                                  } else {
+                                    const msg = `Hello ${c.CustomerName?.trim() || 'Sir'}! 👋 We just added new ${c.PrimaryStyle} collections at Cobb Pundri matching your style! Drop by today to explore.`;
+                                    window.open(`https://wa.me/${c.Phone?.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
+                                  }
+                                }}
+                                className="px-3 py-1.5 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/60 rounded-xl text-xs font-bold hover:bg-purple-600 hover:text-white transition-all cursor-pointer flex items-center gap-1.5 shadow-xs"
+                                title="View Customer Digital Wardrobe Passport"
+                              >
+                                <Shirt className="w-3.5 h-3.5" />
+                                <span>Wardrobe Passport</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const msg = `Hello ${c.CustomerName?.trim() || 'Sir'}! 👋 We just added fresh ${c.PrimaryStyle || 'apparel'} collections at Cobb Pundri matching your wardrobe! Drop by today to explore exclusive new arrivals.`;
+                                  window.open(`https://wa.me/${c.Phone?.replace(/[^0-9]/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
+                                }}
+                                className="p-1.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/60 rounded-xl text-xs font-bold hover:bg-emerald-600 hover:text-white transition-all cursor-pointer shadow-xs"
+                                title="Send WhatsApp Style Recommendation"
+                              >
+                                💬
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="7" className="py-12 text-center text-slate-400">
+                          <Shirt className="w-8 h-8 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
+                          <p className="text-sm font-bold text-slate-600 dark:text-slate-300">No wardrobe profiles found</p>
+                          <p className="text-xs text-slate-400 mt-1">Try clearing your search query or sync new records from POS.</p>
+                          {(wardrobeSearchQuery || wardrobePersonaFilter !== 'ALL') && (
+                            <button
+                              type="button"
+                              onClick={() => { setWardrobeSearchQuery(''); setWardrobePersonaFilter('ALL'); }}
+                              className="mt-3 px-3 py-1 text-xs font-bold text-purple-600 dark:text-purple-400 underline cursor-pointer"
+                            >
+                              Reset filters
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
-        </div>
+        );
+      })()}
 
-      )}
       {/* RETENTION RADAR */}
       {activeTab === 'retention' && (
-        <div className="p-4 sm:p-6 lg:p-8">
-          <div className="border-b border-slate-200 pb-5 mb-8 flex justify-between items-center">
+        <div className="space-y-6">
+          <div className="border-b border-slate-200 dark:border-slate-800 pb-5 mb-8 flex justify-between items-center">
             <div>
-              <h3 className="text-2xl font-bold text-slate-800 flex items-center">
+              <h3 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center">
                 <Activity className="w-6 h-6 mr-3 text-rose-600" /> Repeat Customer Retention Radar
               </h3>
               <p className="text-sm text-slate-500 mt-1">Identify repeat buyers and re-engage overdue VIP clients before they churn.</p>
@@ -2554,33 +2784,33 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
           {retentionData ? (
             <>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Repeat Customer Rate</p>
                   <h4 className="text-3xl font-black text-rose-600 mt-2">{retentionData.repeatRatePct}%</h4>
                   <p className="text-xs text-slate-400 mt-1">{retentionData.repeatCustomers} of {retentionData.totalCustomers} Unique Buyers</p>
                 </div>
 
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Avg Customer Lifetime Value</p>
-                  <h4 className="text-3xl font-black text-slate-800 mt-2">{formatCurrency(retentionData.avgLtv)}</h4>
+                  <h4 className="text-3xl font-black text-slate-800 dark:text-white mt-2">{formatCurrency(retentionData.avgLtv)}</h4>
                   <p className="text-xs text-slate-400 mt-1">Average spent per customer</p>
                 </div>
 
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Repeat Buyers</p>
                   <h4 className="text-3xl font-black text-blue-600 mt-2">{retentionData.repeatCustomers}</h4>
                   <p className="text-xs text-slate-400 mt-1">Visited 2+ times</p>
                 </div>
 
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Overdue VIPs (15+ Days)</p>
                   <h4 className="text-3xl font-black text-amber-600 mt-2">{retentionData.overdueVips?.length || 0}</h4>
                   <p className="text-xs text-slate-400 mt-1">Ready for re-activation</p>
                 </div>
               </div>
 
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-6">
-                <h4 className="font-bold text-slate-800 text-lg mb-4">Overdue VIP Re-engagement Radar</h4>
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden p-6">
+                <h4 className="font-bold text-slate-800 dark:text-white text-lg mb-4">Overdue VIP Re-engagement Radar</h4>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm border-collapse">
                     <thead>
@@ -2593,10 +2823,10 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
                         <th className="pb-3 pl-4 text-center whitespace-nowrap">Re-engagement Action</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                       {retentionData.overdueVips?.slice(0, 10).map((v, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                          <td className="py-3.5 pr-4 font-bold text-slate-800 whitespace-nowrap">{v.CustomerName?.trim() || 'VIP Customer'}</td>
+                        <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                          <td className="py-3.5 pr-4 font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap">{v.CustomerName?.trim() || 'VIP Customer'}</td>
                           <td className="py-3.5 px-3 text-xs font-mono text-slate-500 whitespace-nowrap">{v.Phone}</td>
                           <td className="py-3.5 px-3 text-right font-black text-green-600 whitespace-nowrap">{formatCurrency(v.TotalSpent)}</td>
                           <td className="py-3.5 px-3 text-right text-xs font-bold text-slate-700 whitespace-nowrap">{v.TotalVisits} Visits</td>
@@ -2619,7 +2849,7 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
                 </div>
               </div>
               <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-6 mt-6">
-                <h4 className="font-bold text-slate-800 text-lg mb-4">Recent Repeat Buyers</h4>
+                <h4 className="font-bold text-slate-800 dark:text-white text-lg mb-4">Recent Repeat Buyers</h4>
                 <p className="text-sm text-slate-500 mb-4">Customers who have successfully returned for another visit recently.</p>
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm border-collapse">
@@ -2633,19 +2863,19 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
                         <th className="pb-3 pl-4 text-center whitespace-nowrap">Action</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                       {retentionData.recentRepeatBuyers?.slice(0, 10).map((v, idx) => (
-                        <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                          <td className="py-3.5 pr-4 font-bold text-slate-800 whitespace-nowrap">
+                        <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                          <td className="py-3.5 pr-4 font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap">
                             {v.CustomerName?.trim() || 'Loyal Customer'}
                             {v.Bills && v.Bills.length > 0 && (
                               <details className="mt-1">
                                 <summary className="text-xs text-indigo-500 font-semibold cursor-pointer select-none">View All Bills</summary>
-                                <ul className="mt-2 space-y-1 bg-slate-50 p-2 rounded-md border border-slate-100 min-w-max">
+                                <ul className="mt-2 space-y-1 bg-slate-50 dark:bg-slate-800 p-2 rounded-md border border-slate-100 dark:border-slate-700 min-w-max">
                                   {v.Bills.map(b => (
                                     <li key={b.BillNo} className="text-[11px] flex justify-between gap-4">
                                       <span className="font-mono text-slate-500">{b.BillNo}</span>
-                                      <span className="font-bold text-slate-700">{formatCurrency(b.Amount)}</span>
+                                      <span className="font-bold text-slate-700 dark:text-slate-200">{formatCurrency(b.Amount)}</span>
                                       <span className="text-slate-400">{new Date(b.BillDate).toLocaleDateString()}</span>
                                     </li>
                                   ))}
@@ -2656,7 +2886,7 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
                           <td className="py-3.5 px-3 text-xs font-mono text-slate-500 whitespace-nowrap align-top pt-4">{v.Phone}</td>
                           <td className="py-3.5 px-3 text-right font-black text-green-600 whitespace-nowrap align-top pt-4">{formatCurrency(v.TotalSpent)}</td>
                           <td className="py-3.5 px-3 text-right text-xs font-bold text-slate-700 whitespace-nowrap align-top pt-4">{v.TotalVisits} Visits</td>
-                          <td className="py-3.5 px-3 text-right font-mono font-bold text-slate-600 whitespace-nowrap align-top pt-4">
+                          <td className="py-3.5 px-3 text-right font-mono font-bold text-slate-600 dark:text-slate-400 whitespace-nowrap align-top pt-4">
                             {new Date(v.LastVisitDate).toLocaleDateString()}
                           </td>
                           <td className="py-3.5 pl-4 text-center whitespace-nowrap align-top pt-3">
@@ -2721,11 +2951,11 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
         };
 
         return (
-          <div className="p-4 sm:p-6 lg:p-8">
+          <div className="space-y-6">
             {/* Header */}
-            <div className="border-b border-slate-200 pb-5 mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="border-b border-slate-200 dark:border-slate-800 pb-5 mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <h3 className="text-2xl font-bold text-slate-800 flex items-center">
+                <h3 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center">
                   <FileText className="w-6 h-6 mr-3 text-emerald-600" /> GST & Tax Financial Compliance Suite
                 </h3>
                 <p className="text-sm text-slate-500 mt-1">Live GSTR-1 return filing data, taxable base revenue, CGST/SGST split, and tax slab configuration.</p>
@@ -2733,17 +2963,17 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
 
               <div className="flex items-center gap-3">
                 {/* GST Slab Selector */}
-                <div className="bg-white p-1 rounded-xl border border-slate-200 shadow-sm flex items-center gap-1">
+                <div className="bg-white dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-1">
                   <span className="text-[10px] font-bold text-slate-400 uppercase px-2">GST Slab:</span>
                   <button
                     onClick={() => setGstRateSlab(5)}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${gstRateSlab === 5 ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${gstRateSlab === 5 ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
                   >
                     5% (Standard Retail)
                   </button>
                   <button
                     onClick={() => setGstRateSlab(12)}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${gstRateSlab === 12 ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100'}`}
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${gstRateSlab === 12 ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
                   >
                     12% (Suits/Outerwear)
                   </button>
@@ -2765,39 +2995,39 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
 
             {/* Summary Metric Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+              <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Today's GST Liability ({gstRateSlab}%)</p>
                 <h4 className="text-3xl font-black text-emerald-600 mt-2">{formatCurrency(todayComp.tax)}</h4>
-                <p className="text-xs text-slate-500 mt-1">Taxable Sales: <span className="font-bold text-slate-800">{formatCurrency(todayComp.taxable)}</span></p>
+                <p className="text-xs text-slate-500 mt-1">Taxable Sales: <span className="font-bold text-slate-800 dark:text-slate-200">{formatCurrency(todayComp.taxable)}</span></p>
               </div>
 
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+              <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Current Month GST ({gstRateSlab}%)</p>
                 <h4 className="text-3xl font-black text-blue-600 mt-2">{formatCurrency(monthlyComp.tax)}</h4>
-                <p className="text-xs text-slate-500 mt-1">Taxable Base: <span className="font-bold text-slate-800">{formatCurrency(monthlyComp.taxable)}</span></p>
+                <p className="text-xs text-slate-500 mt-1">Taxable Base: <span className="font-bold text-slate-800 dark:text-slate-200">{formatCurrency(monthlyComp.taxable)}</span></p>
               </div>
 
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+              <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">🏛️ Today CGST ({(gstRateSlab / 2)}%)</p>
-                <h4 className="text-2xl font-black text-slate-800 mt-2">{formatCurrency(todayComp.cgst)}</h4>
+                <h4 className="text-2xl font-black text-slate-800 dark:text-white mt-2">{formatCurrency(todayComp.cgst)}</h4>
                 <p className="text-xs text-slate-400 mt-1">Central Government Share</p>
               </div>
 
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+              <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">🏛️ Today SGST ({(gstRateSlab / 2)}%)</p>
-                <h4 className="text-2xl font-black text-slate-800 mt-2">{formatCurrency(todayComp.sgst)}</h4>
+                <h4 className="text-2xl font-black text-slate-800 dark:text-white mt-2">{formatCurrency(todayComp.sgst)}</h4>
                 <p className="text-xs text-slate-400 mt-1">Haryana State Share</p>
               </div>
             </div>
 
             {/* Monthly GSTR-1 Return Filing History Table */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-6">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden p-6">
               <div className="flex justify-between items-center mb-4">
                 <div>
-                  <h4 className="font-bold text-slate-800 text-lg">Monthly GSTR-1 Tax Return History</h4>
+                  <h4 className="font-bold text-slate-800 dark:text-white text-lg">Monthly GSTR-1 Tax Return History</h4>
                   <p className="text-xs text-slate-500 mt-0.5">Audited monthly tax breakdowns for CA return submission (Slab: {gstRateSlab}% GST).</p>
                 </div>
-                <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
+                <span className="text-xs font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-300 px-3 py-1 rounded-full border border-emerald-100 dark:border-emerald-800">
                   {gstSummary?.history?.length || 0} Months Tracked
                 </span>
               </div>
@@ -2816,23 +3046,23 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
                       <th className="pb-3 pl-4 text-right whitespace-nowrap">Total GST Payable</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 font-medium">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
                     {(gstSummary?.history || []).map((row, idx) => {
                       const gross = row.GrossSales || 0;
                       const comp = computeGst(gross, row.TaxCollected || 0);
 
                       return (
-                        <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                          <td className="py-4 pr-4 font-bold text-slate-800 flex items-center gap-2 whitespace-nowrap">
+                        <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                          <td className="py-4 pr-4 font-bold text-slate-800 dark:text-white flex items-center gap-2 whitespace-nowrap">
                             <Calendar className="w-4 h-4 text-blue-600" />
                             <span>{row.MonthStr}</span>
                           </td>
-                          <td className="py-4 px-3 text-right text-slate-600 text-xs font-semibold whitespace-nowrap">{row.TotalInvoices} Bills</td>
-                          <td className="py-4 px-3 text-right text-slate-600 text-xs font-semibold whitespace-nowrap">{row.TotalUnits} Units</td>
-                          <td className="py-4 px-3 text-right font-black text-slate-900 whitespace-nowrap">{formatCurrency(gross)}</td>
-                          <td className="py-4 px-3 text-right text-slate-600 font-mono text-xs whitespace-nowrap">{formatCurrency(comp.taxable)}</td>
-                          <td className="py-4 px-3 text-right text-slate-600 font-mono text-xs whitespace-nowrap">{formatCurrency(comp.cgst)}</td>
-                          <td className="py-4 px-3 text-right text-slate-600 font-mono text-xs whitespace-nowrap">{formatCurrency(comp.sgst)}</td>
+                          <td className="py-4 px-3 text-right text-slate-600 dark:text-slate-400 text-xs font-semibold whitespace-nowrap">{row.TotalInvoices} Bills</td>
+                          <td className="py-4 px-3 text-right text-slate-600 dark:text-slate-400 text-xs font-semibold whitespace-nowrap">{row.TotalUnits} Units</td>
+                          <td className="py-4 px-3 text-right font-black text-slate-900 dark:text-white whitespace-nowrap">{formatCurrency(gross)}</td>
+                          <td className="py-4 px-3 text-right text-slate-600 dark:text-slate-400 font-mono text-xs whitespace-nowrap">{formatCurrency(comp.taxable)}</td>
+                          <td className="py-4 px-3 text-right text-slate-600 dark:text-slate-400 font-mono text-xs whitespace-nowrap">{formatCurrency(comp.cgst)}</td>
+                          <td className="py-4 px-3 text-right text-slate-600 dark:text-slate-400 font-mono text-xs whitespace-nowrap">{formatCurrency(comp.sgst)}</td>
                           <td className="py-4 pl-4 text-right font-black text-emerald-600 text-base whitespace-nowrap">{formatCurrency(comp.tax)}</td>
                         </tr>
                       );
@@ -2878,11 +3108,11 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
         const topRevenueItem = filteredMatrix.length > 0 ? [...filteredMatrix].sort((a, b) => (b.TotalRevenue || 0) - (a.TotalRevenue || 0))[0] : null;
 
         return (
-          <div className="p-4 sm:p-6 lg:p-8">
+          <div className="space-y-6">
             {/* Header */}
-            <div className="border-b border-slate-200 pb-5 mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="border-b border-slate-200 dark:border-slate-800 pb-5 mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div>
-                <h3 className="text-2xl font-bold text-slate-800 flex items-center">
+                <h3 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center">
                   <Grid className="w-6 h-6 mr-3 text-blue-600" /> Size-Wise Inventory & Sales Matrix Heatmap
                 </h3>
                 <p className="text-sm text-slate-500 mt-1">Deep analysis of size demand, revenue contribution, and article velocity (Last 90 Days).</p>
@@ -2891,11 +3121,11 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
 
             {/* Summary Metric Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+              <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">🔥 Bestselling Article & Size</p>
                 {topSellerItem ? (
                   <div className="mt-2">
-                    <h4 className="font-black text-slate-800 text-base leading-tight truncate">{topSellerItem.ArticleName}</h4>
+                    <h4 className="font-black text-slate-800 dark:text-white text-base leading-tight truncate">{topSellerItem.ArticleName}</h4>
                     <div className="flex items-center gap-2 mt-1.5">
                       <span className="bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded text-xs">Size: {topSellerItem.Size}</span>
                       <span className="font-extrabold text-emerald-600 text-xs">{topSellerItem.UnitsSold} Units Sold</span>
@@ -2904,7 +3134,7 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
                 ) : <p className="text-xs text-slate-400 mt-2">Loading...</p>}
               </div>
 
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+              <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">💰 Top Revenue Article & Size</p>
                 {topRevenueItem ? (
                   <div className="mt-2">
@@ -2917,13 +3147,13 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
                 ) : <p className="text-xs text-slate-400 mt-2">Loading...</p>}
               </div>
 
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+              <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">📦 Total Matrix Units Sold</p>
-                <h4 className="text-2xl font-black text-slate-800 mt-2">{totalMatrixUnits.toLocaleString('en-IN')} <span className="text-xs text-slate-400 font-semibold">Units</span></h4>
+                <h4 className="text-2xl font-black text-slate-800 dark:text-white mt-2">{totalMatrixUnits.toLocaleString('en-IN')} <span className="text-xs text-slate-400 font-semibold">Units</span></h4>
                 <p className="text-[11px] text-slate-400 mt-1">Tracked across {filteredMatrix.length} size variants</p>
               </div>
 
-              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+              <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">💳 Total Matrix Revenue</p>
                 <h4 className="text-2xl font-black text-green-600 mt-2">{formatCurrency(totalMatrixRevenue)}</h4>
                 <p className="text-[11px] text-slate-400 mt-1">Average: {totalMatrixUnits > 0 ? formatCurrency(totalMatrixRevenue / totalMatrixUnits) : '₹0'} / unit</p>
@@ -2937,7 +3167,7 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
                 <button
                   key={idx}
                   onClick={() => setMatrixCategoryFilter(cat)}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${matrixCategoryFilter === cat ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'}`}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${matrixCategoryFilter === cat ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700'}`}
                 >
                   {cat === 'ALL' ? 'All Sections' : cat}
                 </button>
@@ -2945,9 +3175,9 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
             </div>
 
             {/* Detailed Matrix Table */}
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-6">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden p-6">
               <div className="flex justify-between items-center mb-4">
-                <h4 className="font-bold text-slate-800 text-lg">Detailed Size Demand & Velocity Matrix</h4>
+                <h4 className="font-bold text-slate-800 dark:text-white text-lg">Detailed Size Demand & Velocity Matrix</h4>
                 <span className="text-xs font-semibold text-slate-400">Showing {filteredMatrix.length} rows</span>
               </div>
 
@@ -2965,7 +3195,7 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
                       <th className="pb-3 pl-4 text-center whitespace-nowrap">Demand Heatmap Tier</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {filteredMatrix.map((row, idx) => {
                       const units = row.UnitsSold || 0;
                       const revenue = row.TotalRevenue || 0;
@@ -2989,10 +3219,10 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
 
                       return (
                         <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="py-3.5 pr-4 font-bold text-slate-800 whitespace-nowrap">{row.ArticleName}</td>
-                          <td className="py-3.5 px-3 font-semibold text-slate-500 text-xs whitespace-nowrap"><span className="bg-slate-100 px-2 py-0.5 rounded text-[11px]">{row.Category}</span></td>
-                          <td className="py-3.5 px-3 font-mono font-bold text-slate-700 text-xs whitespace-nowrap"><span className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-lg border border-blue-100">{row.Size}</span></td>
-                          <td className="py-3.5 px-3 text-right font-black text-slate-900 text-base whitespace-nowrap">{units}</td>
+                          <td className="py-3.5 pr-4 font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap">{row.ArticleName}</td>
+                          <td className="py-3.5 px-3 font-semibold text-slate-500 text-xs whitespace-nowrap"><span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded text-[11px] text-slate-700 dark:text-slate-300">{row.Category}</span></td>
+                          <td className="py-3.5 px-3 font-mono font-bold text-slate-700 dark:text-slate-300 text-xs whitespace-nowrap"><span className="bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 px-2.5 py-1 rounded-lg border border-blue-100 dark:border-blue-900/50">{row.Size}</span></td>
+                          <td className="py-3.5 px-3 text-right font-black text-slate-900 dark:text-white text-base whitespace-nowrap">{units}</td>
                           <td className="py-3.5 px-3 text-right text-slate-500 text-xs font-semibold whitespace-nowrap">{row.Invoices || 0} Bills</td>
                           <td className="py-3.5 px-3 text-right font-black text-green-600 whitespace-nowrap">{formatCurrency(revenue)}</td>
                           <td className="py-3.5 px-3 text-right text-slate-600 text-xs font-mono whitespace-nowrap">{formatCurrency(avgPrice)}</td>
@@ -3030,15 +3260,15 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
 
       {/* 3. VISUAL CHARTS & HOURLY RUSH */}
       {activeTab === 'analytics' && (
-        <div className="p-4 sm:p-6 lg:p-8">
-          <div className="border-b border-slate-200 pb-5 mb-8">
-            <h3 className="text-2xl font-bold text-slate-800 flex items-center">
+        <div className="space-y-6">
+          <div className="border-b border-slate-200 dark:border-slate-800 pb-5 mb-8">
+            <h3 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center">
               <BarChart3 className="w-6 h-6 mr-3 text-blue-600" /> Store Rush Visualizer
             </h3>
             <p className="text-sm text-slate-500 mt-2">Identify peak store hours to optimize staff allocation and inventory prep.</p>
           </div>
 
-          <div className="bg-white border border-slate-200 p-4 sm:p-6 lg:p-8 rounded-2xl shadow-sm mb-8">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 sm:p-6 lg:p-8 rounded-2xl shadow-sm mb-8">
             <h4 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-8">Hourly Revenue Distribution</h4>
             <div className="h-64 flex items-end justify-between gap-3 pt-6">
               {(hourlySales || []).map((h, i) => {
@@ -3083,7 +3313,7 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
           return acc;
         }, {});
         return (
-          <div className="p-4 sm:p-6 lg:p-8 bg-slate-50 min-h-screen">
+          <div className="space-y-6">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-200 dark:border-slate-800 pb-5 mb-6 gap-4">
               <div>
                 <div className="flex items-center gap-3">
@@ -3118,26 +3348,26 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
             </div>
 
             {Object.keys(groupedByMonth).length === 0 ? (
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-12 text-center animate-pulse">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-12 text-center animate-pulse">
                 <Calendar className="w-8 h-8 mx-auto mb-3 text-blue-500 animate-bounce" />
-                <p className="text-sm font-bold text-slate-700">Loading Monthly Category Breakdown...</p>
+                <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Loading Monthly Category Breakdown...</p>
                 <p className="text-xs text-slate-400 mt-1">Aggregating historical sales by department.</p>
               </div>
             ) : (
               Object.entries(groupedByMonth).map(([month, monthData], index) => {
                 const isMonthOpen = openMonth === month;
                 return (
-                  <div key={index} className="border border-slate-200 rounded-2xl overflow-hidden shadow-sm bg-white mb-4">
+                  <div key={index} className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden shadow-sm bg-white dark:bg-slate-900 mb-4">
                     <button
                       onClick={() => setOpenMonth(isMonthOpen ? null : month)}
-                      className="w-full bg-white hover:bg-slate-50 p-5 flex items-center justify-between transition-colors cursor-pointer border-b border-slate-100"
+                      className="w-full bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/60 p-5 flex items-center justify-between transition-colors cursor-pointer border-b border-slate-100 dark:border-slate-800"
                     >
                       <div className="flex items-center space-x-4">
-                        <div className="p-3 bg-blue-50 rounded-xl">
+                        <div className="p-3 bg-blue-50 dark:bg-blue-950/40 rounded-xl">
                           <Calendar className="w-6 h-6 text-blue-600" />
                         </div>
                         <div className="text-left">
-                          <h4 className="font-bold text-slate-800 text-lg">Month: {month}</h4>
+                          <h4 className="font-bold text-slate-800 dark:text-white text-lg">Month: {month}</h4>
                           <p className="text-sm text-slate-500 mt-0.5">Click to view category breakdown</p>
                         </div>
                       </div>
@@ -3146,14 +3376,14 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
                           <span className="block text-lg font-black text-green-600">{formatCurrency(monthData.totalRevenue)}</span>
                           <span className="block text-xs text-slate-500 font-bold uppercase mt-1">{monthData.totalUnits} Units</span>
                         </div>
-                        <div className="bg-slate-100 p-2.5 rounded-full">
-                          {isMonthOpen ? <ChevronUp className="w-5 h-5 text-slate-700" /> : <ChevronDown className="w-5 h-5 text-slate-700" />}
+                        <div className="bg-slate-100 dark:bg-slate-800 p-2.5 rounded-full">
+                          {isMonthOpen ? <ChevronUp className="w-5 h-5 text-slate-700 dark:text-slate-300" /> : <ChevronDown className="w-5 h-5 text-slate-700 dark:text-slate-300" />}
                         </div>
                       </div>
                     </button>
 
                     {isMonthOpen && (
-                      <div className="p-6 bg-slate-50/50 space-y-6">
+                      <div className="p-6 bg-slate-50/50 dark:bg-slate-950/40 space-y-6">
                         {MASTER_CATEGORIES.map(cat => {
                           const items = monthData.data[cat.id] || [];
                           if (items.length === 0) return null;
@@ -3162,20 +3392,20 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
                           const catRevenue = items.reduce((sum, i) => sum + (i.TotalRevenue || 0), 0);
 
                           return (
-                            <div key={cat.id} className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-                              <div className="p-4 bg-slate-50 border-b border-slate-200 flex justify-between items-center">
+                            <div key={cat.id} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm">
+                              <div className="p-4 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center">
                                 <div className="flex items-center space-x-2">
                                   <span className="text-lg">{cat.icon}</span>
-                                  <h5 className="font-bold text-slate-800">{cat.label}</h5>
+                                  <h5 className="font-bold text-slate-800 dark:text-white">{cat.label}</h5>
                                 </div>
                                 <div className="flex space-x-4 text-xs">
-                                  <span className="text-slate-500">Units: <strong className="text-slate-800">{catUnits}</strong></span>
+                                  <span className="text-slate-500">Units: <strong className="text-slate-800 dark:text-white">{catUnits}</strong></span>
                                   <span className="text-slate-500">Revenue: <strong className="text-green-600">{formatCurrency(catRevenue)}</strong></span>
                                 </div>
                               </div>
                               <div className="overflow-x-auto">
                                 <table className="min-w-full text-left text-sm">
-                                  <thead className="bg-slate-50/50 text-slate-400 text-[10px] uppercase font-bold tracking-wider">
+                                  <thead className="bg-slate-50/50 dark:bg-slate-800/40 text-slate-400 dark:text-slate-500 text-[10px] uppercase font-bold tracking-wider">
                                     <tr>
                                       <th className="px-6 py-2.5">Article Description</th>
                                       <th className="px-6 py-2.5">Section</th>
@@ -3183,12 +3413,12 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
                                       <th className="px-6 py-2.5 text-right">Revenue</th>
                                     </tr>
                                   </thead>
-                                  <tbody className="divide-y divide-slate-100">
+                                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                                     {items.map((item, idx) => (
-                                      <tr key={idx} className="hover:bg-blue-50/30 transition-colors">
-                                        <td className="px-6 py-3.5 font-medium text-slate-800 whitespace-nowrap">{item.ArticleName}</td>
+                                      <tr key={idx} className="hover:bg-blue-50/30 dark:hover:bg-slate-800/40 transition-colors">
+                                        <td className="px-6 py-3.5 font-medium text-slate-800 dark:text-slate-200 whitespace-nowrap">{item.ArticleName}</td>
                                         <td className="px-6 py-3.5 text-slate-500 text-xs whitespace-nowrap">{item.ProductType}</td>
-                                        <td className="px-6 py-3.5 font-bold text-slate-700 text-right whitespace-nowrap">{item.TotalUnitsSold}</td>
+                                        <td className="px-6 py-3.5 font-bold text-slate-700 dark:text-slate-200 text-right whitespace-nowrap">{item.TotalUnitsSold}</td>
                                         <td className="px-6 py-3.5 font-black text-green-600 text-right whitespace-nowrap">{formatCurrency(item.TotalRevenue)}</td>
                                       </tr>
                                     ))}

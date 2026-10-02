@@ -2869,7 +2869,64 @@ export default function App() {
           </div>
         )}
 
-                {/* BOTTOM NAVIGATION BAR (Android Material Design — MOBILE ONLY) */}
+                {/* Smart AI Style Coordinate Modal */}
+        {showCoordinateModal && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-lg shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200">
+              <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-indigo-50/50 dark:bg-indigo-950/30">
+                <h3 className="text-xl font-black text-indigo-900 dark:text-indigo-200 flex items-center gap-2">
+                  <Wand2 className="w-5 h-5 text-indigo-500" /> AI Style Coordinate Maker
+                </h3>
+                <button onClick={() => setShowCoordinateModal(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-white p-1.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 transition-colors cursor-pointer">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="p-6 space-y-4">
+                <div>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Purchased Items</p>
+                  <div className="bg-slate-50 dark:bg-slate-950/60 p-4 rounded-xl border border-slate-200 dark:border-slate-800 text-sm font-medium text-slate-700 dark:text-slate-200">
+                    {smartCoordinate.itemText}
+                  </div>
+                </div>
+                
+                <div>
+                  <p className="text-xs font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-widest mb-2">AI Coordinate Match</p>
+                  <div className="min-h-32 flex flex-col justify-center">
+                    {smartCoordinate.loading ? (
+                      <div className="flex flex-col items-center justify-center py-8">
+                        <RefreshCw className="w-8 h-8 text-indigo-500 animate-spin mb-3" />
+                        <p className="text-sm font-medium text-slate-500 dark:text-slate-400 animate-pulse">Generating the perfect styling combination...</p>
+                      </div>
+                    ) : (
+                      <div className="bg-indigo-50/60 dark:bg-indigo-950/30 p-5 rounded-2xl border border-indigo-100 dark:border-indigo-900/40 shadow-inner">
+                        <p className="text-indigo-950 dark:text-indigo-200 whitespace-pre-wrap text-sm leading-relaxed font-medium">
+                          {smartCoordinate.data}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-950/60 flex justify-end gap-3">
+                <button onClick={() => setShowCoordinateModal(false)} className="px-5 py-2.5 rounded-xl text-slate-600 dark:text-slate-300 font-bold hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer text-sm">
+                  Close
+                </button>
+                <button 
+                  disabled={smartCoordinate.loading}
+                  onClick={() => {
+                    const text = encodeURIComponent(smartCoordinate.data);
+                    window.open(`https://wa.me/?text=${text}`, '_blank');
+                  }} 
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer text-sm disabled:opacity-50"
+                >
+                  <Send className="w-4 h-4" /> Share on WhatsApp
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* BOTTOM NAVIGATION BAR (Android Material Design — MOBILE ONLY) */}
         <div className={`lg:hidden fixed bottom-0 left-0 right-0 z-50 flex items-end justify-around px-2 pb-safe pt-1 ${
           darkMode
             ? 'bg-[#0d1017]/95 border-t border-white/[0.06] backdrop-blur-xl shadow-[0_-8px_24px_rgba(0,0,0,0.4)]'

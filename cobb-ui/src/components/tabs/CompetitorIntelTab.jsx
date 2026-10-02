@@ -12,7 +12,7 @@ const CompetitorIntelTab = (props) => {
   } = props;
 
   return (
-    <div className={`p-4 sm:p-6 lg:p-8 min-h-screen space-y-8 animate-in fade-in duration-500 ${darkMode ? 'bg-[#0f1115] text-slate-200' : 'bg-slate-50 text-slate-800'}`}>
+    <div className={`space-y-8 animate-in fade-in duration-500 ${darkMode ? 'text-slate-200' : 'text-slate-800'}`}>
       {/* COMPETITOR INTEL PAGE */}
       <div className={`border-b pb-5 ${darkMode ? 'border-[#232e47]' : 'border-slate-200'}`}>
         <h3 className={`text-2xl font-bold flex items-center ${darkMode ? 'text-white' : 'text-slate-800'}`}>

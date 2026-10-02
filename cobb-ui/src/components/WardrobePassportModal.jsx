@@ -217,19 +217,19 @@ const WardrobePassportModal = ({
                       <Crown className="w-3 h-3" /> {customer.tier || 'VIP Gold'}
                     </span>
                   </div>
-                  <h3 className="text-xl font-black tracking-tight">{customer.name || 'Valued Shopper'}</h3>
+                  <h3 className="text-xl font-black tracking-tight text-slate-900 dark:text-white">{customer.name || 'Valued Shopper'}</h3>
                   <p className="text-xs font-mono text-slate-400 mt-0.5">📞 {customer.phone || phoneQuery}</p>
 
                   <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-slate-500/15">
                     <div>
                       <span className="text-[10px] text-slate-400 uppercase font-bold">Lifetime Value</span>
-                      <p className="text-lg font-black text-emerald-400">
+                      <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">
                         ₹{(customer.totalSpent || 0).toLocaleString('en-IN')}
                       </p>
                     </div>
                     <div>
                       <span className="text-[10px] text-slate-400 uppercase font-bold">Store Visits</span>
-                      <p className="text-lg font-black text-blue-400">
+                      <p className="text-lg font-black text-blue-600 dark:text-blue-400">
                         {customer.totalVisits || 1} {customer.totalVisits === 1 ? 'Visit' : 'Visits'}
                       </p>
                     </div>
@@ -268,7 +268,7 @@ const WardrobePassportModal = ({
 
                   <div className="mt-3 flex items-center justify-between text-xs">
                     <span className="text-slate-400">Preferred Fit:</span>
-                    <span className="font-bold text-slate-200">{fitProfile.preferredFit || 'Tailored Slim'}</span>
+                    <span className="font-bold text-slate-800 dark:text-slate-200">{fitProfile.preferredFit || 'Tailored Slim'}</span>
                   </div>
                 </div>
 
@@ -293,7 +293,7 @@ const WardrobePassportModal = ({
                             className="w-3 h-3 rounded-full border border-slate-600 shadow-sm"
                             style={{ backgroundColor: COLOR_MAP[c.color] || '#94A3B8' }}
                           />
-                          <span className="font-bold text-slate-300">{c.color}</span>
+                          <span className="font-bold text-slate-700 dark:text-slate-300">{c.color}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <div className="w-16 h-1.5 rounded-full bg-slate-700 overflow-hidden">
@@ -353,7 +353,7 @@ const WardrobePassportModal = ({
               <div>
                 <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
                   <div>
-                    <h4 className="font-bold text-base tracking-tight flex items-center gap-2">
+                    <h4 className="font-bold text-base tracking-tight flex items-center gap-2 text-slate-900 dark:text-white">
                       <ShoppingBag className="w-4 h-4 text-purple-400" /> Registered Garment Closet ({items.length} Pieces)
                     </h4>
                     <p className="text-xs text-slate-400">Exact garments purchased over the past 24 months</p>
@@ -403,7 +403,7 @@ const WardrobePassportModal = ({
                         </span>
                       </div>
 
-                      <h5 className="font-bold text-sm tracking-tight line-clamp-1 mb-2">
+                      <h5 className="font-bold text-sm tracking-tight line-clamp-1 mb-2 text-slate-900 dark:text-white">
                         {item.articleName}
                       </h5>
 
@@ -414,11 +414,11 @@ const WardrobePassportModal = ({
                             style={{ backgroundColor: COLOR_MAP[item.color] || '#94A3B8' }}
                           />
                           <span className="text-slate-400">Color:</span>
-                          <span className="font-bold text-slate-200">{item.color}</span>
+                          <span className="font-bold text-slate-800 dark:text-slate-200">{item.color}</span>
                         </div>
                         <div className="flex items-center gap-1.5 justify-end">
                           <span className="text-slate-400">Size:</span>
-                          <span className="font-bold px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                          <span className="font-bold px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-500/20 text-purple-800 dark:text-purple-300 border border-purple-200 dark:border-purple-500/30">
                             {item.size}
                           </span>
                         </div>
@@ -432,7 +432,7 @@ const WardrobePassportModal = ({
                               ₹{item.mrp}
                             </span>
                           )}
-                          <span className="font-black text-emerald-400">
+                          <span className="font-black text-emerald-600 dark:text-emerald-400">
                             ₹{item.paidPrice}
                           </span>
                         </div>

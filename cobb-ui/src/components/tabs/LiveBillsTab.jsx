@@ -417,7 +417,7 @@ const LiveBillsTab = (props) => {
   };
 
   return (
-    <div className={`p-4 sm:p-6 lg:p-8 min-h-screen transition-colors ${darkMode ? 'bg-[#000000] text-slate-100' : 'bg-slate-50 text-slate-800'}`}>
+    <div className={`space-y-6 transition-colors ${darkMode ? 'text-slate-100' : 'text-slate-800'}`}>
       
       {/* Header Section */}
       <div className={`pb-5 mb-6 border-b flex flex-col md:flex-row md:items-center justify-between gap-4 ${darkMode ? 'border-[#2e3342]' : 'border-slate-200'}`}>
