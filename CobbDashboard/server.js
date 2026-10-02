@@ -81,7 +81,6 @@ const ENDPOINT_TTL = {
     '/api/inventory/reorder-suggestions': 600,
     '/api/inventory/stock-health': 600,
     '/api/inventory/broken-sizes': 600,
-    '/api/inventory/dead-stock-aged': 600,
     '/api/loyalty/leaderboard': 300,
     '/api/customers/wardrobe-passport': 300,
     '/api/inventory/depreciation-clock': 600,
@@ -163,13 +162,6 @@ const getAiModel = (overrideModel) => {
         return genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
     }
 };
-
-const multer = require('multer');
-const uploadsDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir);
-}
-const upload = multer({ dest: uploadsDir });
 
 let pythonProcess = null;
 let pythonLogs = [];
@@ -500,64 +492,6 @@ app.get('/api/inventory/broken-sizes', async (req, res) => {
         });
     } catch (err) {
         console.error('Broken sizes error:', err);
-        res.status(500).json({ error: err.message });
-    }
-});
-
-// 2. Dead Stock with Ageing — items with stock but no sales in 60+/90+ days
-app.get('/api/inventory/dead-stock-aged', async (req, res) => {
-    try {
-        const result = await sql.query(`
-            ;WITH LastSale AS (
-                SELECT
-                    s.article_no AS ArticleNo,
-                    MAX(m.CM_TIME) AS LastSaleDate
-                FROM CMD01106 d WITH (NOLOCK)
-                JOIN CMM01106 m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
-                JOIN SKU_NAMES s WITH (NOLOCK) ON d.PRODUCT_CODE = s.product_Code
-                WHERE m.CANCELLED = 0
-                GROUP BY s.article_no
-            ),
-            StockSummary AS (
-                SELECT
-                    s.article_no AS ArticleNo,
-                    MAX(ISNULL(s.article_name, s.section_name + ' / ' + s.sub_section_name)) AS ArticleName,
-                    MAX(ISNULL(s.section_name, 'Apparel')) AS Category,
-                    SUM(p.quantity_in_stock) AS TotalStock,
-                    COUNT(DISTINCT s.product_Code) AS SkuCount
-                FROM PMT01106 p WITH (NOLOCK)
-                INNER JOIN SKU_NAMES s WITH (NOLOCK) ON p.product_code = s.product_Code
-                WHERE p.quantity_in_stock > 0
-                GROUP BY s.article_no
-            )
-            SELECT TOP 200
-                ss.ArticleNo,
-                ss.ArticleName,
-                ss.Category,
-                ss.TotalStock,
-                ss.SkuCount,
-                ls.LastSaleDate,
-                CASE WHEN ls.LastSaleDate IS NULL THEN 999
-                     ELSE DATEDIFF(day, ls.LastSaleDate, GETDATE()) END AS DaysSinceLastSale,
-                CASE
-                    WHEN ls.LastSaleDate IS NULL THEN 'never_sold'
-                    WHEN DATEDIFF(day, ls.LastSaleDate, GETDATE()) >= 90 THEN '90plus'
-                    WHEN DATEDIFF(day, ls.LastSaleDate, GETDATE()) >= 60 THEN '60plus'
-                    WHEN DATEDIFF(day, ls.LastSaleDate, GETDATE()) >= 30 THEN '30plus'
-                    ELSE 'active'
-                END AS AgeingBucket
-            FROM StockSummary ss
-            LEFT JOIN LastSale ls ON ss.ArticleNo = ls.ArticleNo
-            WHERE ls.LastSaleDate IS NULL
-               OR DATEDIFF(day, ls.LastSaleDate, GETDATE()) >= 30
-            ORDER BY
-                CASE WHEN ls.LastSaleDate IS NULL THEN 999
-                     ELSE DATEDIFF(day, ls.LastSaleDate, GETDATE()) END DESC,
-                ss.TotalStock DESC
-        `);
-        res.json(result.recordset);
-    } catch (err) {
-        console.error('Dead stock aged error:', err);
         res.status(500).json({ error: err.message });
     }
 });
@@ -1088,29 +1022,6 @@ app.get('/api/customers/dormant', async (req, res) => {
             ORDER BY LifetimeSpend DESC
         `);
         res.json(mapLoyalty(result.recordset));
-    } catch (err) {
-        res.status(500).json({ error: err.message });
-    }
-});
-
-app.post('/api/customers/segment', async (req, res) => {
-    const { segment } = req.body;
-    try {
-        let query = '';
-        if (segment === 'All VIP Customers') {
-            query = `SELECT DISTINCT TOP 50 CUSTOMER_CODE as Phone, CUSTOMER_FNAME as FirstName FROM VW_CASHMEMO_PRINT_MST WITH (NOLOCK) WHERE CANCELLED = 0 AND CUSTOMER_CODE IS NOT NULL AND LEN(CUSTOMER_CODE) >= 10 ORDER BY CM_TIME DESC`;
-        } else if (segment === 'Dormant Customers') {
-            query = `SELECT DISTINCT TOP 50 CUSTOMER_CODE as Phone, CUSTOMER_FNAME as FirstName FROM VW_CASHMEMO_PRINT_MST WITH (NOLOCK) WHERE CANCELLED = 0 AND CUSTOMER_CODE IS NOT NULL AND LEN(CUSTOMER_CODE) >= 10 GROUP BY CUSTOMER_CODE, CUSTOMER_FNAME HAVING DATEDIFF(day, MAX(CM_TIME), GETDATE()) > 60`;
-        } else if (segment === 'Formal / Suit Buyers') {
-            query = `SELECT DISTINCT TOP 50 m.CUSTOMER_CODE as Phone, m.CUSTOMER_FNAME as FirstName FROM VW_CASHMEMO_PRINT_MST m WITH (NOLOCK) INNER JOIN VW_CASHMEMO_PRINT_DET d WITH (NOLOCK) ON m.CM_ID = d.CM_ID WHERE m.CANCELLED = 0 AND m.CUSTOMER_CODE IS NOT NULL AND LEN(m.CUSTOMER_CODE) >= 10 AND (d.SECTION_NAME LIKE '%Formal%' OR d.SECTION_NAME LIKE '%Trouser%' OR d.ARTICLE_NAME LIKE '%Suit%')`;
-        } else if (segment === 'Denim Enthusiasts') {
-            query = `SELECT DISTINCT TOP 50 m.CUSTOMER_CODE as Phone, m.CUSTOMER_FNAME as FirstName FROM VW_CASHMEMO_PRINT_MST m WITH (NOLOCK) INNER JOIN VW_CASHMEMO_PRINT_DET d WITH (NOLOCK) ON m.CM_ID = d.CM_ID WHERE m.CANCELLED = 0 AND m.CUSTOMER_CODE IS NOT NULL AND LEN(m.CUSTOMER_CODE) >= 10 AND (d.SECTION_NAME LIKE '%Jeans%' OR d.SECTION_NAME LIKE '%Denim%')`;
-        } else {
-            query = `SELECT DISTINCT TOP 10 CUSTOMER_CODE as Phone, CUSTOMER_FNAME as FirstName FROM VW_CASHMEMO_PRINT_MST WITH (NOLOCK) WHERE CANCELLED = 0 AND CUSTOMER_CODE IS NOT NULL AND LEN(CUSTOMER_CODE) >= 10`;
-        }
-
-        const result = await sql.query(query);
-        res.json(result.recordset);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -3228,74 +3139,6 @@ app.post('/api/reconciliation/save', (req, res) => {
     }
 });
 
-
-
-app.post('/api/ai/vm-audit', upload.array('images', 5), async (req, res) => {
-    try {
-        if (!req.files || req.files.length === 0) {
-            return res.status(400).json({ error: "No image files provided." });
-        }
-
-        const model = getAiModel();
-
-        const parts = [];
-        
-        // Add images to the parts array
-        for (const file of req.files) {
-            const imageBuffer = fs.readFileSync(file.path);
-            const base64Image = imageBuffer.toString('base64');
-            parts.push({
-                inlineData: {
-                    data: base64Image,
-                    mimeType: file.mimetype
-                }
-            });
-        }
-
-        const prompt = `You are a Visual Merchandising Auditor for COBB retail clothing stores.
-Analyze these store display photos (e.g. mannequin layout, hanger racks, folded display shelves, window displays).
-You must return a raw JSON response (without markdown code blocks or wrapping) containing the compliance audit result.
-The JSON must follow this exact structure:
-{
-  "score": 82,
-  "metrics": {
-    "colorHarmony": 85,
-    "sizingOrder": 70,
-    "accessibility": 90,
-    "density": 75
-  },
-  "critiques": [
-    "One critique point about what is wrong or needs improvement",
-    "Another critique point..."
-  ],
-  "recommendations": [
-    "Actionable step to fix the critiques",
-    "Another suggestion..."
-  ]
-}
-Be realistic, critical, and constructive based on standard visual merchandising principles. Return only the raw JSON.`;
-
-        parts.push(prompt);
-
-        const result = await model.generateContent(parts);
-
-        const textResponse = result.response.text().trim();
-        const cleanJson = textResponse.replace(/^```json\s*/i, '').replace(/```$/, '').trim();
-        const auditResult = JSON.parse(cleanJson);
-
-        try {
-            for (const file of req.files) {
-                fs.unlinkSync(file.path);
-            }
-        } catch (e) {}
-
-        res.json(auditResult);
-    } catch (err) {
-        console.error("VM Audit failed:", err);
-        res.status(500).json({ error: err.message || "Visual Merchandising Audit failed" });
-    }
-});
-
 app.get('/api/smart-bundles', async (req, res) => {
     try {
         let slowItems = [];
@@ -3374,82 +3217,6 @@ app.get('/api/smart-bundles', async (req, res) => {
         res.json(staticBundles);
     } catch (err) {
         res.status(500).json({ error: err.message });
-    }
-});
-
-app.get('/api/ai/trend-forecast', async (req, res) => {
-    try {
-        // Query top current stock
-        const stockRes = await sql.query(`
-            SELECT TOP 50 
-                ISNULL(s.article_name, s.section_name) as ItemName,
-                s.section_name as Category,
-                s.para1_name as Color,
-                SUM(p.quantity_in_stock) as CurrentStock
-            FROM PMT01106 p
-            INNER JOIN SKU_NAMES s ON p.product_code = s.product_Code
-            WHERE p.quantity_in_stock > 0
-            GROUP BY ISNULL(s.article_name, s.section_name), s.section_name, s.para1_name
-            ORDER BY CurrentStock DESC
-        `);
-        const stockItems = stockRes.recordset.map(i => `${i.ItemName} (${i.Color}) - ${i.CurrentStock} in stock`).join(', ');
-
-        // Query top recent sales
-        const salesRes = await sql.query(`
-            SELECT TOP 30
-                MAX(RTRIM(d.ARTICLE_NAME)) as ArticleName,
-                MAX(RTRIM(d.SECTION_NAME)) as Category,
-                SUM(d.QUANTITY) as TotalUnitsSold
-            FROM VW_CASHMEMO_PRINT_DET d WITH (NOLOCK)
-            WHERE d.QUANTITY > 0
-            GROUP BY d.ARTICLE_NO
-            ORDER BY TotalUnitsSold DESC
-        `);
-        const salesItems = salesRes.recordset.map(i => `${i.ArticleName} (${i.Category}) - ${i.TotalUnitsSold} sold`).join(', ');
-
-        const model = getAiModel();
-        
-        const currentDate = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-
-        const prompt = `You are an expert Retail Fashion Analyst for Cobb Italy (men's apparel). 
-Today's date is ${currentDate}. Based on current global fashion trends for the Indian market, the current date, and our actual store data, predict the top 3 trends for the UPCOMING season (e.g., if it is August, predict for Autumn/Winter). Do not suggest trends for past years or current ending seasons.
-
-Here is our Top Selling Items recently:
-${salesItems}
-
-Here is our Top Inventory In-Stock right now:
-${stockItems}
-
-Return a raw JSON response (no markdown) with this exact structure:
-{
-  "season": "Upcoming Season (e.g. Autumn/Winter 2026)",
-  "trends": [
-    {
-      "trendName": "E.g. Earthy Tones",
-      "category": "E.g. Casual Shirts",
-      "predictedDemandSurge": "+45%",
-      "confidenceScore": 92,
-      "suggestedItems": [
-        {
-          "name": "Item Name (Color)",
-          "suggestedPrice": "₹1,499",
-          "estimatedMargin": "55%"
-        }
-      ]
-    }
-  ]
-}
-Ensure exactly 3 trends are returned. For each trend, provide a 'confidenceScore' between 70 and 99. The 'suggestedItems' MUST be an array of 4 objects representing specific items ACTUALLY found in the inventory or sales list above, along with a realistic retail price point for the Indian market and an estimated margin percentage. Do not hallucinate item names. Return only the JSON.`;
-
-        const result = await model.generateContent(prompt);
-        const textResponse = result.response.text().trim();
-        const cleanJson = textResponse.replace(/^```json\s*/i, '').replace(/```$/, '').trim();
-        const forecast = JSON.parse(cleanJson);
-        
-        res.json(forecast);
-    } catch (err) {
-        console.error("Trend forecast failed:", err);
-        res.status(500).json({ error: "Failed to generate trend forecast." });
     }
 });
 
@@ -3979,26 +3746,6 @@ app.post('/api/whatsapp/inbound-alerts/mark-read', (req, res) => {
     const target = inboundAlerts.find(a => a.id === id);
     if (target) target.status = 'read';
     res.json({ success: true });
-});
-
-// --- PILLAR 2: GOOGLE REVIEW BOOSTER DISPATCHER ---
-app.post('/api/review-booster/send', async (req, res) => {
-    const { phone, customerName } = req.body || {};
-    if (!phone) return res.status(400).json({ error: 'Phone number required' });
-    const name = customerName || 'Valued Customer';
-    const message = `✨ Hello *${name}*! 👋\n\nThank you for shopping at *Cobb Apparels* today! 🛍️\n\nHow was your in-store experience? We would love your rating:\n\n⭐ *Reply 5* for Excellent\n⭐ *Reply 4* for Good\n⭐ *Reply 1-3* for Suggestions\n\nYour feedback helps us continuously improve! 🙏`;
-    try {
-        const formatted = String(phone).replace(/[^0-9]/g, '');
-        const finalPhone = formatted.length === 10 ? `91${formatted}` : formatted;
-        await fetch('http://localhost:3000/send', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ number: finalPhone, message })
-        });
-        res.json({ success: true, message: 'Review booster dispatched' });
-    } catch (e) {
-        res.status(500).json({ error: e.message });
-    }
 });
 
 // --- PILLAR 2: BIRTHDAY & ANNIVERSARY GREETINGS SCHEDULER ---
