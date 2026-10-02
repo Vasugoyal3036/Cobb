@@ -35,7 +35,7 @@ const FALLBACK_PARCELS = [
     invoice_amount: 29360,
     origin: 'WH',
     origin_name: 'Head Office Central WH',
-    status: 'Delivered',
+    status: 'In Transit',
     items: mockChallanItems
   },
   {
@@ -197,12 +197,12 @@ const GoodsInTransitTab = ({ darkMode, API_BASE }) => {
         date: p.parcel_memo_dt ? new Date(p.parcel_memo_dt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'Recent',
         pcs: p.total_quantity || 0,
         val: (p.invoice_amount || 0).toLocaleString('en-IN'),
-        status: p.status ? p.status.toUpperCase() : 'IN TRANSIT',
+        status: p.status?.toLowerCase() === 'received' ? 'RECEIVED' : 'IN TRANSIT',
         vehicle: p.vehicle_no,
         ...p
       }))
     : [
-        { id: 'WH00026127', challan: 'WH/T27-021196', date: '29 Sept', pcs: 56, val: '29,360', status: 'DELIVERED', vehicle: 'DL01LY5696' },
+        { id: 'WH00026127', challan: 'WH/T27-021196', date: '29 Sept', pcs: 56, val: '29,360', status: 'IN TRANSIT', vehicle: 'DL01LY5696' },
         { id: 'WH00024923', challan: 'WH/T27-020174', date: '23 Sept', pcs: 201, val: '1,09,506', status: 'RECEIVED', vehicle: 'DL01LAF4375' },
         { id: 'WH00024145', challan: 'WH/T27-018223', date: '19 Sept', pcs: 232, val: '1,22,907', status: 'RECEIVED', vehicle: 'DL01LAF4375' },
         { id: 'WH00023267', challan: 'WH/T27-018749', date: '14 Sept', pcs: 66, val: '38,430', status: 'RECEIVED', vehicle: 'DL01LAF4375' },

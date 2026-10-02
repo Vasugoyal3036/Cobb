@@ -33,7 +33,7 @@ const FALLBACK_PARCELS = [
     invoice_amount: 29360,
     origin: 'WH',
     origin_name: 'Head Office Central WH',
-    status: 'Delivered'
+    status: 'In Transit'
   },
   {
     parcel_memo_no: 'WH00024923',
@@ -90,10 +90,10 @@ export default function GoodsInTransitDesk({
   setActiveTab
 }) {
   const [data, setData] = useState({
-    activeInTransit: [],
+    activeInTransit: [FALLBACK_PARCELS[0]],
     allParcels: FALLBACK_PARCELS,
     summary: {
-      incomingCount: 0,
+      incomingCount: 1,
       incomingPieces: 56,
       incomingValue: 29360,
       monthPieces: 1021,
@@ -281,7 +281,7 @@ export default function GoodsInTransitDesk({
 
               <span
                 className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border shrink-0 ${
-                  latest.status === 'Arrived Today'
+                  latest.status?.toLowerCase() === 'received'
                     ? darkMode
                       ? 'bg-emerald-950/80 text-emerald-300 border-emerald-700/80'
                       : 'bg-emerald-50 text-emerald-700 border-emerald-300'
@@ -290,7 +290,7 @@ export default function GoodsInTransitDesk({
                       : 'bg-amber-50 text-amber-700 border-amber-300'
                 }`}
               >
-                {latest.status || 'In Transit'}
+                {latest.status?.toLowerCase() === 'received' ? 'Received' : 'In Transit'}
               </span>
             </div>
 
@@ -338,8 +338,8 @@ export default function GoodsInTransitDesk({
         <div className="pt-2 border-t border-inherit flex items-center justify-between shrink-0">
           <span className={`text-[11px] font-medium truncate ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
             {summary.incomingCount > 0
-              ? `${summary.incomingCount} Inflow (${summary.incomingPieces} pcs)`
-              : 'All parcels inwarded'}
+              ? `${summary.incomingCount} Inflow (${summary.incomingPieces} pcs in transit)`
+              : 'All parcels received'}
           </span>
           <button
             type="button"

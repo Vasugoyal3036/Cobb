@@ -29,13 +29,13 @@ router.get('/transit', async (req, res) => {
                     'WH' as origin,
                     'Head Office Central WH' as origin_name,
                     CASE 
+                        WHEN p.parcel_memo_no IS NOT NULL THEN 'Received'
                         WHEN ISNULL(d.total_grn_qty, 0) >= ISNULL(m.TOT_QUANTITY, 0) AND ISNULL(m.TOT_QUANTITY, 0) > 0 THEN 'Received'
-                        WHEN CAST(m.parcel_memo_dt AS DATE) = CAST(GETDATE() AS DATE) THEN 'Arrived Today'
-                        WHEN DATEDIFF(day, m.parcel_memo_dt, GETDATE()) <= 2 THEN 'In Transit'
-                        ELSE 'Delivered'
+                        ELSE 'In Transit'
                     END as status
                 FROM DOCWSL_parcel_mst_MIRROR m WITH (NOLOCK)
                 LEFT JOIN DOCWSL_parcel_det_MIRROR d WITH (NOLOCK) ON m.parcel_memo_id = d.parcel_memo_id
+                LEFT JOIN PARCEL_MST p WITH (NOLOCK) ON m.parcel_memo_no = p.parcel_memo_no
                 ORDER BY m.parcel_memo_dt DESC, m.last_update DESC
             `);
             mirrorParcels = mirrorResult.recordset || [];
@@ -139,7 +139,7 @@ router.get('/transit', async (req, res) => {
         }
         
         // Re-filter activeInTransit after items are attached to combined
-        const activeInTransit = combined.filter(p => p.status === 'In Transit' || p.status === 'Arrived Today');
+        const activeInTransit = combined.filter(p => p.status === 'In Transit');
 
         const latestParcel = combined[0] || null;
 
