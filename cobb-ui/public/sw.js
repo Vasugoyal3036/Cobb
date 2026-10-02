@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ors-retail-cache-v3';
+const CACHE_NAME = 'ors-retail-cache-v4';
 const ASSETS_TO_CACHE = [
   '/ors-logo.png',
   '/ors-squircle.jpg',

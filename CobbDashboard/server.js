@@ -3579,55 +3579,6 @@ The message should inform them of a new collection arriving at Cobb Pundri that 
     }
 });
 
-app.post('/api/ai/competitor-intel', upload.single('image'), async (req, res) => {
-    try {
-        if (!req.file) {
-            return res.status(400).json({ error: "No image file provided." });
-        }
-
-        const imagePath = req.file.path;
-        const imageBuffer = fs.readFileSync(imagePath);
-        const base64Image = imageBuffer.toString('base64');
-        const mimeType = req.file.mimetype;
-
-        const model = getAiModel();
-
-        const prompt = `You are a Retail Pricing Strategist. Analyze this image of a competitor's promotional flyer or advertisement.
-Extract their discount strategy, and propose a counter-strategy for Cobb (our store) that matches or beats their offer while protecting our margins (we have an average 45% margin).
-Return a raw JSON response (no markdown) with this exact structure:
-{
-  "detectedCompetitorOffer": "E.g. Flat 50% off on all jeans",
-  "cobbCounterStrategy": "E.g. Buy 1 Jeans, Get 2 T-Shirts Free (perceived higher value, moves dead stock)",
-  "marginImpact": "E.g. Protects margin by 12% compared to flat 50% discount",
-  "executionDifficulty": "Low/Medium/High"
-}
-Return only the raw JSON.`;
-
-        const result = await model.generateContent([
-            {
-                inlineData: {
-                    data: base64Image,
-                    mimeType: mimeType
-                }
-            },
-            prompt
-        ]);
-
-        const textResponse = result.response.text().trim();
-        const cleanJson = textResponse.replace(/^```json\s*/i, '').replace(/```$/, '').trim();
-        const intelResult = JSON.parse(cleanJson);
-
-        try {
-            fs.unlinkSync(imagePath);
-        } catch (e) {}
-
-        res.json(intelResult);
-    } catch (err) {
-        console.error("Competitor Intel failed:", err);
-        res.status(500).json({ error: "Failed to process competitor intelligence." });
-    }
-});
-
 // ===================================================================
 // FEATURE: SMART WAREHOUSE REORDER & INDENT GENERATOR
 // ===================================================================

@@ -38,7 +38,6 @@ import {
   TrendingDown,
   Activity,
   Megaphone,
-  Target,
   Zap,
   RefreshCw,
   ChevronLeft,
@@ -90,7 +89,6 @@ const navigationItems = [
   {
     category: "Overview & P&L", items: [
       { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { id: "multistore", label: "Multi-Store Matrix", icon: Network, colorClass: "text-blue-600 dark:text-blue-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-blue-500/15 text-blue-600 dark:text-blue-400 font-bold border-l-2 border-blue-500" },
       { id: "pnl", label: "Sales & P&L Statement", icon: DollarSign, colorClass: "text-green-600 dark:text-green-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-green-500/15 text-green-600 dark:text-green-400 font-bold border-l-2 border-green-500" },
       { id: "gst", label: "GST & Tax Summary", icon: FileText, colorClass: "text-emerald-600 dark:text-emerald-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold border-l-2 border-emerald-500" },
       { id: "analytics", label: "Visual Rush Chart", icon: Clock },
@@ -116,7 +114,6 @@ const navigationItems = [
       { id: "depreciation_clock", label: "⏳ Depreciation Clock", icon: Clock, colorClass: "text-rose-600 dark:text-rose-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-rose-500/15 text-rose-600 dark:text-rose-400 font-bold border-l-2 border-rose-500" },
       { id: "reorder", label: "Warehouse Reorder", icon: ClipboardList, colorClass: "text-blue-600 dark:text-blue-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-blue-500/15 text-blue-600 dark:text-blue-400 font-bold border-l-2 border-blue-500" },
       { id: "smart_bundles", label: "Smart Bundling", icon: Percent, colorClass: "text-amber-600 dark:text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold border-l-2 border-amber-500" },
-      { id: "competitor_intel", label: "Competitor Intel", icon: Target, colorClass: "text-red-600 dark:text-red-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-red-500/15 text-red-600 dark:text-red-400 font-bold border-l-2 border-red-500" },
     ]
   },
   {

@@ -6,7 +6,6 @@ import DashboardTab from './components/tabs/DashboardTab';
 // Lazy-loaded secondary tabs & heavy modals for instant startup & lightweight bundle
 const InventoryTab = lazy(() => import('./components/tabs/InventoryTab'));
 const CustomerInsightsTab = lazy(() => import('./components/tabs/CustomerInsightsTab'));
-const CompetitorIntelTab = lazy(() => import('./components/tabs/CompetitorIntelTab'));
 const LiveBillsTab = lazy(() => import('./components/tabs/LiveBillsTab'));
 const AutomationEngineTab = lazy(() => import('./components/tabs/AutomationEngineTab'));
 const CampaignBuilderTab = lazy(() => import('./components/tabs/CampaignBuilderTab'));
@@ -17,7 +16,6 @@ const PocketKhataTab = lazy(() => import('./components/tabs/PocketKhataTab'));
 const HoldDeskTab = lazy(() => import('./components/tabs/HoldDeskTab'));
 const SaveTheSaleTab = lazy(() => import('./components/tabs/SaveTheSaleTab'));
 const ChatbotTab = lazy(() => import('./components/tabs/ChatbotTab'));
-const MultiStoreMatrixTab = lazy(() => import('./components/tabs/MultiStoreMatrixTab'));
 const AlterationsTab = lazy(() => import('./components/tabs/AlterationsTab'));
 const GoodsInTransitTab = lazy(() => import('./components/tabs/GoodsInTransitTab'));
 const StaffLeaderboardTab = lazy(() => import('./components/tabs/StaffLeaderboardTab'));
@@ -348,35 +346,6 @@ export default function App() {
   const [isLoadingBundles, setIsLoadingBundles] = useState(false);
   const [publishedBundles, setPublishedBundles] = useState(new Set());
 
-  const [compImage, setCompImage] = useState(null);
-  const [compImageUrl, setCompImageUrl] = useState('');
-  const [compIntelResult, setCompIntelResult] = useState(null);
-  const [isAnalyzingComp, setIsAnalyzingComp] = useState(false);
-  const [compError, setCompError] = useState('');
-
-  const handleCompUpload = async (file) => {
-    if (!file) return;
-    setCompImage(file);
-    setCompImageUrl(URL.createObjectURL(file));
-    setCompIntelResult(null);
-    setCompError('');
-    setIsAnalyzingComp(true);
-
-    const formData = new FormData();
-    formData.append('image', file);
-
-    try {
-      const res = await axios.post(`${API_BASE}/api/ai/competitor-intel`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      setCompIntelResult(res.data);
-    } catch (err) {
-      console.error(err);
-      setCompError('Analysis failed. Please try again.');
-    } finally {
-      setIsAnalyzingComp(false);
-    }
-  };
 
   const fetchBundles = async () => {
     setIsLoadingBundles(true);
@@ -1644,7 +1613,6 @@ export default function App() {
     setIsLoadingBundles: typeof setIsLoadingBundles !== 'undefined' ? setIsLoadingBundles : undefined,
     publishedBundles: typeof publishedBundles !== 'undefined' ? publishedBundles : undefined,
     setPublishedBundles: typeof setPublishedBundles !== 'undefined' ? setPublishedBundles : undefined,
-    handleCompUpload: typeof handleCompUpload !== 'undefined' ? handleCompUpload : undefined,
     fetchBundles: typeof fetchBundles !== 'undefined' ? fetchBundles : undefined,
     globalCustomers: typeof globalCustomers !== 'undefined' ? globalCustomers : undefined,
     setGlobalCustomers: typeof setGlobalCustomers !== 'undefined' ? setGlobalCustomers : undefined,
@@ -1816,12 +1784,6 @@ export default function App() {
     renderLogLine: typeof renderLogLine !== 'undefined' ? renderLogLine : undefined,
     persona: typeof persona !== 'undefined' ? persona : undefined,
     handleGenerateSmartCoordinate: typeof handleGenerateSmartCoordinate !== 'undefined' ? handleGenerateSmartCoordinate : undefined,
-
-    compImage: typeof compImage !== 'undefined' ? compImage : undefined,
-    compImageUrl: typeof compImageUrl !== 'undefined' ? compImageUrl : undefined,
-    compIntelResult: typeof compIntelResult !== 'undefined' ? compIntelResult : undefined,
-    isAnalyzingComp: typeof isAnalyzingComp !== 'undefined' ? isAnalyzingComp : undefined,
-    compError: typeof compError !== 'undefined' ? compError : undefined,
     openThermalModal
   };
 
@@ -2314,11 +2276,6 @@ export default function App() {
               <CustomerInsightsTab {...appState} />
             )}
 
-            {/* COMPETITOR INTEL */}
-            {activeTab === 'competitor_intel' && (
-              <CompetitorIntelTab {...appState} />
-            )}
-
             {/* 10. POCKET KHATA (COUNTER PETTY CASH & EXPENSE JOURNAL) */}
             {activeTab === 'pocket_khata' && (
               <PocketKhataTab {...appState} />
@@ -2364,11 +2321,6 @@ export default function App() {
             )}
 
 
-
-            {/* 17. MULTI-STORE MATRIX */}
-            {activeTab === 'multistore' && (
-              <MultiStoreMatrixTab darkMode={darkMode} formatCurrency={(v) => `₹${Number(v).toLocaleString('en-IN')}`} />
-            )}
 
             {/* 18. ALTERATIONS DESK */}
             {activeTab === 'alterations' && (
