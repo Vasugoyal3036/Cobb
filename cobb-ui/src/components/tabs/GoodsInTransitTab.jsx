@@ -1,75 +1,84 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { Truck, Package, RotateCw, ExternalLink, ChevronRight, CheckCircle2, Box, X } from 'lucide-react';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { db } from '../../utils/firebase';
 
 const baseMockData = [
-  { code: '0082012204', article: 'FPSAF2426', desc: 'TROUSER- FORMAL', p1: 'DARK GRAY', p2: '32 (81 CM.)', p3: 'NA', qty: 1, uom: 'PCS', mrp: 2999 },
-  { code: '0082014316', article: 'FPSAF2426', desc: 'TROUSER- FORMAL', p1: 'GREY', p2: '40 (1.02 MTR.)', p3: 'NA', qty: 1, uom: 'PCS', mrp: 2999 },
-  { code: '0082013300', article: 'FPSAF2426', desc: 'TROUSER- FORMAL', p1: 'GREY', p2: '32 (81 CM.)', p3: 'NA', qty: 1, uom: 'PCS', mrp: 2999 },
-  { code: '0077386201', article: 'FPRF2601', desc: 'TROUSER- FORMAL', p1: 'MIX', p2: '42 (1.07 MTR.)', p3: 'NA', qty: 1, uom: 'PCS', mrp: 2299 },
-  { code: '0081989495', article: 'CFKSE39031', desc: 'CASUAL FULL SL', p1: 'LT OLIVE 51', p2: '38 (97 CM.)', p3: 'NA', qty: 1, uom: 'PCS', mrp: 2699 },
-  { code: '0081849910', article: 'CFAJ34036', desc: 'CASUAL FULL SL', p1: 'RUST 32', p2: '42 (1.07 MTR.)', p3: 'NA', qty: 1, uom: 'PCS', mrp: 2699 },
-  { code: '0081825990', article: 'CFJH1351', desc: 'CASUAL FULL SL', p1: 'D.BLUE', p2: '40 (1.02 MTR.)', p3: 'NA', qty: 1, uom: 'PCS', mrp: 2999 },
-  { code: '0081845855', article: 'CFAJ34036', desc: 'CASUAL FULL SL', p1: 'LEMON 25', p2: '38 (97 CM.)', p3: 'NA', qty: 1, uom: 'PCS', mrp: 2699 },
-  { code: '0080992017', article: 'CFVN10422', desc: 'CASUAL FULL SL', p1: 'SKY BLUE', p2: '38 (97 CM.)', p3: 'NA', qty: 1, uom: 'PCS', mrp: 2999 },
+  { code: '0081308460', article: '000060869', desc: 'CASUAL FULL SL', p1: 'BEIGE', p2: '38 (97 CM.)', p3: 'NA', qty: 1, uom: 'PCS', mrp: 2999 },
+  { code: '0081308535', article: '000060869', desc: 'CASUAL FULL SL', p1: 'BEIGE', p2: '40 (1.02 MTR.)', p3: 'NA', qty: 1, uom: 'PCS', mrp: 2999 },
+  { code: '0081308872', article: '000060869', desc: 'CASUAL FULL SL', p1: 'BEIGE', p2: '42 (1.07 MTR.)', p3: 'NA', qty: 1, uom: 'PCS', mrp: 2999 },
+  { code: '0081309138', article: '000060869', desc: 'CASUAL FULL SL', p1: 'BEIGE', p2: '44 (1.12 MTR.)', p3: 'NA', qty: 1, uom: 'PCS', mrp: 2999 },
+  { code: '0081309503', article: '000060869', desc: 'CASUAL FULL SL', p1: 'BEIGE', p2: '46 (1.17 MTR.)', p3: 'NA', qty: 1, uom: 'PCS', mrp: 2999 },
+  { code: '0082203068', article: '000061578', desc: 'CASUAL FULL SL', p1: 'GREEN', p2: '38 (97 CM.)', p3: 'NA', qty: 1, uom: 'PCS', mrp: 2699 },
+  { code: '0082203775', article: '000061578', desc: 'CASUAL FULL SL', p1: 'GREEN', p2: '40 (1.02 MTR.)', p3: 'NA', qty: 1, uom: 'PCS', mrp: 2699 },
+  { code: '0082200380', article: '000061578', desc: 'CASUAL FULL SL', p1: 'BEIGE', p2: '42 (1.07 MTR.)', p3: 'NA', qty: 1, uom: 'PCS', mrp: 2699 },
+  { code: '0082205562', article: '000061578', desc: 'CASUAL FULL SL', p1: 'PEACH.', p2: '40 (1.02 MTR.)', p3: 'NA', qty: 1, uom: 'PCS', mrp: 2699 },
+  { code: '0082206215', article: '000061578', desc: 'CASUAL FULL SL', p1: 'PEACH.', p2: '42 (1.07 MTR.)', p3: 'NA', qty: 1, uom: 'PCS', mrp: 2699 },
 ];
 
-const mockChallanItems = Array.from({ length: 201 }).map((_, idx) => ({
+const mockChallanItems = Array.from({ length: 56 }).map((_, idx) => ({
   ...baseMockData[idx % baseMockData.length],
 }));
 
 const FALLBACK_PARCELS = [
   {
-    parcel_memo_no: 'WH00023267',
-    parcel_memo_dt: new Date().toISOString(),
+    parcel_memo_no: 'WH00026127',
+    parcel_memo_dt: '2026-09-29T00:00:00.000Z',
+    vehicle_no: 'DL01LY5696',
+    bilty_no: '1314027349',
+    total_quantity: 56,
+    total_boxes: 1,
+    total_weight: 30,
+    challan_no: 'WH/T27-021196',
+    invoice_no: 'WH/T27-021196',
+    invoice_amount: 29360,
+    origin: 'WH',
+    origin_name: 'Head Office Central WH',
+    status: 'Delivered',
+    items: mockChallanItems
+  },
+  {
+    parcel_memo_no: 'WH00024923',
+    parcel_memo_dt: '2026-09-23T00:00:00.000Z',
     vehicle_no: 'DL01LAF4375',
+    bilty_no: '901028',
+    total_quantity: 201,
+    total_boxes: 1,
+    total_weight: 90,
+    challan_no: 'WH/T27-020174',
+    invoice_no: 'WH/T27-020174',
+    invoice_amount: 109506,
+    origin: 'WH',
+    origin_name: 'Head Office Central WH',
+    status: 'Received'
+  },
+  {
+    parcel_memo_no: 'WH00024145',
+    parcel_memo_dt: '2026-09-19T00:00:00.000Z',
+    vehicle_no: 'DL01LAF4375',
+    bilty_no: '901844',
+    total_quantity: 232,
+    total_boxes: 1,
+    total_weight: 105,
+    challan_no: 'WH/T27-018223',
+    invoice_no: 'WH/T27-018223',
+    invoice_amount: 122907,
+    origin: 'WH',
+    origin_name: 'Head Office Central WH',
+    status: 'Received'
+  },
+  {
+    parcel_memo_no: 'WH00023267',
+    parcel_memo_dt: '2026-09-14T00:00:00.000Z',
+    vehicle_no: 'DL01LAF4375',
+    bilty_no: '902199',
     total_quantity: 66,
     total_boxes: 1,
     total_weight: 30,
     challan_no: 'WH/T27-018749',
+    invoice_no: 'WH/T27-018749',
     invoice_amount: 38430,
-    origin: 'WH',
-    origin_name: 'Head Office Central WH',
-    status: 'Arrived Today'
-  },
-  {
-    parcel_memo_no: 'WH00023147',
-    parcel_memo_dt: '2026-09-12T00:00:00.000Z',
-    vehicle_no: 'DL01LAF4375',
-    bilty_no: '902157',
-    total_quantity: 154,
-    total_boxes: 1,
-    total_weight: 60,
-    challan_no: 'WH/T27-018642',
-    invoice_amount: 93129,
-    origin: 'WH',
-    origin_name: 'Head Office Central WH',
-    status: 'Received'
-  },
-  {
-    parcel_memo_no: 'WH00022298',
-    parcel_memo_dt: '2026-09-08T00:00:00.000Z',
-    vehicle_no: 'DL01LAF4375',
-    bilty_no: '902037',
-    total_quantity: 338,
-    total_boxes: 1,
-    total_weight: 150,
-    challan_no: 'WH/T27-017913',
-    invoice_amount: 186838,
-    origin: 'WH',
-    origin_name: 'Head Office Central WH',
-    status: 'Received'
-  },
-  {
-    parcel_memo_no: 'WH00021688',
-    parcel_memo_dt: '2026-09-04T00:00:00.000Z',
-    vehicle_no: 'DL01LAF4375',
-    bilty_no: '903398',
-    total_quantity: 91,
-    total_boxes: 1,
-    total_weight: 30,
-    challan_no: 'WH/T27-017397',
-    invoice_amount: 39711,
     origin: 'WH',
     origin_name: 'Head Office Central WH',
     status: 'Received'
@@ -79,12 +88,12 @@ const FALLBACK_PARCELS = [
 const GoodsInTransitTab = ({ darkMode, API_BASE }) => {
   const [selectedChallan, setSelectedChallan] = useState(null);
   const [data, setData] = useState({
-    activeInTransit: [FALLBACK_PARCELS[0]],
+    activeInTransit: [],
     allParcels: FALLBACK_PARCELS,
     summary: {
-      incomingCount: 1,
-      incomingPieces: 66,
-      incomingValue: 38430,
+      incomingCount: 0,
+      incomingPieces: 56,
+      incomingValue: 29360,
       monthPieces: 1021,
       monthValue: 561808,
       monthParcelsCount: 7,
@@ -93,34 +102,92 @@ const GoodsInTransitTab = ({ darkMode, API_BASE }) => {
   });
   const [loading, setLoading] = useState(false);
   const [viewMode, setViewMode] = useState('grouped');
+
   useEffect(() => {
     const fetchTransitData = async () => {
-      if (!API_BASE) return;
       try {
         setLoading(true);
-        const res = await axios.get(`${API_BASE}/api/parcels/transit`);
-        if (res.data?.success) {
-          setData(res.data);
-        }
-      } catch (err) {
-        try {
-          const res2 = await fetch(`${API_BASE}/api/parcels/transit`);
-          if (res2.ok) {
-            const json = await res2.json();
-            if (json?.success) {
-              setData(json);
+        if (API_BASE) {
+          try {
+            const res = await axios.get(`${API_BASE}/api/parcels/transit`, { timeout: 4000 });
+            if (res.data?.success) {
+              setData(res.data);
               return;
             }
+          } catch (e1) {
+            // fall through to Firestore
           }
-        } catch (e2) {
-          // fallback
         }
+
+        // Firestore fallback (Phone Link / offline)
+        if (db) {
+          try {
+            const docRef = doc(db, 'stores', 'DEMO_STORE_001', 'data', 'parcels_transit');
+            const snap = await getDoc(docRef);
+            if (snap.exists() && snap.data()) {
+              const cloudData = snap.data();
+              if (cloudData.allParcels || cloudData.summary) {
+                setData({
+                  activeInTransit: cloudData.activeInTransit || [],
+                  allParcels: cloudData.allParcels || FALLBACK_PARCELS,
+                  summary: {
+                    incomingCount: cloudData.summary?.incomingCount ?? 0,
+                    incomingPieces: cloudData.summary?.incomingPieces ?? 56,
+                    incomingValue: cloudData.summary?.incomingValue ?? 29360,
+                    monthPieces: cloudData.summary?.monthPieces || 1021,
+                    monthValue: cloudData.summary?.monthValue || 561808,
+                    monthParcelsCount: cloudData.summary?.monthParcelsCount || 7,
+                    latestParcel: cloudData.summary?.latestParcel || cloudData.allParcels?.[0] || FALLBACK_PARCELS[0]
+                  }
+                });
+                return;
+              }
+            }
+          } catch (fsErr) {
+            console.warn('[GoodsInTransitTab] Firestore getDoc error:', fsErr);
+          }
+        }
+      } catch (err) {
+        console.warn('[GoodsInTransitTab] fetchTransitData error:', err);
       } finally {
         setLoading(false);
       }
     };
     
     fetchTransitData();
+
+    let unsubscribe = null;
+    if (db) {
+      try {
+        const docRef = doc(db, 'stores', 'DEMO_STORE_001', 'data', 'parcels_transit');
+        unsubscribe = onSnapshot(docRef, (snap) => {
+          if (snap.exists()) {
+            const cloudData = snap.data();
+            if (cloudData.allParcels || cloudData.summary) {
+              setData({
+                activeInTransit: cloudData.activeInTransit || [],
+                allParcels: cloudData.allParcels || FALLBACK_PARCELS,
+                summary: {
+                  incomingCount: cloudData.summary?.incomingCount ?? 0,
+                  incomingPieces: cloudData.summary?.incomingPieces ?? 56,
+                  incomingValue: cloudData.summary?.incomingValue ?? 29360,
+                  monthPieces: cloudData.summary?.monthPieces || 1021,
+                  monthValue: cloudData.summary?.monthValue || 561808,
+                  monthParcelsCount: cloudData.summary?.monthParcelsCount || 7,
+                  latestParcel: cloudData.summary?.latestParcel || cloudData.allParcels?.[0] || FALLBACK_PARCELS[0]
+                }
+              });
+            }
+          }
+        }, (err) => console.warn('[GoodsInTransitTab] snapshot error:', err));
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, [API_BASE]);
 
   const recentDispatches = (data.allParcels && data.allParcels.length > 0)
@@ -135,8 +202,10 @@ const GoodsInTransitTab = ({ darkMode, API_BASE }) => {
         ...p
       }))
     : [
-        { id: 'WH00024923', challan: 'WH/T27-020174', date: '23 Sept', pcs: 201, val: '1,09,506', status: 'IN TRANSIT' },
-        { id: 'WH00024145', challan: 'WH/T27-018223', date: '19 Sept', pcs: 232, val: '1,22,907', status: 'RECEIVED' },
+        { id: 'WH00026127', challan: 'WH/T27-021196', date: '29 Sept', pcs: 56, val: '29,360', status: 'DELIVERED', vehicle: 'DL01LY5696' },
+        { id: 'WH00024923', challan: 'WH/T27-020174', date: '23 Sept', pcs: 201, val: '1,09,506', status: 'RECEIVED', vehicle: 'DL01LAF4375' },
+        { id: 'WH00024145', challan: 'WH/T27-018223', date: '19 Sept', pcs: 232, val: '1,22,907', status: 'RECEIVED', vehicle: 'DL01LAF4375' },
+        { id: 'WH00023267', challan: 'WH/T27-018749', date: '14 Sept', pcs: 66, val: '38,430', status: 'RECEIVED', vehicle: 'DL01LAF4375' },
       ];
 
   const activeDispatch = recentDispatches.find(d => d.challan === selectedChallan) || recentDispatches[0];

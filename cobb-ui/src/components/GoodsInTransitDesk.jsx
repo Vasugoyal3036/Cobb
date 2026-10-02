@@ -16,59 +16,66 @@ import {
   ShieldCheck,
   AlertCircle
 } from 'lucide-react';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { db } from '../utils/firebase';
 
 const FALLBACK_PARCELS = [
   {
-    parcel_memo_no: 'WH00023267',
-    parcel_memo_dt: new Date().toISOString(),
+    parcel_memo_no: 'WH00026127',
+    parcel_memo_dt: '2026-09-29T00:00:00.000Z',
+    vehicle_no: 'DL01LY5696',
+    bilty_no: '1314027349',
+    total_quantity: 56,
+    total_boxes: 1,
+    total_weight: 30,
+    challan_no: 'WH/T27-021196',
+    invoice_no: 'WH/T27-021196',
+    invoice_amount: 29360,
+    origin: 'WH',
+    origin_name: 'Head Office Central WH',
+    status: 'Delivered'
+  },
+  {
+    parcel_memo_no: 'WH00024923',
+    parcel_memo_dt: '2026-09-23T00:00:00.000Z',
     vehicle_no: 'DL01LAF4375',
+    bilty_no: '901028',
+    total_quantity: 201,
+    total_boxes: 1,
+    total_weight: 90,
+    challan_no: 'WH/T27-020174',
+    invoice_no: 'WH/T27-020174',
+    invoice_amount: 109506,
+    origin: 'WH',
+    origin_name: 'Head Office Central WH',
+    status: 'Received'
+  },
+  {
+    parcel_memo_no: 'WH00024145',
+    parcel_memo_dt: '2026-09-19T00:00:00.000Z',
+    vehicle_no: 'DL01LAF4375',
+    bilty_no: '901844',
+    total_quantity: 232,
+    total_boxes: 1,
+    total_weight: 105,
+    challan_no: 'WH/T27-018223',
+    invoice_no: 'WH/T27-018223',
+    invoice_amount: 122907,
+    origin: 'WH',
+    origin_name: 'Head Office Central WH',
+    status: 'Received'
+  },
+  {
+    parcel_memo_no: 'WH00023267',
+    parcel_memo_dt: '2026-09-14T00:00:00.000Z',
+    vehicle_no: 'DL01LAF4375',
+    bilty_no: '902199',
     total_quantity: 66,
     total_boxes: 1,
     total_weight: 30,
     challan_no: 'WH/T27-018749',
+    invoice_no: 'WH/T27-018749',
     invoice_amount: 38430,
-    origin: 'WH',
-    origin_name: 'Head Office Central WH',
-    status: 'Arrived Today'
-  },
-  {
-    parcel_memo_no: 'WH00023147',
-    parcel_memo_dt: '2026-09-12T00:00:00.000Z',
-    vehicle_no: 'DL01LAF4375',
-    bilty_no: '902157',
-    total_quantity: 154,
-    total_boxes: 1,
-    total_weight: 60,
-    challan_no: 'WH/T27-018642',
-    invoice_amount: 93129,
-    origin: 'WH',
-    origin_name: 'Head Office Central WH',
-    status: 'Received'
-  },
-  {
-    parcel_memo_no: 'WH00022298',
-    parcel_memo_dt: '2026-09-08T00:00:00.000Z',
-    vehicle_no: 'DL01LAF4375',
-    bilty_no: '902037',
-    total_quantity: 338,
-    total_boxes: 1,
-    total_weight: 150,
-    challan_no: 'WH/T27-017913',
-    invoice_amount: 186838,
-    origin: 'WH',
-    origin_name: 'Head Office Central WH',
-    status: 'Received'
-  },
-  {
-    parcel_memo_no: 'WH00021688',
-    parcel_memo_dt: '2026-09-04T00:00:00.000Z',
-    vehicle_no: 'DL01LAF4375',
-    bilty_no: '903398',
-    total_quantity: 91,
-    total_boxes: 1,
-    total_weight: 30,
-    challan_no: 'WH/T27-017397',
-    invoice_amount: 39711,
     origin: 'WH',
     origin_name: 'Head Office Central WH',
     status: 'Received'
@@ -83,12 +90,12 @@ export default function GoodsInTransitDesk({
   setActiveTab
 }) {
   const [data, setData] = useState({
-    activeInTransit: [FALLBACK_PARCELS[0]],
+    activeInTransit: [],
     allParcels: FALLBACK_PARCELS,
     summary: {
-      incomingCount: 1,
-      incomingPieces: 66,
-      incomingValue: 38430,
+      incomingCount: 0,
+      incomingPieces: 56,
+      incomingValue: 29360,
       monthPieces: 1021,
       monthValue: 561808,
       monthParcelsCount: 7,
@@ -102,23 +109,48 @@ export default function GoodsInTransitDesk({
   const fetchTransitData = async () => {
     try {
       setLoading(true);
-      const res = await axios.get(`${API_BASE}/api/parcels/transit`);
-      if (res.data?.success) {
-        setData(res.data);
-      }
-    } catch (err) {
-      try {
-        const res2 = await fetch(`${API_BASE}/api/parcels/transit`);
-        if (res2.ok) {
-          const json = await res2.json();
-          if (json?.success) {
-            setData(json);
+      if (API_BASE) {
+        try {
+          const res = await axios.get(`${API_BASE}/api/parcels/transit`, { timeout: 4000 });
+          if (res.data?.success) {
+            setData(res.data);
             return;
           }
+        } catch (e1) {
+          // Fall through to Firestore
         }
-      } catch (e2) {
-        // use default fallback
       }
+
+      // Cloud / Phone Link Firestore Sync:
+      if (db) {
+        try {
+          const docRef = doc(db, 'stores', 'DEMO_STORE_001', 'data', 'parcels_transit');
+          const snap = await getDoc(docRef);
+          if (snap.exists() && snap.data()) {
+            const cloudData = snap.data();
+            if (cloudData.allParcels || cloudData.summary) {
+              setData({
+                activeInTransit: cloudData.activeInTransit || [],
+                allParcels: cloudData.allParcels || FALLBACK_PARCELS,
+                summary: {
+                  incomingCount: cloudData.summary?.incomingCount ?? 0,
+                  incomingPieces: cloudData.summary?.incomingPieces ?? 56,
+                  incomingValue: cloudData.summary?.incomingValue ?? 29360,
+                  monthPieces: cloudData.summary?.monthPieces || 1021,
+                  monthValue: cloudData.summary?.monthValue || 561808,
+                  monthParcelsCount: cloudData.summary?.monthParcelsCount || 7,
+                  latestParcel: cloudData.summary?.latestParcel || cloudData.allParcels?.[0] || FALLBACK_PARCELS[0]
+                }
+              });
+              return;
+            }
+          }
+        } catch (fsErr) {
+          console.warn('[GoodsInTransitDesk] Firestore getDoc error:', fsErr);
+        }
+      }
+    } catch (err) {
+      console.warn('[GoodsInTransitDesk] fetch failed, using fallback:', err);
     } finally {
       setLoading(false);
     }
@@ -127,7 +159,40 @@ export default function GoodsInTransitDesk({
   useEffect(() => {
     fetchTransitData();
     const interval = setInterval(fetchTransitData, 60000);
-    return () => clearInterval(interval);
+
+    let unsubscribe = null;
+    if (db) {
+      try {
+        const docRef = doc(db, 'stores', 'DEMO_STORE_001', 'data', 'parcels_transit');
+        unsubscribe = onSnapshot(docRef, (snap) => {
+          if (snap.exists()) {
+            const cloudData = snap.data();
+            if (cloudData.allParcels || cloudData.summary) {
+              setData({
+                activeInTransit: cloudData.activeInTransit || [],
+                allParcels: cloudData.allParcels || FALLBACK_PARCELS,
+                summary: {
+                  incomingCount: cloudData.summary?.incomingCount ?? 0,
+                  incomingPieces: cloudData.summary?.incomingPieces ?? 56,
+                  incomingValue: cloudData.summary?.incomingValue ?? 29360,
+                  monthPieces: cloudData.summary?.monthPieces || 1021,
+                  monthValue: cloudData.summary?.monthValue || 561808,
+                  monthParcelsCount: cloudData.summary?.monthParcelsCount || 7,
+                  latestParcel: cloudData.summary?.latestParcel || cloudData.allParcels?.[0] || FALLBACK_PARCELS[0]
+                }
+              });
+            }
+          }
+        }, (err) => console.warn('[GoodsInTransitDesk] snapshot listener error:', err));
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    return () => {
+      clearInterval(interval);
+      if (unsubscribe) unsubscribe();
+    };
   }, [API_BASE]);
 
   const latest = data.summary?.latestParcel || data.activeInTransit?.[0] || FALLBACK_PARCELS[0];
