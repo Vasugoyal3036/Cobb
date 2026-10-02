@@ -49,6 +49,33 @@ describe('SpeedBillingModal (Zero-Mouse F1-F12 POS)', () => {
     expect(screen.getByText(/Change Quantity/i)).toBeDefined();
   });
 
+  it('applies Cobb retail promo (e.g. Flat 50%)', async () => {
+    await React.act(async () => {
+      render(<SpeedBillingModal isOpen={true} onClose={vi.fn()} />);
+    });
+
+    const flat50Btn = screen.getByRole('button', { name: /Flat 50%/i });
+    await React.act(async () => {
+      fireEvent.click(flat50Btn);
+    });
+
+    // Expect Flat 50% discount to be applied to initial ₹1899 item (-₹950) in line item and summary
+    expect(screen.getAllByText(/-₹950/i).length).toBeGreaterThan(0);
+    expect(screen.getByText(/PROMO: FLAT50/i)).toBeDefined();
+  });
+
+  it('opens F8 Split Tender (Cash + UPI) modal', async () => {
+    await React.act(async () => {
+      render(<SpeedBillingModal isOpen={true} onClose={vi.fn()} />);
+    });
+
+    await React.act(async () => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F8' }));
+    });
+
+    expect(screen.getByText(/Split Payment \(Cash \+ UPI QR\)/i)).toBeDefined();
+  });
+
   it('opens F6 Cash Settlement and computes change due', async () => {
     await React.act(async () => {
       render(<SpeedBillingModal isOpen={true} onClose={vi.fn()} />);
