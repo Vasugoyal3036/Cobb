@@ -31,3 +31,4 @@ CobbDashboard/backups/
 CobbDashboard/.env
 CobbRetailCRM_Package/
 *.old.jsx
+CobbDashboard/.last_boot_alert.json

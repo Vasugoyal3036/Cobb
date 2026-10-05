@@ -110,7 +110,7 @@ const DashboardTab = (props) => {
   const [calcMrp, setCalcMrp] = React.useState(1999);
   const [calcOffer, setCalcOffer] = React.useState('b3_70');
   const [b1g3Items, setB1g3Items] = React.useState([1700, 1800, 1900]);
-  
+
   // Wardrobe Profiler Search & Filter State
   const [wardrobeSearchQuery, setWardrobeSearchQuery] = React.useState('');
   const [wardrobePersonaFilter, setWardrobePersonaFilter] = React.useState('ALL');
@@ -122,7 +122,7 @@ const DashboardTab = (props) => {
   const handlePrintBill = (bill) => {
     const items = billItemsCache[bill.BillId] || bill.Items || [];
     const printWindow = window.open('', '_blank', 'width=400,height=600');
-    
+
     const resolvedMode = (() => {
       let mode = bill.PaymentMode;
       const cash = Number(bill.CashAmount || 0);
@@ -275,14 +275,14 @@ const DashboardTab = (props) => {
     if (Array.isArray(inventory) && inventory.length > 0) {
       const qLower = q.toLowerCase();
       // Match by exact SKU/barcode or exact ArticleNo
-      let matched = inventory.filter(item => 
+      let matched = inventory.filter(item =>
         (item.SKU && String(item.SKU).toLowerCase() === qLower) ||
         (item.ArticleNo && String(item.ArticleNo).toLowerCase() === qLower)
       );
 
       // If not exact, try prefix match on ArticleNo
       if (matched.length === 0) {
-        matched = inventory.filter(item => 
+        matched = inventory.filter(item =>
           item.ArticleNo && String(item.ArticleNo).toLowerCase().startsWith(qLower)
         );
       }
@@ -401,11 +401,10 @@ const DashboardTab = (props) => {
                         : 'Store Command Center'}
                   </h2>
                 </div>
-                <span className={`px-2.5 py-0.5 text-xs font-black rounded-lg border shadow-xs ${
-                  userRole === 'owner' 
-                    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30' 
+                <span className={`px-2.5 py-0.5 text-xs font-black rounded-lg border shadow-xs ${userRole === 'owner'
+                    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
                     : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
-                }`}>
+                  }`}>
                   {userRole === 'owner' ? '👑 Owner Mode' : '👔 Manager Mode'}
                 </span>
               </div>
@@ -428,11 +427,10 @@ const DashboardTab = (props) => {
                 <button
                   key={zone.id}
                   onClick={() => setDashboardZone(zone.id)}
-                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer text-xs font-bold flex items-center gap-1.5 ${
-                    dashboardZone === zone.id
+                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer text-xs font-bold flex items-center gap-1.5 ${dashboardZone === zone.id
                       ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm border border-slate-200/80 dark:border-slate-700'
                       : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                  }`}
+                    }`}
                 >
                   <span>{zone.label}</span>
                 </button>
@@ -442,7 +440,7 @@ const DashboardTab = (props) => {
 
           {/* ZONE 1: EXECUTIVE KPI STRIP (4 METRICS) */}
           {(dashboardZone === 'all' || dashboardZone === 'executive') && (
-            <ExecutiveKpiStrip 
+            <ExecutiveKpiStrip
               darkMode={darkMode}
               formatCurrency={formatCurrency}
               overviewStats={overviewStats}
@@ -468,14 +466,12 @@ const DashboardTab = (props) => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 
                   {/* PANEL 1: Live Store Pulse (Real-Time Bill Feed) */}
-                  <div className={`rounded-2xl border shadow-sm overflow-hidden flex flex-col h-[320px] transition-all ${
-                    darkMode 
-                      ? 'bg-[#0e1320] border-[#1c2436] text-slate-100' 
+                  <div className={`rounded-2xl border shadow-sm overflow-hidden flex flex-col h-[320px] transition-all ${darkMode
+                      ? 'bg-[#0e1320] border-[#1c2436] text-slate-100'
                       : 'bg-white border-slate-200 text-slate-800'
-                  }`}>
-                    <div className={`p-3.5 border-b flex items-center justify-between shrink-0 ${
-                      darkMode ? 'bg-[#121829] border-[#1c2436]' : 'bg-slate-50/70 border-slate-100'
                     }`}>
+                    <div className={`p-3.5 border-b flex items-center justify-between shrink-0 ${darkMode ? 'bg-[#121829] border-[#1c2436]' : 'bg-slate-50/70 border-slate-100'
+                      }`}>
                       <div className="flex items-center gap-2">
                         <Activity className="w-4 h-4 text-emerald-400" />
                         <h3 className={`text-xs font-bold uppercase tracking-wider flex items-center gap-2 ${darkMode ? 'text-white' : 'text-slate-900'}`}>
@@ -497,9 +493,8 @@ const DashboardTab = (props) => {
                           <button
                             type="button"
                             onClick={() => setActiveTab('live')}
-                            className={`text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors ${
-                              darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-500'
-                            }`}
+                            className={`text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors ${darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-500'
+                              }`}
                           >
                             <span>View ({todayCount})</span>
                             <ArrowRight className="w-3.5 h-3.5" />
@@ -507,9 +502,8 @@ const DashboardTab = (props) => {
                         );
                       })()}
                     </div>
-                    <div className={`divide-y flex-1 min-h-0 overflow-y-auto custom-scrollbar ${
-                      darkMode ? 'divide-[#1a2336]' : 'divide-slate-100'
-                    }`}>
+                    <div className={`divide-y flex-1 min-h-0 overflow-y-auto custom-scrollbar ${darkMode ? 'divide-[#1a2336]' : 'divide-slate-100'
+                      }`}>
                       {(() => {
                         const today = new Date();
                         const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -532,17 +526,15 @@ const DashboardTab = (props) => {
                         }
 
                         return displayBills.map((bill, idx) => (
-                          <div 
-                            key={idx} 
-                            className={`p-2.5 sm:p-3 transition-colors flex justify-between items-center cursor-pointer group ${
-                              darkMode ? 'hover:bg-[#151c2e]' : 'hover:bg-slate-50'
-                            }`} 
+                          <div
+                            key={idx}
+                            className={`p-2.5 sm:p-3 transition-colors flex justify-between items-center cursor-pointer group ${darkMode ? 'hover:bg-[#151c2e]' : 'hover:bg-slate-50'
+                              }`}
                             onClick={() => setActiveTab('live')}
                           >
                             <div className="min-w-0 flex-1 pr-2">
-                              <p className={`text-xs font-bold truncate group-hover:text-blue-400 transition-colors ${
-                                darkMode ? 'text-slate-100' : 'text-slate-800'
-                              }`}>
+                              <p className={`text-xs font-bold truncate group-hover:text-blue-400 transition-colors ${darkMode ? 'text-slate-100' : 'text-slate-800'
+                                }`}>
                                 {bill.CustomerName?.trim() || bill.FirstName?.trim() || 'Guest Customer'}
                               </p>
                               <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-slate-400">
@@ -569,10 +561,10 @@ const DashboardTab = (props) => {
                                   const badgeClass = isUPI
                                     ? (darkMode ? 'bg-purple-950/60 text-purple-300 border border-purple-800/60' : 'bg-purple-50 text-purple-700 border border-purple-200')
                                     : isCard
-                                    ? (darkMode ? 'bg-blue-950/60 text-blue-300 border border-blue-800/60' : 'bg-blue-50 text-blue-700 border border-blue-200')
-                                    : isSplit
-                                    ? (darkMode ? 'bg-amber-950/60 text-amber-300 border border-amber-800/60' : 'bg-amber-50 text-amber-700 border border-amber-200')
-                                    : (darkMode ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border border-emerald-200');
+                                      ? (darkMode ? 'bg-blue-950/60 text-blue-300 border border-blue-800/60' : 'bg-blue-50 text-blue-700 border border-blue-200')
+                                      : isSplit
+                                        ? (darkMode ? 'bg-amber-950/60 text-amber-300 border border-amber-800/60' : 'bg-amber-50 text-amber-700 border border-amber-200')
+                                        : (darkMode ? 'bg-emerald-950/60 text-emerald-300 border border-emerald-800/60' : 'bg-emerald-50 text-emerald-700 border border-emerald-200');
 
                                   const label = isUPI ? '⚡ UPI' : isCard ? '💳 Card' : isSplit ? '🔀 Split' : '💵 Cash';
 
@@ -585,9 +577,8 @@ const DashboardTab = (props) => {
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                              <span className={`text-xs font-mono font-black px-2.5 py-1 rounded-lg shrink-0 ${
-                                darkMode ? 'text-emerald-400 bg-emerald-950/40 border border-emerald-800/40' : 'text-emerald-700 bg-emerald-50 border border-emerald-200'
-                              }`}>
+                              <span className={`text-xs font-mono font-black px-2.5 py-1 rounded-lg shrink-0 ${darkMode ? 'text-emerald-400 bg-emerald-950/40 border border-emerald-800/40' : 'text-emerald-700 bg-emerald-50 border border-emerald-200'
+                                }`}>
                                 {formatCurrency(bill.Amount)}
                               </span>
                               <button
@@ -595,9 +586,8 @@ const DashboardTab = (props) => {
                                   e.stopPropagation();
                                   handlePrintBill(bill);
                                 }}
-                                className={`p-1.5 rounded-lg transition-colors border cursor-pointer ${
-                                  darkMode ? 'bg-slate-800/80 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700' : 'bg-slate-100 border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-200'
-                                }`}
+                                className={`p-1.5 rounded-lg transition-colors border cursor-pointer ${darkMode ? 'bg-slate-800/80 border-slate-700 text-slate-300 hover:text-white hover:bg-slate-700' : 'bg-slate-100 border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-200'
+                                  }`}
                                 title="Print Bill"
                               >
                                 <Receipt className="w-3.5 h-3.5" />
@@ -610,7 +600,7 @@ const DashboardTab = (props) => {
                   </div>
 
                   {/* PANEL 2: WhatsApp Automation Engine Hub */}
-                  <WhatsAppAutomationWidget 
+                  <WhatsAppAutomationWidget
                     automationDispatches={automationDispatches}
                     darkMode={darkMode}
                     setActiveTab={setActiveTab}
@@ -618,7 +608,7 @@ const DashboardTab = (props) => {
                 </div>
 
                 {/* ROW 2: LIVE STORE INTELLIGENCE RIBBON — 4 Compact Tiles */}
-                <LivePulseFeed 
+                <LivePulseFeed
                   hourlySales={hourlySales}
                   liveBills={liveBills}
                   vips={vips}
@@ -636,9 +626,8 @@ const DashboardTab = (props) => {
               <div className="lg:col-span-5 space-y-5 sm:space-y-6">
 
                 {/* WIDGET 1: SALES PERFORMANCE CALENDAR */}
-                <div className={`p-5 rounded-2xl border shadow-sm relative overflow-visible ${
-                  darkMode ? 'bg-[#0e1320] border-[#1c2436] text-slate-100' : 'bg-white border-slate-200 text-slate-800'
-                }`}>
+                <div className={`p-5 rounded-2xl border shadow-sm relative overflow-visible ${darkMode ? 'bg-[#0e1320] border-[#1c2436] text-slate-100' : 'bg-white border-slate-200 text-slate-800'
+                  }`}>
                   <div className="flex items-center justify-between mb-3 pb-3 border-b border-slate-100 dark:border-[#1c2436]">
                     <div className="flex items-center gap-2">
                       <div className="p-2 bg-blue-500/10 text-blue-400 rounded-xl border border-blue-500/20">
@@ -700,17 +689,15 @@ const DashboardTab = (props) => {
                                 setSelectedCalendarDay(selectedCalendarDay === day ? null : day);
                               }
                             }}
-                            className={`w-7 h-7 flex items-center justify-center rounded-lg text-xs font-mono font-semibold transition-all ${
-                              hasSales ? 'cursor-pointer' : 'cursor-default'
-                            } ${
-                              hasSales 
-                                ? (selectedCalendarDay === day 
-                                    ? 'bg-blue-500 text-white shadow-xl shadow-blue-500/30 border border-blue-400 scale-105 font-black' 
-                                    : darkMode 
-                                      ? 'bg-blue-500/20 text-white font-bold border border-blue-500/40 hover:bg-blue-500/30 shadow-md shadow-[#0a0f1a]' 
-                                      : 'bg-blue-100 text-blue-900 font-bold border border-blue-300 hover:bg-blue-200 shadow-sm') 
+                            className={`w-7 h-7 flex items-center justify-center rounded-lg text-xs font-mono font-semibold transition-all ${hasSales ? 'cursor-pointer' : 'cursor-default'
+                              } ${hasSales
+                                ? (selectedCalendarDay === day
+                                  ? 'bg-blue-500 text-white shadow-xl shadow-blue-500/30 border border-blue-400 scale-105 font-black'
+                                  : darkMode
+                                    ? 'bg-blue-500/20 text-white font-bold border border-blue-500/40 hover:bg-blue-500/30 shadow-md shadow-[#0a0f1a]'
+                                    : 'bg-blue-100 text-blue-900 font-bold border border-blue-300 hover:bg-blue-200 shadow-sm')
                                 : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60'
-                            }`}
+                              }`}
                           >
                             {day}
                           </div>
@@ -898,8 +885,8 @@ const DashboardTab = (props) => {
                     type="button"
                     onClick={() => setSafetyMode('ultra')}
                     className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold border transition-all cursor-pointer ${safetyMode === 'ultra'
-                        ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs'
-                        : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
+                      ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs'
+                      : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
                       }`}
                   >
                     🛡️ Ultra-Safe (20-38s)
@@ -908,8 +895,8 @@ const DashboardTab = (props) => {
                     type="button"
                     onClick={() => setSafetyMode('balanced')}
                     className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold border transition-all cursor-pointer ${safetyMode === 'balanced'
-                        ? 'bg-blue-600 text-white border-blue-700 shadow-xs'
-                        : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
+                      ? 'bg-blue-600 text-white border-blue-700 shadow-xs'
+                      : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800'
                       }`}
                   >
                     ⚡ Balanced (12-22s)
@@ -1003,8 +990,8 @@ const DashboardTab = (props) => {
                 <div className="w-full bg-slate-800 h-3 rounded-full overflow-hidden border border-slate-700">
                   <div
                     className={`h-full transition-all duration-300 rounded-full ${broadcastStatus.inCooldown
-                        ? 'bg-amber-500 animate-pulse'
-                        : 'bg-gradient-to-r from-emerald-500 to-blue-500'
+                      ? 'bg-amber-500 animate-pulse'
+                      : 'bg-gradient-to-r from-emerald-500 to-blue-500'
                       }`}
                     style={{ width: `${(broadcastStatus.currentIndex / Math.max(broadcastStatus.total, 1)) * 100}%` }}
                   />
@@ -1318,7 +1305,7 @@ const DashboardTab = (props) => {
             c.CustomerName?.toLowerCase().includes(q) ||
             c.Phone?.includes(q) ||
             c.PrimaryStyle?.toLowerCase().includes(q);
-          
+
           const matchesPersona = wardrobePersonaFilter === 'ALL' ||
             (c.Persona && c.Persona.toLowerCase().includes(wardrobePersonaFilter.toLowerCase()));
 
@@ -1451,11 +1438,10 @@ const DashboardTab = (props) => {
                     key={cat}
                     type="button"
                     onClick={() => setWardrobePersonaFilter(cat)}
-                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
-                      wardrobePersonaFilter === cat
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${wardrobePersonaFilter === cat
                         ? 'bg-purple-600 text-white shadow-md shadow-purple-600/25'
                         : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-800'
-                    }`}
+                      }`}
                   >
                     {cat === 'ALL' ? 'All Personas' : cat}
                   </button>
@@ -1527,15 +1513,14 @@ const DashboardTab = (props) => {
                             {c.Phone || '—'}
                           </td>
                           <td className="py-3.5 px-3 whitespace-nowrap">
-                            <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${
-                              c.Persona?.includes('High Roller')
+                            <span className={`px-2.5 py-1 rounded-full text-xs font-bold border ${c.Persona?.includes('High Roller')
                                 ? 'bg-amber-100 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 border-amber-200 dark:border-amber-800/60'
                                 : c.Persona?.includes('Formal')
-                                ? 'bg-purple-100 dark:bg-purple-950/40 text-purple-800 dark:text-purple-300 border-purple-200 dark:border-purple-800/60'
-                                : c.Persona?.includes('Casual')
-                                ? 'bg-blue-100 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800/60'
-                                : 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60'
-                            }`}>
+                                  ? 'bg-purple-100 dark:bg-purple-950/40 text-purple-800 dark:text-purple-300 border-purple-200 dark:border-purple-800/60'
+                                  : c.Persona?.includes('Casual')
+                                    ? 'bg-blue-100 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 border-blue-200 dark:border-blue-800/60'
+                                    : 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800/60'
+                              }`}>
                               {c.Persona || 'General Shopper'}
                             </span>
                           </td>

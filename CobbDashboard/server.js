@@ -1310,6 +1310,7 @@ const handleSalesLiveOrHistory = async (req, res) => {
             const itemsPromise = sql.query(`
                 SELECT 
                     A.CM_ID as BillId,
+                    LTRIM(RTRIM(A.PRODUCT_CODE)) as Barcode,
                     D.ARTICLE_NO as ArticleNo,
                     D.ARTICLE_NAME as ArticleName,
                     A.QUANTITY as Quantity,

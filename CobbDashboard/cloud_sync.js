@@ -455,19 +455,92 @@ async function checkAndDispatchCheckoutAlerts() {
                 }
             }
 
-            // 3. Dispatch real-time WhatsApp alert to all 4 store owners
+            // 3. Format detailed Purchased Articles list with BARCODE numbers
+            let purchasedArticlesText = '';
+            if (Array.isArray(bill.Items) && bill.Items.length > 0) {
+                const maxDisplay = 6;
+                const lines = [];
+                const displayItems = bill.Items.slice(0, maxDisplay);
+                displayItems.forEach(it => {
+                    const name = String(it.ArticleName || it.ItemName || it.Category || 'Garment').trim();
+                    const barcode = String(it.Barcode || it.PRODUCT_CODE || it.product_Code || it.ProductCode || it.SKU || it.ArticleNo || 'N/A').trim();
+                    const size = String(it.Size || it.size || '-').trim();
+                    const color = String(it.Color || it.color || '-').trim();
+                    const itemNet = Math.round(Number(it.NetPrice || it.Price || it.NET || 0));
+                    const itemQty = Number(it.Quantity) || 1;
+                    const qtyPart = itemQty > 1 ? ` × ${itemQty}` : '';
+                    
+                    lines.push(
+                        `• *${name}* (${barcode})\n` +
+                        `  └ Size: ${size} | Color: ${color} — ₹${itemNet.toLocaleString('en-IN')}${qtyPart}`
+                    );
+                });
+                if (bill.Items.length > maxDisplay) {
+                    lines.push(`  _...and ${bill.Items.length - maxDisplay} more item(s)_`);
+                }
+                purchasedArticlesText = lines.join('\n');
+            } else {
+                purchasedArticlesText = `• *Assorted Garments* (${qty} pcs) — ₹${amount.toLocaleString('en-IN')}`;
+            }
+
+            // Payment Mode details (including split breakdown)
+            let payDetail = pay;
+            if (bill.CashAmount > 0 && bill.UpiAmount > 0) {
+                payDetail = `Split (💵 Cash: ₹${Math.round(bill.CashAmount).toLocaleString('en-IN')} | 📱 UPI: ₹${Math.round(bill.UpiAmount).toLocaleString('en-IN')})`;
+            } else if (bill.CashAmount > 0 && bill.CardAmount > 0) {
+                payDetail = `Split (💵 Cash: ₹${Math.round(bill.CashAmount).toLocaleString('en-IN')} | 💳 Card: ₹${Math.round(bill.CardAmount).toLocaleString('en-IN')})`;
+            } else if (pay === 'UPI' || bill.UpiAmount > 0) {
+                payDetail = `📱 UPI (Paytm QR)`;
+            } else if (pay === 'Card' || bill.CardAmount > 0) {
+                payDetail = `💳 Debit / Credit Card`;
+            } else if (pay === 'Cash' || bill.CashAmount > 0) {
+                payDetail = `💵 Cash In Drawer`;
+            }
+
+            // Fetch running store total for today
+            let todayTillLine = '';
+            try {
+                const ovRes = await axios.get(`${LOCAL_API}/api/sales/overview`, { timeout: 3000 });
+                const todayData = ovRes.data?.today;
+                if (todayData && (todayData.TotalSales > 0 || todayData.BillCount > 0)) {
+                    todayTillLine = `📈 *Today's Till Total:* ₹${Math.round(todayData.TotalSales).toLocaleString('en-IN')} (across ${todayData.BillCount} bill${todayData.BillCount > 1 ? 's' : ''})\n`;
+                }
+            } catch (ovErr) {}
+
+            const dateStrFormatted = new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+            const timeStrFormatted = `${formatTimeAMPM(new Date())} (${dateStrFormatted})`;
+
+            let discountLine = `🏷️ *Discounts Given:* -₹${discountAmt.toLocaleString('en-IN')} (${discountPct}% OFF${discountPct >= 50 ? ' • Promo' : ''})`;
+            if (discountAmt === 0) {
+                discountLine = `🏷️ *Discounts Given:* ₹0 (Full Price Sale)`;
+            }
+
+            // Customer display with mobile
+            let custDetailDisplay = custDisplay;
+            if (custName && custPhone) {
+                custDetailDisplay = `${custName} (📱 ${custPhone})`;
+            } else if (custPhone) {
+                custDetailDisplay = `📱 ${custPhone}`;
+            }
+
+            // Assemble the detailed WhatsApp checkout alert for owners
             const waCheckoutText = 
                 `🧾 *NEW SALE RECORDED* — *Cobb Pundri*\n` +
                 `──────────────────────\n` +
                 `🔢 *Bill No:* #${billNo}\n` +
-                `💰 *Net Amount:* ₹${amount.toLocaleString('en-IN')} (${qty} item${qty > 1 ? 's' : ''})\n` +
-                (discountAmt > 0 ? `🏷️ *Gross / Disc:* ₹${grossAmt.toLocaleString('en-IN')} (Saved ₹${discountAmt.toLocaleString('en-IN')} • ${discountPct}% off)\n` : '') +
-                `👤 *Customer:* ${custDisplay}\n` +
-                `👔 *Salesperson:* ${staff}\n` +
-                `💳 *Payment:* ${pay}\n` +
-                `🕒 *Time:* ${formatTimeAMPM(new Date())}\n` +
+                `🕒 *Time:* ${timeStrFormatted}\n` +
+                `👤 *Customer:* ${custDetailDisplay}\n` +
+                `👔 *Salesperson:* ${staff}\n\n` +
+                `📦 *PURCHASED ARTICLES (${qty} item${qty > 1 ? 's' : ''}):*\n` +
+                `${purchasedArticlesText}\n\n` +
                 `──────────────────────\n` +
-                `👉 *Phone Link:* https://cobb-store.web.app${clickUrl}`;
+                `💰 *Gross MRP Total:* ₹${grossAmt.toLocaleString('en-IN')}\n` +
+                `${discountLine}\n` +
+                `✅ *Net Collected:* *₹${amount.toLocaleString('en-IN')}*\n` +
+                `💳 *Payment Mode:* ${payDetail}\n` +
+                `──────────────────────\n` +
+                (todayTillLine ? `${todayTillLine}` : '') +
+                `👉 *View Live Bill:* https://cobb-store.web.app/?tab=livebills`;
 
             sendWhatsAppToOwners(waCheckoutText, `Checkout #${billNo}`).catch(() => {});
         }

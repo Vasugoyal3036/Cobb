@@ -689,7 +689,7 @@ async function handleRetailIntent(queryText) {
     }
 
     // 4. SALES SUMMARY & PAYMENT MODES (Today, Yesterday, Month, Cash, UPI)
-    const isSalesQuery = /sale|sales|revenue|collection|cash|upi|paytm|bill|turnover|earnings/i.test(q);
+    const isSalesQuery = (/sale|sales|revenue|collection|cash|upi|paytm|turnover|earnings/i.test(q) || (/\bbill(s)?\b/i.test(q) && !/return|exchange|credit|replace/i.test(q))) && !/return|exchange|credit\s*note/i.test(q);
     if (isSalesQuery) {
         const salesRes = await sql.query(`
             DECLARE @todayStart DATE = CAST(GETDATE() AS DATE);
@@ -1343,6 +1343,121 @@ async function handleRetailIntent(queryText) {
             }
         } catch (catErr) {
             console.warn('[ChatRoute] Category error:', catErr.message);
+        }
+    }
+
+    // 15. RETURN & EXCHANGE ASSISTANT (Returns, Exchanges, Credit Notes, Bill lookup)
+    const isReturnOrExchangeQuery = /\b(returns?|exchanges?|credit\s*notes?|refunds?|replace(?:ment)?)\b/i.test(q);
+    if (isReturnOrExchangeQuery) {
+        try {
+            // Check if a specific bill number or phone number is mentioned
+            const billNoMatch = q.match(/\b(STST\d{2}-\d{4,6}|\d{4,6})\b/i);
+            const phoneMatch = q.match(/\b([6-9]\d{9})\b/);
+
+            if (billNoMatch || phoneMatch) {
+                let billClause = '';
+                if (billNoMatch) {
+                    const cleanBill = billNoMatch[1].toUpperCase();
+                    billClause = `m.CM_NO LIKE '%${cleanBill}%'`;
+                } else if (phoneMatch) {
+                    billClause = `m.CUSTOMER_CODE LIKE '%${phoneMatch[1]}%'`;
+                }
+
+                const billRes = await sql.query(`
+                    SELECT TOP 1 
+                        m.CM_ID,
+                        LTRIM(RTRIM(m.CM_NO)) as BillNo,
+                        m.CM_TIME as BillTime,
+                        ISNULL(m.NET_AMOUNT, 0) as BillAmount,
+                        ISNULL(m.CUSTOMER_CODE, '') as CustomerPhone,
+                        ISNULL(NULLIF(LTRIM(RTRIM(ISNULL(c.CUSTOMER_FNAME, '') + ' ' + ISNULL(c.CUSTOMER_LNAME, ''))), ''), 'Valued Customer') as CustomerName
+                    FROM CMM01106 m WITH (NOLOCK)
+                    LEFT JOIN CUSTDYM c WITH (NOLOCK) ON m.CUSTOMER_CODE = c.CUSTOMER_CODE
+                    WHERE ${billClause}
+                    ORDER BY m.CM_TIME DESC
+                `);
+
+                const bill = billRes.recordset && billRes.recordset[0];
+                if (bill) {
+                    const linesRes = await sql.query(`
+                        SELECT 
+                            d.PRODUCT_CODE as SKU,
+                            ISNULL(s.article_no, d.PRODUCT_CODE) as ArticleNo,
+                            ISNULL(s.article_name, s.section_name) as ItemName,
+                            ISNULL(s.para2_name, 'Standard') as Size,
+                            ISNULL(d.QUANTITY, 1) as Qty,
+                            ISNULL(d.NET, 0) as Price
+                        FROM CMD01106 d WITH (NOLOCK)
+                        LEFT JOIN SKU_NAMES s WITH (NOLOCK) ON d.PRODUCT_CODE = s.product_Code
+                        WHERE d.CM_ID = '${bill.CM_ID}'
+                    `);
+                    const items = linesRes.recordset || [];
+                    const billDateStr = new Date(bill.BillTime).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+
+                    let answer = `🔄 **Return / Exchange Lookup for Bill #${bill.BillNo}**\n\n`;
+                    answer += `👤 **Customer:** **${bill.CustomerName}** ${bill.CustomerPhone ? `(📱 \`${bill.CustomerPhone}\`)` : ''}\n`;
+                    answer += `📅 **Invoice Date:** ${billDateStr} | 💰 **Total Billed:** **${formatINR(bill.BillAmount)}**\n\n`;
+                    answer += `### 🏷️ Eligible Items on this Invoice (${items.length} items):\n`;
+                    items.forEach(it => {
+                        answer += `- **${it.ItemName}** (${it.ArticleNo}, Size: **${it.Size}**) — **${it.Qty} pc** @ ${formatINR(it.Price)} (SKU: \`${it.SKU}\`)\n`;
+                    });
+                    answer += `\n📋 **Next Action:** Click **Speed Billing POS / Returns** below to select the article and process the return, replacement, or issue a Credit Note.`;
+
+                    return {
+                        answer,
+                        intent: 'RETURN_EXCHANGE',
+                        metrics: [
+                            { label: 'Bill No', value: bill.BillNo, color: 'blue' },
+                            { label: 'Customer', value: bill.CustomerName.split(' ')[0], color: 'purple' },
+                            { label: 'Bill Total', value: formatINR(bill.BillAmount), color: 'emerald' },
+                            { label: 'Total Items', value: `${items.length} pcs`, color: 'amber' }
+                        ],
+                        table: {
+                            headers: ['Article No', 'Description', 'Size', 'Qty', 'Billed Price'],
+                            rows: items.map(it => [it.ArticleNo, it.ItemName || '-', it.Size, `${it.Qty} pc`, formatINR(it.Price)])
+                        },
+                        actions: [
+                            { type: 'NAVIGATE', tab: 'dashboard', label: '⚡ Open Speed Billing POS / Returns' }
+                        ],
+                        chips: [
+                            { label: "📜 Store Return Policy", query: "what is the return and exchange policy" },
+                            { label: "💰 Today's sales summary", query: "what is today's total sales and UPI split" }
+                        ]
+                    };
+                }
+            }
+
+            // General Return & Exchange SOP & Policy
+            let answer = `🔄 **Cobb Store Return & Exchange SOP & Policy**\n\n`;
+            answer += `Follow these standard steps to process a return or exchange at the POS counter:\n\n`;
+            answer += `1. **Locate Invoice:** Open **Speed Billing POS / Returns** and enter the **Bill Number** (e.g. \`STST27-00764\`) or the customer's **10-digit phone number**.\n`;
+            answer += `2. **Verify Article & Tags:** Verify the physical garment has original barcode tags attached, is unworn, and was purchased within the **14-day window**.\n`;
+            answer += `3. **Scan Replacement or Credit Note:**\n`;
+            answer += `   - **Even Exchange:** Scan new replacement article of equal or higher value.\n`;
+            answer += `   - **Credit Note:** If customer chooses not to buy today, issue an official store credit slip valid for **90 days**.\n`;
+            answer += `4. **WhatsApp Slip:** The customer automatically receives an **Official Exchange Slip & Receipt** on their WhatsApp.\n\n`;
+            answer += `⚠️ **Non-Exchangeable Categories:** Altered garments, innerwear/socks, and washed/perfumed items cannot be exchanged.`;
+
+            return {
+                answer,
+                intent: 'RETURN_EXCHANGE',
+                metrics: [
+                    { label: 'Exchange Window', value: '14 Days', color: 'blue' },
+                    { label: 'Tag Mandatory', value: 'Yes (Original)', color: 'amber' },
+                    { label: 'Credit Note Validity', value: '90 Days', color: 'emerald' },
+                    { label: 'WhatsApp Slip', value: 'Automatic', color: 'purple' }
+                ],
+                actions: [
+                    { type: 'NAVIGATE', tab: 'dashboard', label: '⚡ Open Speed Billing POS / Returns' }
+                ],
+                chips: [
+                    { label: "🔍 Search Bill STST27-00764", query: "return bill STST27-00764" },
+                    { label: "👤 Lookup by phone", query: "customer 9729723003 purchase history" },
+                    { label: "💰 Today's sales summary", query: "what is today's total sales and UPI split" }
+                ]
+            };
+        } catch (retErr) {
+            console.warn('[ChatRoute] Return/Exchange handler error:', retErr.message);
         }
     }
 

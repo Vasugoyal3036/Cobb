@@ -1294,5 +1294,77 @@
     "reason": "checkout",
     "status": "sent",
     "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-10-02T18:31:43.752863",
+    "date": "2026-10-02",
+    "time": "06:31 PM",
+    "billNo": "STST27-00764   ",
+    "cmId": "ST01127000STST27-00764",
+    "customerName": "Deevanshu",
+    "phone": "9729723003",
+    "reason": "exchange",
+    "status": "sent",
+    "detail": "Official Exchange Slip sent"
+  },
+  {
+    "timestamp": "2026-10-03T15:18:00.938499",
+    "date": "2026-10-03",
+    "time": "03:18 PM",
+    "billNo": "STST27-00765   ",
+    "cmId": "ST01127000STST27-00765",
+    "customerName": "Prince",
+    "phone": "7404130676",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-10-03T19:15:38.303957",
+    "date": "2026-10-03",
+    "time": "07:15 PM",
+    "billNo": "STST27-00766   ",
+    "cmId": "ST01127000STST27-00766",
+    "customerName": "Aasish Pundri",
+    "phone": "9996566407",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-10-04T16:15:40.765331",
+    "date": "2026-10-04",
+    "time": "04:15 PM",
+    "billNo": "STST27-00767   ",
+    "cmId": "ST01127000STST27-00767",
+    "customerName": "Manik Kukreja",
+    "phone": "8950224340",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-10-04T19:33:26.596829",
+    "date": "2026-10-04",
+    "time": "07:33 PM",
+    "billNo": "STST27-00768   ",
+    "cmId": "ST01127000STST27-00768",
+    "customerName": "Ramesh",
+    "phone": "9079934457",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-10-04T19:50:10.430469",
+    "date": "2026-10-04",
+    "time": "07:50 PM",
+    "billNo": "STST27-00769   ",
+    "cmId": "ST01127000STST27-00769",
+    "customerName": "Jaybir",
+    "phone": "8053320898",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
   }
 ]

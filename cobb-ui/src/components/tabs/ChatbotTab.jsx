@@ -51,6 +51,7 @@ const QUICK_PROMPTS = [
   { label: "🚨 Low Stock Alerts", query: "which items are low on stock", icon: AlertTriangle, color: "text-rose-600 bg-rose-50 dark:bg-rose-950/60 dark:text-rose-300 border-rose-200 dark:border-rose-800" },
   { label: "👑 Top VIP Customers", query: "who are our top VIP customers", icon: Users, color: "text-purple-600 bg-purple-50 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200 dark:border-purple-800" },
   { label: "💤 Dead Stock (60d)", query: "show dead stock items", icon: Package, color: "text-rose-600 bg-rose-50 dark:bg-rose-950/60 dark:text-rose-300 border-rose-200 dark:border-rose-800" },
+  { label: "🔄 Return/Exchange", query: "initiate return or exchange for order", icon: RotateCcw, color: "text-orange-600 bg-orange-50 dark:bg-orange-950/60 dark:text-orange-300 border-orange-200 dark:border-orange-800" },
 ];
 
 const DEFAULT_WELCOME = {
