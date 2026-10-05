@@ -18,7 +18,7 @@ export const ROLE_PERMISSIONS = {
     'copilot','dashboard','speed_billing','analytics','monthly','live',
     'staff_leaderboard','pocket_khata','denomination','hold_desk','returns',
     'alterations','topmovers','sizematrix','transit','deadstock','reorder',
-    'smart_bundles','loyalty','vip','dormant','wardrobe','retention',
+    'smart_bundles','loyalty','ratings','vip','dormant','wardrobe','retention',
   ],
   cashier: ['speed_billing','live','denomination','returns','alterations','hold_desk','deadstock'],
 };
