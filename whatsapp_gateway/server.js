@@ -435,23 +435,46 @@ async function initWhatsApp(isFresh = false) {
                 }
 
                 // Positive Google Review (4 or 5 Stars)
-                if (['5', '5 star', '5 stars', '4', '4 star', '4 stars', 'excellent', 'great', 'superb', 'best'].some(k => lower === k || lower.startsWith(k))) {
+                if (['5', '5 star', '5 stars', '4', '4 star', '4 stars', 'excellent', 'great', 'superb', 'best', '5/5', '4/5', '5⭐', '4⭐'].some(k => lower === k || lower.startsWith(k) || lower.includes(k)) || lower.includes('⭐⭐⭐⭐⭐') || lower.includes('⭐⭐⭐⭐')) {
                     const reply = `🌟 *Thank you so much for the 5-Star rating!* 🙏\n\nYour feedback means everything to our local team. Would you mind taking 15 seconds to share your review on our Google Maps page?\n\n⭐ *Tap here to review:* https://search.google.com/local/writereview?placeid=ChIJHfCBR58ZDjkRpBbB9EV-Zew\n\nThank you for being part of the Cobb family! 👔`;
                     await client.sendMessage(msg.from, reply);
+
+                    // Forward to CRM backend for permanent rating storage
+                    try {
+                        const ratingScore = (lower.includes('4') && !lower.includes('5')) ? 4 : 5;
+                        await fetch('http://localhost:5000/api/whatsapp/inbound-alert', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                phone: cleanPhone,
+                                message: rawBody,
+                                type: 'rating_positive',
+                                rating: ratingScore
+                            })
+                        });
+                    } catch (e) { }
                     return;
                 }
 
                 // Customer Grievance / Low NPS (1 to 3 Stars)
-                if (['1', '1 star', '2', '2 star', '3', '3 star', 'bad', 'poor', 'worst', 'issue', 'complaint'].some(k => lower === k || lower.startsWith(k))) {
+                if (['1', '1 star', '2', '2 star', '3', '3 star', 'bad', 'poor', 'worst', 'issue', 'complaint', '1/5', '2/5', '3/5', 'terrible', 'pathetic', 'dissatisfied', '1⭐', '2⭐', '3⭐'].some(k => lower === k || lower.startsWith(k) || lower.includes(k)) || lower.includes('⭐⭐⭐') || lower.includes('⭐⭐') || lower.includes('⭐')) {
                     const reply = `🙏 *We sincerely apologize for falling short of your expectations.*\n\nYour feedback has been logged with highest priority for our Store Manager. We will look into this right away to resolve your concern.\n\nThank you for helping us improve our service.`;
                     await client.sendMessage(msg.from, reply);
 
-                    // Forward to CRM backend for staff alert
+                    // Forward to CRM backend for staff alert & permanent storage
                     try {
+                        let ratingScore = 1;
+                        if (lower.includes('3')) ratingScore = 3;
+                        else if (lower.includes('2')) ratingScore = 2;
                         await fetch('http://localhost:5000/api/whatsapp/inbound-alert', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ phone: cleanPhone, message: rawBody, type: 'grievance_low_nps' })
+                            body: JSON.stringify({
+                                phone: cleanPhone,
+                                message: rawBody,
+                                type: 'grievance_low_nps',
+                                rating: ratingScore
+                            })
                         });
                     } catch (e) { }
                     return;

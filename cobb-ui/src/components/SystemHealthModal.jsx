@@ -31,6 +31,7 @@ export default function SystemHealthModal({ isOpen, onClose, API_BASE = 'http://
   const [anniversaries, setAnniversaries] = useState([]);
   const [sendingWish, setSendingWish] = useState({});
   const [activeTab, setActiveTab] = useState('health'); // 'health' | 'alerts' | 'anniversaries'
+  const [alertFilter, setAlertFilter] = useState('all'); // 'all' | 'ratings' | 'grievances'
 
   useEffect(() => {
     if (isOpen) {
@@ -62,7 +63,16 @@ export default function SystemHealthModal({ isOpen, onClose, API_BASE = 'http://
   const fetchInboundAlerts = async () => {
     try {
       const res = await axios.get(`${API_BASE}/api/whatsapp/inbound-alerts`);
-      setInboundAlerts(res.data || []);
+      const raw = res.data;
+      if (Array.isArray(raw)) {
+        setInboundAlerts(raw);
+      } else if (raw && Array.isArray(raw.items)) {
+        setInboundAlerts(raw.items);
+      } else if (raw && Array.isArray(raw.alerts)) {
+        setInboundAlerts(raw.alerts);
+      } else {
+        setInboundAlerts([]);
+      }
     } catch (e) {
       setInboundAlerts([]);
     }
@@ -71,7 +81,14 @@ export default function SystemHealthModal({ isOpen, onClose, API_BASE = 'http://
   const fetchAnniversaries = async () => {
     try {
       const res = await axios.get(`${API_BASE}/api/crm/anniversaries-today`);
-      setAnniversaries(res.data || []);
+      const raw = res.data;
+      if (Array.isArray(raw)) {
+        setAnniversaries(raw);
+      } else if (raw && Array.isArray(raw.items)) {
+        setAnniversaries(raw.items);
+      } else {
+        setAnniversaries([]);
+      }
     } catch (e) {
       setAnniversaries([]);
     }
@@ -121,7 +138,10 @@ export default function SystemHealthModal({ isOpen, onClose, API_BASE = 'http://
   const handleMarkAlertRead = async (id) => {
     try {
       await axios.post(`${API_BASE}/api/whatsapp/inbound-alerts/mark-read`, { id });
-      setInboundAlerts(prev => prev.map(a => a.id === id ? { ...a, status: 'read' } : a));
+      setInboundAlerts(prev => {
+        const arr = Array.isArray(prev) ? prev : (prev?.items || []);
+        return arr.map(a => a.id === id ? { ...a, status: 'read' } : a);
+      });
     } catch (e) {}
   };
 
@@ -151,7 +171,14 @@ export default function SystemHealthModal({ isOpen, onClose, API_BASE = 'http://
     );
   };
 
-  const unreadAlertsCount = inboundAlerts.filter(a => a.status === 'unread').length;
+  const safeAlerts = Array.isArray(inboundAlerts)
+    ? inboundAlerts
+    : (inboundAlerts && Array.isArray(inboundAlerts.items) ? inboundAlerts.items : []);
+  const safeAnniversaries = Array.isArray(anniversaries)
+    ? anniversaries
+    : (anniversaries && Array.isArray(anniversaries.items) ? anniversaries.items : []);
+
+  const unreadAlertsCount = safeAlerts.filter(a => a.status === 'unread').length;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
@@ -233,7 +260,7 @@ export default function SystemHealthModal({ isOpen, onClose, API_BASE = 'http://
             }`}
           >
             <Calendar className="w-3.5 h-3.5" />
-            <span>Birthdays Today ({anniversaries.length})</span>
+            <span>Birthdays Today ({safeAnniversaries.length})</span>
           </button>
         </div>
 
@@ -396,51 +423,160 @@ export default function SystemHealthModal({ isOpen, onClose, API_BASE = 'http://
             </div>
           )}
 
-          {/* TAB 2: INBOUND CUSTOMER ALERTS */}
+          {/* TAB 2: INBOUND CUSTOMER ALERTS & REVIEWS */}
           {activeTab === 'alerts' && (
-            <div className="space-y-3">
-              {inboundAlerts.length === 0 ? (
-                <div className="py-8 text-center text-slate-400 text-xs">
-                  <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto mb-2 opacity-80" />
-                  No customer grievances or complaints. All counter interactions healthy!
+            <div className="space-y-4">
+              {/* Summary KPIs */}
+              <div className="grid grid-cols-3 gap-2">
+                <div className={`p-3 rounded-xl border ${darkMode ? 'bg-[#101624] border-[#1f2b42]' : 'bg-slate-50 border-slate-200'} text-center`}>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Avg Rating</p>
+                  <p className="text-base font-black text-amber-400 flex items-center justify-center gap-1 mt-0.5">
+                    <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                    {safeAlerts.filter(a => a.rating).length > 0 
+                      ? (safeAlerts.filter(a => a.rating).reduce((acc, c) => acc + c.rating, 0) / safeAlerts.filter(a => a.rating).length).toFixed(1)
+                      : '5.0'}
+                  </p>
                 </div>
-              ) : (
-                inboundAlerts.map(alert => (
-                  <div
-                    key={alert.id}
-                    className={`p-3.5 rounded-xl border transition-all ${
-                      alert.status === 'unread'
-                        ? darkMode ? 'bg-rose-950/20 border-rose-800/50' : 'bg-rose-50 border-rose-200'
-                        : darkMode ? 'bg-[#101624] border-[#1f2b42] opacity-70' : 'bg-slate-50 border-slate-200'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-extrabold text-xs">{alert.phone}</span>
-                          <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase ${
-                            alert.type === 'grievance' ? 'bg-rose-500/20 text-rose-300' : 'bg-blue-500/20 text-blue-300'
-                          }`}>
-                            {alert.type}
-                          </span>
-                          <span className="text-[10px] text-slate-400">
-                            {new Date(alert.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                        <p className="text-xs mt-1.5 text-slate-200 font-medium">"{alert.message}"</p>
-                      </div>
-                      {alert.status === 'unread' && (
-                        <button
-                          onClick={() => handleMarkAlertRead(alert.id)}
-                          className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-[10px] font-bold border border-slate-600/40 cursor-pointer shrink-0"
-                        >
-                          Mark Resolved
-                        </button>
-                      )}
-                    </div>
+                <div className={`p-3 rounded-xl border ${darkMode ? 'bg-[#101624] border-[#1f2b42]' : 'bg-slate-50 border-slate-200'} text-center`}>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Total Feedback</p>
+                  <p className="text-base font-black text-slate-200 mt-0.5">
+                    {safeAlerts.filter(a => a.rating || a.type === 'rating_positive' || a.type === 'grievance_low_nps').length}
+                  </p>
+                </div>
+                <div className={`p-3 rounded-xl border ${darkMode ? 'bg-[#101624] border-[#1f2b42]' : 'bg-slate-50 border-slate-200'} text-center`}>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Open Issues</p>
+                  <p className={`text-base font-black mt-0.5 ${safeAlerts.filter(a => a.status === 'unread' && (a.type === 'grievance' || a.type === 'grievance_low_nps' || (a.rating && a.rating <= 3))).length > 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                    {safeAlerts.filter(a => a.status === 'unread' && (a.type === 'grievance' || a.type === 'grievance_low_nps' || (a.rating && a.rating <= 3))).length}
+                  </p>
+                </div>
+              </div>
+
+              {/* Filter Pills */}
+              <div className="flex items-center gap-1.5 border-b border-slate-700/40 pb-2">
+                <button
+                  onClick={() => setAlertFilter('all')}
+                  className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-colors cursor-pointer ${
+                    alertFilter === 'all'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-slate-800/60 text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  All ({safeAlerts.length})
+                </button>
+                <button
+                  onClick={() => setAlertFilter('ratings')}
+                  className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-colors cursor-pointer flex items-center gap-1 ${
+                    alertFilter === 'ratings'
+                      ? 'bg-amber-600 text-white'
+                      : 'bg-slate-800/60 text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <Star className="w-2.5 h-2.5 fill-current" />
+                  Ratings ({safeAlerts.filter(a => a.rating || a.type === 'rating_positive' || a.type === 'grievance_low_nps').length})
+                </button>
+                <button
+                  onClick={() => setAlertFilter('grievances')}
+                  className={`px-2.5 py-1 text-[11px] font-bold rounded-lg transition-colors cursor-pointer flex items-center gap-1 ${
+                    alertFilter === 'grievances'
+                      ? 'bg-rose-600 text-white'
+                      : 'bg-slate-800/60 text-slate-400 hover:text-slate-200'
+                  }`}
+                >
+                  <AlertTriangle className="w-2.5 h-2.5" />
+                  Grievances ({safeAlerts.filter(a => a.type === 'grievance' || a.type === 'grievance_low_nps' || (a.rating && a.rating <= 3)).length})
+                </button>
+              </div>
+
+              {/* Alert Items List */}
+              <div className="space-y-3">
+                {safeAlerts
+                  .filter(alert => {
+                    if (alertFilter === 'ratings') return alert.rating || alert.type === 'rating_positive' || alert.type === 'grievance_low_nps';
+                    if (alertFilter === 'grievances') return alert.type === 'grievance' || alert.type === 'grievance_low_nps' || (alert.rating && alert.rating <= 3);
+                    return true;
+                  })
+                  .length === 0 ? (
+                  <div className="py-8 text-center text-slate-400 text-xs">
+                    <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto mb-2 opacity-80" />
+                    No customer interactions matching this filter.
                   </div>
-                ))
-              )}
+                ) : (
+                  safeAlerts
+                    .filter(alert => {
+                      if (alertFilter === 'ratings') return alert.rating || alert.type === 'rating_positive' || alert.type === 'grievance_low_nps';
+                      if (alertFilter === 'grievances') return alert.type === 'grievance' || alert.type === 'grievance_low_nps' || (alert.rating && alert.rating <= 3);
+                      return true;
+                    })
+                    .map(alert => {
+                      const isGrievance = alert.type === 'grievance' || alert.type === 'grievance_low_nps' || (alert.rating && alert.rating <= 3);
+                      const isPositive = alert.type === 'rating_positive' || (alert.rating && alert.rating >= 4);
+
+                      return (
+                        <div
+                          key={alert.id}
+                          className={`p-3.5 rounded-xl border transition-all ${
+                            alert.status === 'unread'
+                              ? isGrievance
+                                ? darkMode ? 'bg-rose-950/20 border-rose-800/50' : 'bg-rose-50 border-rose-200'
+                                : darkMode ? 'bg-amber-950/15 border-amber-800/40' : 'bg-amber-50/70 border-amber-200'
+                              : darkMode ? 'bg-[#101624] border-[#1f2b42] opacity-70' : 'bg-slate-50 border-slate-200'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-extrabold text-xs text-slate-200">
+                                  {alert.customerName ? `${alert.customerName} (${alert.phone})` : alert.phone}
+                                </span>
+                                
+                                {alert.rating && (
+                                  <div className="flex items-center gap-0.5">
+                                    {[1, 2, 3, 4, 5].map(star => (
+                                      <Star
+                                        key={star}
+                                        className={`w-3 h-3 ${
+                                          star <= alert.rating
+                                            ? isGrievance ? 'fill-rose-400 text-rose-400' : 'fill-amber-400 text-amber-400'
+                                            : 'text-slate-600'
+                                        }`}
+                                      />
+                                    ))}
+                                  </div>
+                                )}
+
+                                <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase border ${
+                                  isGrievance
+                                    ? 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                                    : isPositive
+                                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                                    : 'bg-blue-500/20 text-blue-300 border-blue-500/30'
+                                }`}>
+                                  {alert.rating ? `${alert.rating}★ ` : ''}{alert.type?.replace(/_/g, ' ')}
+                                </span>
+
+                                <span className="text-[10px] text-slate-400">
+                                  {new Date(alert.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                              </div>
+                              <p className="text-xs text-slate-200 font-medium">"{alert.message}"</p>
+                            </div>
+                            
+                            {alert.status === 'unread' ? (
+                              <button
+                                onClick={() => handleMarkAlertRead(alert.id)}
+                                className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-[10px] font-bold border border-slate-600/40 cursor-pointer shrink-0 transition-colors"
+                              >
+                                Mark Resolved
+                              </button>
+                            ) : (
+                              <span className="text-[10px] font-bold text-slate-500 shrink-0">Resolved</span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })
+                )}
+              </div>
             </div>
           )}
 
@@ -450,13 +586,13 @@ export default function SystemHealthModal({ isOpen, onClose, API_BASE = 'http://
               <p className="text-xs text-slate-400">
                 Customers with registered birthdays or anniversaries today. One-click sends a personalized greeting with an exclusive 15% discount voucher valid for 7 days.
               </p>
-              {anniversaries.length === 0 ? (
+              {safeAnniversaries.length === 0 ? (
                 <div className="py-8 text-center text-slate-400 text-xs">
                   <Calendar className="w-8 h-8 text-indigo-400 mx-auto mb-2 opacity-80" />
                   No customer birthdays or anniversaries registered for today.
                 </div>
               ) : (
-                anniversaries.map((cust, idx) => (
+                safeAnniversaries.map((cust, idx) => (
                   <div
                     key={idx}
                     className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 ${

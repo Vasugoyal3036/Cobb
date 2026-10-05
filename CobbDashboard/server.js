@@ -3719,22 +3719,107 @@ function startCloudSyncHelper() {
     return true;
 }
 
-// --- PILLAR 2: INBOUND WHATSAPP ALERTS & CONCIERGE BRIDGE ---
-const inboundAlerts = [];
+// --- PILLAR 2: INBOUND WHATSAPP ALERTS, CUSTOMER RATINGS & CONCIERGE BRIDGE ---
+const INBOUND_ALERTS_FILE = path.join(__dirname, 'inbound_alerts.json');
+const CUSTOMER_RATINGS_FILE = path.join(__dirname, 'customer_ratings.json');
 
-app.post('/api/whatsapp/inbound-alert', (req, res) => {
-    const { phone, message, type } = req.body || {};
+function loadInboundAlerts() {
+    try {
+        if (fs.existsSync(INBOUND_ALERTS_FILE)) {
+            const raw = fs.readFileSync(INBOUND_ALERTS_FILE, 'utf-8');
+            return JSON.parse(raw);
+        }
+    } catch (e) {
+        console.warn('[INBOUND ALERTS] Could not load alerts from file:', e.message);
+    }
+    return [];
+}
+
+function saveInboundAlerts(alerts) {
+    try {
+        fs.writeFileSync(INBOUND_ALERTS_FILE, JSON.stringify(alerts.slice(0, 300), null, 2), 'utf-8');
+    } catch (e) {
+        console.warn('[INBOUND ALERTS] Could not save alerts to file:', e.message);
+    }
+}
+
+function loadCustomerRatings() {
+    try {
+        if (fs.existsSync(CUSTOMER_RATINGS_FILE)) {
+            const raw = fs.readFileSync(CUSTOMER_RATINGS_FILE, 'utf-8');
+            return JSON.parse(raw);
+        }
+    } catch (e) {
+        console.warn('[CUSTOMER RATINGS] Could not load ratings from file:', e.message);
+    }
+    return [];
+}
+
+function saveCustomerRatings(ratings) {
+    try {
+        fs.writeFileSync(CUSTOMER_RATINGS_FILE, JSON.stringify(ratings.slice(0, 500), null, 2), 'utf-8');
+    } catch (e) {
+        console.warn('[CUSTOMER RATINGS] Could not save ratings to file:', e.message);
+    }
+}
+
+const inboundAlerts = loadInboundAlerts();
+const customerRatings = loadCustomerRatings();
+
+app.post('/api/whatsapp/inbound-alert', async (req, res) => {
+    const { phone, message, type, rating } = req.body || {};
+    const cleanPhone = (phone || '').replace(/[^0-9]/g, '').slice(-10);
+
+    let customerName = '';
+    if (cleanPhone) {
+        try {
+            const custRes = await sql.query(`
+                SELECT TOP 1 (ISNULL(CUSTOMER_FNAME, '') + ' ' + ISNULL(CUSTOMER_LNAME, '')) AS CustomerName
+                FROM CUSTDYM WITH (NOLOCK)
+                WHERE CUSTOMER_CODE = '${cleanPhone.replace(/'/g, "''")}'
+            `);
+            if (custRes.recordset && custRes.recordset.length > 0) {
+                customerName = (custRes.recordset[0].CustomerName || '').trim();
+            }
+        } catch (e) { }
+    }
+
+    const ratingNum = rating ? Number(rating) : (type === 'rating_positive' ? 5 : (type === 'grievance_low_nps' ? 2 : undefined));
+
     const alert = {
         id: Date.now(),
         phone: phone || 'Unknown',
+        customerName: customerName || undefined,
         message: message || '',
         type: type || 'general',
+        rating: ratingNum,
         timestamp: new Date().toISOString(),
         status: 'unread'
     };
+
     inboundAlerts.unshift(alert);
-    if (inboundAlerts.length > 100) inboundAlerts.pop();
-    console.log(`[INBOUND ALERT] Logged ${type} from ${phone}: "${message}"`);
+    if (inboundAlerts.length > 300) inboundAlerts.pop();
+    saveInboundAlerts(inboundAlerts);
+
+    // If this is a rating or grievance, store in customerRatings ledger
+    if (ratingNum !== undefined || type === 'rating_positive' || type === 'grievance_low_nps') {
+        const ratingEntry = {
+            id: alert.id,
+            phone: cleanPhone || phone || 'Unknown',
+            customerName: customerName || 'Valued Customer',
+            rating: ratingNum || 5,
+            comment: message || '',
+            category: (ratingNum && ratingNum >= 4) || type === 'rating_positive' ? 'positive' : 'grievance',
+            timestamp: alert.timestamp,
+            date: alert.timestamp.split('T')[0],
+            status: 'unread'
+        };
+        customerRatings.unshift(ratingEntry);
+        if (customerRatings.length > 500) customerRatings.pop();
+        saveCustomerRatings(customerRatings);
+    }
+
+    console.log(`[INBOUND ALERT] Logged ${type} from ${phone} (${customerName || 'Customer'}): "${message}"`);
     res.json({ success: true, alert });
 });
 
@@ -3745,8 +3830,81 @@ app.get('/api/whatsapp/inbound-alerts', (req, res) => {
 app.post('/api/whatsapp/inbound-alerts/mark-read', (req, res) => {
     const { id } = req.body || {};
     const target = inboundAlerts.find(a => a.id === id);
-    if (target) target.status = 'read';
+    if (target) {
+        target.status = 'read';
+        saveInboundAlerts(inboundAlerts);
+    }
+    const targetRating = customerRatings.find(r => r.id === id);
+    if (targetRating) {
+        targetRating.status = 'read';
+        saveCustomerRatings(customerRatings);
+    }
     res.json({ success: true });
+});
+
+app.get('/api/ratings', (req, res) => {
+    const total = customerRatings.length;
+    const avg = total > 0 ? (customerRatings.reduce((sum, r) => sum + (r.rating || 5), 0) / total).toFixed(1) : "5.0";
+    const promoters = customerRatings.filter(r => (r.rating || 0) >= 4).length;
+    const detractors = customerRatings.filter(r => (r.rating || 0) <= 2).length;
+    const nps = total > 0 ? Math.round(((promoters - detractors) / total) * 100) : 100;
+
+    res.json({
+        ratings: customerRatings,
+        summary: {
+            total,
+            average: parseFloat(avg),
+            nps,
+            breakdown: {
+                5: customerRatings.filter(r => r.rating === 5).length,
+                4: customerRatings.filter(r => r.rating === 4).length,
+                3: customerRatings.filter(r => r.rating === 3).length,
+                2: customerRatings.filter(r => r.rating === 2).length,
+                1: customerRatings.filter(r => r.rating === 1).length
+            }
+        }
+    });
+});
+
+app.post('/api/ratings', (req, res) => {
+    const { phone, customerName, rating, comment } = req.body || {};
+    const cleanPhone = (phone || '').replace(/[^0-9]/g, '').slice(-10);
+    const score = Number(rating) || 5;
+    const entry = {
+        id: Date.now(),
+        phone: cleanPhone || 'Unknown',
+        customerName: customerName || 'Valued Customer',
+        rating: score,
+        comment: comment || '',
+        category: score >= 4 ? 'positive' : 'grievance',
+        timestamp: new Date().toISOString(),
+        date: new Date().toISOString().split('T')[0],
+        status: 'unread'
+    };
+    customerRatings.unshift(entry);
+    if (customerRatings.length > 500) customerRatings.pop();
+    saveCustomerRatings(customerRatings);
+
+    inboundAlerts.unshift({
+        id: entry.id,
+        phone: entry.phone,
+        customerName: entry.customerName,
+        message: entry.comment,
+        type: score >= 4 ? 'rating_positive' : 'grievance_low_nps',
+        rating: score,
+        timestamp: entry.timestamp,
+        status: 'unread'
+    });
+    if (inboundAlerts.length > 300) inboundAlerts.pop();
+    saveInboundAlerts(inboundAlerts);
+
+    res.json({ success: true, rating: entry });
+});
+
+app.get('/api/customer/:phone/ratings', (req, res) => {
+    const cleanPhone = (req.params.phone || '').replace(/[^0-9]/g, '').slice(-10);
+    const matches = customerRatings.filter(r => (r.phone || '').replace(/[^0-9]/g, '').slice(-10) === cleanPhone);
+    res.json(matches);
 });
 
 // --- PILLAR 2: BIRTHDAY & ANNIVERSARY GREETINGS SCHEDULER ---

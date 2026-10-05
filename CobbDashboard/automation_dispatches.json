@@ -1366,5 +1366,29 @@
     "reason": "checkout",
     "status": "sent",
     "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-10-05T16:17:33.581891",
+    "date": "2026-10-05",
+    "time": "04:17 PM",
+    "billNo": "STST27-00770   ",
+    "cmId": "ST01127000STST27-00770",
+    "customerName": "Gp",
+    "phone": "8529000203",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-10-05T17:30:50.666463",
+    "date": "2026-10-05",
+    "time": "05:30 PM",
+    "billNo": "STST27-00771   ",
+    "cmId": "ST01127000STST27-00771",
+    "customerName": "Vishal",
+    "phone": "7777047547",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
   }
 ]

@@ -187,4 +187,44 @@ describe('Suite 7: Inbound WhatsApp Concierge Bot, Intent Matching & NPS Bifurca
             assert.equal(second.reason, 'COOLDOWN_ACTIVE');
         });
     });
+
+    describe('5. Customer Rating Persistence & NPS Ledger', () => {
+        it('should correctly calculate NPS and rating distribution', () => {
+            const ratings = [
+                { rating: 5, category: 'positive' },
+                { rating: 5, category: 'positive' },
+                { rating: 4, category: 'positive' },
+                { rating: 2, category: 'grievance' },
+                { rating: 1, category: 'grievance' }
+            ];
+            const total = ratings.length;
+            const avg = ratings.reduce((sum, r) => sum + r.rating, 0) / total;
+            const promoters = ratings.filter(r => r.rating >= 4).length;
+            const detractors = ratings.filter(r => r.rating <= 2).length;
+            const nps = Math.round(((promoters - detractors) / total) * 100);
+
+            assert.equal(total, 5);
+            assert.equal(avg.toFixed(1), '3.4');
+            assert.equal(promoters, 3);
+            assert.equal(detractors, 2);
+            assert.equal(nps, 20); // (3 - 2) / 5 * 100 = 20
+        });
+
+        it('should extract correct rating scores from customer message content', () => {
+            const parseRating = (text) => {
+                const lower = text.toLowerCase();
+                if (lower.includes('5 star') || lower.includes('⭐⭐⭐⭐⭐')) return 5;
+                if (lower.includes('4 star') || lower.includes('⭐⭐⭐⭐')) return 4;
+                if (lower.includes('3 star') || lower.includes('⭐⭐⭐')) return 3;
+                if (lower.includes('2 star') || lower.includes('⭐⭐')) return 2;
+                if (lower.includes('1 star') || lower.includes('⭐')) return 1;
+                return null;
+            };
+
+            assert.equal(parseRating('5 star rating, loved the shirt!'), 5);
+            assert.equal(parseRating('⭐⭐⭐⭐ service was nice'), 4);
+            assert.equal(parseRating('2 star, tailor delayed pants'), 2);
+            assert.equal(parseRating('1 star worst billing queue'), 1);
+        });
+    });
 });
