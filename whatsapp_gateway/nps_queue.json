@@ -216,6 +216,7 @@
     "billNo": "",
     "scheduledAt": 1791203450631,
     "createdAt": 1791201650631,
-    "status": "pending"
+    "status": "sent",
+    "sentAt": 1791203469156
   }
 ]

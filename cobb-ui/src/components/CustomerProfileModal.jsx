@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   LineChart,
   MessageCircle,
@@ -80,6 +80,25 @@ const CustomerProfileModal = (props) => {
     handleGenerateAI,
     formatCurrency
   } = props;
+
+  // Customer rating history — fetched from /api/ratings, filtered by phone
+  const [customerRatings, setCustomerRatings] = useState([]);
+  const [loadingRatings, setLoadingRatings] = useState(false);
+
+  useEffect(() => {
+    if (!selectedCustomer?.Phone) { setCustomerRatings([]); return; }
+    setLoadingRatings(true);
+    fetch('http://localhost:5000/api/ratings')
+      .then(r => r.json())
+      .then(data => {
+        const allRatings = data?.ratings || [];
+        const clean = (p) => String(p || '').replace(/[^0-9]/g, '').slice(-10);
+        const custPhone = clean(selectedCustomer.Phone);
+        setCustomerRatings(allRatings.filter(r => clean(r.phone) === custPhone));
+      })
+      .catch(() => setCustomerRatings([]))
+      .finally(() => setLoadingRatings(false));
+  }, [selectedCustomer?.Phone]);
 
   if (!selectedCustomer) return null;
 
@@ -180,6 +199,69 @@ const CustomerProfileModal = (props) => {
                       </div>
                     )}
                   </div>
+                </div>
+
+                {/* Rating History */}
+                <div className="mb-8">
+                  <h4 className={`text-sm font-bold uppercase tracking-wider mb-4 flex items-center ${darkMode ? 'text-slate-300' : 'text-slate-800'}`}>
+                    <Star className={`w-5 h-5 mr-2 ${darkMode ? 'text-amber-500' : 'text-amber-400'}`} />
+                    WhatsApp Rating History
+                    {customerRatings.length > 0 && (
+                      <span className={`ml-auto px-2 py-0.5 rounded-full text-[10px] font-black border ${
+                        customerRatings.every(r => r.category === 'positive')
+                          ? darkMode ? 'bg-emerald-900/30 text-emerald-400 border-emerald-500/30' : 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                          : darkMode ? 'bg-rose-900/30 text-rose-400 border-rose-500/30' : 'bg-rose-100 text-rose-700 border-rose-200'
+                      }`}>
+                        Avg: {customerRatings.length > 0 ? (customerRatings.reduce((s, r) => s + (r.rating || 5), 0) / customerRatings.length).toFixed(1) : '—'}★
+                      </span>
+                    )}
+                  </h4>
+                  {loadingRatings ? (
+                    <div className="py-6 flex items-center justify-center text-slate-400">
+                      <RefreshCw className="w-5 h-5 animate-spin mr-2 text-slate-300" />
+                      <span className="text-xs">Loading ratings...</span>
+                    </div>
+                  ) : customerRatings.length === 0 ? (
+                    <div className={`rounded-2xl border border-dashed py-8 text-center ${darkMode ? 'bg-[#1a2333] border-[#232e47] text-slate-500' : 'bg-slate-50 border-slate-200 text-slate-400'}`}>
+                      <Star className="w-7 h-7 mx-auto mb-2 opacity-30" />
+                      <p className="text-xs">No WhatsApp ratings yet from this customer.</p>
+                    </div>
+                  ) : (
+                    <div className={`border rounded-2xl overflow-hidden divide-y shadow-sm ${darkMode ? 'bg-[#1a2333] border-[#232e47] divide-[#232e47]' : 'bg-white border-slate-200 divide-slate-100'}`}>
+                      {customerRatings.map((r, idx) => {
+                        const isPos = r.category === 'positive';
+                        return (
+                          <div key={r.id || idx} className={`p-4 flex items-start gap-3 transition-colors ${
+                            isPos
+                              ? darkMode ? 'hover:bg-amber-950/10' : 'hover:bg-amber-50/60'
+                              : darkMode ? 'hover:bg-rose-950/10' : 'hover:bg-rose-50/60'
+                          }`}>
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 font-black text-sm ${
+                              isPos ? 'bg-amber-500/15 text-amber-400' : 'bg-rose-500/15 text-rose-400'
+                            }`}>{r.rating || 5}</div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5 mb-1">
+                                {[1,2,3,4,5].map(s => (
+                                  <Star key={s} className={`w-3 h-3 ${
+                                    s <= (r.rating || 5)
+                                      ? isPos ? 'fill-amber-400 text-amber-400' : 'fill-rose-400 text-rose-400'
+                                      : 'text-slate-600'
+                                  }`} />
+                                ))}
+                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ml-1 ${
+                                  isPos ? darkMode ? 'bg-emerald-900/30 text-emerald-400' : 'bg-emerald-100 text-emerald-700' : darkMode ? 'bg-rose-900/30 text-rose-400' : 'bg-rose-100 text-rose-700'
+                                }`}>{isPos ? 'Promoter' : 'Grievance'}</span>
+                              </div>
+                              {r.comment && <p className={`text-xs truncate ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>&ldquo;{r.comment}&rdquo;</p>}
+                            </div>
+                            <span className={`text-[10px] shrink-0 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
+                              {new Date(r.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 {/* Purchase History */}

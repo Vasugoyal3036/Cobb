@@ -462,10 +462,10 @@ async function initWhatsApp(isFresh = false) {
                     await client.sendMessage(msg.from, reply);
 
                     // Forward to CRM backend for staff alert & permanent storage
+                    let grievanceScore = 1;
+                    if (lower.includes('3')) grievanceScore = 3;
+                    else if (lower.includes('2')) grievanceScore = 2;
                     try {
-                        let ratingScore = 1;
-                        if (lower.includes('3')) ratingScore = 3;
-                        else if (lower.includes('2')) ratingScore = 2;
                         await fetch('http://localhost:5000/api/whatsapp/inbound-alert', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -473,10 +473,27 @@ async function initWhatsApp(isFresh = false) {
                                 phone: cleanPhone,
                                 message: rawBody,
                                 type: 'grievance_low_nps',
-                                rating: ratingScore
+                                rating: grievanceScore
                             })
                         });
                     } catch (e) { }
+
+                    // ⚠️ REAL-TIME OWNER ESCALATION — Alert all owner phones instantly
+                    if (isClientReady && client) {
+                        const starEmojis = '⭐'.repeat(grievanceScore) + '☆'.repeat(5 - grievanceScore);
+                        const escalationMsg = `🚨 *Low Rating Alert — Immediate Action Required*\n\n` +
+                            `A customer just rated us *${grievanceScore}/5 stars* ${starEmojis}\n\n` +
+                            `📱 *From:* +91${cleanPhone}\n` +
+                            `💬 *Their message:* "${rawBody}"\n\n` +
+                            `_Please follow up personally to resolve the issue._`;
+                        for (const ownerPhone of OWNER_PHONES) {
+                            try {
+                                await client.sendMessage(`91${ownerPhone}@c.us`, escalationMsg);
+                            } catch (e) {
+                                console.warn(`[ESCALATION] Could not alert owner ${ownerPhone}:`, e.message);
+                            }
+                        }
+                    }
                     return;
                 }
 

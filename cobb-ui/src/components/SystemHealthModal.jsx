@@ -30,14 +30,16 @@ export default function SystemHealthModal({ isOpen, onClose, API_BASE = 'http://
   const [inboundAlerts, setInboundAlerts] = useState([]);
   const [anniversaries, setAnniversaries] = useState([]);
   const [sendingWish, setSendingWish] = useState({});
-  const [activeTab, setActiveTab] = useState('health'); // 'health' | 'alerts' | 'anniversaries'
+  const [activeTab, setActiveTab] = useState('health'); // 'health' | 'alerts' | 'anniversaries' | 'ratings'
   const [alertFilter, setAlertFilter] = useState('all'); // 'all' | 'ratings' | 'grievances'
+  const [ratingsData, setRatingsData] = useState(null); // { ratings, summary }
 
   useEffect(() => {
     if (isOpen) {
       fetchHealth();
       fetchInboundAlerts();
       fetchAnniversaries();
+      fetchRatings();
       const interval = setInterval(fetchHealth, 10000);
       return () => clearInterval(interval);
     }
@@ -91,6 +93,15 @@ export default function SystemHealthModal({ isOpen, onClose, API_BASE = 'http://
       }
     } catch (e) {
       setAnniversaries([]);
+    }
+  };
+
+  const fetchRatings = async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/api/ratings`);
+      setRatingsData(res.data);
+    } catch (e) {
+      setRatingsData(null);
     }
   };
 
@@ -261,6 +272,23 @@ export default function SystemHealthModal({ isOpen, onClose, API_BASE = 'http://
           >
             <Calendar className="w-3.5 h-3.5" />
             <span>Birthdays Today ({safeAnniversaries.length})</span>
+          </button>
+
+          <button
+            onClick={() => { setActiveTab('ratings'); fetchRatings(); }}
+            className={`pb-2.5 border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
+              activeTab === 'ratings'
+                ? 'border-amber-500 text-amber-400 font-black'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Star className="w-3.5 h-3.5" />
+            <span>Ratings Analytics</span>
+            {ratingsData?.summary?.total > 0 && (
+              <span className="px-1.5 py-0.5 text-[9px] font-black rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                {ratingsData.summary.total}
+              </span>
+            )}
           </button>
         </div>
 
@@ -579,6 +607,109 @@ export default function SystemHealthModal({ isOpen, onClose, API_BASE = 'http://
               </div>
             </div>
           )}
+
+          {/* TAB 4: RATINGS ANALYTICS */}
+          {activeTab === 'ratings' && (() => {
+            const rSummary = ratingsData?.summary || { total: 0, average: 5.0, nps: 100, breakdown: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 } };
+            const rList = ratingsData?.ratings || [];
+            const npsColor = rSummary.nps >= 50 ? 'text-emerald-400' : rSummary.nps >= 0 ? 'text-amber-400' : 'text-rose-400';
+            const npsLabel = rSummary.nps >= 50 ? 'Excellent' : rSummary.nps >= 0 ? 'Needs Work' : 'Critical';
+            return (
+              <div className="space-y-4">
+                {/* Top KPI row */}
+                <div className="grid grid-cols-3 gap-2">
+                  <div className={`p-3.5 rounded-xl border text-center ${darkMode ? 'bg-[#101624] border-[#1f2b42]' : 'bg-slate-50 border-slate-200'}`}>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">NPS Score</p>
+                    <p className={`text-2xl font-black mt-1 ${npsColor}`}>{rSummary.nps > 0 ? '+' : ''}{rSummary.nps}</p>
+                    <p className={`text-[10px] font-bold mt-0.5 ${npsColor}`}>{npsLabel}</p>
+                  </div>
+                  <div className={`p-3.5 rounded-xl border text-center ${darkMode ? 'bg-[#101624] border-[#1f2b42]' : 'bg-slate-50 border-slate-200'}`}>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Avg Rating</p>
+                    <p className="text-2xl font-black text-amber-400 mt-1 flex items-center justify-center gap-1">
+                      <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+                      {rSummary.average}
+                    </p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">{rSummary.total} reviews</p>
+                  </div>
+                  <div className={`p-3.5 rounded-xl border text-center ${darkMode ? 'bg-[#101624] border-[#1f2b42]' : 'bg-slate-50 border-slate-200'}`}>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Promoters</p>
+                    <p className="text-2xl font-black text-emerald-400 mt-1">{rList.filter(r => r.category === 'positive').length}</p>
+                    <p className="text-[10px] text-rose-400 font-bold mt-0.5">{rList.filter(r => r.category === 'grievance').length} issues</p>
+                  </div>
+                </div>
+
+                {/* Star breakdown bars */}
+                <div className={`p-4 rounded-xl border space-y-2 ${darkMode ? 'bg-[#101624] border-[#1f2b42]' : 'bg-slate-50 border-slate-200'}`}>
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-3">Star Distribution</p>
+                  {[5, 4, 3, 2, 1].map(star => {
+                    const count = rSummary.breakdown[star] || 0;
+                    const pct = rSummary.total > 0 ? Math.round((count / rSummary.total) * 100) : 0;
+                    const barColor = star >= 4 ? 'bg-amber-400' : star === 3 ? 'bg-orange-400' : 'bg-rose-500';
+                    return (
+                      <div key={star} className="flex items-center gap-2">
+                        <span className="text-[11px] font-bold text-slate-300 w-8 shrink-0">{star}★</span>
+                        <div className={`flex-1 h-2 rounded-full ${darkMode ? 'bg-slate-800' : 'bg-slate-200'} overflow-hidden`}>
+                          <div className={`h-full rounded-full ${barColor} transition-all duration-700`} style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="text-[10px] text-slate-400 font-bold w-10 text-right shrink-0">{count} ({pct}%)</span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Ratings ledger */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Review Ledger</p>
+                    <button onClick={fetchRatings} className="text-[10px] text-slate-400 hover:text-slate-200 flex items-center gap-1 cursor-pointer">
+                      <RefreshCw className="w-3 h-3" /> Refresh
+                    </button>
+                  </div>
+                  {rList.length === 0 ? (
+                    <div className="py-8 text-center text-slate-400 text-xs">
+                      <Star className="w-8 h-8 text-amber-500/40 mx-auto mb-2" />
+                      No ratings received yet. They'll appear here after customers reply to checkout messages.
+                    </div>
+                  ) : (
+                    rList.map((r, idx) => {
+                      const isPos = r.category === 'positive';
+                      return (
+                        <div key={r.id || idx} className={`p-3 rounded-xl border ${
+                          isPos
+                            ? darkMode ? 'bg-amber-950/10 border-amber-800/30' : 'bg-amber-50 border-amber-200'
+                            : darkMode ? 'bg-rose-950/15 border-rose-800/40' : 'bg-rose-50 border-rose-200'
+                        }`}>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-extrabold text-xs text-slate-200">
+                                  {r.customerName !== 'Valued Customer' ? `${r.customerName} (${r.phone})` : r.phone}
+                                </span>
+                                <div className="flex items-center gap-0.5">
+                                  {[1,2,3,4,5].map(s => (
+                                    <Star key={s} className={`w-3 h-3 ${
+                                      s <= r.rating
+                                        ? isPos ? 'fill-amber-400 text-amber-400' : 'fill-rose-400 text-rose-400'
+                                        : 'text-slate-600'
+                                    }`} />
+                                  ))}
+                                </div>
+                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase border ${
+                                  isPos ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' : 'bg-rose-500/15 text-rose-300 border-rose-500/30'
+                                }`}>{isPos ? 'Promoter' : 'Issue'}</span>
+                              </div>
+                              {r.comment && <p className="text-xs text-slate-300">&ldquo;{r.comment}&rdquo;</p>}
+                            </div>
+                            <span className="text-[10px] text-slate-500 shrink-0">{new Date(r.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* TAB 3: BIRTHDAYS & ANNIVERSARIES TODAY */}
           {activeTab === 'anniversaries' && (

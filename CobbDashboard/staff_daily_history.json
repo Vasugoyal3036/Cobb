@@ -6,9 +6,9 @@
     "day": 5,
     "dayOfWeek": "Monday",
     "formattedDate": "05 Oct 2026",
-    "storeGrossSales": 4170,
-    "storeTotalBills": 1,
-    "storeTotalItems": 5,
+    "storeGrossSales": 7379,
+    "storeTotalBills": 2,
+    "storeTotalItems": 10,
     "staffSales": 4170,
     "totalCommission": 21,
     "activeStaffCount": 1,
@@ -28,6 +28,21 @@
         "commission": 21,
         "slabLabel": "≤ 2L (0.5%)",
         "rank": 1
+      },
+      {
+        "empCode": "0000000",
+        "name": "Simran",
+        "isUnassigned": true,
+        "isMissingName": false,
+        "hasCustomOverride": true,
+        "sales": 3209,
+        "items": 5,
+        "bills": 1,
+        "aov": 3209,
+        "upt": 5,
+        "commissionRate": 0,
+        "commission": 0,
+        "slabLabel": "POS Counter"
       }
     ],
     "topStaff": {
