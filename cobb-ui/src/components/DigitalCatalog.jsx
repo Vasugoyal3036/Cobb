@@ -26,7 +26,7 @@ export default function DigitalCatalog() {
     };
     setStoreName(stores[sid] || 'Cobb Exclusive Store');
 
-    const fetchInventory = async () => {
+  const fetchInventory = async () => {
       setLoading(true);
       if (!db) { setLoading(false); return; }
       try {
@@ -36,7 +36,17 @@ export default function DigitalCatalog() {
           const invData = snap.data();
           const items = Array.isArray(invData.items) ? invData.items : [];
           const inStock = items.filter(item => Number(item.Qty) > 0);
-          setInventory(inStock);
+          
+          // Fallback demo data if DB is empty, for better UI testing
+          if (inStock.length === 0) {
+             setInventory([
+               { Barcode: '101', ItemName: 'Premium Oxford Shirt', Category: 'Shirts', Size: 'M', Qty: 5, MRP: 2499 },
+               { Barcode: '102', ItemName: 'Slim Fit Denim Jeans', Category: 'Jeans', Size: '32', Qty: 10, MRP: 3199 },
+               { Barcode: '103', ItemName: 'Classic Navy Blazer', Category: 'Blazers', Size: 'L', Qty: 2, MRP: 5999 },
+             ]);
+          } else {
+             setInventory(inStock);
+          }
         }
       } catch (err) {
         console.error("Failed to load catalog:", err);
@@ -46,6 +56,19 @@ export default function DigitalCatalog() {
     };
     fetchInventory();
   }, []);
+
+  // Helper to map categories to realistic stock photos if no imageUrl exists
+  const getProductImage = (item) => {
+    if (item.imageUrl) return item.imageUrl;
+    const cat = (item.Category || item.ItemName || '').toLowerCase();
+    
+    if (cat.includes('shirt') || cat.includes('t-shirt')) return 'https://images.unsplash.com/photo-1596755094514-f87e32f85e23?auto=format&fit=crop&w=500&q=80';
+    if (cat.includes('jean') || cat.includes('trouser') || cat.includes('pant')) return 'https://images.unsplash.com/photo-1542272604-787c3835535d?auto=format&fit=crop&w=500&q=80';
+    if (cat.includes('jacket') || cat.includes('blazer')) return 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?auto=format&fit=crop&w=500&q=80';
+    if (cat.includes('shoe') || cat.includes('sneaker')) return 'https://images.unsplash.com/photo-1525966222134-fcfa99b8ae77?auto=format&fit=crop&w=500&q=80';
+    
+    return 'https://images.unsplash.com/photo-1516257984-b1b4d707412e?auto=format&fit=crop&w=500&q=80'; // generic fashion
+  };
 
   const categories = useMemo(() => {
     const cats = new Set(inventory.map(i => i.Category || 'Other').filter(Boolean));
@@ -207,9 +230,13 @@ export default function DigitalCatalog() {
                   
                   {/* Image Area */}
                   <div className="aspect-[3/4] bg-gradient-to-tr from-[#1a1a1a] to-[#222] relative overflow-hidden">
-                    <div className="absolute inset-0 flex items-center justify-center opacity-10 group-hover:opacity-20 transition-opacity duration-500 group-hover:scale-110 transform">
-                      <span className="text-white font-black text-4xl -rotate-45 tracking-tighter">COBB</span>
-                    </div>
+                    <img 
+                      src={getProductImage(item)} 
+                      alt={item.ItemName || 'Product'} 
+                      className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/60 pointer-events-none" />
+                    
                     {/* Tags */}
                     <div className="absolute top-3 left-3 flex flex-col gap-2">
                       <span className="px-2.5 py-1 bg-black/60 backdrop-blur-md text-[9px] font-bold uppercase tracking-widest rounded-md text-amber-400 border border-amber-500/20">
@@ -310,7 +337,11 @@ export default function DigitalCatalog() {
                   {cartItems.map(item => (
                     <div key={item.Barcode} className="bg-[#111] p-4 rounded-2xl border border-white/5 flex gap-4 group hover:border-amber-500/20 transition-colors">
                       <div className="w-20 h-24 bg-[#1a1a1a] rounded-xl flex items-center justify-center flex-shrink-0 relative overflow-hidden border border-white/5">
-                         <span className="text-white/10 font-black text-xs transform -rotate-45">COBB</span>
+                        <img 
+                          src={getProductImage(item)} 
+                          alt={item.ItemName || 'Product'} 
+                          className="w-full h-full object-cover opacity-90"
+                        />
                       </div>
                       <div className="flex-1 flex flex-col">
                         <h4 className="font-medium text-sm text-slate-200 leading-snug mb-1">{item.ItemName || item.Description}</h4>
