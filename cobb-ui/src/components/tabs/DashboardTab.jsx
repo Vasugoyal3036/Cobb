@@ -385,56 +385,104 @@ const DashboardTab = (props) => {
         <div className="space-y-4 sm:space-y-6">
 
           {/* RETAIL OS COMMAND BAR */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-2 border-b border-slate-200/80 dark:border-slate-800">
-            <div>
-              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <span className="relative flex h-2.5 w-2.5">
+          <div className="pb-2 border-b border-slate-200/80 dark:border-slate-800">
+            {/* Mobile View Header (< sm) */}
+            <div className="sm:hidden space-y-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="relative flex h-2 w-2 shrink-0">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                   </span>
-                  <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                  <h2 className="text-base font-black tracking-tight text-slate-900 dark:text-white truncate">
                     {activeStore === 'ALL'
-                      ? 'All Stores Network Command'
+                      ? 'Network Command'
                       : activeStore === 'STORE_02'
-                        ? 'Cobb Branch 2 Command Center'
-                        : 'Store Command Center'}
+                        ? 'Cobb Branch 2'
+                        : 'Cobb Pundri Command'}
                   </h2>
                 </div>
-                <span className={`px-2.5 py-0.5 text-xs font-black rounded-lg border shadow-xs ${userRole === 'owner'
-                    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                <span className={`px-2 py-0.5 text-[10px] font-black rounded-full border shadow-xs shrink-0 ${userRole === 'owner'
+                    ? 'bg-amber-500/10 text-amber-500 dark:text-amber-400 border-amber-500/30'
                     : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
                   }`}>
-                  {userRole === 'owner' ? '👑 Owner Mode' : '👔 Manager Mode'}
+                  {userRole === 'owner' ? '👑 Owner' : '👔 Manager'}
                 </span>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                {activeStore === 'ALL'
-                  ? 'Consolidated operational telemetry across all Cobb retail stores.'
-                  : activeStore === 'STORE_02'
-                    ? 'Live operational metrics & counter telemetry for Cobb Branch 2 (New Market).'
-                    : 'Live operational telemetry & counter speed desk for Cobb Pundri.'}
-              </p>
+
+              {/* Mobile Zone Segmented Pills */}
+              <div className="grid grid-cols-3 gap-1 bg-slate-100 dark:bg-slate-900/90 p-1 rounded-xl border border-slate-200/80 dark:border-slate-800 text-[11px] font-bold">
+                {[
+                  { id: 'all', label: '⚡ Full' },
+                  { id: 'executive', label: '📊 Stats' },
+                  { id: 'counter', label: '🏷️ Desk' },
+                ].map(zone => (
+                  <button
+                    key={zone.id}
+                    onClick={() => setDashboardZone(zone.id)}
+                    className={`py-1 rounded-lg transition-all text-center font-bold ${dashboardZone === zone.id
+                        ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border border-slate-200/60 dark:border-slate-700'
+                        : 'text-slate-500 dark:text-slate-400'
+                      }`}
+                  >
+                    {zone.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* Zone View Selector */}
-            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/90 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700/80 text-xs font-bold self-stretch sm:self-auto justify-between sm:justify-start">
-              {[
-                { id: 'all', label: '⚡ Full Command' },
-                { id: 'executive', label: '📊 Telemetry' },
-                { id: 'counter', label: '🏷️ Counter Desk' },
-              ].map(zone => (
-                <button
-                  key={zone.id}
-                  onClick={() => setDashboardZone(zone.id)}
-                  className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer text-xs font-bold flex items-center gap-1.5 ${dashboardZone === zone.id
-                      ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm border border-slate-200/80 dark:border-slate-700'
-                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
-                    }`}
-                >
-                  <span>{zone.label}</span>
-                </button>
-              ))}
+            {/* Desktop View Header (>= sm) */}
+            <div className="hidden sm:flex flex-row justify-between items-center gap-3">
+              <div>
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                    </span>
+                    <h2 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900 dark:text-white">
+                      {activeStore === 'ALL'
+                        ? 'All Stores Network Command'
+                        : activeStore === 'STORE_02'
+                          ? 'Cobb Branch 2 Command Center'
+                          : 'Store Command Center'}
+                    </h2>
+                  </div>
+                  <span className={`px-2.5 py-0.5 text-xs font-black rounded-lg border shadow-xs ${userRole === 'owner'
+                      ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30'
+                      : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                    }`}>
+                    {userRole === 'owner' ? '👑 Owner Mode' : '👔 Manager Mode'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  {activeStore === 'ALL'
+                    ? 'Consolidated operational telemetry across all Cobb retail stores.'
+                    : activeStore === 'STORE_02'
+                      ? 'Live operational metrics & counter telemetry for Cobb Branch 2 (New Market).'
+                      : 'Live operational telemetry & counter speed desk for Cobb Pundri.'}
+                </p>
+              </div>
+
+              {/* Zone View Selector (Desktop) */}
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/90 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700/80 text-xs font-bold">
+                {[
+                  { id: 'all', label: '⚡ Full Command' },
+                  { id: 'executive', label: '📊 Telemetry' },
+                  { id: 'counter', label: '🏷️ Counter Desk' },
+                ].map(zone => (
+                  <button
+                    key={zone.id}
+                    onClick={() => setDashboardZone(zone.id)}
+                    className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer text-xs font-bold flex items-center gap-1.5 ${dashboardZone === zone.id
+                        ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm border border-slate-200/80 dark:border-slate-700'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                  >
+                    <span>{zone.label}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 

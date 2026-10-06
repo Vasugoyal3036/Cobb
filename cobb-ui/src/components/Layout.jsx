@@ -454,40 +454,41 @@ const Layout = ({
       {/* Main Content Area */}
       <div className={`flex-1 overflow-auto relative min-w-0 pb-24 lg:pb-0 transition-colors duration-200 lg:my-4 lg:mx-2 lg:rounded-[2rem] border ${darkMode ? 'bg-[#0f1115] border-white/[0.05] shadow-[inset_0_0_40px_rgba(0,0,0,0.5)]' : 'bg-white border-slate-200/50 shadow-sm'}`}>
 
-        {/* Top App Bar (Mobile Only — Android-style single row) */}
-        <header className={`lg:hidden px-4 py-2 border-b sticky top-0 z-30 transition-colors backdrop-blur-lg ${darkMode ? 'bg-[#0d1017]/90 border-white/[0.06] text-white' : 'bg-white/90 border-slate-200/80 text-slate-800'
+        {/* Top App Bar (Mobile Only — Clean Modern Single-Row Navigation) */}
+        <header className={`lg:hidden px-3 py-2 border-b sticky top-0 z-30 transition-colors backdrop-blur-xl ${darkMode ? 'bg-[#0d1017]/95 border-white/[0.06] text-white' : 'bg-white/95 border-slate-200/80 text-slate-800'
           }`}>
-          <div className="flex items-center justify-between gap-3">
-            {/* Left: Hamburger + Brand */}
-            <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center justify-between gap-2 max-w-full overflow-hidden">
+            {/* Left: Hamburger + Brand Logo */}
+            <div className="flex items-center gap-1.5 shrink-0">
               <button
                 type="button"
                 onClick={() => typeof setIsMobileMenuOpen === 'function' && setIsMobileMenuOpen(true)}
-                className={`p-1.5 -ml-1 rounded-xl transition-colors cursor-pointer ${darkMode ? 'text-slate-300 hover:text-white hover:bg-white/10 active:bg-white/20' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 active:bg-slate-200'
+                className={`p-1.5 rounded-xl transition-colors cursor-pointer ${darkMode ? 'text-slate-300 hover:text-white hover:bg-white/10 active:bg-white/20' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 active:bg-slate-200'
                   }`}
                 title="Open Navigation Menu"
               >
                 <Menu className="w-5 h-5" />
               </button>
-              <div className="flex items-center gap-2">
-                <OrsLogo size={32} showGlow={false} />
-                <div className="leading-tight">
-                  <span className={`font-black text-sm tracking-wide block leading-none ${darkMode ? 'text-white' : 'text-slate-900'}`}>ORS</span>
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block">Cobb CRM</span>
+              <div className="flex items-center gap-1 select-none">
+                <OrsLogo size={24} showGlow={false} />
+                <div className="leading-tight flex flex-col justify-center">
+                  <span className={`font-black text-xs tracking-tight leading-none ${darkMode ? 'text-white' : 'text-slate-900'}`}>ORS</span>
+                  <span className="text-[7.5px] font-bold text-slate-400 tracking-wider leading-none mt-0.5">COBB</span>
                 </div>
               </div>
             </div>
 
-            {/* Center: Store + Role chip */}
-            <div className="flex items-center gap-1.5 min-w-0 flex-1 justify-center">
+            {/* Right: Clean compact controls cluster */}
+            <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+              {/* Store Switcher */}
               <div className={`flex items-center gap-1 px-2 py-1 rounded-full border text-[10px] font-bold ${darkMode ? 'bg-blue-500/10 border-blue-500/25 text-blue-300' : 'bg-blue-50 border-blue-200 text-blue-700'
                 }`}>
-                <Store className="w-3 h-3 shrink-0" />
+                <Store className="w-3 h-3 shrink-0 opacity-70" />
                 {currentRole === 'owner' ? (
                   <select
                     value={activeStore}
                     onChange={(e) => switchStore(e.target.value)}
-                    className="bg-transparent font-bold focus:outline-none cursor-pointer text-inherit max-w-[80px] truncate"
+                    className="bg-transparent font-bold focus:outline-none cursor-pointer text-inherit max-w-[62px] truncate"
                     title="Switch Cobb Store Branch (Owner Exclusive)"
                   >
                     {AVAILABLE_STORES.map(store => (
@@ -498,7 +499,7 @@ const Layout = ({
                   </select>
                 ) : (
                   <span 
-                    className="max-w-[85px] truncate flex items-center gap-1 cursor-default font-bold select-none" 
+                    className="max-w-[62px] truncate flex items-center gap-0.5 cursor-default font-bold select-none" 
                     title="Branch access is fixed to your assigned store"
                   >
                     {AVAILABLE_STORES.find(s => s.id === activeStore)?.shortName || 'Pundri'}
@@ -506,56 +507,44 @@ const Layout = ({
                   </span>
                 )}
               </div>
+
+              {/* Role Mode Chip */}
               <button
                 type="button"
                 onClick={() => {
                   const cycle = { owner: 'manager', manager: 'cashier', cashier: 'owner' };
                   handleRoleSwitch(cycle[currentRole] || 'owner');
                 }}
-                className={`px-2 py-1 rounded-full font-bold text-[10px] border flex items-center gap-1 cursor-pointer ${currentRole === 'owner'
+                className={`px-2 py-1 rounded-full font-bold text-[10px] border flex items-center gap-1 cursor-pointer transition-all active:scale-95 ${currentRole === 'owner'
                     ? darkMode ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' : 'bg-amber-50 text-amber-800 border-amber-200'
                     : currentRole === 'manager'
                       ? darkMode ? 'bg-blue-500/15 text-blue-300 border-blue-500/30' : 'bg-blue-50 text-blue-800 border-blue-200'
                       : darkMode ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' : 'bg-emerald-50 text-emerald-800 border-emerald-200'
                   }`}
+                title="Tap to switch active role"
               >
-                {currentRole === 'owner' ? '👑' : currentRole === 'manager' ? '👔' : '🧾'}
-                <span>{currentRole === 'owner' ? 'Owner' : currentRole === 'manager' ? 'Mgr' : 'Cashier'}</span>
+                <span>{currentRole === 'owner' ? '👑 Owner' : currentRole === 'manager' ? '👔 Mgr' : '🧾 POS'}</span>
               </button>
 
-              {/* Mobile Expenses trigger for Owner */}
-              {currentRole === 'owner' && (
-                <button
-                  type="button"
-                  onClick={() => setShowExpensesModal(true)}
-                  className={`px-2 py-1 rounded-full font-bold text-[10px] border flex items-center gap-1 cursor-pointer transition-all active:scale-95 ${darkMode ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' : 'bg-emerald-50 text-emerald-800 border-emerald-200'}`}
-                  title="Configure Store Expenses & Overheads"
-                >
-                  <DollarSign className="w-3 h-3 text-emerald-400" />
-                  <span>Expenses</span>
-                </button>
-              )}
-            </div>
-
-            {/* Right: Status indicators */}
-            <div className="flex items-center gap-2 shrink-0">
-              {/* POS Status dot */}
+              {/* POS Watchdog Heartbeat Status */}
               <button
                 type="button"
                 onClick={() => setShowPowerModal(true)}
-                className="relative flex items-center justify-center w-9 h-9 rounded-2xl cursor-pointer active:scale-95 transition-all"
+                className={`w-7 h-7 rounded-xl flex items-center justify-center cursor-pointer transition-all active:scale-95 ${
+                  darkMode ? 'bg-white/[0.05] hover:bg-white/10' : 'bg-slate-100 hover:bg-slate-200'
+                }`}
                 title={`POS: ${(systemStatus?.isOnline ?? true) ? 'Online' : 'Offline'}`}
               >
-                <span className="relative flex h-3 w-3">
+                <span className="relative flex h-2 w-2">
                   {(systemStatus?.isOnline ?? true) && (
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   )}
-                  <span className={`relative inline-flex rounded-full h-3 w-3 ${(systemStatus?.isOnline ?? true) ? 'bg-emerald-500' : systemStatus?.status === 'unresponsive' ? 'bg-amber-500' : 'bg-rose-500'
+                  <span className={`relative inline-flex rounded-full h-2 w-2 ${(systemStatus?.isOnline ?? true) ? 'bg-emerald-500' : systemStatus?.status === 'unresponsive' ? 'bg-amber-500' : 'bg-rose-500'
                     }`}></span>
                 </span>
               </button>
 
-              {/* Bell / Push Alerts */}
+              {/* Notification Alerts Bell */}
               <button
                 type="button"
                 onClick={async () => {
@@ -565,24 +554,24 @@ const Layout = ({
                     if (typeof onEnableNotifications === 'function') await onEnableNotifications();
                   }
                 }}
-                className={`relative w-9 h-9 rounded-2xl flex items-center justify-center cursor-pointer transition-all active:scale-95 ${darkMode ? 'bg-white/[0.06] text-slate-300 active:bg-white/10' : 'bg-slate-100 text-slate-600 active:bg-slate-200'
+                className={`relative w-7 h-7 rounded-xl flex items-center justify-center cursor-pointer transition-all active:scale-95 ${darkMode ? 'bg-white/[0.05] text-slate-300 active:bg-white/10' : 'bg-slate-100 text-slate-600 active:bg-slate-200'
                   }`}
                 title="Notification alerts"
               >
-                {notificationsEnabled ? <BellRing className="w-4 h-4 text-indigo-400" /> : <Bell className="w-4 h-4" />}
-                <span className={`absolute top-1.5 right-1.5 w-2 h-2 rounded-full ${notificationsEnabled ? 'bg-emerald-500' : 'bg-amber-500 animate-ping'
+                {notificationsEnabled ? <BellRing className="w-3.5 h-3.5 text-indigo-400" /> : <Bell className="w-3.5 h-3.5 text-slate-400" />}
+                <span className={`absolute top-1 right-1 w-1.5 h-1.5 rounded-full ${notificationsEnabled ? 'bg-emerald-500' : 'bg-amber-500 animate-ping'
                   }`} />
               </button>
 
-              {/* Dark Mode toggle */}
+              {/* Dark / Light Mode Toggle */}
               <button
                 type="button"
                 onClick={() => setDarkMode(!darkMode)}
-                className={`w-9 h-9 rounded-2xl flex items-center justify-center cursor-pointer transition-all active:scale-95 ${darkMode ? 'bg-white/[0.06] text-amber-400 active:bg-white/10' : 'bg-slate-100 text-slate-600 active:bg-slate-200'
+                className={`w-7 h-7 rounded-xl flex items-center justify-center cursor-pointer transition-all active:scale-95 ${darkMode ? 'bg-white/[0.05] text-amber-400 active:bg-white/10' : 'bg-slate-100 text-slate-600 active:bg-slate-200'
                   }`}
                 title={darkMode ? 'Light Mode' : 'Dark Mode'}
               >
-                {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+                {darkMode ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
               </button>
             </div>
           </div>
