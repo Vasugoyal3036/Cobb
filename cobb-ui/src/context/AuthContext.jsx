@@ -126,10 +126,16 @@ export const AuthProvider = ({ children }) => {
     return true;
   };
 
-  const login = async (username, password, role = 'owner') => {
-    // SECURITY: Validate password for CRM access
-    if (password !== 'cobb1234') {
-      return { success: false, message: 'Invalid password. Access denied.' };
+  const login = async (username, password) => {
+    // Determine role based on username
+    const uname = (username || '').toLowerCase().trim();
+    let role = 'owner';
+    if (uname === 'manager') role = 'manager';
+    if (uname === 'cashier') role = 'cashier';
+
+    // SECURITY: Validate using the PIN system for protected roles
+    if (roleRequiresPin(role) && !verifyPin(role, password)) {
+      return { success: false, message: `Invalid PIN for ${role}.` };
     }
 
     const nameMap = { owner: 'Parbhat Goyal', manager: 'Store Manager', cashier: 'Counter Staff' };
