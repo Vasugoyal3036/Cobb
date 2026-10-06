@@ -17,6 +17,7 @@ const HoldDeskTab = lazy(() => import('./components/tabs/HoldDeskTab'));
 const ChatbotTab = lazy(() => import('./components/tabs/ChatbotTab'));
 const AlterationsTab = lazy(() => import('./components/tabs/AlterationsTab'));
 const GoodsInTransitTab = lazy(() => import('./components/tabs/GoodsInTransitTab'));
+const InterBranchTransferTab = lazy(() => import('./components/tabs/InterBranchTransferTab'));
 const StaffLeaderboardTab = lazy(() => import('./components/tabs/StaffLeaderboardTab'));
 const ThermalReceiptModal = lazy(() => import('./components/ThermalReceiptModal'));
 const CustomerProfileModal = lazy(() => import('./components/CustomerProfileModal'));
@@ -2356,6 +2357,11 @@ export default function App() {
             {/* 20. GOODS IN TRANSIT */}
             {activeTab === 'transit' && (
               <GoodsInTransitTab darkMode={darkMode} API_BASE={API_BASE} />
+            )}
+
+            {/* 20B. INTER-BRANCH TRANSFERS */}
+            {activeTab === 'ibt' && (
+              <InterBranchTransferTab API_BASE={API_BASE} darkMode={darkMode} activeStore={activeStore} />
             )}
 
             {/* 21. DEAD-STOCK DEPRECIATION CLOCK & CLEARANCE MATRIX */}

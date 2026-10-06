@@ -17,7 +17,7 @@ export const ROLE_PERMISSIONS = {
   manager: [
     'copilot','dashboard','speed_billing','analytics','monthly','live',
     'staff_leaderboard','pocket_khata','denomination','hold_desk','returns',
-    'alterations','topmovers','sizematrix','transit','deadstock','reorder',
+    'alterations','topmovers','sizematrix','transit','ibt','deadstock','reorder',
     'smart_bundles','loyalty','ratings','vip','dormant','wardrobe','retention',
   ],
   cashier: ['speed_billing','live','denomination','returns','alterations','hold_desk','deadstock'],
