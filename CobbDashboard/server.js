@@ -755,6 +755,45 @@ app.get('/api/inventory/dead-stock', async (req, res) => {
     }
 });
 
+app.get('/api/inventory/category-report', async (req, res) => {
+    try {
+        const result = await sql.query(`
+            SELECT 
+                ISNULL(s.section_name, 'OTHERS') AS sectionName,
+                ISNULL(s.sub_section_name, 'GENERAL') AS subSectionName,
+                SUM(ISNULL(p.quantity_in_stock, 0)) AS cbsQty,
+                ISNULL(sales.netSlsQty, 0) AS netSlsQty,
+                SUM(ISNULL(p.quantity_in_stock, 0)) + ISNULL(sales.netSlsQty, 0) AS obsQty,
+                0.00 AS chiQty,
+                0.00 AS choQty,
+                CASE 
+                    WHEN (SUM(ISNULL(p.quantity_in_stock, 0)) + ISNULL(sales.netSlsQty, 0)) > 0 
+                    THEN CAST((ISNULL(sales.netSlsQty, 0) * 100.0) / (SUM(ISNULL(p.quantity_in_stock, 0)) + ISNULL(sales.netSlsQty, 0)) AS DECIMAL(10,2))
+                    ELSE 0.00 
+                END AS sellThruPct
+            FROM SKU_NAMES s WITH (NOLOCK)
+            LEFT JOIN PMT01106 p WITH (NOLOCK) ON s.product_Code = p.product_code
+            LEFT JOIN (
+                SELECT 
+                    s2.sub_section_name,
+                    SUM(d.QUANTITY) AS netSlsQty
+                FROM CMD01106 d WITH (NOLOCK)
+                JOIN CMM01106 m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
+                JOIN SKU_NAMES s2 WITH (NOLOCK) ON d.PRODUCT_CODE = s2.product_Code
+                WHERE m.CANCELLED = 0 AND m.CM_TIME >= CAST(GETDATE() AS DATE)
+                GROUP BY s2.sub_section_name
+            ) sales ON s.sub_section_name = sales.sub_section_name
+            WHERE s.section_name IS NOT NULL AND s.sub_section_name IS NOT NULL
+            GROUP BY s.section_name, s.sub_section_name, sales.netSlsQty
+            HAVING SUM(ISNULL(p.quantity_in_stock, 0)) > 0 OR ISNULL(sales.netSlsQty, 0) > 0
+            ORDER BY s.section_name, s.sub_section_name
+        `);
+        res.json({ success: true, items: result.recordset });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 let cachedTips = null;
 let cacheTimestamp = 0;
 const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes

@@ -173,6 +173,7 @@ const standardEndpoints = [
 const deepAnalyticsEndpoints = [
     "/api/inventory",
     "/api/inventory/dead-stock",
+    "/api/inventory/category-report",
     "/api/inventory/size-matrix",
     "/api/financials/gst-summary",
     "/api/financials/pnl",

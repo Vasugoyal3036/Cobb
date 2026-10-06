@@ -212,30 +212,30 @@ axios.get = async (url, config) => {
 
   // 2. Fallback to Firestore Cloud Cache when running on remote phone without live tunnel
   if (!isLocalEnvironment && db && url.includes('/api/')) {
-       let docName = url.replace(API_BASE, '').replace('/api/', '').replace(/\//g, '_');
-       docName = docName.split('?')[0]; 
-       try {
-         // Await anonymous authentication before hitting Firestore to satisfy security rules
-         if (authPromise) await authPromise;
-         
-         const targetStore = getActiveStoreId();
-         const docRef = doc(db, 'stores', targetStore, 'data', docName);
-         const docSnap = await getDoc(docRef);
-         if (docSnap.exists()) {
-            let data = docSnap.data();
-            // Unwrap arrays if the sync agent wrapped them
-            if (data && Array.isArray(data.items)) { 
-                data = data.items; 
-            }
-            return { data, status: 200, statusText: 'OK' };
-         } else {
-            console.warn(`[SaaS Interceptor] Missing Firestore document for ${targetStore}: ${docName}`);
-            return { data: { error: 'Not synced to cloud yet', empty: true }, status: 404, statusText: 'Not Found' };
-         }
-       } catch (e) {
-         console.error("Firebase SaaS Interceptor error:", e);
-         return { data: { error: e.message }, status: 500 };
-       }
+    let docName = url.replace(API_BASE, '').replace('/api/', '').replace(/\//g, '_');
+    docName = docName.split('?')[0];
+    try {
+      // Await anonymous authentication before hitting Firestore to satisfy security rules
+      if (authPromise) await authPromise;
+
+      const targetStore = getActiveStoreId();
+      const docRef = doc(db, 'stores', targetStore, 'data', docName);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        let data = docSnap.data();
+        // Unwrap arrays if the sync agent wrapped them
+        if (data && Array.isArray(data.items)) {
+          data = data.items;
+        }
+        return { data, status: 200, statusText: 'OK' };
+      } else {
+        console.warn(`[SaaS Interceptor] Missing Firestore document for ${targetStore}: ${docName}`);
+        return { data: { error: 'Not synced to cloud yet', empty: true }, status: 404, statusText: 'Not Found' };
+      }
+    } catch (e) {
+      console.error("Firebase SaaS Interceptor error:", e);
+      return { data: { error: e.message }, status: 500 };
+    }
   }
   return originalAxiosGet(targetUrl, config);
 };
@@ -257,7 +257,7 @@ const getLocalCache = (key, fallback) => {
 const setLocalCache = (key, val) => {
   try {
     localStorage.setItem(CACHE_PREFIX + key, JSON.stringify(val));
-  } catch (e) {}
+  } catch (e) { }
 };
 
 // Lightweight skeleton fallback for lazy-loaded tabs
@@ -277,7 +277,7 @@ export default function App() {
   const [appRoute, setAppRoute] = useState(() => {
     // 1. If running as the Electron Desktop App locally, always show the CRM POS
     if (window.location.protocol === 'file:') return 'crm';
-    
+
     // 2. Show the public Digital Catalog ONLY on the /shop endpoint
     if (window.location.pathname.includes('/shop')) {
       return 'catalog';
@@ -287,7 +287,7 @@ export default function App() {
     if (window.location.pathname.includes('/crm') || window.location.search.includes('admin=')) {
       return 'crm';
     }
-    
+
     // 4. Otherwise, leave it empty for now (root link)
     return 'empty';
   });
@@ -471,7 +471,7 @@ export default function App() {
   const [topMoversData, setTopMoversData] = useState(() => getLocalCache('topMoversData', { topArticles: [], sizeDemand: [] }));
 
   const [activeTab, setActiveTab] = useState('dashboard');
-  
+
   // RBAC Tab Protection Guard — uses ROLE_PERMISSIONS to redirect if current tab is not allowed
   useEffect(() => {
     const allowed = ROLE_PERMISSIONS[currentRole];
@@ -538,7 +538,7 @@ export default function App() {
   useEffect(() => {
     if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
       const storeId = (!activeStore || activeStore === 'ALL' || activeStore === 'STORE_01') ? 'DEMO_STORE_001' : activeStore;
-      registerForPushNotifications(storeId, false).catch(() => {});
+      registerForPushNotifications(storeId, false).catch(() => { });
       setNotificationsEnabled(true);
     }
   }, [activeStore]);
@@ -556,7 +556,7 @@ export default function App() {
       if (urlBill) {
         setTargetHighlightBill(String(urlBill).trim());
       }
-    } catch (e) {}
+    } catch (e) { }
   }, []);
 
   const [isRefreshingPnl, setIsRefreshingPnl] = useState(false);
@@ -591,7 +591,7 @@ export default function App() {
               };
             }
           }
-        } catch (e) {}
+        } catch (e) { }
 
         setPnlData(merged);
         setLocalCache('pnlData', merged);
@@ -620,7 +620,7 @@ export default function App() {
             }
           }));
         }
-      } catch (err) {}
+      } catch (err) { }
       fetchPnl();
     };
     window.addEventListener('cobb_store_config_updated', handleConfigUpdate);
@@ -654,7 +654,7 @@ export default function App() {
     if (billNo) {
       const cleanNo = String(billNo).replace(/^cancelled_/, '').trim();
       setTargetHighlightBill(cleanNo);
-      const matched = (Array.isArray(liveBills) ? liveBills : []).find(b => 
+      const matched = (Array.isArray(liveBills) ? liveBills : []).find(b =>
         String(b.BillNumber || '').trim().toLowerCase() === cleanNo.toLowerCase() ||
         String(b.BillId || '').trim().toLowerCase() === cleanNo.toLowerCase()
       );
@@ -751,7 +751,7 @@ export default function App() {
   useEffect(() => {
     if (!targetHighlightBill || !Array.isArray(liveBills) || liveBills.length === 0) return;
     const target = String(targetHighlightBill).trim().toLowerCase();
-    const matched = liveBills.find(b => 
+    const matched = liveBills.find(b =>
       String(b.BillNumber || '').trim().toLowerCase() === target ||
       String(b.BillId || '').trim().toLowerCase() === target
     );
@@ -774,24 +774,24 @@ export default function App() {
   // Automated Checkout WhatsApp Trigger
   useEffect(() => {
     if (!liveBills || liveBills.length === 0) return;
-    
+
     if (initialLoadRef.current) {
-       liveBills.forEach(b => processedBills.current.add(b.VOUCHER_NO));
-       initialLoadRef.current = false;
-       return;
+      liveBills.forEach(b => processedBills.current.add(b.VOUCHER_NO));
+      initialLoadRef.current = false;
+      return;
     }
 
     liveBills.forEach(bill => {
-       if (bill.VOUCHER_NO && !processedBills.current.has(bill.VOUCHER_NO)) {
-          processedBills.current.add(bill.VOUCHER_NO);
-          if (bill.MOBILE1 && bill.MOBILE1.length >= 10) {
-             const amount = bill.NET_AMOUNT || 0;
-             const message = `🎉 Thank you for shopping with us!\n\nYour bill (No: ${bill.VOUCHER_NO}) amount is Rs ${amount}.\n\nWe hope to see you again soon! ✨`;
-             import('./utils/firebase.js').then(({ queueWhatsAppMessage }) => {
-                if (queueWhatsAppMessage) queueWhatsAppMessage(bill.MOBILE1, message);
-             }).catch(console.error);
-          }
-       }
+      if (bill.VOUCHER_NO && !processedBills.current.has(bill.VOUCHER_NO)) {
+        processedBills.current.add(bill.VOUCHER_NO);
+        if (bill.MOBILE1 && bill.MOBILE1.length >= 10) {
+          const amount = bill.NET_AMOUNT || 0;
+          const message = `🎉 Thank you for shopping with us!\n\nYour bill (No: ${bill.VOUCHER_NO}) amount is Rs ${amount}.\n\nWe hope to see you again soon! ✨`;
+          import('./utils/firebase.js').then(({ queueWhatsAppMessage }) => {
+            if (queueWhatsAppMessage) queueWhatsAppMessage(bill.MOBILE1, message);
+          }).catch(console.error);
+        }
+      }
     });
   }, [liveBills]);
 
@@ -804,21 +804,21 @@ export default function App() {
       if (!hasConfig || !db) return;
       import('firebase/firestore').then(({ collection, query, where, onSnapshot, doc, updateDoc }) => {
         const q = query(collection(db, 'whatsapp_queue'), where('status', '==', 'pending'));
-        
+
         const unsubscribe = onSnapshot(q, (snapshot) => {
           snapshot.docChanges().forEach((change) => {
             if (change.type === 'added') {
               const data = change.doc.data();
               const docId = change.doc.id;
-              
+
               axios.post(`${API_BASE}/api/whatsapp/send`, {
                 phone: data.phone,
                 message: data.message
               }).then(() => {
-                 updateDoc(doc(db, 'whatsapp_queue', docId), { status: 'sent' });
+                updateDoc(doc(db, 'whatsapp_queue', docId), { status: 'sent' });
               }).catch(err => {
-                 console.error('Failed to dispatch queue message:', err);
-                 updateDoc(doc(db, 'whatsapp_queue', docId), { status: 'failed', error: err.message });
+                console.error('Failed to dispatch queue message:', err);
+                updateDoc(doc(db, 'whatsapp_queue', docId), { status: 'failed', error: err.message });
               });
             }
           });
@@ -827,12 +827,12 @@ export default function App() {
     }).catch(console.error);
   }, []);
 
-// Core dashboard metrics needed on mount for alerts and command center
+  // Core dashboard metrics needed on mount for alerts and command center
   // Staggered fetching to prevent flooding the SQL connection pool
   useEffect(() => {
     // Priority 1: The absolute fastest queries first — fire immediately
     axios.get(`${API_BASE}/api/sales/overview`).then(res => {
-      if(res.data && !res?.data?.error) {
+      if (res.data && !res?.data?.error) {
         console.log('[RENDERER] Overview Stats loaded:', res.data);
         setOverviewStats(res.data);
         setLocalCache('overviewStats', res.data);
@@ -840,7 +840,7 @@ export default function App() {
     }).catch(err => console.error('[RENDERER] Overview fetch failed:', err));
 
     axios.get(`${API_BASE}/api/sales/live`).then(res => {
-      if(res.data && !res?.data?.error) {
+      if (res.data && !res?.data?.error) {
         const bills = Array.isArray(res.data) ? res.data : [];
         console.log(`[RENDERER] Live Bills loaded: ${bills.length} bills`);
         setLiveBills(bills);
@@ -857,7 +857,7 @@ export default function App() {
     }).catch(err => console.error('[RENDERER] Live bills fetch failed:', err));
 
     axios.get(`${API_BASE}/api/analytics/hourly`).then(res => {
-      if(!res?.data?.error) {
+      if (!res?.data?.error) {
         setHourlySales(res.data);
         setLocalCache('hourlySales', res.data);
       }
@@ -866,12 +866,12 @@ export default function App() {
     // Priority 2: Staggered at 300ms
     setTimeout(() => {
       axios.get(`${API_BASE}/api/sales/daily-month`).then(res => {
-        if(!res?.data?.error) {
+        if (!res?.data?.error) {
           setDailySales(res.data);
           setLocalCache('dailySales', res.data);
         }
       }).catch(console.error);
-      axios.get(`${API_BASE}/api/reconciliation/latest`).then(res => { if(!res?.data?.error) setReconData(res.data); }).catch(console.error);
+      axios.get(`${API_BASE}/api/reconciliation/latest`).then(res => { if (!res?.data?.error) setReconData(res.data); }).catch(console.error);
       axios.get(`${API_BASE}/api/financials/pnl`).then(res => {
         if (!res?.data?.error && res?.data) {
           setPnlData(res.data);
@@ -897,7 +897,7 @@ export default function App() {
     }
     if (activeTab === 'monthly') {
       axios.get(`${API_BASE}/api/analytics/monthly-products`).then(res => {
-        if(!res?.data?.error && Array.isArray(res.data)) {
+        if (!res?.data?.error && Array.isArray(res.data)) {
           setMonthlyProducts(res.data);
           setLocalCache('monthlyProducts', res.data);
         }
@@ -922,7 +922,7 @@ export default function App() {
     }
     if (activeTab === 'sizematrix' && (!sizeMatrix || sizeMatrix.length === 0)) {
       axios.get(`${API_BASE}/api/inventory/size-matrix`).then(res => {
-        if(!res?.data?.error) {
+        if (!res?.data?.error) {
           setSizeMatrix(res.data);
           setLocalCache('sizeMatrix', res.data);
         }
@@ -930,14 +930,14 @@ export default function App() {
     }
     if (activeTab === 'topmovers' && (!topMoversData || !topMoversData.topArticles || topMoversData.topArticles.length === 0)) {
       axios.get(`${API_BASE}/api/analytics/top-movers`).then(res => {
-        if(!res?.data?.error && res.data?.topArticles) {
+        if (!res?.data?.error && res.data?.topArticles) {
           setTopMoversData(res.data);
           setLocalCache('topMoversData', res.data);
         }
       }).catch(console.error);
     }
     if (activeTab === 'returns' && !returnsData) {
-      axios.get(`${API_BASE}/api/sales/returns`).then(res => { 
+      axios.get(`${API_BASE}/api/sales/returns`).then(res => {
         if (res.data && typeof res.data === 'object' && !res?.data?.error && res.data.today) {
           setReturnsData(res.data);
           setLocalCache('returnsData', res.data);
@@ -946,7 +946,7 @@ export default function App() {
     }
     if (activeTab === 'broadcast' && (!broadcastGroup || broadcastGroup.length === 0)) {
       axios.get(`${API_BASE}/api/broadcast/group`).then(res => {
-        if(!res?.data?.error && res.data?.contacts) {
+        if (!res?.data?.error && res.data?.contacts) {
           setBroadcastGroup(res.data.contacts);
           setBroadcastGroupCount(res.data.totalCount || 0);
           setLocalCache('broadcastGroup', res.data.contacts);
@@ -1125,7 +1125,7 @@ export default function App() {
 
       // 3. Fetch broadcast status
       axios.get(`${API_BASE}/api/broadcast/status`)
-        .then(res => { if(!res?.data?.error) setBroadcastStatus(res.data); })
+        .then(res => { if (!res?.data?.error) setBroadcastStatus(res.data); })
         .catch(console.error);
 
       // Removed heavy polling of dashboard metrics (now relies on mount fetch and manual refresh)
@@ -1569,7 +1569,7 @@ export default function App() {
       const isPhone = /^[0-9]{10}$/.test(query);
 
       // Check local VIP/Dormant lists first for quick matches
-      const matchesLocalCustomer = [...vips, ...dormant].some(c => 
+      const matchesLocalCustomer = [...vips, ...dormant].some(c =>
         `${c.FirstName || ''} ${c.LastName || ''}`.toLowerCase().includes(query) ||
         c.Phone?.includes(query) ||
         (isAmount && Math.round(c.LifetimeSpend) === Math.round(parseFloat(query)))
@@ -1588,7 +1588,7 @@ export default function App() {
       try {
         const res = await axios.get(`${API_BASE}/api/customers/search?q=${encodeURIComponent(query)}`);
         const foundCustomers = res.data;
-        
+
         if (foundCustomers && foundCustomers.length > 0) {
           setGlobalCustomers(foundCustomers);
           setActiveTab('vip');
@@ -1651,7 +1651,7 @@ export default function App() {
     );
   };
 
-    const appState = {
+  const appState = {
     userRole: currentRole,
     activeStore,
     switchStore,
@@ -1853,7 +1853,7 @@ export default function App() {
 
   return (
     <div className={`flex h-screen ${darkMode ? 'dark' : ''} font-sans transition-colors duration-300 overflow-hidden relative ${darkMode ? 'dark-mode text-white' : 'bg-slate-50 text-slate-800'}`}>
-      
+
       {darkMode && <DashboardBackground theme={dashTheme} />}
       <style>{`
         @keyframes slideIn {
@@ -2212,11 +2212,10 @@ export default function App() {
           aria-label="Phone notification permission prompt"
           className="fixed top-3 inset-x-3 sm:inset-x-auto sm:right-6 sm:w-96 z-50"
         >
-          <div className={`p-3.5 rounded-2xl shadow-2xl border backdrop-blur-xl flex items-center justify-between gap-3 ${
-            darkMode 
-              ? 'bg-[#0f172a]/95 border-indigo-500/40 text-white shadow-indigo-950/50' 
+          <div className={`p-3.5 rounded-2xl shadow-2xl border backdrop-blur-xl flex items-center justify-between gap-3 ${darkMode
+              ? 'bg-[#0f172a]/95 border-indigo-500/40 text-white shadow-indigo-950/50'
               : 'bg-white/95 border-indigo-200 text-slate-900 shadow-indigo-100'
-          }`}>
+            }`}>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shrink-0 shadow-md shadow-indigo-500/30 text-white">
                 <Bell className="w-5 h-5 animate-pulse" />
@@ -2278,10 +2277,10 @@ export default function App() {
         {/* Dynamic Views */}
 
 
-          {/* Dynamic Views */}
-          <div>
-            <Suspense fallback={<TabFallback />}>
-              {/* 1. COMMAND CENTER */}
+        {/* Dynamic Views */}
+        <div>
+          <Suspense fallback={<TabFallback />}>
+            {/* 1. COMMAND CENTER */}
             {['dashboard', 'pnl', 'gst', 'analytics', 'monthly', 'topmovers', 'sizematrix', 'broadcast', 'wardrobe', 'retention'].includes(activeTab) && (
               <DashboardTab {...appState} />
             )}
@@ -2428,9 +2427,9 @@ export default function App() {
               darkMode={darkMode}
             />
 
-              {!['vip', 'dormant'].includes(activeTab) && <CustomerProfileModal {...appState} />}
-            </Suspense>
-          </div>
+            {!['vip', 'dormant'].includes(activeTab) && <CustomerProfileModal {...appState} />}
+          </Suspense>
+        </div>
 
         {/* EOD CASH RECONCILIATION MODAL WITH POCKET KHATA INTEGRATION */}
         {showReconModal && (
@@ -2438,7 +2437,7 @@ export default function App() {
             <div className={`rounded-2xl p-6 w-full max-w-md shadow-2xl border ${darkMode ? 'bg-[#000000] border-[#1a1a1f] text-white' : 'bg-white border-slate-200 text-slate-800'}`}>
               <div className="flex justify-between items-start mb-2">
                 <h3 className={`text-xl font-black flex items-center gap-2 ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-                  <Calculator className="w-6 h-6 text-emerald-500"/> Cash Reconciliation
+                  <Calculator className="w-6 h-6 text-emerald-500" /> Cash Reconciliation
                 </h3>
                 <button onClick={() => setShowReconModal(false)} className={`p-1.5 rounded-lg ${darkMode ? 'text-slate-400 hover:text-white hover:bg-white/[0.08]' : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'}`}>
                   <X className="w-4 h-4" />
@@ -2483,21 +2482,19 @@ export default function App() {
                         value={countedCashInput}
                         onChange={e => setCountedCashInput(e.target.value)}
                         placeholder="0.00"
-                        className={`w-full p-3.5 text-xl font-bold rounded-xl border focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                          darkMode ? 'bg-[#000000] border-[#1a1a1f] text-white placeholder-slate-500' : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400'
-                        }`}
+                        className={`w-full p-3.5 text-xl font-bold rounded-xl border focus:outline-none focus:ring-2 focus:ring-emerald-500 ${darkMode ? 'bg-[#000000] border-[#1a1a1f] text-white placeholder-slate-500' : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400'
+                          }`}
                         autoFocus
                       />
                     </div>
 
                     {countedCashInput && (
-                      <div className={`p-3 rounded-xl border flex items-center justify-between text-xs font-bold ${
-                        Math.abs(variance) < 1
+                      <div className={`p-3 rounded-xl border flex items-center justify-between text-xs font-bold ${Math.abs(variance) < 1
                           ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
                           : variance > 0
                             ? 'bg-blue-500/10 border-blue-500/30 text-blue-400'
                             : 'bg-rose-500/10 border-rose-500/30 text-rose-400'
-                      }`}>
+                        }`}>
                         <span>Variance Status:</span>
                         <span className="font-mono">
                           {Math.abs(variance) < 1 ? '✅ Exact Match (₹0)' : variance > 0 ? `▲ Surplus +${formatCurrency(variance)}` : `▼ Shortage ${formatCurrency(variance)}`}
@@ -2513,9 +2510,8 @@ export default function App() {
                         value={reconNotes}
                         onChange={e => setReconNotes(e.target.value)}
                         placeholder="Explain reason for any variance..."
-                        className={`w-full p-2.5 rounded-xl text-xs border h-20 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${
-                          darkMode ? 'bg-[#000000] border-[#1a1a1f] text-white placeholder-slate-500' : 'bg-slate-50 border-slate-200 text-slate-800 placeholder-slate-400'
-                        }`}
+                        className={`w-full p-2.5 rounded-xl text-xs border h-20 focus:outline-none focus:ring-2 focus:ring-emerald-500 ${darkMode ? 'bg-[#000000] border-[#1a1a1f] text-white placeholder-slate-500' : 'bg-slate-50 border-slate-200 text-slate-800 placeholder-slate-400'
+                          }`}
                       />
                     </div>
 
@@ -2545,7 +2541,7 @@ export default function App() {
                         }}
                         className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-600/30 transition-all flex items-center gap-2 cursor-pointer"
                       >
-                        <CheckCircle2 className="w-4 h-4"/> Confirm & Reconcile
+                        <CheckCircle2 className="w-4 h-4" /> Confirm & Reconcile
                       </button>
                     </div>
                   </div>
@@ -2599,11 +2595,10 @@ export default function App() {
                       const today = new Date().toISOString().split('T')[0];
                       handleGenerateEodReport(today);
                     }}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      eodSelectedDate === new Date().toISOString().split('T')[0]
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${eodSelectedDate === new Date().toISOString().split('T')[0]
                         ? 'bg-blue-600 text-white shadow-xs'
                         : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100'
-                    }`}
+                      }`}
                   >
                     Today
                   </button>
@@ -2613,11 +2608,10 @@ export default function App() {
                       const yest = new Date(Date.now() - 86400000).toISOString().split('T')[0];
                       handleGenerateEodReport(yest);
                     }}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      eodSelectedDate === new Date(Date.now() - 86400000).toISOString().split('T')[0]
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${eodSelectedDate === new Date(Date.now() - 86400000).toISOString().split('T')[0]
                         ? 'bg-blue-600 text-white shadow-xs'
                         : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100'
-                    }`}
+                      }`}
                   >
                     Yesterday
                   </button>
@@ -2636,22 +2630,20 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => setEodActiveTab('visual')}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      eodActiveTab === 'visual'
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${eodActiveTab === 'visual'
                         ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
                         : 'text-slate-500 dark:text-slate-400 hover:text-slate-800'
-                    }`}
+                      }`}
                   >
                     📊 Visual Digest
                   </button>
                   <button
                     type="button"
                     onClick={() => setEodActiveTab('text')}
-                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      eodActiveTab === 'text'
+                    className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${eodActiveTab === 'text'
                         ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-xs'
                         : 'text-slate-500 dark:text-slate-400 hover:text-slate-800'
-                    }`}
+                      }`}
                   >
                     💬 WhatsApp Text
                   </button>
@@ -2813,28 +2805,27 @@ export default function App() {
                   </div>
 
                   {/* Live Preview textarea */}
-                  <textarea 
-                    value={eodSummaryText} 
-                    readOnly 
-                    className="w-full h-56 p-4 bg-slate-950 text-emerald-400 font-mono text-xs rounded-2xl focus:outline-none custom-scrollbar leading-relaxed border border-slate-800" 
+                  <textarea
+                    value={eodSummaryText}
+                    readOnly
+                    className="w-full h-56 p-4 bg-slate-950 text-emerald-400 font-mono text-xs rounded-2xl focus:outline-none custom-scrollbar leading-relaxed border border-slate-800"
                   />
                 </div>
               )}
 
               {eodSendResult && (
-                <div className={`p-3 rounded-xl text-xs font-semibold ${
-                  eodSendResult.startsWith('✅') 
-                    ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800' 
+                <div className={`p-3 rounded-xl text-xs font-semibold ${eodSendResult.startsWith('✅')
+                    ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200 border border-emerald-200 dark:border-emerald-800'
                     : 'bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-200 border border-rose-200 dark:border-rose-800'
-                }`}>
+                  }`}>
                   {eodSendResult}
                 </div>
               )}
-              
+
               {/* Footer Actions */}
               <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
-                <button 
-                  onClick={() => { setShowEodModal(false); setEodSendResult(''); }} 
+                <button
+                  onClick={() => { setShowEodModal(false); setEodSendResult(''); }}
                   className="px-4 py-2.5 text-slate-500 font-bold text-xs rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                 >
                   Close
@@ -2842,40 +2833,40 @@ export default function App() {
 
                 <div className="flex items-center gap-2 flex-wrap">
                   {typeof navigator !== 'undefined' && 'share' in navigator && (
-                    <button 
+                    <button
                       onClick={async () => {
                         try {
                           await navigator.share({
                             title: 'Cobb Store Closing Digest',
                             text: eodSummaryText
                           });
-                        } catch (e) {}
+                        } catch (e) { }
                       }}
                       className="px-3.5 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer"
                     >
-                      <Share2 className="w-4 h-4 text-blue-500"/>
+                      <Share2 className="w-4 h-4 text-blue-500" />
                       <span>Share</span>
                     </button>
                   )}
 
-                  <button 
-                    onClick={() => { 
-                      navigator.clipboard.writeText(eodSummaryText); 
-                      setEodCopied(true); 
-                      setTimeout(() => setEodCopied(false), 2000); 
-                    }} 
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(eodSummaryText);
+                      setEodCopied(true);
+                      setTimeout(() => setEodCopied(false), 2000);
+                    }}
                     className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer"
                   >
-                    {eodCopied ? <CheckCircle2 className="w-4 h-4 text-emerald-600"/> : <Copy className="w-4 h-4"/>}
+                    {eodCopied ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
                     {eodCopied ? 'Copied!' : 'Copy Text'}
                   </button>
 
-                  <button 
+                  <button
                     onClick={handleDispatchEodReport}
                     disabled={isSendingEod}
                     className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow-md shadow-emerald-600/20 transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
                   >
-                    {isSendingEod ? <RefreshCw className="w-4 h-4 animate-spin"/> : <Send className="w-4 h-4"/>}
+                    {isSendingEod ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                     <span>{isSendingEod ? 'Dispatching...' : 'Send WhatsApp to 4 Owners'}</span>
                   </button>
                 </div>
@@ -2885,33 +2876,29 @@ export default function App() {
         )}
 
         {/* BOTTOM NAVIGATION BAR (Android Material Design — MOBILE ONLY) */}
-        <div className={`lg:hidden fixed bottom-0 left-0 right-0 z-50 flex items-end justify-around px-2 pb-safe pt-1 ${
-          darkMode
+        <div className={`lg:hidden fixed bottom-0 left-0 right-0 z-50 flex items-end justify-around px-2 pb-safe pt-1 ${darkMode
             ? 'bg-[#0d1017]/95 border-t border-white/[0.06] backdrop-blur-xl shadow-[0_-8px_24px_rgba(0,0,0,0.4)]'
             : 'bg-white/95 border-t border-slate-200/80 backdrop-blur-xl shadow-[0_-4px_20px_rgba(0,0,0,0.06)]'
-        }`} style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 20px) + 8px)' }}>
+          }`} style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 20px) + 8px)' }}>
 
           {/* SALES */}
           <button
             onClick={() => { setActiveTab('live'); setIsMobileMenuOpen(false); }}
             className="flex flex-col items-center justify-center flex-1 py-1.5 gap-0.5 cursor-pointer group"
           >
-            <div className={`flex items-center justify-center w-14 h-7 rounded-full transition-all duration-200 ${
-              activeTab === 'live'
+            <div className={`flex items-center justify-center w-14 h-7 rounded-full transition-all duration-200 ${activeTab === 'live'
                 ? darkMode ? 'bg-blue-500/20' : 'bg-blue-100'
                 : 'bg-transparent'
-            }`}>
-              <Receipt className={`w-5 h-5 transition-colors ${
-                activeTab === 'live'
+              }`}>
+              <Receipt className={`w-5 h-5 transition-colors ${activeTab === 'live'
                   ? darkMode ? 'text-blue-400' : 'text-blue-600'
                   : darkMode ? 'text-slate-400' : 'text-slate-500'
-              }`} />
+                }`} />
             </div>
-            <span className={`text-[10px] font-bold transition-colors ${
-              activeTab === 'live'
+            <span className={`text-[10px] font-bold transition-colors ${activeTab === 'live'
                 ? darkMode ? 'text-blue-400' : 'text-blue-600'
                 : darkMode ? 'text-slate-500' : 'text-slate-400'
-            }`}>Sales</span>
+              }`}>Sales</span>
           </button>
 
           {/* STOCK */}
@@ -2919,22 +2906,19 @@ export default function App() {
             onClick={() => { setActiveTab('inventory'); setIsMobileMenuOpen(false); }}
             className="flex flex-col items-center justify-center flex-1 py-1.5 gap-0.5 cursor-pointer group"
           >
-            <div className={`flex items-center justify-center w-14 h-7 rounded-full transition-all duration-200 ${
-              activeTab === 'inventory'
+            <div className={`flex items-center justify-center w-14 h-7 rounded-full transition-all duration-200 ${activeTab === 'inventory'
                 ? darkMode ? 'bg-amber-500/20' : 'bg-amber-100'
                 : 'bg-transparent'
-            }`}>
-              <Package className={`w-5 h-5 transition-colors ${
-                activeTab === 'inventory'
+              }`}>
+              <Package className={`w-5 h-5 transition-colors ${activeTab === 'inventory'
                   ? darkMode ? 'text-amber-400' : 'text-amber-600'
                   : darkMode ? 'text-slate-400' : 'text-slate-500'
-              }`} />
+                }`} />
             </div>
-            <span className={`text-[10px] font-bold transition-colors ${
-              activeTab === 'inventory'
+            <span className={`text-[10px] font-bold transition-colors ${activeTab === 'inventory'
                 ? darkMode ? 'text-amber-400' : 'text-amber-600'
                 : darkMode ? 'text-slate-500' : 'text-slate-400'
-            }`}>Stock</span>
+              }`}>Stock</span>
           </button>
 
           {/* CLIENTS */}
@@ -2942,22 +2926,19 @@ export default function App() {
             onClick={() => { setActiveTab('wardrobe'); setIsMobileMenuOpen(false); }}
             className="flex flex-col items-center justify-center flex-1 py-1.5 gap-0.5 cursor-pointer group"
           >
-            <div className={`flex items-center justify-center w-14 h-7 rounded-full transition-all duration-200 ${
-              activeTab === 'wardrobe'
+            <div className={`flex items-center justify-center w-14 h-7 rounded-full transition-all duration-200 ${activeTab === 'wardrobe'
                 ? darkMode ? 'bg-purple-500/20' : 'bg-purple-100'
                 : 'bg-transparent'
-            }`}>
-              <Shirt className={`w-5 h-5 transition-colors ${
-                activeTab === 'wardrobe'
+              }`}>
+              <Shirt className={`w-5 h-5 transition-colors ${activeTab === 'wardrobe'
                   ? darkMode ? 'text-purple-400' : 'text-purple-600'
                   : darkMode ? 'text-slate-400' : 'text-slate-500'
-              }`} />
+                }`} />
             </div>
-            <span className={`text-[10px] font-bold transition-colors ${
-              activeTab === 'wardrobe'
+            <span className={`text-[10px] font-bold transition-colors ${activeTab === 'wardrobe'
                 ? darkMode ? 'text-purple-400' : 'text-purple-600'
                 : darkMode ? 'text-slate-500' : 'text-slate-400'
-            }`}>Clients</span>
+              }`}>Clients</span>
           </button>
 
           {/* KHATA */}
@@ -2965,22 +2946,19 @@ export default function App() {
             onClick={() => { setActiveTab('pocket_khata'); setIsMobileMenuOpen(false); }}
             className="flex flex-col items-center justify-center flex-1 py-1.5 gap-0.5 cursor-pointer group"
           >
-            <div className={`flex items-center justify-center w-14 h-7 rounded-full transition-all duration-200 ${
-              activeTab === 'pocket_khata'
+            <div className={`flex items-center justify-center w-14 h-7 rounded-full transition-all duration-200 ${activeTab === 'pocket_khata'
                 ? darkMode ? 'bg-emerald-500/20' : 'bg-emerald-100'
                 : 'bg-transparent'
-            }`}>
-              <Wallet className={`w-5 h-5 transition-colors ${
-                activeTab === 'pocket_khata'
+              }`}>
+              <Wallet className={`w-5 h-5 transition-colors ${activeTab === 'pocket_khata'
                   ? darkMode ? 'text-emerald-400' : 'text-emerald-600'
                   : darkMode ? 'text-slate-400' : 'text-slate-500'
-              }`} />
+                }`} />
             </div>
-            <span className={`text-[10px] font-bold transition-colors ${
-              activeTab === 'pocket_khata'
+            <span className={`text-[10px] font-bold transition-colors ${activeTab === 'pocket_khata'
                 ? darkMode ? 'text-emerald-400' : 'text-emerald-600'
                 : darkMode ? 'text-slate-500' : 'text-slate-400'
-            }`}>Khata</span>
+              }`}>Khata</span>
           </button>
 
           {/* MORE / MENU */}
@@ -2988,21 +2966,19 @@ export default function App() {
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className="flex flex-col items-center justify-center flex-1 py-1.5 gap-0.5 cursor-pointer group"
           >
-            <div className={`flex items-center justify-center w-14 h-7 rounded-full transition-all duration-200 relative ${
-              isMobileMenuOpen
+            <div className={`flex items-center justify-center w-14 h-7 rounded-full transition-all duration-200 relative ${isMobileMenuOpen
                 ? darkMode ? 'bg-slate-500/20' : 'bg-slate-200'
                 : 'bg-transparent'
-            }`}>
+              }`}>
               {isMobileMenuOpen
                 ? <X className={`w-5 h-5 ${darkMode ? 'text-slate-300' : 'text-slate-700'}`} />
                 : <Menu className={`w-5 h-5 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`} />
               }
             </div>
-            <span className={`text-[10px] font-bold transition-colors ${
-              isMobileMenuOpen
+            <span className={`text-[10px] font-bold transition-colors ${isMobileMenuOpen
                 ? darkMode ? 'text-slate-300' : 'text-slate-700'
                 : darkMode ? 'text-slate-500' : 'text-slate-400'
-            }`}>Menu</span>
+              }`}>Menu</span>
           </button>
         </div>
 

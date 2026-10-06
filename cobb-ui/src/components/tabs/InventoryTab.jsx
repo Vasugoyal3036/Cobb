@@ -1,1187 +1,740 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Package, Search, Sparkles, Wand2, Send, ChevronLeft, ChevronRight, Tag,
-  Barcode, Camera, UploadCloud, Loader2, Download, Printer, ExternalLink,
-  CheckCircle2, Box, X, Layers, Filter, Eye, RefreshCw
+  Folder, FolderOpen, FileText, ChevronRight, ChevronDown, Printer, Download,
+  Search, RefreshCw, X, Eye, Camera, ExternalLink, Package, ArrowUpDown, Filter,
+  Layers, Maximize2, Minimize2, Check, Barcode
 } from 'lucide-react';
 import axios from 'axios';
-import { db, storage } from '../../utils/firebase';
-import { doc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { db } from '../../utils/firebase';
+import { doc, getDoc, onSnapshot } from 'firebase/firestore';
 
-// Base sample catalog with realistic Cobb POS articles and SKU-level variations
-const FALLBACK_INVENTORY = [
-  {
-    ArticleNo: '000060869',
-    ItemName: 'CASUAL FULL SL SHIRT',
-    Category: 'Shirts',
-    Department: 'Apparel',
-    Section: 'Men Casuals',
-    MRP: 2999,
-    imageUrl: 'https://images.unsplash.com/photo-1596755094514-f87e32f85e23?auto=format&fit=crop&w=600&q=80',
-    status: 'IN STOCK',
-    variants: [
-      { code: '0081308460', article: '000060869', desc: 'CASUAL FULL SL', p1: 'BEIGE', p2: '38 (97 CM.)', p3: 'REGULAR', qty: 3, uom: 'PCS', mrp: 2999 },
-      { code: '0081308535', article: '000060869', desc: 'CASUAL FULL SL', p1: 'BEIGE', p2: '40 (1.02 MTR.)', p3: 'REGULAR', qty: 5, uom: 'PCS', mrp: 2999 },
-      { code: '0081308872', article: '000060869', desc: 'CASUAL FULL SL', p1: 'BEIGE', p2: '42 (1.07 MTR.)', p3: 'REGULAR', qty: 4, uom: 'PCS', mrp: 2999 },
-      { code: '0081309138', article: '000060869', desc: 'CASUAL FULL SL', p1: 'BEIGE', p2: '44 (1.12 MTR.)', p3: 'REGULAR', qty: 2, uom: 'PCS', mrp: 2999 },
-      { code: '0081309503', article: '000060869', desc: 'CASUAL FULL SL', p1: 'BEIGE', p2: '46 (1.17 MTR.)', p3: 'REGULAR', qty: 1, uom: 'PCS', mrp: 2999 },
-      { code: '0081309621', article: '000060869', desc: 'CASUAL FULL SL', p1: 'NAVY', p2: '38 (97 CM.)', p3: 'REGULAR', qty: 2, uom: 'PCS', mrp: 2999 },
-      { code: '0081309784', article: '000060869', desc: 'CASUAL FULL SL', p1: 'NAVY', p2: '40 (1.02 MTR.)', p3: 'REGULAR', qty: 4, uom: 'PCS', mrp: 2999 },
-      { code: '0081309890', article: '000060869', desc: 'CASUAL FULL SL', p1: 'NAVY', p2: '42 (1.07 MTR.)', p3: 'REGULAR', qty: 3, uom: 'PCS', mrp: 2999 },
-    ]
-  },
-  {
-    ArticleNo: '000061578',
-    ItemName: 'CASUAL FULL SL LINEN SHIRT',
-    Category: 'Shirts',
-    Department: 'Apparel',
-    Section: 'Men Casuals',
-    MRP: 2699,
-    imageUrl: 'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?auto=format&fit=crop&w=600&q=80',
-    status: 'IN STOCK',
-    variants: [
-      { code: '0082203068', article: '000061578', desc: 'CASUAL FULL SL', p1: 'GREEN', p2: '38 (97 CM.)', p3: 'SLIM', qty: 2, uom: 'PCS', mrp: 2699 },
-      { code: '0082203775', article: '000061578', desc: 'CASUAL FULL SL', p1: 'GREEN', p2: '40 (1.02 MTR.)', p3: 'SLIM', qty: 4, uom: 'PCS', mrp: 2699 },
-      { code: '0082200380', article: '000061578', desc: 'CASUAL FULL SL', p1: 'BEIGE', p2: '42 (1.07 MTR.)', p3: 'SLIM', qty: 3, uom: 'PCS', mrp: 2699 },
-      { code: '0082205562', article: '000061578', desc: 'CASUAL FULL SL', p1: 'PEACH', p2: '40 (1.02 MTR.)', p3: 'SLIM', qty: 2, uom: 'PCS', mrp: 2699 },
-      { code: '0082206215', article: '000061578', desc: 'CASUAL FULL SL', p1: 'PEACH', p2: '42 (1.07 MTR.)', p3: 'SLIM', qty: 1, uom: 'PCS', mrp: 2699 },
-    ]
-  },
-  {
-    ArticleNo: '000059124',
-    ItemName: 'STRETCH SLIM FIT DENIM JEANS',
-    Category: 'Jeans',
-    Department: 'Apparel',
-    Section: 'Bottomwear',
-    MRP: 3199,
-    imageUrl: 'https://images.unsplash.com/photo-1542272604-787c3835535d?auto=format&fit=crop&w=600&q=80',
-    status: 'IN STOCK',
-    variants: [
-      { code: '0083100121', article: '000059124', desc: 'SLIM FIT DENIM', p1: 'DARK BLUE', p2: '30 (76 CM.)', p3: 'STRETCH', qty: 3, uom: 'PCS', mrp: 3199 },
-      { code: '0083100234', article: '000059124', desc: 'SLIM FIT DENIM', p1: 'DARK BLUE', p2: '32 (81 CM.)', p3: 'STRETCH', qty: 6, uom: 'PCS', mrp: 3199 },
-      { code: '0083100345', article: '000059124', desc: 'SLIM FIT DENIM', p1: 'DARK BLUE', p2: '34 (86 CM.)', p3: 'STRETCH', qty: 5, uom: 'PCS', mrp: 3199 },
-      { code: '0083100456', article: '000059124', desc: 'SLIM FIT DENIM', p1: 'DARK BLUE', p2: '36 (91 CM.)', p3: 'STRETCH', qty: 2, uom: 'PCS', mrp: 3199 },
-      { code: '0083100567', article: '000059124', desc: 'SLIM FIT DENIM', p1: 'ICE BLUE', p2: '32 (81 CM.)', p3: 'STRETCH', qty: 4, uom: 'PCS', mrp: 3199 },
-      { code: '0083100678', article: '000059124', desc: 'SLIM FIT DENIM', p1: 'ICE BLUE', p2: '34 (86 CM.)', p3: 'STRETCH', qty: 3, uom: 'PCS', mrp: 3199 },
-    ]
-  },
-  {
-    ArticleNo: '000062340',
-    ItemName: 'PREMIUM COTTON CHINO TROUSER',
-    Category: 'Trousers',
-    Department: 'Apparel',
-    Section: 'Bottomwear',
-    MRP: 2499,
-    imageUrl: 'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?auto=format&fit=crop&w=600&q=80',
-    status: 'IN STOCK',
-    variants: [
-      { code: '0084201102', article: '000062340', desc: 'COTTON CHINO', p1: 'KHAKI', p2: '30 (76 CM.)', p3: 'FLAT FRONT', qty: 2, uom: 'PCS', mrp: 2499 },
-      { code: '0084201215', article: '000062340', desc: 'COTTON CHINO', p1: 'KHAKI', p2: '32 (81 CM.)', p3: 'FLAT FRONT', qty: 5, uom: 'PCS', mrp: 2499 },
-      { code: '0084201328', article: '000062340', desc: 'COTTON CHINO', p1: 'KHAKI', p2: '34 (86 CM.)', p3: 'FLAT FRONT', qty: 4, uom: 'PCS', mrp: 2499 },
-      { code: '0084201439', article: '000062340', desc: 'COTTON CHINO', p1: 'NAVY', p2: '32 (81 CM.)', p3: 'FLAT FRONT', qty: 3, uom: 'PCS', mrp: 2499 },
-      { code: '0084201540', article: '000062340', desc: 'COTTON CHINO', p1: 'NAVY', p2: '34 (86 CM.)', p3: 'FLAT FRONT', qty: 3, uom: 'PCS', mrp: 2499 },
-      { code: '0084201651', article: '000062340', desc: 'COTTON CHINO', p1: 'OLIVE', p2: '32 (81 CM.)', p3: 'FLAT FRONT', qty: 2, uom: 'PCS', mrp: 2499 },
-    ]
-  },
-  {
-    ArticleNo: '000063110',
-    ItemName: 'ITALIAN CUT FORMAL BLAZER',
-    Category: 'Blazers',
-    Department: 'Apparel',
-    Section: 'Formalwear',
-    MRP: 5999,
-    imageUrl: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?auto=format&fit=crop&w=600&q=80',
-    status: 'IN STOCK',
-    variants: [
-      { code: '0085100010', article: '000063110', desc: 'FORMAL BLAZER', p1: 'CHARCOAL', p2: '38 (97 CM.)', p3: '2-BUTTON', qty: 2, uom: 'PCS', mrp: 5999 },
-      { code: '0085100021', article: '000063110', desc: 'FORMAL BLAZER', p1: 'CHARCOAL', p2: '40 (1.02 MTR.)', p3: '2-BUTTON', qty: 3, uom: 'PCS', mrp: 5999 },
-      { code: '0085100032', article: '000063110', desc: 'FORMAL BLAZER', p1: 'CHARCOAL', p2: '42 (1.07 MTR.)', p3: '2-BUTTON', qty: 2, uom: 'PCS', mrp: 5999 },
-      { code: '0085100043', article: '000063110', desc: 'FORMAL BLAZER', p1: 'ROYAL NAVY', p2: '40 (1.02 MTR.)', p3: '2-BUTTON', qty: 2, uom: 'PCS', mrp: 5999 },
-      { code: '0085100054', article: '000063110', desc: 'FORMAL BLAZER', p1: 'ROYAL NAVY', p2: '42 (1.07 MTR.)', p3: '2-BUTTON', qty: 1, uom: 'PCS', mrp: 5999 },
-    ]
-  },
-  {
-    ArticleNo: '000064520',
-    ItemName: 'SOLID SUPIMA CREW NECK TEE',
-    Category: 'T-Shirts',
-    Department: 'Apparel',
-    Section: 'Casuals',
-    MRP: 1299,
-    imageUrl: 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?auto=format&fit=crop&w=600&q=80',
-    status: 'IN STOCK',
-    variants: [
-      { code: '0086200111', article: '000064520', desc: 'SUPIMA CREW TEE', p1: 'BLACK', p2: 'M (97 CM.)', p3: 'CREW', qty: 4, uom: 'PCS', mrp: 1299 },
-      { code: '0086200222', article: '000064520', desc: 'SUPIMA CREW TEE', p1: 'BLACK', p2: 'L (1.02 MTR.)', p3: 'CREW', qty: 6, uom: 'PCS', mrp: 1299 },
-      { code: '0086200333', article: '000064520', desc: 'SUPIMA CREW TEE', p1: 'BLACK', p2: 'XL (1.07 MTR.)', p3: 'CREW', qty: 3, uom: 'PCS', mrp: 1299 },
-      { code: '0086200444', article: '000064520', desc: 'SUPIMA CREW TEE', p1: 'WHITE', p2: 'M (97 CM.)', p3: 'CREW', qty: 5, uom: 'PCS', mrp: 1299 },
-      { code: '0086200555', article: '000064520', desc: 'SUPIMA CREW TEE', p1: 'WHITE', p2: 'L (1.02 MTR.)', p3: 'CREW', qty: 4, uom: 'PCS', mrp: 1299 },
-      { code: '0086200666', article: '000064520', desc: 'SUPIMA CREW TEE', p1: 'MAROON', p2: 'L (1.02 MTR.)', p3: 'CREW', qty: 3, uom: 'PCS', mrp: 1299 },
-    ]
-  }
+// Exact baseline data matching WizApp2020 RPD_AVATAR01_NEW_ST_POS report
+const WIZAPP_STOCK_DATA = [
+  // ACCESSORIES
+  { section: 'ACCESSORIES', subSection: 'BACKPACK-EX', obsQty: 5.00, netSlsQty: 0.00, chiQty: 0.00, choQty: 0.00, sellThru: 0.00, cbsQty: 5.00 },
+  { section: 'ACCESSORIES', subSection: 'BELTS-MENS-EX', obsQty: 38.00, netSlsQty: 0.00, chiQty: 0.00, choQty: 0.00, sellThru: 0.00, cbsQty: 38.00 },
+  { section: 'ACCESSORIES', subSection: 'HANKEY-EX', obsQty: 44.00, netSlsQty: 0.00, chiQty: 0.00, choQty: 0.00, sellThru: 0.00, cbsQty: 44.00 },
+  { section: 'ACCESSORIES', subSection: 'SOCKS-EX', obsQty: 100.00, netSlsQty: 0.00, chiQty: 0.00, choQty: 0.00, sellThru: 0.00, cbsQty: 100.00 },
+  { section: 'ACCESSORIES', subSection: 'TIE - EX', obsQty: 23.00, netSlsQty: 0.00, chiQty: 0.00, choQty: 0.00, sellThru: 0.00, cbsQty: 23.00 },
+  { section: 'ACCESSORIES', subSection: 'TIE WITH POCKET SQUARE', obsQty: 19.00, netSlsQty: 0.00, chiQty: 0.00, choQty: 0.00, sellThru: 0.00, cbsQty: 19.00 },
+  { section: 'ACCESSORIES', subSection: 'WALLET - EX', obsQty: 19.00, netSlsQty: 0.00, chiQty: 0.00, choQty: 0.00, sellThru: 0.00, cbsQty: 19.00 },
+
+  // MENSWEAR
+  { section: 'MENSWEAR', subSection: 'CASUAL FULL SL', obsQty: 1162.00, netSlsQty: 0.00, chiQty: 0.00, choQty: 0.00, sellThru: 0.00, cbsQty: 1162.00 },
+  { section: 'MENSWEAR', subSection: 'CASUAL TROUSER', obsQty: 544.00, netSlsQty: 3.00, chiQty: 0.00, choQty: 0.00, sellThru: 0.55, cbsQty: 541.00 },
+  { section: 'MENSWEAR', subSection: 'DENIM', obsQty: 793.00, netSlsQty: 0.00, chiQty: 0.00, choQty: 0.00, sellThru: 0.00, cbsQty: 793.00 },
+  { section: 'MENSWEAR', subSection: 'SHIRTS FULL SL', obsQty: 874.00, netSlsQty: 0.00, chiQty: 0.00, choQty: 0.00, sellThru: 0.00, cbsQty: 874.00 },
+  { section: 'MENSWEAR', subSection: 'TROUSER-FORMAL', obsQty: 631.00, netSlsQty: 0.00, chiQty: 0.00, choQty: 0.00, sellThru: 0.00, cbsQty: 631.00 },
+
+  // MENSWEAR-SM
+  { section: 'MENSWEAR-SM', subSection: 'BARMUDA - EX', obsQty: 19.00, netSlsQty: 0.00, chiQty: 0.00, choQty: 0.00, sellThru: 0.00, cbsQty: 19.00 },
+  { section: 'MENSWEAR-SM', subSection: 'CASUAL HALF SL', obsQty: 212.00, netSlsQty: 0.00, chiQty: 0.00, choQty: 0.00, sellThru: 0.00, cbsQty: 212.00 },
+  { section: 'MENSWEAR-SM', subSection: 'LOWER EX - SM', obsQty: 57.00, netSlsQty: 0.00, chiQty: 0.00, choQty: 0.00, sellThru: 0.00, cbsQty: 57.00 },
+  { section: 'MENSWEAR-SM', subSection: 'SHIRTS HALF SL', obsQty: 7.00, netSlsQty: 0.00, chiQty: 0.00, choQty: 0.00, sellThru: 0.00, cbsQty: 7.00 },
+  { section: 'MENSWEAR-SM', subSection: 'SHORTS-EX', obsQty: 78.00, netSlsQty: 0.00, chiQty: 0.00, choQty: 0.00, sellThru: 0.00, cbsQty: 78.00 },
+  { section: 'MENSWEAR-SM', subSection: 'T SHIRT HALF SL', obsQty: 689.00, netSlsQty: 0.00, chiQty: 0.00, choQty: 0.00, sellThru: 0.00, cbsQty: 689.00 },
+
+  // MENSWEAR-WN
+  { section: 'MENSWEAR-WN', subSection: 'BLAZER - EX', obsQty: 134.00, netSlsQty: 0.00, chiQty: 0.00, choQty: 0.00, sellThru: 0.00, cbsQty: 134.00 },
+  { section: 'MENSWEAR-WN', subSection: 'CORDUROY TROUSER', obsQty: 16.00, netSlsQty: 0.00, chiQty: 0.00, choQty: 0.00, sellThru: 0.00, cbsQty: 16.00 },
+  { section: 'MENSWEAR-WN', subSection: 'JACKET H/S - EX', obsQty: 24.00, netSlsQty: 0.00, chiQty: 0.00, choQty: 0.00, sellThru: 0.00, cbsQty: 24.00 },
+  { section: 'MENSWEAR-WN', subSection: 'LOWER EX', obsQty: 121.00, netSlsQty: 0.00, chiQty: 0.00, choQty: 0.00, sellThru: 0.00, cbsQty: 121.00 },
+  { section: 'MENSWEAR-WN', subSection: 'SUIT TROUSER - EX', obsQty: 45.00, netSlsQty: 0.00, chiQty: 0.00, choQty: 0.00, sellThru: 0.00, cbsQty: 45.00 },
+  { section: 'MENSWEAR-WN', subSection: 'SUIT/BLAZER - EX', obsQty: 43.00, netSlsQty: 0.00, chiQty: 0.00, choQty: 0.00, sellThru: 0.00, cbsQty: 43.00 },
+  { section: 'MENSWEAR-WN', subSection: 'SWEAT SHIRT EX', obsQty: 33.00, netSlsQty: 0.00, chiQty: 0.00, choQty: 0.00, sellThru: 0.00, cbsQty: 33.00 },
+  { section: 'MENSWEAR-WN', subSection: 'T SHIRT FULL SL', obsQty: 106.00, netSlsQty: 0.00, chiQty: 0.00, choQty: 0.00, sellThru: 0.00, cbsQty: 106.00 },
+  { section: 'MENSWEAR-WN', subSection: 'WOOLEN F/S', obsQty: 54.00, netSlsQty: 0.00, chiQty: 0.00, choQty: 0.00, sellThru: 0.00, cbsQty: 54.00 },
+  { section: 'MENSWEAR-WN', subSection: 'WOOLEN H/S', obsQty: 28.00, netSlsQty: 0.00, chiQty: 0.00, choQty: 0.00, sellThru: 0.00, cbsQty: 28.00 },
+
+  // UNDERGARMENTS
+  { section: 'UNDERGARMENTS', subSection: 'UNDER GARMENT-EX', obsQty: 37.00, netSlsQty: 0.00, chiQty: 0.00, choQty: 0.00, sellThru: 0.00, cbsQty: 37.00 },
+  { section: 'UNDERGARMENTS', subSection: 'VEST-EX', obsQty: 35.00, netSlsQty: 0.00, chiQty: 0.00, choQty: 0.00, sellThru: 0.00, cbsQty: 35.00 },
 ];
 
 const InventoryTab = (props) => {
-  const { 
-    deadStock, 
-    inventory: propInventory,
-    searchQuery: globalSearchQuery, 
-    setSearchQuery: setGlobalSearchQuery, 
-    darkMode, 
-    activeOutfitMatch, 
-    setActiveOutfitMatch, 
-    outfitPitch, 
-    isGeneratingOutfit, 
-    handleGenerateOutfitMatch,
-    API_BASE,
-    activeStore
-  } = props;
+  const { darkMode, API_BASE, activeStore } = props;
 
-  const [localSearch, setLocalSearch] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('ALL');
-  const [stockFilter, setStockFilter] = useState('ALL'); // 'ALL' | 'IN_STOCK' | 'LOW_STOCK'
-  const [viewMode, setViewMode] = useState('grouped'); // 'grouped' | 'detailed'
-  const [tableSearch, setTableSearch] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 20;
+  // Selected report type in left tree
+  const [activeReportNode, setActiveReportNode] = useState('CATEGORY_WISE');
+  const [treeExpanded, setTreeExpanded] = useState({ root: true, all: true });
 
-  const [selectedItem, setSelectedItem] = useState(null);
-  const [uploadingArticle, setUploadingArticle] = useState(null);
-  const [isZoomImageOpen, setIsZoomImageOpen] = useState(false);
-  const [masterCatalog, setMasterCatalog] = useState(FALLBACK_INVENTORY);
+  // Data State
+  const [stockRows, setStockRows] = useState(WIZAPP_STOCK_DATA);
   const [loading, setLoading] = useState(false);
-  const [variantLoading, setVariantLoading] = useState(false);
+  const [searchFilter, setSearchFilter] = useState('');
+  const [selectedSubSection, setSelectedSubSection] = useState(null);
+  const [drilldownArticles, setDrilldownArticles] = useState([]);
+  const [loadingDrilldown, setLoadingDrilldown] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false);
+  const [zoomPercent, setZoomPercent] = useState(100);
 
-  const activeStoreId = (!activeStore || activeStore === 'ALL' || activeStore === 'STORE_01') ? 'DEMO_STORE_001' : activeStore;
+  const storeId = (!activeStore || activeStore === 'ALL' || activeStore === 'STORE_01') ? 'DEMO_STORE_001' : activeStore;
 
-  // 1. Fetch live stock from Firestore and / or local backend
+  // Format number to 2 decimal places with commas (e.g., 1,162.00)
+  const formatQty = (val) => {
+    const num = Number(val || 0);
+    return num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  // 1. Fetch live report data from backend API or Firestore
   useEffect(() => {
-    let isSubscribed = true;
-
-    const loadData = async () => {
+    const fetchCategoryReport = async () => {
       setLoading(true);
       try {
-        // A. Priority 1: Check Firestore real-time doc
-        if (db) {
-          try {
-            const invRef = doc(db, 'stores', activeStoreId, 'data', 'inventory');
-            const invSnap = await getDoc(invRef);
-            if (invSnap.exists() && invSnap.data()?.items?.length > 0) {
-              const rawItems = invSnap.data().items;
-              const mapped = mapRawItemsToCatalog(rawItems);
-              if (isSubscribed && mapped.length > 0) {
-                setMasterCatalog(mapped);
-                if (!selectedItem) setSelectedItem(mapped[0]);
-                setLoading(false);
-                return;
-              }
-            }
-          } catch (e1) {
-            console.warn('[InventoryTab] Firestore read note:', e1);
-          }
-        }
-
-        // B. Priority 2: Use passed props (deadStock) if available
-        if (Array.isArray(deadStock) && deadStock.length > 0) {
-          const mapped = mapDeadStockToCatalog(deadStock);
-          if (isSubscribed && mapped.length > 0) {
-            setMasterCatalog(mapped);
-            if (!selectedItem) setSelectedItem(mapped[0]);
-            setLoading(false);
-            return;
-          }
-        }
-
-        // C. Priority 3: Try API_BASE endpoint
         if (API_BASE) {
           try {
-            const res = await axios.get(`${API_BASE}/api/inventory/dead-stock`, { timeout: 4000 });
-            if (Array.isArray(res.data) && res.data.length > 0) {
-              const mapped = mapDeadStockToCatalog(res.data);
-              if (isSubscribed && mapped.length > 0) {
-                setMasterCatalog(mapped);
-                if (!selectedItem) setSelectedItem(mapped[0]);
-                setLoading(false);
-                return;
-              }
+            const res = await axios.get(`${API_BASE}/api/inventory/category-report`, { timeout: 4000 });
+            if (res.data?.success && Array.isArray(res.data.items) && res.data.items.length > 0) {
+              const mapped = res.data.items.map(r => ({
+                section: r.sectionName,
+                subSection: r.subSectionName,
+                obsQty: Number(r.obsQty || 0),
+                netSlsQty: Number(r.netSlsQty || 0),
+                chiQty: Number(r.chiQty || 0),
+                choQty: Number(r.choQty || 0),
+                sellThru: Number(r.sellThruPct || 0),
+                cbsQty: Number(r.cbsQty || 0)
+              }));
+              setStockRows(mapped);
+              setLoading(false);
+              return;
             }
-          } catch (apiErr) {
-            // fallback
-          }
+          } catch (e1) {}
         }
 
-        // D. Fallback default
-        if (isSubscribed) {
-          setMasterCatalog(FALLBACK_INVENTORY);
-          if (!selectedItem) setSelectedItem(FALLBACK_INVENTORY[0]);
+        // Firestore fallback
+        if (db) {
+          try {
+            const docRef = doc(db, 'stores', storeId, 'data', 'inventory_category-report');
+            const snap = await getDoc(docRef);
+            if (snap.exists() && snap.data()?.items?.length > 0) {
+              const mapped = snap.data().items.map(r => ({
+                section: r.sectionName || r.section,
+                subSection: r.subSectionName || r.subSection,
+                obsQty: Number(r.obsQty || 0),
+                netSlsQty: Number(r.netSlsQty || 0),
+                chiQty: Number(r.chiQty || 0),
+                choQty: Number(r.choQty || 0),
+                sellThru: Number(r.sellThruPct || r.sellThru || 0),
+                cbsQty: Number(r.cbsQty || 0)
+              }));
+              setStockRows(mapped);
+              setLoading(false);
+              return;
+            }
+          } catch (fsErr) {}
         }
       } catch (err) {
-        console.warn('[InventoryTab] Load error:', err);
+        console.warn('Failed to load live report:', err);
       } finally {
-        if (isSubscribed) setLoading(false);
+        setLoading(false);
       }
     };
 
-    loadData();
+    fetchCategoryReport();
 
-    // Setup Firestore listener for instant changes
+    // Setup listener
     let unsubscribe = null;
     if (db) {
       try {
-        const invRef = doc(db, 'stores', activeStoreId, 'data', 'inventory');
-        unsubscribe = onSnapshot(invRef, (snap) => {
+        const docRef = doc(db, 'stores', storeId, 'data', 'inventory_category-report');
+        unsubscribe = onSnapshot(docRef, (snap) => {
           if (snap.exists() && snap.data()?.items?.length > 0) {
-            const rawItems = snap.data().items;
-            const mapped = mapRawItemsToCatalog(rawItems);
-            if (mapped.length > 0) {
-              setMasterCatalog(mapped);
-              setSelectedItem(prev => {
-                if (!prev) return mapped[0];
-                const updated = mapped.find(m => m.ArticleNo === prev.ArticleNo);
-                return updated || prev;
-              });
-            }
+            const mapped = snap.data().items.map(r => ({
+              section: r.sectionName || r.section,
+              subSection: r.subSectionName || r.subSection,
+              obsQty: Number(r.obsQty || 0),
+              netSlsQty: Number(r.netSlsQty || 0),
+              chiQty: Number(r.chiQty || 0),
+              choQty: Number(r.choQty || 0),
+              sellThru: Number(r.sellThruPct || r.sellThru || 0),
+              cbsQty: Number(r.cbsQty || 0)
+            }));
+            setStockRows(mapped);
           }
-        }, (err) => console.warn('[InventoryTab] Snapshot note:', err));
+        });
       } catch (e) {}
     }
 
     return () => {
-      isSubscribed = false;
       if (unsubscribe) unsubscribe();
     };
-  }, [API_BASE, activeStoreId]);
+  }, [API_BASE, storeId]);
 
-  // Set default selected item
-  useEffect(() => {
-    if (!selectedItem && masterCatalog.length > 0) {
-      setSelectedItem(masterCatalog[0]);
-    }
-  }, [masterCatalog, selectedItem]);
+  // Group items by Section Name
+  const groupedSections = useMemo(() => {
+    const q = searchFilter.toLowerCase().trim();
+    const filtered = stockRows.filter(r => 
+      !q || 
+      r.section.toLowerCase().includes(q) || 
+      r.subSection.toLowerCase().includes(q)
+    );
 
-  // Synchronize search query with global header search if provided
-  useEffect(() => {
-    if (globalSearchQuery !== undefined && globalSearchQuery !== localSearch) {
-      setLocalSearch(globalSearchQuery);
-    }
-  }, [globalSearchQuery]);
-
-  // Fetch or generate rich variants when an article is selected
-  const handleSelectArticle = async (article) => {
-    setSelectedItem(article);
-    if (activeOutfitMatch !== article.ArticleNo && setActiveOutfitMatch) {
-      setActiveOutfitMatch(null);
-    }
-
-    // If variants are already detailed (> 0 variants with code/barcode), we're good
-    if (article.variants && article.variants.length > 0 && article.variants[0].code) {
-      return;
-    }
-
-    // Try fetching live SQL quick-scan for live barcodes & sizes
-    if (API_BASE) {
-      setVariantLoading(true);
-      try {
-        const res = await axios.get(`${API_BASE}/api/inventory/quick-scan?q=${encodeURIComponent(article.ArticleNo)}`, { timeout: 3500 });
-        if (res.data?.success && Array.isArray(res.data.variants) && res.data.variants.length > 0) {
-          const freshVariants = res.data.variants.map(v => ({
-            code: v.barcode || v.product_Code || '00' + Math.floor(Math.random() * 90000000),
-            article: article.ArticleNo,
-            desc: v.itemName || article.ItemName,
-            p1: (v.color || 'STANDARD').toUpperCase(),
-            p2: (v.size || 'STD').toUpperCase(),
-            p3: 'REGULAR',
-            qty: Math.max(1, Number(v.stock) || 1),
-            uom: 'PCS',
-            mrp: Number(v.mrp) || article.MRP || 2999
-          }));
-
-          const updated = { ...article, variants: freshVariants };
-          setSelectedItem(updated);
-          setMasterCatalog(prev => prev.map(item => item.ArticleNo === article.ArticleNo ? updated : item));
-        }
-      } catch (e) {
-        // silent fallback
-      } finally {
-        setVariantLoading(false);
-      }
-    }
-  };
-
-  // Helper: map raw inventory items to catalog structure
-  function mapRawItemsToCatalog(rawItems) {
-    const grouped = {};
-    rawItems.forEach(item => {
-      const art = item.ArticleNo || item.articleNo || 'ART_' + (item.Barcode || 'STD');
-      if (!grouped[art]) {
-        grouped[art] = {
-          ArticleNo: art,
-          ItemName: item.ItemName || item.Description || item.desc || 'Apparel Item',
-          Category: item.Category || item.section_name || 'Apparel',
-          Department: item.Department || 'Apparel',
-          Section: item.Section || item.section_name || 'Store Stock',
-          MRP: Number(item.MRP || item.mrp || 2499),
-          imageUrl: item.imageUrl || null,
-          status: 'IN STOCK',
-          variants: []
+    const groups = {};
+    filtered.forEach(row => {
+      if (!groups[row.section]) {
+        groups[row.section] = {
+          sectionName: row.section,
+          items: [],
+          totalObs: 0,
+          totalNetSls: 0,
+          totalChi: 0,
+          totalCho: 0,
+          totalCbs: 0
         };
       }
-
-      grouped[art].variants.push({
-        code: item.Barcode || item.product_Code || item.code || '00' + Math.floor(Math.random() * 90000000),
-        article: art,
-        desc: item.ItemName || item.Description || grouped[art].ItemName,
-        p1: (item.Color || item.Para1 || item.p1 || 'STANDARD').toUpperCase(),
-        p2: (item.Size || item.Para2 || item.p2 || 'STD').toUpperCase(),
-        p3: (item.Para3 || item.Fit || item.p3 || 'NA').toUpperCase(),
-        qty: Math.max(1, Number(item.Qty || item.quantity || item.qty || 1)),
-        uom: item.UOM || item.uom || 'PCS',
-        mrp: Number(item.MRP || item.mrp || grouped[art].MRP)
-      });
+      groups[row.section].items.push(row);
+      groups[row.section].totalObs += row.obsQty;
+      groups[row.section].totalNetSls += row.netSlsQty;
+      groups[row.section].totalChi += row.chiQty;
+      groups[row.section].totalCho += row.choQty;
+      groups[row.section].totalCbs += row.cbsQty;
     });
 
-    return Object.values(grouped);
-  }
-
-  // Helper: map deadStock array to catalog structure
-  function mapDeadStockToCatalog(list) {
-    return list.map((item, idx) => {
-      const art = item.ArticleNo || '0000' + (60000 + idx);
-      const skuCount = Number(item.SkuCount) || 6;
-      const mrp = Number(item.MRP) || 2999;
-      
-      // Synthesize realistic variants if empty
-      const colors = ['BEIGE', 'NAVY', 'BLACK', 'OLIVE'];
-      const sizes = ['38 (97 CM.)', '40 (1.02 MTR.)', '42 (1.07 MTR.)', '44 (1.12 MTR.)'];
-      const variants = [];
-      for (let i = 0; i < Math.min(skuCount, 8); i++) {
-        variants.push({
-          code: '0081' + Math.floor(100000 + Math.random() * 900000),
-          article: art,
-          desc: item.ItemName || 'CASUAL APPAREL',
-          p1: colors[i % colors.length],
-          p2: sizes[Math.floor(i / colors.length) % sizes.length],
-          p3: 'REGULAR',
-          qty: 1 + (i % 3),
-          uom: 'PCS',
-          mrp: mrp
-        });
-      }
-
-      return {
-        ArticleNo: art,
-        ItemName: item.ItemName || 'CASUAL FULL SL',
-        Category: item.Category || (item.ItemName?.toLowerCase().includes('shirt') ? 'Shirts' : 'Apparel'),
-        Department: 'Apparel',
-        Section: 'Ready Stock',
-        MRP: mrp,
-        imageUrl: item.imageUrl || null,
-        status: idx > 15 ? 'LOW STOCK' : 'IN STOCK',
-        variants
-      };
+    return Object.values(groups).map(g => {
+      const sellThru = g.totalObs > 0 ? (g.totalNetSls * 100) / g.totalObs : 0;
+      return { ...g, totalSellThru: sellThru };
     });
-  }
+  }, [stockRows, searchFilter]);
 
-  // Handle Image Upload
-  const handleImageUpload = async (e, articleNo) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  // Overall Gross Totals
+  const grossTotal = useMemo(() => {
+    let obs = 0, sls = 0, chi = 0, cho = 0, cbs = 0;
+    groupedSections.forEach(g => {
+      obs += g.totalObs;
+      sls += g.totalNetSls;
+      chi += g.totalChi;
+      cho += g.totalCho;
+      cbs += g.totalCbs;
+    });
+    const sellThru = obs > 0 ? (sls * 100) / obs : 0;
+    return { obs, sls, chi, cho, cbs, sellThru };
+  }, [groupedSections]);
 
-    setUploadingArticle(articleNo);
+  // Drilldown into articles when a sub-section is clicked
+  const handleSubSectionClick = async (row) => {
+    setSelectedSubSection(row);
+    setLoadingDrilldown(true);
+    setDrilldownArticles([]);
+
     try {
-      const storageRef = ref(storage, `inventory/${articleNo}_${Date.now()}_${file.name}`);
-      await uploadBytes(storageRef, file);
-      const downloadURL = await getDownloadURL(storageRef);
-
-      if (db) {
-        const docRef = doc(db, 'stores', activeStoreId, 'data', 'inventory');
-        const snap = await getDoc(docRef);
-        if (snap.exists()) {
-          const data = snap.data();
-          const items = data.items || [];
-          const updatedItems = items.map(i => {
-            if (i.ArticleNo === articleNo || i.articleNo === articleNo) {
-              return { ...i, imageUrl: downloadURL };
-            }
-            return i;
-          });
-          await updateDoc(docRef, { items: updatedItems });
+      if (API_BASE) {
+        const res = await axios.get(`${API_BASE}/api/inventory/quick-scan?q=${encodeURIComponent(row.subSection)}`, { timeout: 3500 });
+        if (res.data?.success && Array.isArray(res.data.variants)) {
+          setDrilldownArticles(res.data.variants);
+          setLoadingDrilldown(false);
+          return;
         }
       }
-
-      setSelectedItem(prev => ({ ...prev, imageUrl: downloadURL }));
-      setMasterCatalog(prev => prev.map(i => i.ArticleNo === articleNo ? { ...i, imageUrl: downloadURL } : i));
-      alert(`Image successfully attached to Article ${articleNo}!`);
-    } catch (err) {
-      console.error('Upload failed', err);
-      alert('Upload failed. Please check internet connection.');
+      // Demo fallback drilldown items matching Cobb stock
+      const sampleSizes = ['38', '40', '42', '44', '30', '32', '34', '36'];
+      const sampleColors = ['BEIGE', 'NAVY', 'GREEN', 'BLACK', 'WHITE', 'PEACH', 'DARK BLUE'];
+      const mockVariants = Array.from({ length: Math.min(10, Math.ceil(row.cbsQty / 4)) }).map((_, idx) => ({
+        barcode: '0081' + Math.floor(100000 + Math.random() * 900000),
+        articleNo: '0000' + (60000 + (idx % 12)),
+        itemName: row.subSection,
+        color: sampleColors[idx % sampleColors.length],
+        size: sampleSizes[idx % sampleSizes.length],
+        stock: Math.max(1, Math.round(row.cbsQty / 8)),
+        mrp: row.subSection.includes('BLAZER') ? 5999 : row.subSection.includes('TROUSER') ? 2499 : row.subSection.includes('DENIM') ? 3199 : 2999
+      }));
+      setDrilldownArticles(mockVariants);
+    } catch (e) {
+      console.warn('Drilldown error:', e);
     } finally {
-      setUploadingArticle(null);
+      setLoadingDrilldown(false);
     }
   };
 
-  // Export CSV of the active article's variations
+  // Export CSV
   const handleExportCSV = () => {
-    if (!selectedItem || !selectedItem.variants?.length) return;
-    const headers = ['Item Code', 'Article No', 'Description', 'Color', 'Size', 'Fit', 'Qty', 'UOM', 'MRP', 'Stock Value'];
-    const rows = selectedItem.variants.map(v => [
-      v.code,
-      v.article,
-      `"${v.desc}"`,
-      v.p1,
-      v.p2,
-      v.p3,
-      v.qty,
-      v.uom,
-      v.mrp,
-      v.qty * v.mrp
+    const headers = ['Section name', 'Sub Section name', 'OBS Qty', 'Net SLS Qty', 'CHI Qty', 'CHO Qty', 'Sell Thru %', 'CBS Qty'];
+    const rows = [];
+    groupedSections.forEach(g => {
+      g.items.forEach(item => {
+        rows.push([
+          `"${item.section}"`,
+          `"${item.subSection}"`,
+          item.obsQty.toFixed(2),
+          item.netSlsQty.toFixed(2),
+          item.chiQty.toFixed(2),
+          item.choQty.toFixed(2),
+          item.sellThru.toFixed(2),
+          item.cbsQty.toFixed(2),
+        ]);
+      });
+      // Subtotal
+      rows.push([
+        `"Total ${g.sectionName}"`,
+        `""`,
+        g.totalObs.toFixed(2),
+        g.totalNetSls.toFixed(2),
+        g.totalChi.toFixed(2),
+        g.totalCho.toFixed(2),
+        g.totalSellThru.toFixed(2),
+        g.totalCbs.toFixed(2)
+      ]);
+    });
+    // Gross Total
+    rows.push([
+      `"Gross Total"`,
+      `""`,
+      grossTotal.obs.toFixed(2),
+      grossTotal.sls.toFixed(2),
+      grossTotal.chi.toFixed(2),
+      grossTotal.cho.toFixed(2),
+      grossTotal.sellThru.toFixed(2),
+      grossTotal.cbs.toFixed(2)
     ]);
 
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Cobb_Inventory_${selectedItem.ArticleNo}.csv`);
+    link.setAttribute('download', `WizApp_Inventory_Category_Report_${new Date().toISOString().slice(0, 10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
-  // Print Barcode Slips
-  const handlePrintBarcode = () => {
-    if (!selectedItem) return;
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-
-    const variants = selectedItem.variants || [];
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Barcodes - ${selectedItem.ArticleNo}</title>
-          <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 20px; color: #111; }
-            h2 { margin-bottom: 4px; }
-            .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-top: 16px; }
-            .card { border: 1.5px dashed #333; padding: 12px; border-radius: 8px; page-break-inside: avoid; }
-            .barcode { font-family: monospace; font-size: 16px; font-weight: bold; letter-spacing: 2px; }
-            .row { display: flex; justify-content: space-between; margin-top: 4px; font-size: 12px; }
-            @media print { .no-print { display: none; } }
-          </style>
-        </head>
-        <body>
-          <div class="no-print" style="margin-bottom: 20px;">
-            <button onclick="window.print()" style="padding: 8px 16px; background: #2563eb; color: #fff; border: none; border-radius: 6px; font-weight: bold; cursor: pointer;">Print Now</button>
-          </div>
-          <h2>COBB EXCLUSIVE STORE</h2>
-          <p style="margin: 0; font-size: 13px; color: #555;">Article: ${selectedItem.ArticleNo} • ${selectedItem.ItemName}</p>
-          <div class="grid">
-            ${variants.map(v => `
-              <div class="card">
-                <div style="font-size: 10px; font-weight: bold; color: #666; text-transform: uppercase;">COBB APPAREL</div>
-                <div style="font-weight: bold; font-size: 13px; margin-top: 2px;">${v.desc}</div>
-                <div class="barcode" style="margin: 8px 0;">*${v.code}*</div>
-                <div class="row">
-                  <span>Color: <b>${v.p1}</b></span>
-                  <span>Size: <b>${v.p2}</b></span>
-                </div>
-                <div class="row" style="margin-top: 6px; border-top: 1px solid #ddd; padding-top: 4px;">
-                  <span>QTY: <b>${v.qty} PCS</b></span>
-                  <span style="font-weight: bold; font-size: 14px;">MRP ₹${v.mrp}</span>
-                </div>
-              </div>
-            `).join('')}
-          </div>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
+  // Print Report
+  const handlePrint = () => {
+    window.print();
   };
 
-  // Filter Catalog
-  const categoriesList = useMemo(() => {
-    const set = new Set(masterCatalog.map(i => i.Category).filter(Boolean));
-    return ['ALL', ...Array.from(set)];
-  }, [masterCatalog]);
-
-  const filteredCatalog = useMemo(() => {
-    const q = (localSearch || '').toLowerCase().trim();
-    return masterCatalog.filter(item => {
-      const matchSearch = !q || 
-        item.ArticleNo?.toLowerCase().includes(q) || 
-        item.ItemName?.toLowerCase().includes(q) ||
-        item.Category?.toLowerCase().includes(q) ||
-        item.variants?.some(v => v.code?.toLowerCase().includes(q) || v.p1?.toLowerCase().includes(q) || v.p2?.toLowerCase().includes(q));
-
-      const matchCat = selectedCategory === 'ALL' || item.Category === selectedCategory;
-
-      let matchStock = true;
-      const totalUnits = (item.variants || []).reduce((sum, v) => sum + (v.qty || 1), 0);
-      if (stockFilter === 'IN_STOCK') matchStock = totalUnits > 3;
-      if (stockFilter === 'LOW_STOCK') matchStock = totalUnits <= 3;
-
-      return matchSearch && matchCat && matchStock;
-    });
-  }, [masterCatalog, localSearch, selectedCategory, stockFilter]);
-
-  // Overall Store Metrics
-  const storeSummary = useMemo(() => {
-    let totalPieces = 0;
-    let totalValue = 0;
-    masterCatalog.forEach(item => {
-      const variants = item.variants || [];
-      if (variants.length > 0) {
-        variants.forEach(v => {
-          totalPieces += (v.qty || 1);
-          totalValue += (v.qty || 1) * (v.mrp || item.MRP || 2999);
-        });
-      } else {
-        totalPieces += (item.SkuCount || 1);
-        totalValue += (item.SkuCount || 1) * (item.MRP || 2999);
-      }
-    });
-
-    return {
-      totalStyles: masterCatalog.length,
-      totalPieces,
-      totalValue
-    };
-  }, [masterCatalog]);
-
-  // Active Item Metrics
-  const activeDispatchMetrics = useMemo(() => {
-    if (!selectedItem) return { totalPcs: 0, totalVal: 0, avgMrp: 0, variantsCount: 0 };
-    const variants = selectedItem.variants || [];
-    let totalPcs = 0;
-    let totalVal = 0;
-    variants.forEach(v => {
-      const q = v.qty || 1;
-      totalPcs += q;
-      totalVal += q * (v.mrp || selectedItem.MRP || 2999);
-    });
-
-    return {
-      totalPcs: totalPcs || selectedItem.SkuCount || 1,
-      totalVal: totalVal || ((selectedItem.SkuCount || 1) * (selectedItem.MRP || 2999)),
-      avgMrp: totalPcs > 0 ? Math.round(totalVal / totalPcs) : (selectedItem.MRP || 2999),
-      variantsCount: variants.length
-    };
-  }, [selectedItem]);
-
-  // Filter Table Variants (Grouped vs Detailed)
-  const filteredVariants = useMemo(() => {
-    if (!selectedItem || !selectedItem.variants) return [];
-    const q = tableSearch.toLowerCase().trim();
-    if (!q) return selectedItem.variants;
-    return selectedItem.variants.filter(v => 
-      v.code?.toLowerCase().includes(q) ||
-      v.p1?.toLowerCase().includes(q) ||
-      v.p2?.toLowerCase().includes(q) ||
-      v.desc?.toLowerCase().includes(q)
-    );
-  }, [selectedItem, tableSearch]);
-
-  const totalPages = Math.max(1, Math.ceil(filteredCatalog.length / pageSize));
-  const paginatedCatalog = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return filteredCatalog.slice(start, start + pageSize);
-  }, [filteredCatalog, currentPage, pageSize]);
-
   return (
-    <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 h-[calc(100vh-140px)] animate-in fade-in slide-in-from-bottom-4 duration-500 w-full max-w-[1600px] mx-auto">
-      
-      {/* ============================================================== */}
-      {/* LAYER 2: Master List (Left Pane - Stock Directory)             */}
-      {/* ============================================================== */}
-      <div className={`w-full lg:w-[410px] shrink-0 flex flex-col rounded-2xl border shadow-sm overflow-hidden ${darkMode ? 'bg-[#0f1115] border-[#1c2436]' : 'bg-white border-slate-200'}`}>
-        
-        {/* Header / Inward Velocity Style Banner */}
-        <div className={`p-5 border-b ${darkMode ? 'border-[#1c2436]' : 'border-slate-100'}`}>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white shadow-lg shadow-blue-600/30">
-                <Package className="w-5 h-5" />
-              </div>
-              <div>
-                <h2 className={`text-lg font-black tracking-tight leading-tight ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-                  Inventory Explorer
-                </h2>
-                <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Store Stock Dossier</p>
-              </div>
-            </div>
+    <div className={`w-full h-[calc(100vh-130px)] flex flex-col font-sans transition-all duration-300 rounded-xl overflow-hidden border shadow-xl ${
+      darkMode ? 'bg-[#0f1117] text-slate-100 border-slate-800' : 'bg-slate-100 text-slate-900 border-slate-300'
+    } ${isFullScreen ? 'fixed inset-0 z-50 h-screen rounded-none' : ''}`}>
 
-            {loading && (
-              <RefreshCw className="w-4 h-4 text-blue-500 animate-spin" />
+      {/* ============================================================== */}
+      {/* 1. WIZAPP WINDOW TITLE BAR                                      */}
+      {/* ============================================================== */}
+      <div className={`px-3 py-1.5 border-b flex items-center justify-between text-xs select-none ${
+        darkMode ? 'bg-[#181d2a] border-slate-800 text-slate-300' : 'bg-[#e2e8f0] border-slate-300 text-slate-800 font-medium'
+      }`}>
+        <div className="flex items-center gap-2 truncate">
+          <div className="w-4 h-4 rounded bg-blue-600 flex items-center justify-center text-white text-[10px] font-black">
+            W
+          </div>
+          <span className="font-mono text-[11px] truncate">
+            WizApp2020[63][63122240687] [ LOC : ST ST-COBB APPARELS PVT LTD-PUNDRI ] - [ RPD_AVATAR01_NEW_ST_POS ] [ User : BILLING_COBB ][ BIN : DEFAULT BIN ][06-10-2026]
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <button 
+            onClick={() => setIsFullScreen(!isFullScreen)} 
+            className="p-1 hover:bg-black/10 rounded transition" 
+            title={isFullScreen ? "Exit Fullscreen" : "Fullscreen"}
+          >
+            {isFullScreen ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+          </button>
+        </div>
+      </div>
+
+      {/* ============================================================== */}
+      {/* 2. WIZAPP REPORT ACTIONS TOOLBAR                                */}
+      {/* ============================================================== */}
+      <div className={`px-3 py-1 border-b flex flex-wrap items-center justify-between gap-2 text-xs ${
+        darkMode ? 'bg-[#131722] border-slate-800' : 'bg-[#f1f5f9] border-slate-300'
+      }`}>
+        {/* Left Action Buttons */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <button 
+            onClick={() => setIsFullScreen(!isFullScreen)}
+            className={`px-2.5 py-1 rounded flex items-center gap-1 text-[11px] font-semibold border transition ${
+              darkMode ? 'bg-slate-800 border-slate-700 hover:bg-slate-700' : 'bg-white border-slate-300 hover:bg-slate-50'
+            }`}
+          >
+            <Maximize2 className="w-3 h-3 text-blue-500" /> Full Page
+          </button>
+
+          <div className="relative flex items-center">
+            <Search className="w-3 h-3 text-slate-400 absolute left-2 pointer-events-none" />
+            <input 
+              type="text" 
+              placeholder="Find in report..." 
+              value={searchFilter}
+              onChange={(e) => setSearchFilter(e.target.value)}
+              className={`pl-6 pr-2 py-0.5 text-[11px] rounded border w-36 focus:w-48 transition-all focus:outline-none focus:border-blue-500 ${
+                darkMode ? 'bg-slate-900 border-slate-700 text-white' : 'bg-white border-slate-300 text-slate-900'
+              }`}
+            />
+            {searchFilter && (
+              <button onClick={() => setSearchFilter('')} className="absolute right-1 text-slate-400 hover:text-slate-200">
+                <X className="w-3 h-3" />
+              </button>
             )}
           </div>
 
-          {/* Master Velocity Metrics Box (Identical to Goods in Transit) */}
-          <div className={`rounded-xl p-3 flex justify-between ${darkMode ? 'bg-slate-900/60 border border-slate-800' : 'bg-slate-50 border border-slate-200'}`}>
-            <div>
-              <p className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Store Holdings</p>
-              <p className={`text-lg font-black ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-                {storeSummary.totalPieces.toLocaleString('en-IN')} <span className="text-xs text-slate-500 font-semibold">Pcs</span>
-              </p>
-            </div>
-            <div className="text-right">
-              <p className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Retail Value</p>
-              <p className={`text-lg font-black ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-                ₹{storeSummary.totalValue.toLocaleString('en-IN')}
-              </p>
-            </div>
+          <button 
+            onClick={() => setSearchFilter('')}
+            className={`px-2 py-1 rounded text-[11px] font-semibold border transition ${
+              darkMode ? 'bg-slate-800 border-slate-700 hover:bg-slate-700' : 'bg-white border-slate-300 hover:bg-slate-50'
+            }`}
+          >
+            Rebuild Report Tree
+          </button>
+
+          <button 
+            onClick={handleExportCSV}
+            className={`px-2 py-1 rounded flex items-center gap-1 text-[11px] font-semibold border transition ${
+              darkMode ? 'bg-slate-800 border-slate-700 hover:bg-slate-700 text-emerald-400' : 'bg-white border-slate-300 hover:bg-slate-50 text-emerald-700'
+            }`}
+          >
+            <Download className="w-3 h-3" /> Export CSV
+          </button>
+
+          <button 
+            onClick={handlePrint}
+            className={`px-2 py-1 rounded flex items-center gap-1 text-[11px] font-semibold border transition ${
+              darkMode ? 'bg-slate-800 border-slate-700 hover:bg-slate-700 text-blue-400' : 'bg-white border-slate-300 hover:bg-slate-50 text-blue-700'
+            }`}
+          >
+            <Printer className="w-3 h-3" /> Print
+          </button>
+        </div>
+
+        {/* Right Pagination / Zoom Controls */}
+        <div className="flex items-center gap-2 text-[11px]">
+          <span className="font-mono text-slate-500">|&lt; &lt; 1 of 1 &gt; &gt;|</span>
+          
+          <select 
+            value={zoomPercent} 
+            onChange={(e) => setZoomPercent(Number(e.target.value))}
+            className={`px-1.5 py-0.5 rounded border text-[11px] font-semibold ${
+              darkMode ? 'bg-slate-900 border-slate-700' : 'bg-white border-slate-300'
+            }`}
+          >
+            <option value={75}>75%</option>
+            <option value={100}>100%</option>
+            <option value={125}>125%</option>
+            <option value={150}>150%</option>
+          </select>
+        </div>
+      </div>
+
+      {/* ============================================================== */}
+      {/* 3. MAIN WORKSPACE (LEFT TREE PANE + RIGHT REPORT SHEET)        */}
+      {/* ============================================================== */}
+      <div className="flex-1 flex overflow-hidden">
+        
+        {/* ------------------------------------------------------------ */}
+        {/* LEFT TREE PANE: [List of Reports Generated]                  */}
+        {/* ------------------------------------------------------------ */}
+        <div className={`w-64 sm:w-72 border-r shrink-0 flex flex-col select-none ${
+          darkMode ? 'bg-[#10131d] border-slate-800 text-slate-300' : 'bg-[#f8fafc] border-slate-300 text-slate-800'
+        }`}>
+          <div className={`px-3 py-1.5 border-b font-mono text-[11px] font-bold ${
+            darkMode ? 'bg-[#181d2a] border-slate-800 text-slate-400' : 'bg-slate-200 border-slate-300 text-slate-700'
+          }`}>
+            [List of Reports Generated]
           </div>
 
-          {/* Search Box */}
-          <div className="relative mt-3">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-            <input
-              type="text"
-              placeholder="Search Article, SKU, Category..."
-              value={localSearch}
-              onChange={(e) => {
-                setLocalSearch(e.target.value);
-                if (setGlobalSearchQuery) setGlobalSearchQuery(e.target.value);
-                setCurrentPage(1);
-              }}
-              className={`w-full pl-9 pr-8 py-2 border rounded-xl text-sm focus:outline-none focus:border-blue-500 shadow-sm transition-colors ${darkMode ? 'bg-[#121829] border-[#232e47] text-white placeholder-slate-500' : 'bg-white border-slate-200 text-slate-900'}`}
-            />
-            {localSearch && (
+          <div className="flex-1 overflow-y-auto p-2 font-mono text-xs space-y-1">
+            {/* Root: Dynamic Stock/Inventory Reports */}
+            <div>
+              <div 
+                onClick={() => setTreeExpanded(t => ({ ...t, root: !t.root }))}
+                className="flex items-center gap-1.5 py-1 px-1.5 rounded cursor-pointer hover:bg-blue-500/10 font-bold text-slate-400"
+              >
+                {treeExpanded.root ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                <FolderOpen className="w-3.5 h-3.5 text-amber-500" />
+                <span className={darkMode ? 'text-slate-200' : 'text-slate-900'}>Dynamic Stock/Inventory Reports</span>
+              </div>
+
+              {/* Child: ALL */}
+              {treeExpanded.root && (
+                <div className="pl-4 mt-1 space-y-1 border-l border-slate-700/30 ml-2">
+                  <div 
+                    onClick={() => setTreeExpanded(t => ({ ...t, all: !t.all }))}
+                    className="flex items-center gap-1.5 py-0.5 px-1.5 rounded cursor-pointer hover:bg-blue-500/10 text-slate-400"
+                  >
+                    {treeExpanded.all ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                    <Folder className="w-3.5 h-3.5 text-amber-400" />
+                    <span className={darkMode ? 'text-slate-300' : 'text-slate-800'}>ALL</span>
+                  </div>
+
+                  {/* Leaf 1: CATEGORY WISE REPORT */}
+                  {treeExpanded.all && (
+                    <div className="pl-4 space-y-0.5 border-l border-slate-700/30 ml-2">
+                      <button 
+                        onClick={() => { setActiveReportNode('CATEGORY_WISE'); setSelectedSubSection(null); }}
+                        className={`w-full text-left flex items-center gap-2 py-1 px-2 rounded text-[11px] font-bold transition ${
+                          activeReportNode === 'CATEGORY_WISE'
+                            ? 'bg-blue-600 text-white shadow-sm'
+                            : darkMode ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-200 text-slate-700'
+                        }`}
+                      >
+                        <FileText className="w-3 h-3" />
+                        <span>CATAGRY WISE REPORT</span>
+                      </button>
+
+                      {/* Leaf 2: SET WISE REPORT */}
+                      <button 
+                        onClick={() => { setActiveReportNode('SET_WISE'); }}
+                        className={`w-full text-left flex items-center gap-2 py-1 px-2 rounded text-[11px] font-bold transition ${
+                          activeReportNode === 'SET_WISE'
+                            ? 'bg-blue-600 text-white shadow-sm'
+                            : darkMode ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-200 text-slate-700'
+                        }`}
+                      >
+                        <FileText className="w-3 h-3" />
+                        <span>SET WISE REPORT</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Quick Section Shortcuts */}
+            <div className="pt-4 border-t border-slate-700/20 mt-4">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 px-2">Sections Filter</span>
+              <div className="mt-1 space-y-0.5">
+                {groupedSections.map(g => (
+                  <button
+                    key={g.sectionName}
+                    onClick={() => setSearchFilter(g.sectionName === searchFilter ? '' : g.sectionName)}
+                    className={`w-full text-left px-2 py-1 rounded text-[11px] flex items-center justify-between transition ${
+                      searchFilter === g.sectionName 
+                        ? 'bg-blue-500/20 text-blue-400 font-bold border border-blue-500/30' 
+                        : darkMode ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-slate-200 text-slate-600'
+                    }`}
+                  >
+                    <span>{g.sectionName}</span>
+                    <span className="text-[10px] font-mono font-bold text-emerald-500">{formatQty(g.totalCbs)}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ------------------------------------------------------------ */}
+        {/* RIGHT MAIN SHEET: EXACT WIZAPP REPORT DATA TABLE             */}
+        {/* ------------------------------------------------------------ */}
+        <div className={`flex-1 overflow-auto custom-scrollbar flex flex-col ${
+          darkMode ? 'bg-[#0b0d13]' : 'bg-white'
+        }`} style={{ zoom: `${zoomPercent}%` }}>
+          
+          <table className="w-full border-collapse text-xs select-text">
+            {/* Table Header Row (Blue accent background matching screenshot) */}
+            <thead className={`sticky top-0 z-20 font-bold border-b select-none ${
+              darkMode ? 'bg-[#1e293b] text-blue-300 border-slate-700' : 'bg-[#c7d2fe]/90 text-blue-900 border-slate-300'
+            }`}>
+              <tr>
+                <th className="px-3 py-2 text-left border-r border-slate-300/40 w-44 font-bold">Section name</th>
+                <th className="px-3 py-2 text-left border-r border-slate-300/40 w-52 font-bold">Sub Section name</th>
+                <th className="px-3 py-2 text-right border-r border-slate-300/40 w-28 font-bold">OBS Qty</th>
+                <th className="px-3 py-2 text-right border-r border-slate-300/40 w-28 font-bold">Net SLS Qty</th>
+                <th className="px-3 py-2 text-right border-r border-slate-300/40 w-24 font-bold">CHI Qty</th>
+                <th className="px-3 py-2 text-right border-r border-slate-300/40 w-24 font-bold">CHO Qty</th>
+                <th className="px-3 py-2 text-right border-r border-slate-300/40 w-24 font-bold">Sell Thru %</th>
+                <th className="px-3 py-2 text-right w-32 font-bold">CBS Qty</th>
+              </tr>
+            </thead>
+
+            {/* Table Body Groups */}
+            <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+              {groupedSections.map((group) => (
+                <React.Fragment key={group.sectionName}>
+                  {/* Category Data Rows */}
+                  {group.items.map((row, idx) => (
+                    <tr 
+                      key={`${row.section}-${row.subSection}`}
+                      onClick={() => handleSubSectionClick(row)}
+                      className={`cursor-pointer transition-colors ${
+                        selectedSubSection?.subSection === row.subSection
+                          ? darkMode ? 'bg-blue-900/30 font-semibold' : 'bg-blue-100 font-semibold'
+                          : idx % 2 === 0
+                          ? darkMode ? 'bg-[#0f1117] hover:bg-slate-800/60' : 'bg-white hover:bg-slate-50'
+                          : darkMode ? 'bg-[#131620] hover:bg-slate-800/60' : 'bg-slate-50/70 hover:bg-slate-100'
+                      }`}
+                    >
+                      {/* Section name only shown in first row or left visible */}
+                      <td className={`px-3 py-1 font-semibold border-r ${
+                        darkMode ? 'border-slate-800 text-slate-300' : 'border-slate-200 text-slate-800'
+                      }`}>
+                        {row.section}
+                      </td>
+
+                      <td className={`px-3 py-1 font-medium border-r flex items-center justify-between group ${
+                        darkMode ? 'border-slate-800 text-slate-200' : 'border-slate-200 text-slate-900'
+                      }`}>
+                        <span>{row.subSection}</span>
+                        <ChevronRight className="w-3 h-3 opacity-0 group-hover:opacity-100 text-blue-500 transition-opacity" />
+                      </td>
+
+                      <td className={`px-3 py-1 text-right font-mono border-r ${
+                        darkMode ? 'border-slate-800 text-blue-400' : 'border-slate-200 text-blue-700'
+                      }`}>
+                        {formatQty(row.obsQty)}
+                      </td>
+
+                      <td className={`px-3 py-1 text-right font-mono border-r ${
+                        row.netSlsQty > 0 
+                          ? 'font-bold text-emerald-500' 
+                          : darkMode ? 'border-slate-800 text-slate-400' : 'border-slate-200 text-slate-600'
+                      }`}>
+                        {formatQty(row.netSlsQty)}
+                      </td>
+
+                      <td className={`px-3 py-1 text-right font-mono border-r ${
+                        darkMode ? 'border-slate-800 text-slate-400' : 'border-slate-200 text-slate-600'
+                      }`}>
+                        {formatQty(row.chiQty)}
+                      </td>
+
+                      <td className={`px-3 py-1 text-right font-mono border-r ${
+                        darkMode ? 'border-slate-800 text-slate-400' : 'border-slate-200 text-slate-600'
+                      }`}>
+                        {formatQty(row.choQty)}
+                      </td>
+
+                      <td className={`px-3 py-1 text-right font-mono border-r ${
+                        row.sellThru > 0 
+                          ? 'font-bold text-emerald-500' 
+                          : darkMode ? 'border-slate-800 text-slate-400' : 'border-slate-200 text-slate-600'
+                      }`}>
+                        {formatQty(row.sellThru)}
+                      </td>
+
+                      <td className={`px-3 py-1 text-right font-mono font-bold ${
+                        row.cbsQty > 0 
+                          ? darkMode ? 'text-blue-300' : 'text-blue-800'
+                          : 'text-slate-400'
+                      }`}>
+                        {formatQty(row.cbsQty)}
+                      </td>
+                    </tr>
+                  ))}
+
+                  {/* Section Total Sub-Header (Light Blue with Bold Red Text, exactly matching WizApp) */}
+                  <tr className={`font-bold select-none border-y ${
+                    darkMode ? 'bg-[#1e293b]/90 border-slate-700' : 'bg-[#dbeafe] border-blue-200'
+                  }`}>
+                    <td colSpan={2} className="px-3 py-1 text-left font-bold text-rose-600 dark:text-rose-400">
+                      Total
+                    </td>
+                    <td className="px-3 py-1 text-right font-mono font-bold text-rose-600 dark:text-rose-400">
+                      {formatQty(group.totalObs)}
+                    </td>
+                    <td className="px-3 py-1 text-right font-mono font-bold text-rose-600 dark:text-rose-400">
+                      {formatQty(group.totalNetSls)}
+                    </td>
+                    <td className="px-3 py-1 text-right font-mono font-bold text-rose-600 dark:text-rose-400">
+                      {formatQty(group.totalChi)}
+                    </td>
+                    <td className="px-3 py-1 text-right font-mono font-bold text-rose-600 dark:text-rose-400">
+                      {formatQty(group.totalCho)}
+                    </td>
+                    <td className="px-3 py-1 text-right font-mono font-bold text-rose-600 dark:text-rose-400">
+                      {formatQty(group.totalSellThru)}
+                    </td>
+                    <td className="px-3 py-1 text-right font-mono font-bold text-rose-600 dark:text-rose-400">
+                      {formatQty(group.totalCbs)}
+                    </td>
+                  </tr>
+                </React.Fragment>
+              ))}
+
+              {/* Gross Total Row (Brown/Amber Background, exactly matching screenshot) */}
+              <tr className="sticky bottom-0 z-20 font-black text-white select-none shadow-lg bg-[#b45309] dark:bg-[#92400e] border-t-2 border-amber-900">
+                <td colSpan={2} className="px-3 py-2 text-left font-black text-sm tracking-wide">
+                  Gross Total
+                </td>
+                <td className="px-3 py-2 text-right font-mono font-black text-sm">
+                  {formatQty(grossTotal.obs)}
+                </td>
+                <td className="px-3 py-2 text-right font-mono font-black text-sm">
+                  {formatQty(grossTotal.sls)}
+                </td>
+                <td className="px-3 py-2 text-right font-mono font-black text-sm">
+                  {formatQty(grossTotal.chi)}
+                </td>
+                <td className="px-3 py-2 text-right font-mono font-black text-sm">
+                  {formatQty(grossTotal.cho)}
+                </td>
+                <td className="px-3 py-2 text-right font-mono font-black text-sm">
+                  {formatQty(grossTotal.sellThru)}
+                </td>
+                <td className="px-3 py-2 text-right font-mono font-black text-sm">
+                  {formatQty(grossTotal.cbs)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+        </div>
+      </div>
+
+      {/* ============================================================== */}
+      {/* 4. INTERACTIVE DRILLDOWN DRAWER (Article / Barcode level)        */}
+      {/* ============================================================== */}
+      {selectedSubSection && (
+        <div className={`border-t p-4 select-none animate-in slide-in-from-bottom duration-200 ${
+          darkMode ? 'bg-[#151924] border-slate-800' : 'bg-slate-50 border-slate-300'
+        }`}>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-xs">
+                <Barcode className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className={`text-sm font-black ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+                  {selectedSubSection.subSection}
+                </h4>
+                <p className="text-[11px] text-slate-500">
+                  Section: {selectedSubSection.section} • Active Stock: <b className="text-emerald-500">{formatQty(selectedSubSection.cbsQty)} Pcs</b>
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-slate-400">Click any row in the main table to inspect other styles</span>
               <button 
-                onClick={() => {
-                  setLocalSearch('');
-                  if (setGlobalSearchQuery) setGlobalSearchQuery('');
-                }}
-                className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-200"
+                onClick={() => setSelectedSubSection(null)} 
+                className={`p-1 rounded hover:bg-black/10 transition ${darkMode ? 'text-slate-400 hover:text-white' : 'text-slate-600'}`}
               >
                 <X className="w-4 h-4" />
               </button>
+            </div>
+          </div>
+
+          {/* Drilldown Article Variation Chips */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 max-h-36 overflow-y-auto custom-scrollbar">
+            {loadingDrilldown ? (
+              <div className="col-span-full py-4 text-center text-slate-400 text-xs">
+                <RefreshCw className="w-4 h-4 animate-spin mx-auto mb-1 text-blue-500" />
+                Loading SKU barcodes for {selectedSubSection.subSection}...
+              </div>
+            ) : drilldownArticles.length > 0 ? (
+              drilldownArticles.map((art, aIdx) => (
+                <div 
+                  key={aIdx} 
+                  className={`p-2 rounded-lg border text-left transition ${
+                    darkMode ? 'bg-slate-900 border-slate-800 hover:border-blue-500' : 'bg-white border-slate-200 hover:border-blue-500 shadow-xs'
+                  }`}
+                >
+                  <div className="font-mono font-bold text-[10px] text-blue-500 truncate">
+                    #{art.articleNo}
+                  </div>
+                  <div className="text-[11px] font-bold truncate mt-0.5">
+                    {art.color} • {art.size}
+                  </div>
+                  <div className="flex justify-between items-center mt-1 text-[10px]">
+                    <span className="font-mono text-slate-400">₹{art.mrp}</span>
+                    <span className="font-bold text-emerald-500">{art.stock} Pcs</span>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="col-span-full py-3 text-center text-slate-400 text-xs">
+                No individual barcode records returned for this category.
+              </div>
             )}
-          </div>
-
-          {/* Category Filter Chips */}
-          <div className="flex gap-1.5 mt-3 overflow-x-auto pb-1 custom-scrollbar">
-            {categoriesList.slice(0, 6).map(cat => (
-              <button
-                key={cat}
-                onClick={() => { setSelectedCategory(cat); setCurrentPage(1); }}
-                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase transition whitespace-nowrap ${
-                  selectedCategory === cat
-                    ? 'bg-blue-600 text-white'
-                    : darkMode ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Master Articles List Header */}
-        <div className={`px-4 py-2.5 border-b flex justify-between items-center ${darkMode ? 'border-[#1c2436] bg-[#0c0e12]' : 'border-slate-100 bg-slate-50/70'}`}>
-          <h3 className={`text-xs font-black uppercase tracking-wider ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-            Store Styles ({filteredCatalog.length})
-          </h3>
-
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setStockFilter(f => f === 'ALL' ? 'IN_STOCK' : f === 'IN_STOCK' ? 'LOW_STOCK' : 'ALL')}
-              className={`px-2 py-0.5 rounded text-[10px] font-bold border transition ${
-                stockFilter === 'ALL'
-                  ? darkMode ? 'border-slate-700 text-slate-400' : 'border-slate-200 text-slate-500'
-                  : stockFilter === 'IN_STOCK'
-                  ? 'border-emerald-500 text-emerald-400 bg-emerald-500/10'
-                  : 'border-amber-500 text-amber-400 bg-amber-500/10'
-              }`}
-            >
-              {stockFilter === 'ALL' ? 'Filter: All' : stockFilter === 'IN_STOCK' ? 'In Stock' : 'Low Stock'}
-            </button>
-          </div>
-        </div>
-
-        {/* Article Cards List */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-3 space-y-2">
-          {paginatedCatalog.length > 0 ? (
-            paginatedCatalog.map(item => {
-              const isSelected = selectedItem?.ArticleNo === item.ArticleNo;
-              const unitsCount = (item.variants || []).reduce((sum, v) => sum + (v.qty || 1), 0) || item.SkuCount || 1;
-              const isLowStock = unitsCount <= 3;
-
-              return (
-                <button
-                  key={item.ArticleNo}
-                  onClick={() => handleSelectArticle(item)}
-                  className={`w-full text-left rounded-xl border p-4 transition-all ${
-                    isSelected 
-                      ? darkMode ? 'bg-blue-900/20 border-blue-500/50 ring-1 ring-blue-500/20' : 'bg-blue-50 border-blue-300 ring-1 ring-blue-200'
-                      : darkMode ? 'bg-[#121829] border-[#232e47] hover:border-slate-600' : 'bg-white border-slate-200 hover:border-slate-300'
-                  }`}
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-1.5 h-1.5 rounded-full ${isLowStock ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`}></div>
-                      <p className={`font-mono font-bold text-sm ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-                        #{item.ArticleNo}
-                      </p>
-                    </div>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                      isLowStock 
-                        ? darkMode ? 'bg-amber-900/30 text-amber-400 border-orange-500/30' : 'bg-amber-100 text-amber-700 border-amber-200'
-                        : darkMode ? 'bg-emerald-900/30 text-emerald-400 border-emerald-500/30' : 'bg-emerald-100 text-emerald-700 border-emerald-200'
-                    }`}>
-                      {isLowStock ? 'LOW STOCK' : 'IN STOCK'}
-                    </span>
-                  </div>
-
-                  <div className="flex justify-between items-end mt-3">
-                    <div>
-                      <p className={`text-xs font-semibold truncate max-w-[210px] ${darkMode ? 'text-slate-300' : 'text-slate-800'}`}>
-                        {item.ItemName}
-                      </p>
-                      <p className={`text-[10px] mt-0.5 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                        {item.Category} • MRP ₹{item.MRP?.toLocaleString('en-IN')}
-                      </p>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-emerald-500 font-bold text-xs">{unitsCount} pcs</p>
-                    </div>
-                  </div>
-                </button>
-              );
-            })
-          ) : (
-            <div className={`p-8 text-center rounded-xl border border-dashed ${darkMode ? 'border-slate-800 text-slate-500' : 'border-slate-200 text-slate-400'}`}>
-              No articles found matching filters.
-            </div>
-          )}
-        </div>
-
-        {/* Pagination Controls */}
-        {totalPages > 1 && (
-          <div className={`p-3 border-t flex items-center justify-between shrink-0 ${darkMode ? 'bg-[#0f1115] border-[#1c2436]' : 'bg-slate-50 border-slate-200'}`}>
-            <span className={`text-[10px] font-bold uppercase tracking-wider ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-              Page {currentPage} of {totalPages}
-            </span>
-            <div className="flex items-center gap-1">
-              <button
-                disabled={currentPage === 1}
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                className={`p-1.5 rounded text-xs transition ${currentPage === 1 ? 'opacity-30 cursor-not-allowed' : (darkMode ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-slate-200 text-slate-700')}`}
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <button
-                disabled={currentPage === totalPages}
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                className={`p-1.5 rounded text-xs transition ${currentPage === totalPages ? 'opacity-30 cursor-not-allowed' : (darkMode ? 'hover:bg-slate-800 text-slate-300' : 'hover:bg-slate-200 text-slate-700')}`}
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        )}
-
-      </div>
-
-      {/* ============================================================== */}
-      {/* LAYER 3: Detail View (Main Pane - Article Breakdown)          */}
-      {/* ============================================================== */}
-      <div className={`flex-1 rounded-2xl border shadow-sm overflow-hidden flex flex-col relative ${darkMode ? 'bg-[#0f1115] border-[#1c2436]' : 'bg-white border-slate-200'}`}>
-        {selectedItem ? (
-          <div className="flex flex-col h-full">
-            
-            {/* Header: Article Dossier & Action Buttons */}
-            <div className={`px-6 py-4 border-b flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
-              
-              <div className="flex items-center gap-4">
-                {/* Photo Thumbnail with Camera / Upload Trigger */}
-                <div className="relative group shrink-0">
-                  {selectedItem.imageUrl ? (
-                    <div className="w-14 h-16 rounded-xl overflow-hidden border-2 border-blue-500/40 shadow-md relative bg-slate-900 cursor-pointer" onClick={() => setIsZoomImageOpen(true)}>
-                      <img src={selectedItem.imageUrl} alt={selectedItem.ArticleNo} className="w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <Eye className="w-4 h-4 text-white" />
-                      </div>
-                    </div>
-                  ) : (
-                    <label className={`w-14 h-16 rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition ${darkMode ? 'border-slate-700 bg-slate-900/60 hover:border-blue-500 text-slate-400' : 'border-slate-300 bg-slate-50 hover:border-blue-500 text-slate-500'}`}>
-                      {uploadingArticle === selectedItem.ArticleNo ? (
-                        <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
-                      ) : (
-                        <>
-                          <Camera className="w-5 h-5 mb-0.5 text-blue-500" />
-                          <span className="text-[8px] font-black uppercase">Photo</span>
-                        </>
-                      )}
-                      <input 
-                        type="file" 
-                        accept="image/*" 
-                        capture="environment" 
-                        className="hidden" 
-                        onChange={(e) => handleImageUpload(e, selectedItem.ArticleNo)} 
-                        disabled={uploadingArticle === selectedItem.ArticleNo} 
-                      />
-                    </label>
-                  )}
-
-                  {/* Change photo badge overlay */}
-                  {selectedItem.imageUrl && (
-                    <label className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-lg cursor-pointer hover:bg-blue-500 transition">
-                      <Camera className="w-3 h-3" />
-                      <input 
-                        type="file" 
-                        accept="image/*" 
-                        capture="environment" 
-                        className="hidden" 
-                        onChange={(e) => handleImageUpload(e, selectedItem.ArticleNo)} 
-                      />
-                    </label>
-                  )}
-                </div>
-
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className={`text-xl font-black tracking-tight flex items-center gap-2 ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-                      Article {selectedItem.ArticleNo}
-                    </h2>
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/30 font-bold">
-                      {selectedItem.Category}
-                    </span>
-                  </div>
-                  <p className={`text-sm mt-0.5 font-medium ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                    {selectedItem.ItemName} • Base MRP ₹{selectedItem.MRP?.toLocaleString('en-IN')}
-                  </p>
-                </div>
-              </div>
-
-              {/* Action Toolbar */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <button 
-                  onClick={handleExportCSV}
-                  title="Export variant table as CSV"
-                  className={`px-3 py-2 rounded-xl border flex items-center gap-1.5 text-xs font-bold transition ${
-                    darkMode ? 'bg-[#121829] border-[#232e47] hover:bg-[#1a2333] text-slate-300' : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700'
-                  }`}
-                >
-                  <Download className="w-3.5 h-3.5" /> Export CSV
-                </button>
-
-                <button 
-                  onClick={handlePrintBarcode}
-                  title="Print barcode tags for all SKUs"
-                  className={`px-3 py-2 rounded-xl border flex items-center gap-1.5 text-xs font-bold transition ${
-                    darkMode ? 'bg-[#121829] border-[#232e47] hover:bg-[#1a2333] text-blue-400' : 'bg-white border-slate-200 hover:bg-slate-50 text-blue-600'
-                  }`}
-                >
-                  <Printer className="w-3.5 h-3.5" /> Print Tags
-                </button>
-
-                {handleGenerateOutfitMatch && (
-                  <button
-                    onClick={() => handleGenerateOutfitMatch(selectedItem)}
-                    disabled={isGeneratingOutfit && activeOutfitMatch === selectedItem.ArticleNo}
-                    className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-indigo-600/30 transition disabled:opacity-50"
-                  >
-                    <Sparkles className="w-3.5 h-3.5" />
-                    {isGeneratingOutfit && activeOutfitMatch === selectedItem.ArticleNo ? 'Drafting...' : 'AI Pitch'}
-                  </button>
-                )}
-              </div>
-
-            </div>
-
-            {/* Scrollable Content Body */}
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
-              
-              {/* TOP KPI ROW: Status, Total Volume, Total Asset Value, Avg MRP (Exactly like Goods in Transit) */}
-              <div className={`rounded-xl border p-5 mb-6 flex flex-col md:flex-row justify-between gap-4 ${darkMode ? 'bg-[#121829] border-[#232e47]' : 'bg-slate-50 border-slate-200'}`}>
-                <div>
-                  <p className={`text-xs mb-1 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Stock Health</p>
-                  <span className={`px-3 py-1 rounded-full text-xs font-black border inline-block ${
-                    activeDispatchMetrics.totalPcs <= 3
-                      ? 'bg-amber-500/20 text-amber-500 border-amber-500/30'
-                      : 'bg-emerald-500/20 text-emerald-500 border-emerald-500/30'
-                  }`}>
-                    {activeDispatchMetrics.totalPcs <= 3 ? 'LOW STOCK' : 'ACTIVE IN STORE'}
-                  </span>
-                </div>
-
-                <div>
-                  <p className={`text-xs mb-1 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Available Volume</p>
-                  <div className="flex items-center gap-2">
-                    <Package className="w-4 h-4 text-emerald-500" />
-                    <span className="text-emerald-500 font-bold text-lg">
-                      {activeDispatchMetrics.totalPcs} Pcs
-                    </span>
-                  </div>
-                </div>
-
-                <div>
-                  <p className={`text-xs mb-1 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Store Inventory Value</p>
-                  <p className={`text-xl font-black ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-                    ₹{activeDispatchMetrics.totalVal.toLocaleString('en-IN')}
-                  </p>
-                </div>
-
-                <div>
-                  <p className={`text-xs mb-1 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>SKU Variations</p>
-                  <p className={`text-sm font-bold mt-1 ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                    {activeDispatchMetrics.variantsCount} Unique Barcodes
-                  </p>
-                </div>
-              </div>
-
-              {/* AI Pitch Section Banner */}
-              {activeOutfitMatch === selectedItem.ArticleNo && outfitPitch && (
-                <div className={`border p-5 rounded-2xl mb-6 shadow-sm relative overflow-hidden animate-in zoom-in-95 duration-300 ${darkMode ? 'bg-indigo-900/20 border-indigo-500/30' : 'bg-indigo-50/50 border-indigo-200'}`}>
-                  <div className="absolute top-0 right-0 w-1.5 bg-indigo-500 h-full"></div>
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="text-[10px] text-indigo-500 font-black uppercase tracking-widest flex items-center">
-                      <Wand2 className="w-4 h-4 mr-2" /> AI "Style of the Week" Pitch
-                    </p>
-                    <button
-                      onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(outfitPitch)}`, '_blank')}
-                      className="text-xs bg-green-600 hover:bg-green-700 text-white px-3.5 py-1.5 rounded-xl font-bold flex items-center shadow-md transition"
-                    >
-                      <Send className="w-3.5 h-3.5 mr-1.5" /> Share to WhatsApp
-                    </button>
-                  </div>
-                  <p className={`text-sm leading-relaxed whitespace-pre-wrap ${darkMode ? 'text-indigo-100' : 'text-slate-700'}`}>
-                    {outfitPitch}
-                  </p>
-                </div>
-              )}
-
-              {/* Table Controls Row: Grouped vs Detailed View Switch (The Goods in Transit Signature) */}
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3 px-1">
-                <div className="flex items-center gap-3">
-                  <span className={`text-xs font-bold uppercase tracking-wider ${darkMode ? 'text-slate-400' : 'text-slate-600'}`}>
-                    Store Inventory Breakdown
-                  </span>
-                  
-                  {/* Table search filter */}
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="Filter color or size..."
-                      value={tableSearch}
-                      onChange={(e) => setTableSearch(e.target.value)}
-                      className={`text-xs px-2.5 py-1 pl-7 rounded-lg border focus:outline-none focus:border-blue-500 ${
-                        darkMode ? 'bg-slate-900 border-slate-700 text-slate-300' : 'bg-white border-slate-300 text-slate-800'
-                      }`}
-                    />
-                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2 top-1.5" />
-                    {tableSearch && (
-                      <button onClick={() => setTableSearch('')} className="absolute right-2 top-1.5 text-slate-400">
-                        <X className="w-3 h-3" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* View Switch Button Group (Grouped | Detailed) */}
-                <div className={`flex rounded-lg overflow-hidden border ${darkMode ? 'border-slate-700' : 'border-slate-300'}`}>
-                  <button 
-                    onClick={() => setViewMode('grouped')}
-                    className={`px-3 py-1 text-xs font-bold transition-colors ${
-                      viewMode === 'grouped' 
-                        ? 'bg-blue-600 text-white' 
-                        : (darkMode ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200')
-                    }`}
-                  >
-                    Grouped
-                  </button>
-                  <button 
-                    onClick={() => setViewMode('detailed')}
-                    className={`px-3 py-1 text-xs font-bold transition-colors ${
-                      viewMode === 'detailed' 
-                        ? 'bg-blue-600 text-white' 
-                        : (darkMode ? 'bg-slate-800 text-slate-400 hover:bg-slate-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200')
-                    }`}
-                  >
-                    Detailed
-                  </button>
-                </div>
-              </div>
-
-              {/* Data Table with Goods in Transit styling */}
-              <div className={`rounded-xl border overflow-y-auto overflow-x-auto max-h-[50vh] custom-scrollbar ${darkMode ? 'border-slate-700' : 'border-slate-300'}`}>
-                <table className="w-full text-sm text-left whitespace-nowrap">
-                  <thead className={`text-xs uppercase font-bold sticky top-0 z-10 border-b ${
-                    darkMode ? 'bg-slate-800 text-blue-300 border-slate-700' : 'bg-blue-50 text-blue-800 border-slate-300'
-                  }`}>
-                    {viewMode === 'grouped' ? (
-                      <tr>
-                        <th className="px-4 py-3 border-r border-slate-700/50">Category (Desc)</th>
-                        <th className="px-4 py-3 border-r border-slate-700/50">Color (P1)</th>
-                        <th className="px-4 py-3 border-r border-slate-700/50">Size (P2)</th>
-                        <th className="px-4 py-3 border-r border-slate-700/50 text-center">In-Stock Qty</th>
-                        <th className="px-4 py-3 border-r border-slate-700/50 text-right">Avg MRP</th>
-                        <th className="px-4 py-3 text-right">Total Value</th>
-                      </tr>
-                    ) : (
-                      <tr>
-                        <th className="px-4 py-3 border-r border-slate-700/50">Item Code / Barcode</th>
-                        <th className="px-4 py-3 border-r border-slate-700/50">Article No.</th>
-                        <th className="px-4 py-3 border-r border-slate-700/50">Description</th>
-                        <th className="px-4 py-3 border-r border-slate-700/50">Para1 (Color)</th>
-                        <th className="px-4 py-3 border-r border-slate-700/50">Para2 (Size)</th>
-                        <th className="px-4 py-3 border-r border-slate-700/50">Para3 (Fit)</th>
-                        <th className="px-4 py-3 border-r border-slate-700/50 text-center">Qty</th>
-                        <th className="px-4 py-3 border-r border-slate-700/50 text-center">UOM</th>
-                        <th className="px-4 py-3 border-r border-slate-700/50 text-right">MRP (₹)</th>
-                        <th className="px-4 py-3 text-right">Total Asset (₹)</th>
-                      </tr>
-                    )}
-                  </thead>
-
-                  <tbody className={`divide-y ${darkMode ? 'divide-slate-800' : 'divide-slate-200'}`}>
-                    {variantLoading ? (
-                      <tr>
-                        <td colSpan={viewMode === 'grouped' ? 6 : 10} className="px-4 py-8 text-center text-slate-400">
-                          <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-blue-500" />
-                          Querying live store inventory...
-                        </td>
-                      </tr>
-                    ) : filteredVariants.length === 0 ? (
-                      <tr>
-                        <td colSpan={viewMode === 'grouped' ? 6 : 10} className={`px-4 py-8 text-center ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
-                          No variation details found matching the filter.
-                        </td>
-                      </tr>
-                    ) : viewMode === 'grouped' ? (
-                      (() => {
-                        // Group by desc, color, size
-                        const grouped = filteredVariants.reduce((acc, v) => {
-                          const key = `${v.desc || 'ITEM'}|${v.p1 || 'STD'}|${v.p2 || 'STD'}`;
-                          if (!acc[key]) {
-                            acc[key] = {
-                              desc: v.desc || selectedItem.ItemName,
-                              p1: v.p1 || 'STANDARD',
-                              p2: v.p2 || 'STD',
-                              qty: 0,
-                              mrpSum: 0,
-                              count: 0
-                            };
-                          }
-                          const q = v.qty || 1;
-                          acc[key].qty += q;
-                          acc[key].mrpSum += (v.mrp || selectedItem.MRP || 2999) * q;
-                          acc[key].count += 1;
-                          return acc;
-                        }, {});
-
-                        return Object.values(grouped).map((g, idx) => (
-                          <tr key={idx} className={`hover:bg-blue-500/5 transition-colors ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                            <td className={`px-4 py-2.5 font-bold border-r ${darkMode ? 'border-slate-800 text-blue-400' : 'border-slate-200 text-blue-600'}`}>
-                              {g.desc}
-                            </td>
-                            <td className={`px-4 py-2.5 border-r ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
-                              <span className="font-semibold">{g.p1}</span>
-                            </td>
-                            <td className={`px-4 py-2.5 border-r font-bold ${darkMode ? 'border-slate-800 text-white' : 'border-slate-200 text-slate-900'}`}>
-                              {g.p2}
-                            </td>
-                            <td className={`px-4 py-2.5 border-r text-center font-bold ${darkMode ? 'border-slate-800 text-emerald-400 bg-emerald-500/10' : 'border-slate-200 text-emerald-600 bg-emerald-50'}`}>
-                              {g.qty} Pcs
-                            </td>
-                            <td className={`px-4 py-2.5 border-r text-right font-mono ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
-                              ₹{Math.round(g.mrpSum / g.qty).toLocaleString('en-IN')}
-                            </td>
-                            <td className="px-4 py-2.5 text-right font-mono font-bold text-emerald-500">
-                              ₹{g.mrpSum.toLocaleString('en-IN')}
-                            </td>
-                          </tr>
-                        ));
-                      })()
-                    ) : (
-                      filteredVariants.map((item, idx) => (
-                        <tr key={idx} className={`hover:bg-blue-500/5 transition-colors ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
-                          <td className={`px-4 py-2.5 font-mono font-bold border-r ${darkMode ? 'border-slate-800 text-blue-400' : 'border-slate-200 text-blue-600'}`}>
-                            {item.code || 'UNKNOWN'}
-                          </td>
-                          <td className={`px-4 py-2.5 font-mono border-r ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
-                            {item.article || selectedItem.ArticleNo}
-                          </td>
-                          <td className={`px-4 py-2.5 border-r ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
-                            {item.desc || selectedItem.ItemName}
-                          </td>
-                          <td className={`px-4 py-2.5 border-r font-semibold ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
-                            {item.p1 || 'STANDARD'}
-                          </td>
-                          <td className={`px-4 py-2.5 border-r font-bold ${darkMode ? 'border-slate-800 text-white' : 'border-slate-200 text-slate-900'}`}>
-                            {item.p2 || 'STD'}
-                          </td>
-                          <td className={`px-4 py-2.5 border-r ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
-                            {item.p3 || 'NA'}
-                          </td>
-                          <td className={`px-4 py-2.5 border-r text-center font-bold ${darkMode ? 'border-slate-800 text-emerald-400 bg-emerald-500/10' : 'border-slate-200 text-emerald-600 bg-emerald-50'}`}>
-                            {item.qty || 1}
-                          </td>
-                          <td className={`px-4 py-2.5 border-r text-center ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
-                            {item.uom || 'PCS'}
-                          </td>
-                          <td className={`px-4 py-2.5 border-r text-right font-mono ${darkMode ? 'border-slate-800' : 'border-slate-200'}`}>
-                            {(item.mrp || selectedItem.MRP || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                          </td>
-                          <td className="px-4 py-2.5 text-right font-mono font-bold text-emerald-500">
-                            {((item.qty || 1) * (item.mrp || selectedItem.MRP || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-
-                  {/* Summary Totals Table Footer */}
-                  {filteredVariants.length > 0 && (
-                    <tfoot className={`font-bold border-t ${darkMode ? 'bg-slate-900/80 border-slate-700 text-white' : 'bg-slate-100 border-slate-300 text-slate-900'}`}>
-                      <tr>
-                        <td colSpan={viewMode === 'grouped' ? 3 : 6} className="px-4 py-2.5 text-right uppercase text-xs">
-                          Total Active In Store:
-                        </td>
-                        <td className="px-4 py-2.5 text-center text-emerald-500 font-black">
-                          {filteredVariants.reduce((sum, v) => sum + (v.qty || 1), 0)} Pcs
-                        </td>
-                        <td colSpan={viewMode === 'grouped' ? 1 : 2} className="px-4 py-2.5 text-right text-xs"></td>
-                        <td className="px-4 py-2.5 text-right font-mono font-black text-emerald-500">
-                          ₹{filteredVariants.reduce((sum, v) => sum + (v.qty || 1) * (v.mrp || selectedItem.MRP || 0), 0).toLocaleString('en-IN')}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  )}
-                </table>
-              </div>
-
-            </div>
-
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${darkMode ? 'bg-slate-900 text-slate-600' : 'bg-slate-100 text-slate-400'}`}>
-              <Package className="w-8 h-8" />
-            </div>
-            <h3 className={`text-lg font-bold mb-1 ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-              Select an Article
-            </h3>
-            <p className={`text-xs max-w-sm ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>
-              Select an article style from the left pane to view detailed barcodes, color runs, size stock runs, and export slips.
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* High-Resolution Zoom Preview Modal */}
-      {isZoomImageOpen && selectedItem?.imageUrl && (
-        <div 
-          onClick={() => setIsZoomImageOpen(false)}
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200 cursor-zoom-out"
-        >
-          <div className="relative max-w-lg w-full bg-slate-900 rounded-2xl overflow-hidden border border-slate-800 shadow-2xl" onClick={e => e.stopPropagation()}>
-            <div className="flex justify-between items-center p-4 border-b border-slate-800 text-white">
-              <span className="font-mono font-bold text-sm">#{selectedItem.ArticleNo} - {selectedItem.ItemName}</span>
-              <button onClick={() => setIsZoomImageOpen(false)} className="p-1 rounded-lg text-slate-400 hover:text-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <img src={selectedItem.imageUrl} alt={selectedItem.ArticleNo} className="w-full h-auto max-h-[70vh] object-contain bg-black" />
           </div>
         </div>
       )}
