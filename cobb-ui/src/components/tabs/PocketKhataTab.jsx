@@ -20,9 +20,13 @@ import {
   Receipt,
   User,
   ShieldCheck,
-  Banknote
+  Banknote,
+  Camera,
+  Image as ImageIcon
 } from 'lucide-react';
 import axios from 'axios';
+import { db } from '../../utils/firebase';
+import { collection, doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '../../context/ToastContext';
 import AlterationSlipModal from '../AlterationSlipModal';
 import DenominationModal from '../DenominationModal';
@@ -55,6 +59,18 @@ export default function PocketKhataTab(props) {
   const [amountInput, setAmountInput] = useState('');
   const [descriptionInput, setDescriptionInput] = useState('');
   const [loggedByName, setLoggedByName] = useState('Counter Cashier');
+  const [receiptImage, setReceiptImage] = useState(null);
+
+  const handleImageCapture = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setReceiptImage(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const CATEGORIES = [
     { key: 'chai', label: 'Chai & Snacks', icon: Coffee, defaultDesc: 'Tea & refreshments for staff/client' },
@@ -97,18 +113,33 @@ export default function PocketKhataTab(props) {
     try {
       setSubmitting(true);
       const currentCat = CATEGORIES.find(c => c.key === selectedCategory);
-      const res = await axios.post(`${API_BASE}/api/expenses/add`, {
+      
+      const expenseData = {
         category: selectedCategory,
         amount: num,
         description: descriptionInput || currentCat?.defaultDesc || 'Counter petty cash',
         loggedBy: loggedByName,
         storeId: activeStore
+      };
+
+      // 1. Post to Express for POS tallying
+      const res = await axios.post(`${API_BASE}/api/expenses/add`, expenseData);
+
+      // 2. Save full voucher (including image) to Cloud Firestore for Owner Approval
+      const voucherId = `ev_${Date.now()}`;
+      await setDoc(doc(db, `stores/${activeStore}/data/expense_vouchers/${voucherId}`), {
+        ...expenseData,
+        id: voucherId,
+        timestamp: serverTimestamp(),
+        receiptImage: receiptImage || null,
+        status: 'pending_approval' // owner approval required
       });
 
       if (res.data?.success) {
         setSummary(res.data.summary);
         setAmountInput('');
         setDescriptionInput('');
+        setReceiptImage(null);
         showToast?.(`Logged ₹${num} for ${currentCat?.label || selectedCategory}`, 'success');
       }
     } catch (err) {
@@ -410,6 +441,43 @@ export default function PocketKhataTab(props) {
                 <option value="Store Manager">👑 Store Manager</option>
                 <option value="Owner / Partner">⭐ Owner / Partner</option>
               </select>
+            </div>
+
+            {/* Receipt / Voucher Upload */}
+            <div>
+              <label className="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 flex justify-between">
+                <span>5. Receipt Photo (For Owner Approval)</span>
+                {receiptImage && (
+                  <button type="button" onClick={() => setReceiptImage(null)} className="text-red-400 hover:text-red-300">
+                    Clear
+                  </button>
+                )}
+              </label>
+              
+              {!receiptImage ? (
+                <label className={`w-full flex flex-col items-center justify-center p-4 border-2 border-dashed rounded-xl cursor-pointer transition-all ${
+                  darkMode ? 'border-slate-700 bg-slate-900/50 hover:bg-slate-800' : 'border-slate-300 bg-slate-50 hover:bg-slate-100'
+                }`}>
+                  <Camera className="w-6 h-6 text-slate-400 mb-2" />
+                  <span className="text-xs text-slate-400 font-bold">Tap to capture receipt</span>
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    capture="environment"
+                    onChange={handleImageCapture}
+                    className="hidden" 
+                  />
+                </label>
+              ) : (
+                <div className="relative w-full h-32 rounded-xl overflow-hidden border border-slate-700">
+                  <img src={receiptImage} alt="Receipt preview" className="w-full h-full object-cover" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-2">
+                    <span className="text-white text-xs font-bold flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3 text-green-400" /> Attached
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Submit Button */}
