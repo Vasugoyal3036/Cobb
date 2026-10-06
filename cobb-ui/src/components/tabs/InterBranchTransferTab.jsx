@@ -1,12 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Search, MapPin, Truck, CheckCircle2, Clock, AlertTriangle, ArrowRight, Package } from 'lucide-react';
-
-const AVAILABLE_STORES = [
-  { id: 'DEMO_STORE_001', name: 'Cobb Pundri', distance: '0 km' },
-  { id: 'STORE_002', name: 'Cobb Kaithal', distance: '22 km' },
-  { id: 'STORE_003', name: 'Cobb Karnal', distance: '45 km' },
-  { id: 'STORE_004', name: 'Cobb Kurukshetra', distance: '38 km' }
-];
+import { db } from '../../utils/firebase';
+import { doc, getDoc, setDoc, updateDoc, collection, query, onSnapshot, serverTimestamp } from 'firebase/firestore';
+import { AVAILABLE_STORES } from '../../context/AuthContext';
 
 export default function InterBranchTransferTab({ API_BASE, darkMode, activeStore }) {
   const [activeTab, setActiveTab] = useState('lookup'); // 'lookup', 'intransit', 'history'
@@ -14,50 +10,113 @@ export default function InterBranchTransferTab({ API_BASE, darkMode, activeStore
   const [isSearching, setIsSearching] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
   
-  // Dummy data for requests in transit
-  const [inTransit, setInTransit] = useState([
-    {
-      id: 'TR-10492',
-      article: 'Navy Blue Formal Blazer',
-      size: '40',
-      from: 'STORE_002',
-      to: 'DEMO_STORE_001',
-      status: 'dispatched',
-      date: new Date().toISOString(),
-      qty: 1
-    }
-  ]);
+  // Real data for requests in transit
+  const [inTransit, setInTransit] = useState([]);
 
-  const handleSearch = (e) => {
+  // Subscribe to live IBT gate passes from Firestore
+  useEffect(() => {
+    if (!db) return;
+    const q = query(collection(db, 'ibt_requests'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const passes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      // Filter passes relevant to activeStore
+      setInTransit(passes.filter(p => p.from === activeStore || p.to === activeStore).sort((a,b) => b.timestamp - a.timestamp));
+    });
+    return () => unsubscribe();
+  }, [activeStore]);
+
+  const handleSearch = async (e) => {
     e.preventDefault();
-    if (!searchQuery) return;
+    if (!searchQuery || !db) return;
     setIsSearching(true);
-    // Simulate network delay
-    setTimeout(() => {
-      // Mock results showing stock at other branches
-      setSearchResults([
-        { storeId: 'STORE_002', name: 'Cobb Kaithal', distance: '22 km', qty: 3 },
-        { storeId: 'STORE_003', name: 'Cobb Karnal', distance: '45 km', qty: 0 },
-        { storeId: 'STORE_004', name: 'Cobb Kurukshetra', distance: '38 km', qty: 1 }
-      ]);
+    setSearchResults([]);
+
+    try {
+      const results = [];
+      const sq = searchQuery.trim().toLowerCase();
+      // Only query other stores
+      const otherStores = AVAILABLE_STORES.filter(s => s.id !== activeStore && s.id !== 'ALL');
+      
+      for (const store of otherStores) {
+        const inventoryRef = doc(db, 'stores', store.id, 'data', 'inventory');
+        const snap = await getDoc(inventoryRef);
+        let matchQty = 0;
+        
+        if (snap.exists()) {
+          const invData = snap.data();
+          const items = Array.isArray(invData.items) ? invData.items : [];
+          
+          for (const item of items) {
+             const desc = (item.ItemName || item.Description || '').toLowerCase();
+             const barcode = (item.Barcode || '').toLowerCase();
+             if (desc.includes(sq) || barcode.includes(sq)) {
+                matchQty += (Number(item.Qty) || 0);
+             }
+          }
+        }
+        
+        results.push({
+          storeId: store.id,
+          name: store.name,
+          distance: store.location || 'Remote Branch',
+          qty: matchQty
+        });
+      }
+      setSearchResults(results.sort((a,b) => b.qty - a.qty));
+    } catch (err) {
+      console.error("IBT Search Error:", err);
+    } finally {
       setIsSearching(false);
-    }, 800);
+    }
   };
 
-  const handleRequestStock = (storeId, qty) => {
-    // In real app, this would hit API_BASE/api/ibt/request
-    alert(`Stock request sent to ${AVAILABLE_STORES.find(s=>s.id === storeId)?.name} for 1 unit.`);
-    setInTransit([{
-      id: `TR-${Math.floor(Math.random()*90000) + 10000}`,
-      article: `Item ${searchQuery}`,
-      size: 'Any',
-      from: storeId,
-      to: activeStore,
-      status: 'requested',
-      date: new Date().toISOString(),
-      qty: 1
-    }, ...inTransit]);
-    setActiveTab('intransit');
+  const handleRequestStock = async (storeId, qty) => {
+    if (!db) return;
+    const reqId = `TR-${Math.floor(Math.random()*90000) + 10000}`;
+    
+    try {
+      await setDoc(doc(db, 'ibt_requests', reqId), {
+        article: `Item Search: ${searchQuery}`,
+        size: 'Any',
+        from: storeId,
+        to: activeStore,
+        status: 'requested',
+        date: new Date().toISOString(),
+        timestamp: Date.now(),
+        qty: qty
+      });
+      alert(`Stock request ${reqId} sent to ${AVAILABLE_STORES.find(s=>s.id === storeId)?.name}`);
+      setActiveTab('intransit');
+    } catch (err) {
+      console.error("IBT Request Error:", err);
+      alert("Failed to send request.");
+    }
+  };
+
+  const handleInwardTransfer = async (reqId) => {
+    if (!db || !window.confirm("Confirm you have received and inwarded these items physically?")) return;
+    try {
+      await updateDoc(doc(db, 'ibt_requests', reqId), {
+        status: 'received',
+        inwardedAt: new Date().toISOString()
+      });
+      alert("Items successfully inwarded!");
+    } catch (err) {
+      console.error("Inward Error:", err);
+    }
+  };
+
+  const handleDispatchTransfer = async (reqId) => {
+    if (!db || !window.confirm("Confirm you have packed and dispatched these items via courier/runner?")) return;
+    try {
+      await updateDoc(doc(db, 'ibt_requests', reqId), {
+        status: 'dispatched',
+        dispatchedAt: new Date().toISOString()
+      });
+      alert("Gate Pass generated and dispatched!");
+    } catch (err) {
+      console.error("Dispatch Error:", err);
+    }
   };
 
   const renderLookup = () => (
@@ -156,13 +215,29 @@ export default function InterBranchTransferTab({ API_BASE, darkMode, activeStore
               </div>
 
               <div className="w-full md:w-auto">
-                {tr.status === 'dispatched' && tr.to === activeStore ? (
-                  <button className="w-full md:w-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20">
+                {tr.status === 'requested' && tr.from === activeStore && (
+                  <button onClick={() => handleDispatchTransfer(tr.id)} className="w-full md:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20">
+                    <Package className="w-4 h-4" /> Pack & Dispatch
+                  </button>
+                )}
+                {tr.status === 'requested' && tr.to === activeStore && (
+                   <div className="px-3 py-1.5 rounded bg-amber-500/10 text-amber-500 font-bold text-xs uppercase tracking-wider text-center border border-amber-500/20">
+                     Awaiting Dispatch from Source
+                   </div>
+                )}
+                {tr.status === 'dispatched' && tr.to === activeStore && (
+                  <button onClick={() => handleInwardTransfer(tr.id)} className="w-full md:w-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition-colors flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20">
                     <CheckCircle2 className="w-4 h-4" /> Scan & Inward
                   </button>
-                ) : (
-                   <div className="px-3 py-1.5 rounded bg-slate-500/10 text-slate-400 font-bold text-xs uppercase tracking-wider text-center border border-slate-500/20">
-                     {tr.status === 'requested' ? 'Awaiting Dispatch' : 'On The Road'}
+                )}
+                {tr.status === 'dispatched' && tr.from === activeStore && (
+                   <div className="px-3 py-1.5 rounded bg-blue-500/10 text-blue-500 font-bold text-xs uppercase tracking-wider text-center border border-blue-500/20">
+                     On The Road
+                   </div>
+                )}
+                {tr.status === 'received' && (
+                   <div className="px-3 py-1.5 rounded bg-emerald-500/10 text-emerald-500 font-bold text-xs uppercase tracking-wider text-center border border-emerald-500/20">
+                     <CheckCircle2 className="w-3 h-3 inline mr-1"/> Inwarded Complete
                    </div>
                 )}
               </div>
