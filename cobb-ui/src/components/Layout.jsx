@@ -76,7 +76,8 @@ import {
   Bell,
   BellRing,
   Volume2,
-  Banknote
+  Banknote,
+  Lock
 } from 'lucide-react';
 import { THEMES } from './DashboardBackground';
 
@@ -480,17 +481,28 @@ const Layout = ({
               <div className={`flex items-center gap-1 px-2 py-1 rounded-full border text-[10px] font-bold ${darkMode ? 'bg-blue-500/10 border-blue-500/25 text-blue-300' : 'bg-blue-50 border-blue-200 text-blue-700'
                 }`}>
                 <Store className="w-3 h-3 shrink-0" />
-                <select
-                  value={activeStore}
-                  onChange={(e) => switchStore(e.target.value)}
-                  className="bg-transparent font-bold focus:outline-none cursor-pointer text-inherit max-w-[80px] truncate"
-                >
-                  {AVAILABLE_STORES.map(store => (
-                    <option key={store.id} value={store.id} className={darkMode ? 'bg-[#0b0e17] text-white' : 'bg-white text-slate-800'}>
-                      {store.shortName || store.name.split(' ')[0]}
-                    </option>
-                  ))}
-                </select>
+                {currentRole === 'owner' ? (
+                  <select
+                    value={activeStore}
+                    onChange={(e) => switchStore(e.target.value)}
+                    className="bg-transparent font-bold focus:outline-none cursor-pointer text-inherit max-w-[80px] truncate"
+                    title="Switch Cobb Store Branch (Owner Exclusive)"
+                  >
+                    {AVAILABLE_STORES.map(store => (
+                      <option key={store.id} value={store.id} className={darkMode ? 'bg-[#0b0e17] text-white' : 'bg-white text-slate-800'}>
+                        {store.shortName || store.name.split(' ')[0]}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <span 
+                    className="max-w-[85px] truncate flex items-center gap-1 cursor-default font-bold select-none" 
+                    title="Branch access is fixed to your assigned store"
+                  >
+                    {AVAILABLE_STORES.find(s => s.id === activeStore)?.shortName || 'Pundri'}
+                    <Lock className="w-2.5 h-2.5 opacity-60 shrink-0" />
+                  </span>
+                )}
               </div>
               <button
                 type="button"
@@ -579,8 +591,8 @@ const Layout = ({
             ? 'p-0 sm:p-4 lg:p-6 mx-auto w-full h-full'
             : 'p-3 sm:p-6 lg:p-8 max-w-7xl mx-auto'
         }>
-          {/* Multi-Store Executive HQ Mode Banner */}
-          {activeStore === 'ALL' && (
+          {/* Multi-Store Executive HQ Mode Banner (Owner Exclusive) */}
+          {activeStore === 'ALL' && currentRole === 'owner' && (
             <div className="mb-5 p-4 rounded-2xl bg-gradient-to-r from-blue-950/70 via-indigo-950/60 to-purple-950/70 border border-blue-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xl backdrop-blur-md">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-blue-600 text-white font-black text-xs flex items-center justify-center shadow-lg shadow-blue-500/30 shrink-0">
@@ -675,7 +687,7 @@ const Layout = ({
               className={`p-2 rounded-2xl border transition-all duration-300 flex items-center gap-2 overflow-hidden group relative ${isRightSidebarCollapsed ? 'cursor-pointer hover:border-blue-400/50 justify-center' : ''
                 } ${darkMode ? 'bg-[#0b0e17]/80 border-white/[0.06]' : 'bg-slate-50 border-slate-200/80'
                 }`}
-              title={`Active Store: ${AVAILABLE_STORES.find(s => s.id === activeStore)?.name || 'Store'} (Click to switch)`}
+              title={currentRole === 'owner' ? `Active Store: ${AVAILABLE_STORES.find(s => s.id === activeStore)?.name || 'Store'} (Click to switch)` : `Active Store: ${AVAILABLE_STORES.find(s => s.id === activeStore)?.name || 'Store'} (Assigned Branch)`}
             >
               <div className="pointer-events-none absolute -inset-full bg-gradient-to-r from-transparent via-white/[0.06] to-transparent -translate-x-[150%] group-hover:translate-x-[150%] transition-transform duration-1000 transform -skew-x-25" />
               <div className="w-8 h-8 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0">
@@ -685,23 +697,37 @@ const Layout = ({
                 }`}>
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Store Outlet</span>
-                  <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30">
-                    {AVAILABLE_STORES.find(s => s.id === activeStore)?.shortName || 'STORE'}
+                  <span className="text-[9px] font-mono font-bold px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center gap-1">
+                    {currentRole !== 'owner' && <Lock className="w-2.5 h-2.5 text-blue-400" />}
+                    <span>{AVAILABLE_STORES.find(s => s.id === activeStore)?.shortName || 'STORE'}</span>
                   </span>
                 </div>
-                <select
-                  value={activeStore}
-                  onChange={(e) => switchStore(e.target.value)}
-                  className={`w-full text-xs font-bold rounded-lg py-1 px-1.5 focus:outline-none cursor-pointer border ${darkMode ? 'border-[#1e2638] text-white bg-[#0f1422]' : 'border-slate-200 text-slate-800 bg-white shadow-xs'
-                    }`}
-                  title="Switch Cobb Store Branch"
-                >
-                  {AVAILABLE_STORES.map(store => (
-                    <option key={store.id} value={store.id} className={darkMode ? "bg-[#0b0f19] text-white py-1" : "bg-white text-slate-800 py-1"}>
-                      {store.name}
-                    </option>
-                  ))}
-                </select>
+                {currentRole === 'owner' ? (
+                  <select
+                    value={activeStore}
+                    onChange={(e) => switchStore(e.target.value)}
+                    className={`w-full text-xs font-bold rounded-lg py-1 px-1.5 focus:outline-none cursor-pointer border ${darkMode ? 'border-[#1e2638] text-white bg-[#0f1422]' : 'border-slate-200 text-slate-800 bg-white shadow-xs'
+                      }`}
+                    title="Switch Cobb Store Branch (Owner Exclusive)"
+                  >
+                    {AVAILABLE_STORES.map(store => (
+                      <option key={store.id} value={store.id} className={darkMode ? "bg-[#0b0f19] text-white py-1" : "bg-white text-slate-800 py-1"}>
+                        {store.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div 
+                    className={`w-full text-xs font-bold rounded-lg py-1 px-2 border flex items-center justify-between opacity-90 select-none ${darkMode ? 'border-[#1e2638] text-slate-300 bg-[#0f1422]' : 'border-slate-200 text-slate-700 bg-slate-50'}`}
+                    title="Store Manager access is locked to this branch"
+                  >
+                    <span className="truncate">{AVAILABLE_STORES.find(s => s.id === activeStore)?.name || 'Cobb Pundri'}</span>
+                    <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold uppercase bg-slate-500/10 text-slate-400 border border-slate-500/20 shrink-0 flex items-center gap-1 ml-1">
+                      <Lock className="w-2.5 h-2.5 text-slate-400" />
+                      <span>Locked</span>
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
 

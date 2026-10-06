@@ -103,11 +103,27 @@ export const AuthProvider = ({ children }) => {
     const updated = { ...user, role: newRole, name: nameMap[newRole] || 'Staff' };
     setUser(updated);
     try { localStorage.setItem('cobb_auth_user', JSON.stringify(updated)); } catch {}
+
+    // Security: Automatically lock non-owners out of 'ALL' (Consolidated Multi-Store HQ) view
+    if (newRole !== 'owner') {
+      setActiveStore(prev => {
+        const locked = (!prev || prev === 'ALL') ? 'DEMO_STORE_001' : prev;
+        try { localStorage.setItem('cobb_active_store', locked); } catch {}
+        return locked;
+      });
+    }
   };
 
   const switchStore = (storeId) => {
+    // SECURITY: Store managers and counter staff are strictly locked to their single assigned branch.
+    // Only the business Owner (role === 'owner') can switch between branches or view 'ALL' stores.
+    if (user?.role !== 'owner') {
+      console.warn(`[AuthContext] Branch switch blocked: User role '${user?.role}' is restricted to their assigned branch.`);
+      return false;
+    }
     setActiveStore(storeId);
     try { localStorage.setItem('cobb_active_store', storeId); } catch {}
+    return true;
   };
 
   const login = async (username, password, role = 'owner') => {
@@ -120,6 +136,15 @@ export const AuthProvider = ({ children }) => {
     };
     setUser(loggedUser);
     try { localStorage.setItem('cobb_auth_user', JSON.stringify(loggedUser)); } catch {}
+
+    // Security: Automatically lock non-owners out of 'ALL' (Consolidated Multi-Store HQ) view
+    if (role !== 'owner') {
+      setActiveStore(prev => {
+        const locked = (!prev || prev === 'ALL') ? 'DEMO_STORE_001' : prev;
+        try { localStorage.setItem('cobb_active_store', locked); } catch {}
+        return locked;
+      });
+    }
     return { success: true };
   };
 
