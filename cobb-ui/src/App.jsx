@@ -274,17 +274,7 @@ const DigitalCatalog = lazy(() => import('./components/DigitalCatalog'));
 
 export default function App() {
   const [isCatalogMode, setIsCatalogMode] = useState(() => {
-    // 1. If running as the Electron Desktop App locally, always show the CRM POS
-    if (window.location.protocol === 'file:') return false;
-    
-    // 2. If the owner explicitly visits the secret CRM route (e.g. /crm or ?admin=1), show CRM
-    if (window.location.pathname.includes('/crm') || window.location.search.includes('admin=')) {
-      return false;
-    }
-    
-    // 3. For ALL other web traffic (including root /), default to the public Catalog 
-    // This perfectly prevents customers from finding the CRM login screen.
-    return true;
+    return window.location.pathname.includes('/shop') || window.location.search.includes('shop=');
   });
 
   if (isCatalogMode) {
