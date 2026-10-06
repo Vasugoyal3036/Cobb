@@ -58,7 +58,7 @@ const LoginScreen = ({ onSetup }) => {
           <form className="space-y-6" onSubmit={handleLogin}>
             <div>
               <label className="block text-sm font-medium text-gray-300">
-                Username
+                Role / Username
               </label>
               <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -70,14 +70,14 @@ const LoginScreen = ({ onSetup }) => {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   className="bg-gray-900/50 border border-gray-700 block w-full pl-10 sm:text-sm rounded-lg p-2.5 text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="admin"
+                  placeholder="owner, manager, or cashier"
                 />
               </div>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-300">
-                Password
+                Secure PIN
               </label>
               <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -88,8 +88,9 @@ const LoginScreen = ({ onSetup }) => {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="bg-gray-900/50 border border-gray-700 block w-full pl-10 sm:text-sm rounded-lg p-2.5 text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  placeholder="••••••••"
+                  className="bg-gray-900/50 border border-gray-700 block w-full pl-10 sm:text-sm rounded-lg p-2.5 text-white tracking-widest placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                  placeholder="••••"
+                  maxLength={8}
                 />
               </div>
             </div>
