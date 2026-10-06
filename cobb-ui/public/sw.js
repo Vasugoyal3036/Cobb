@@ -1,15 +1,18 @@
-const CACHE_NAME = 'ors-retail-cache-v4';
+const CACHE_NAME = 'cobb-crm-cache-v5';
 const ASSETS_TO_CACHE = [
+  '/',
+  '/index.html',
   '/ors-logo.png',
   '/ors-squircle.jpg',
   '/favicon.svg',
-  '/manifest.webmanifest'
+  '/manifest.webmanifest',
+  '/manifest.json'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log('[ORS Service Worker] Pre-caching core shell assets...');
+      console.log('[Cobb CRM SW] Pre-caching core shell assets...');
       return cache.addAll(ASSETS_TO_CACHE);
     }).then(() => self.skipWaiting())
   );
@@ -21,7 +24,7 @@ self.addEventListener('activate', (event) => {
       return Promise.all(
         cacheNames.map((name) => {
           if (name !== CACHE_NAME) {
-            console.log('[ORS Service Worker] Removing old cache version:', name);
+            console.log('[Cobb CRM SW] Removing old cache version:', name);
             return caches.delete(name);
           }
         })
@@ -44,8 +47,17 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 1. Navigation requests (HTML pages): ALWAYS Network-First so users get latest updates instantly!
-  if (event.request.mode === 'navigate' || url.pathname === '/' || url.pathname.endsWith('.html')) {
+  // 1. Navigation requests (HTML pages & SPA routes like /crm, /shop):
+  // ALWAYS Network-First so users get latest updates instantly, with offline/launch fallback to /index.html
+  if (
+    event.request.mode === 'navigate' ||
+    url.pathname === '/' ||
+    url.pathname === '/crm' ||
+    url.pathname.startsWith('/crm/') ||
+    url.pathname === '/shop' ||
+    url.pathname.startsWith('/shop/') ||
+    url.pathname.endsWith('.html')
+  ) {
     event.respondWith(
       fetch(event.request)
         .then((networkResponse) => {
@@ -55,7 +67,11 @@ self.addEventListener('fetch', (event) => {
           }
           return networkResponse;
         })
-        .catch(() => caches.match(event.request))
+        .catch(async () => {
+          const cached = await caches.match(event.request);
+          if (cached) return cached;
+          return (await caches.match('/index.html')) || (await caches.match('/'));
+        })
     );
     return;
   }

@@ -278,17 +278,28 @@ export default function App() {
     // 1. If running as the Electron Desktop App locally, always show the CRM POS
     if (window.location.protocol === 'file:') return 'crm';
 
-    // 2. Show the public Digital Catalog ONLY on the /shop endpoint
+    // 2. Check if running as an installed PWA / mobile home screen shortcut
+    const isStandalone = typeof window !== 'undefined' && (
+      window.matchMedia('(display-mode: standalone)').matches ||
+      window.navigator.standalone === true ||
+      document.referrer.includes('android-app://')
+    );
+
+    // 3. Show the public Digital Catalog ONLY on the /shop endpoint
     if (window.location.pathname.includes('/shop')) {
       return 'catalog';
     }
 
-    // 3. Show CRM ONLY on /crm
-    if (window.location.pathname.includes('/crm') || window.location.search.includes('admin=')) {
+    // 4. Show CRM on /crm, with admin= param, or if launched from home-screen shortcut
+    if (
+      window.location.pathname.includes('/crm') ||
+      window.location.search.includes('admin=') ||
+      isStandalone
+    ) {
       return 'crm';
     }
 
-    // 4. Otherwise, leave it empty for now (root link)
+    // 5. Otherwise, leave it empty for now (root link)
     return 'empty';
   });
 
