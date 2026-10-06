@@ -127,6 +127,11 @@ export const AuthProvider = ({ children }) => {
   };
 
   const login = async (username, password, role = 'owner') => {
+    // SECURITY: Validate password for CRM access
+    if (password !== 'cobb1234') {
+      return { success: false, message: 'Invalid password. Access denied.' };
+    }
+
     const nameMap = { owner: 'Parbhat Goyal', manager: 'Store Manager', cashier: 'Counter Staff' };
     const loggedUser = {
       id: role === 'owner' ? 1 : role === 'manager' ? 2 : 3,
