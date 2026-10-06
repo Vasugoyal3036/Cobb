@@ -271,19 +271,20 @@ const TabFallback = () => (
 );
 
 const DigitalCatalog = lazy(() => import('./components/DigitalCatalog'));
+const AttendanceTab = lazy(() => import('./components/tabs/AttendanceTab'));
 
 export default function App() {
   const [isCatalogMode, setIsCatalogMode] = useState(() => {
     // 1. If running as the Electron Desktop App locally, always show the CRM POS
     if (window.location.protocol === 'file:') return false;
     
-    // 2. If the owner explicitly visits the secret CRM route (e.g. /crm or ?admin=1), show CRM
-    if (window.location.pathname.includes('/crm') || window.location.search.includes('admin=')) {
-      return false;
+    // 2. Show the public Digital Catalog ONLY on the /shop endpoint
+    if (window.location.pathname.includes('/shop')) {
+      return true;
     }
     
-    // 3. For ALL other web traffic (including root /), default to the public Catalog
-    return true;
+    // 3. For the root link (/) or /crm, default to the CRM (which is password protected)
+    return false;
   });
 
   if (isCatalogMode) {
@@ -2380,6 +2381,11 @@ export default function App() {
             {/* 20. GOODS IN TRANSIT */}
             {activeTab === 'transit' && (
               <GoodsInTransitTab darkMode={darkMode} API_BASE={API_BASE} />
+            )}
+
+            {/* 20A. ATTENDANCE & CLOCK-IN */}
+            {activeTab === 'attendance' && (
+              <AttendanceTab activeStore={activeStore} />
             )}
 
             {/* 20B. INTER-BRANCH TRANSFERS */}
