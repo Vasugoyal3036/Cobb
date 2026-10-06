@@ -274,20 +274,33 @@ const DigitalCatalog = lazy(() => import('./components/DigitalCatalog'));
 const AttendanceTab = lazy(() => import('./components/tabs/AttendanceTab'));
 
 export default function App() {
-  const [isCatalogMode, setIsCatalogMode] = useState(() => {
+  const [appRoute, setAppRoute] = useState(() => {
     // 1. If running as the Electron Desktop App locally, always show the CRM POS
-    if (window.location.protocol === 'file:') return false;
+    if (window.location.protocol === 'file:') return 'crm';
     
     // 2. Show the public Digital Catalog ONLY on the /shop endpoint
     if (window.location.pathname.includes('/shop')) {
-      return true;
+      return 'catalog';
+    }
+
+    // 3. Show CRM ONLY on /crm
+    if (window.location.pathname.includes('/crm') || window.location.search.includes('admin=')) {
+      return 'crm';
     }
     
-    // 3. For the root link (/) or /crm, default to the CRM (which is password protected)
-    return false;
+    // 4. Otherwise, leave it empty for now (root link)
+    return 'empty';
   });
 
-  if (isCatalogMode) {
+  if (appRoute === 'empty') {
+    return (
+      <div className="flex h-screen w-screen items-center justify-center bg-slate-950 text-white font-black text-2xl">
+        Something Awesome is Coming...
+      </div>
+    );
+  }
+
+  if (appRoute === 'catalog') {
     return (
       <Suspense fallback={<TabFallback />}>
         <DigitalCatalog />
