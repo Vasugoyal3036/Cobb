@@ -63,14 +63,17 @@ router.post('/test', async (req, res) => {
 router.post('/save', async (req, res) => {
     try {
         const newSettings = req.body;
-        if (!newSettings || !newSettings.database) {
+        if (!newSettings || typeof newSettings !== 'object') {
             return res.status(400).json({ success: false, error: 'Invalid configuration payload' });
         }
 
-        // If password is masked, preserve existing password
-        if (newSettings.database.password === '********') {
-            const existing = loadConfig();
-            newSettings.database.password = existing.database?.password || '';
+        const existing = loadConfig();
+
+        // If database settings provided, handle masked password and live reconnect
+        if (newSettings.database) {
+            if (newSettings.database.password === '********') {
+                newSettings.database.password = existing.database?.password || '';
+            }
         }
 
         // Save to config.json
@@ -79,13 +82,25 @@ router.post('/save', async (req, res) => {
             return res.status(500).json(saveResult);
         }
 
-        // Trigger live reconnection
-        const connectResult = await connectDB(newSettings.database);
+        // Immediately flush global API cache so /api/financials/pnl and other endpoints recompute with new numbers
+        if (req.app?.locals?.globalApiCache) {
+            try {
+                req.app.locals.globalApiCache.flushAll();
+            } catch (cErr) {
+                console.warn('[Config] Cache flush note:', cErr.message);
+            }
+        }
+
+        // Trigger live reconnection only if database credentials/host changed
+        let connectResult = { success: true };
+        if (newSettings.database) {
+            connectResult = await connectDB(newSettings.database);
+        }
 
         return res.json({
             success: true,
             message: connectResult.success 
-                ? 'Configuration saved and database connected successfully!' 
+                ? 'Store configuration saved successfully!' 
                 : `Configuration saved, but connection warning: ${connectResult.error}`,
             config: saveResult.config,
             status: getDbStatus()

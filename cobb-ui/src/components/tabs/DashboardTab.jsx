@@ -452,6 +452,7 @@ const DashboardTab = (props) => {
               setActiveTab={setActiveTab}
               setShowReconModal={setShowReconModal}
               topCardRef={topCardRef}
+              pnlData={pnlData}
             />
           )}
 
@@ -791,6 +792,8 @@ const DashboardTab = (props) => {
           isRefreshingPnl={isRefreshingPnl}
           formatCurrency={formatCurrency}
           darkMode={darkMode}
+          API_BASE={API_BASE}
+          activeStore={activeStore}
         />
       )}
 

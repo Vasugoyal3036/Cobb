@@ -6,6 +6,7 @@ import SetupWizardModal from './SetupWizardModal';
 import SystemHealthModal from './SystemHealthModal';
 import SystemPowerModal from './SystemPowerModal';
 import PwaInstallBanner from './PwaInstallBanner';
+import StoreExpensesModal from './StoreExpensesModal';
 import {
   MessageCircle,
   Users,
@@ -189,9 +190,16 @@ const Layout = ({
   const [showSetupModal, setShowSetupModal] = useState(false);
   const [showHealthModal, setShowHealthModal] = useState(false);
   const [showAlertModal, setShowAlertModal] = useState(false);
+  const [showExpensesModal, setShowExpensesModal] = useState(false);
   const [showThemePicker, setShowThemePicker] = useState(false);
   const [healthStatus, setHealthStatus] = useState({ overall: 'healthy', inboundAlertsCount: 0 });
   const [showPowerModal, setShowPowerModal] = useState(false);
+
+  useEffect(() => {
+    const handleOpenExpenses = () => setShowExpensesModal(true);
+    window.addEventListener('cobb_open_store_expenses', handleOpenExpenses);
+    return () => window.removeEventListener('cobb_open_store_expenses', handleOpenExpenses);
+  }, []);
   const [isLeftSidebarCollapsed, setIsLeftSidebarCollapsed] = useState(() => {
     try { return localStorage.getItem('cobb_left_sidebar_collapsed') === 'true'; } catch (e) { return false; }
   });
@@ -500,6 +508,19 @@ const Layout = ({
                 {currentRole === 'owner' ? '👑' : currentRole === 'manager' ? '👔' : '🧾'}
                 <span>{currentRole === 'owner' ? 'Owner' : currentRole === 'manager' ? 'Mgr' : 'Cashier'}</span>
               </button>
+
+              {/* Mobile Expenses trigger for Owner */}
+              {currentRole === 'owner' && (
+                <button
+                  type="button"
+                  onClick={() => setShowExpensesModal(true)}
+                  className={`px-2 py-1 rounded-full font-bold text-[10px] border flex items-center gap-1 cursor-pointer transition-all active:scale-95 ${darkMode ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' : 'bg-emerald-50 text-emerald-800 border-emerald-200'}`}
+                  title="Configure Store Expenses & Overheads"
+                >
+                  <DollarSign className="w-3 h-3 text-emerald-400" />
+                  <span>Expenses</span>
+                </button>
+              )}
             </div>
 
             {/* Right: Status indicators */}
@@ -574,6 +595,15 @@ const Layout = ({
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowExpensesModal(true)}
+                  className="px-3 py-1.5 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 text-emerald-200 border border-emerald-500/40 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+                  title="Configure Store Expenses & Targets"
+                >
+                  <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Store Overheads</span>
+                </button>
                 <button
                   type="button"
                   onClick={() => setShowHealthModal(true)}
@@ -674,6 +704,30 @@ const Layout = ({
                 </select>
               </div>
             </div>
+
+            {/* 1.5 Store Expenses Button for Owner */}
+            {currentRole === 'owner' && (
+              <button
+                type="button"
+                onClick={() => setShowExpensesModal(true)}
+                className={`p-2 rounded-2xl border transition-all duration-300 flex items-center gap-2 overflow-hidden group relative cursor-pointer active:scale-98 ${isRightSidebarCollapsed ? 'justify-center' : 'w-full'
+                  } ${darkMode ? 'bg-emerald-500/10 border-emerald-500/20 hover:border-emerald-500/40 text-emerald-300' : 'bg-emerald-50 border-emerald-200 hover:border-emerald-300 text-emerald-800'}`}
+                title="Edit Store Operating Expenses (Rent, Salaries, Electricity, Margin %)"
+              >
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400 shrink-0">
+                  <Calculator className="w-4 h-4" />
+                </div>
+                <div className={`flex-1 min-w-0 text-left transition-all duration-500 ${isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-full opacity-100'}`}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-wider">Store Expenses</span>
+                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                      EDIT
+                    </span>
+                  </div>
+                  <p className="text-[9px] text-slate-400 truncate mt-0.5">Rent, Salaries &amp; Targets</p>
+                </div>
+              </button>
+            )}
 
             {/* 2. Role Switcher Pill */}
             <div
@@ -1010,6 +1064,18 @@ const Layout = ({
         onClose={() => setShowHealthModal(false)}
         API_BASE={API_BASE}
         darkMode={darkMode}
+      />
+
+      {/* Store Expenses & Financial Targets Configuration Modal */}
+      <StoreExpensesModal
+        isOpen={showExpensesModal}
+        onClose={() => setShowExpensesModal(false)}
+        API_BASE={API_BASE}
+        activeStore={activeStore}
+        darkMode={darkMode}
+        onConfigSaved={(savedExpenses) => {
+          window.dispatchEvent(new CustomEvent('cobb_store_config_updated', { detail: savedExpenses }));
+        }}
       />
 
       {/* Checkout Push Notification Info & Controls Modal */}

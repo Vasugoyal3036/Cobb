@@ -1,0 +1,35 @@
+{
+  "configured": true,
+  "presetId": "cobb",
+  "storeProfile": {
+    "storeName": "Cobb Apparels",
+    "branch": "Pundri"
+  },
+  "operatingExpenses": {
+    "rent": 40000,
+    "staffSalaries": 46000,
+    "electricity": 10000,
+    "miscExpenses": 3000,
+    "franchiseRoyalty": 0,
+    "totalExpenses": 99000,
+    "dailyExpense": 3300,
+    "dailyOpEx": 3300,
+    "dailyAmortizedExpense": 3300,
+    "targetMarginPct": 25,
+    "dailyTargetSales": 50000,
+    "monthlyTargetSales": 900000,
+    "dailyBreakEvenSales": 13200,
+    "monthlyBreakEvenSales": 396000
+  },
+  "database": {
+    "engine": "mssql",
+    "server": "localhost",
+    "instanceName": "SQLEXPRESS",
+    "database": "RPD_AVATAR01_NEW_ST_POS",
+    "trustedConnection": true,
+    "user": "",
+    "password": "",
+    "port": 1433
+  },
+  "lastUpdated": "2026-10-06T06:31:31.855Z"
+}

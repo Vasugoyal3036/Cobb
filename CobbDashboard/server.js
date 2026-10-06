@@ -22,6 +22,7 @@ const { router: authRouter, checkRole } = require('./routes/auth');
 app.use('/api/auth', authRouter);
 
 
+const { loadConfig } = require('./config_manager');
 const configRouter = require('./routes/config');
 app.use('/api/config', configRouter);
 
@@ -49,6 +50,7 @@ app.use('/api/alterations', alterationsRouter);
 
 const GlobalNodeCache = require('node-cache');
 const globalApiCache = new GlobalNodeCache({ stdTTL: 180 }); // Default fallback
+app.locals.globalApiCache = globalApiCache;
 
 // Smart Cache TTL Mapping:
 // - Real-time metrics: 20s so checkout sales updates reflect near instantly
@@ -2838,12 +2840,20 @@ app.get('/api/financials/pnl', async (req, res) => {
             ORDER BY Amount DESC;
         `);
 
-        // Franchise Retail P&L Model Standard Costs
-        const rent = 40000;
-        const electricity = 15000;
-        const staffSalaries = 45000;
-        const miscExpenses = 10000;
-        const totalExpenses = 110000; // As requested
+        // Dynamic Store P&L Model Costs from store configuration
+        const storeCfg = loadConfig();
+        const expCfg = storeCfg.operatingExpenses || {};
+        const rent = Number(expCfg.rent !== undefined ? expCfg.rent : 40000);
+        const electricity = Number(expCfg.electricity !== undefined ? expCfg.electricity : 15000);
+        const staffSalaries = Number(expCfg.staffSalaries !== undefined ? expCfg.staffSalaries : 45000);
+        const miscExpenses = Number(expCfg.miscExpenses !== undefined ? expCfg.miscExpenses : 10000);
+        const franchiseRoyalty = Number(expCfg.franchiseRoyalty !== undefined ? expCfg.franchiseRoyalty : 0);
+        const totalExpenses = rent + electricity + staffSalaries + miscExpenses + franchiseRoyalty;
+        const targetMarginPct = Number(expCfg.targetMarginPct !== undefined ? expCfg.targetMarginPct : 27);
+        const marginMultiplier = targetMarginPct / 100;
+        const dailyTargetSales = Number(expCfg.dailyTargetSales !== undefined ? expCfg.dailyTargetSales : 50000);
+        const monthlyTargetSales = Number(expCfg.monthlyTargetSales !== undefined ? expCfg.monthlyTargetSales : 1500000);
+        const dailyBreakEvenSales = Math.round((totalExpenses / 30) / (marginMultiplier || 0.27));
 
         const monthNames = [
             "January", "February", "March", "April", "May", "June",
@@ -2856,7 +2866,7 @@ app.get('/api/financials/pnl', async (req, res) => {
         const currentTaxable = Number((currentSales - currentTax).toFixed(2)); // Raw sales before taxes
         const currentBills = Number(batchQuery.recordsets[0]?.[0]?.TotalBills || 0);
         const currentQty = Number(batchQuery.recordsets[0]?.[0]?.TotalQuantity || 0);
-        const currentGrossProfit = Math.round(currentTaxable * 0.27);
+        const currentGrossProfit = Math.round(currentTaxable * marginMultiplier);
         const currentCogs = currentTaxable - currentGrossProfit;
         const currentNetProfit = currentGrossProfit - totalExpenses;
         const currentMarginPct = currentTaxable > 0 ? Math.round((currentNetProfit / currentTaxable) * 100) : (currentSales > 0 ? Math.round((currentNetProfit / currentSales) * 100) : 0);
@@ -2869,7 +2879,7 @@ app.get('/api/financials/pnl', async (req, res) => {
         const ltBills = Number(ltRecord.LifetimeBills || 0);
         const ltQty = Number(ltRecord.LifetimeQuantity || 0);
         const ltAvgSale = ltBills > 0 ? Number((ltSales / ltBills).toFixed(2)) : 0;
-        const ltGrossProfit = Math.round(ltTaxable * 0.27);
+        const ltGrossProfit = Math.round(ltTaxable * marginMultiplier);
         const ltCogs = ltTaxable - ltGrossProfit;
         const ltAvgBill = ltBills > 0 ? Math.round(ltSales / ltBills) : 0;
         const ltAvgBillRaw = ltBills > 0 ? Number((ltTaxable / ltBills).toFixed(2)) : 0;
@@ -2894,7 +2904,7 @@ app.get('/api/financials/pnl', async (req, res) => {
             const mTaxable = Number((mSales - mTax).toFixed(2)); // Monthly raw sales before taxes
             const mBills = Number(row.TotalBills || 0);
             const mQty = Number(row.TotalQuantity || 0);
-            const mGrossProfit = Math.round(mTaxable * 0.27);
+            const mGrossProfit = Math.round(mTaxable * marginMultiplier);
             const mCogs = mTaxable - mGrossProfit;
             const mNetProfit = mGrossProfit - totalExpenses;
             const mMarginPct = mTaxable > 0 ? Math.round((mNetProfit / mTaxable) * 100) : (mSales > 0 ? Math.round((mNetProfit / mSales) * 100) : 0);
@@ -2925,7 +2935,15 @@ app.get('/api/financials/pnl', async (req, res) => {
                     electricity,
                     staffSalaries,
                     miscExpenses,
-                    totalExpenses
+                    franchiseRoyalty,
+                    totalExpenses,
+                    dailyAmortizedExpense: Math.round(totalExpenses / 30),
+                    dailyExpense: Math.round(totalExpenses / 30),
+                    dailyOpEx: Math.round(totalExpenses / 30),
+                    targetMarginPct,
+                    dailyTargetSales,
+                    monthlyTargetSales,
+                    dailyBreakEvenSales
                 },
                 netStoreProfit: mNetProfit,
                 profitMarginPct: mMarginPct
@@ -2965,7 +2983,15 @@ app.get('/api/financials/pnl', async (req, res) => {
                 electricity,
                 staffSalaries,
                 miscExpenses,
-                totalExpenses
+                franchiseRoyalty,
+                totalExpenses,
+                dailyAmortizedExpense: Math.round(totalExpenses / 30),
+                dailyExpense: Math.round(totalExpenses / 30),
+                dailyOpEx: Math.round(totalExpenses / 30),
+                targetMarginPct,
+                dailyTargetSales,
+                monthlyTargetSales,
+                dailyBreakEvenSales
             },
             netStoreProfit: currentNetProfit,
             profitMarginPct: currentMarginPct,

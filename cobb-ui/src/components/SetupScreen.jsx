@@ -5,6 +5,20 @@ export default function SetupScreen({ onComplete }) {
   const [step, setStep] = useState(1);
   const [isDeploying, setIsDeploying] = useState(false);
 
+  // Store profile and expenses state
+  const [storeName, setStoreName] = useState('');
+  const [storeId, setStoreId] = useState('');
+  const [rent, setRent] = useState('40000');
+  const [staffSalaries, setStaffSalaries] = useState('45000');
+  const [electricity, setElectricity] = useState('15000');
+  const [miscExpenses, setMiscExpenses] = useState('10000');
+  const [targetMarginPct, setTargetMarginPct] = useState('27');
+  const [dailyTargetSales, setDailyTargetSales] = useState('50000');
+
+  const totalExpenses = (Number(rent) || 0) + (Number(staffSalaries) || 0) + (Number(electricity) || 0) + (Number(miscExpenses) || 0);
+  const marginFrac = (Number(targetMarginPct) || 27) / 100;
+  const dailyBreakEven = marginFrac > 0 ? Math.round((totalExpenses / 30) / marginFrac) : 0;
+
   const handleNext = () => {
     if (step < 3) setStep(step + 1);
     else finishSetup();
@@ -12,6 +26,26 @@ export default function SetupScreen({ onComplete }) {
 
   const finishSetup = () => {
     setIsDeploying(true);
+    try {
+      const configObj = {
+        storeProfile: {
+          storeName: storeName || 'Cobb Apparels',
+          storeId: storeId || 'DEMO_STORE_001'
+        },
+        operatingExpenses: {
+          rent: Number(rent) || 40000,
+          staffSalaries: Number(staffSalaries) || 45000,
+          electricity: Number(electricity) || 15000,
+          miscExpenses: Number(miscExpenses) || 10000,
+          totalExpenses,
+          targetMarginPct: Number(targetMarginPct) || 27,
+          dailyTargetSales: Number(dailyTargetSales) || 50000,
+          dailyBreakEvenSales: dailyBreakEven
+        }
+      };
+      localStorage.setItem('cobb_store_config', JSON.stringify(configObj));
+    } catch (e) {}
+
     setTimeout(() => {
       setIsDeploying(false);
       if (onComplete) onComplete();
@@ -73,11 +107,113 @@ export default function SetupScreen({ onComplete }) {
           )}
 
           {step === 3 && (
-            <div className="animate-in fade-in slide-in-from-right-4 duration-500">
-              <h2 className="text-xl font-semibold mb-4 flex items-center gap-2"><Building className="text-emerald-400" /> Store Details</h2>
-              <div className="space-y-4">
-                <input type="text" placeholder="Store Name" className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 focus:outline-none focus:border-emerald-500 transition-colors" />
-                <input type="text" placeholder="Store ID (e.g. DEMO_STORE_001)" className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 focus:outline-none focus:border-emerald-500 transition-colors" />
+            <div className="animate-in fade-in slide-in-from-right-4 duration-500 max-h-[55vh] overflow-y-auto pr-1 space-y-4">
+              <div>
+                <h2 className="text-xl font-semibold flex items-center gap-2"><Building className="text-emerald-400" /> Store Details</h2>
+                <p className="text-xs text-slate-400 mt-1">Set store identifiers and operating expense placeholders to power net profit &amp; break-even metrics.</p>
+              </div>
+
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  value={storeName}
+                  onChange={(e) => setStoreName(e.target.value)}
+                  placeholder="Store Name"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500 transition-colors"
+                />
+                <input
+                  type="text"
+                  value={storeId}
+                  onChange={(e) => setStoreId(e.target.value)}
+                  placeholder="Store ID (e.g. DEMO_STORE_001)"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500 transition-colors"
+                />
+              </div>
+
+              {/* Operating Expense Placeholders */}
+              <div className="pt-2 border-t border-slate-800/80">
+                <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Monthly Fixed Overheads (OPEX)</h3>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="text-[10px] text-slate-400 block mb-0.5">Store Rent (₹/mo)</label>
+                    <input
+                      type="number"
+                      value={rent}
+                      onChange={(e) => setRent(e.target.value)}
+                      placeholder="Store Rent (e.g. 40000)"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:border-emerald-500 transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-400 block mb-0.5">Staff Salaries (₹/mo)</label>
+                    <input
+                      type="number"
+                      value={staffSalaries}
+                      onChange={(e) => setStaffSalaries(e.target.value)}
+                      placeholder="Staff Salaries (e.g. 45000)"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:border-emerald-500 transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-400 block mb-0.5">Electricity &amp; AC (₹/mo)</label>
+                    <input
+                      type="number"
+                      value={electricity}
+                      onChange={(e) => setElectricity(e.target.value)}
+                      placeholder="Electricity & AC (e.g. 15000)"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:border-emerald-500 transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-400 block mb-0.5">Misc &amp; Maintenance (₹/mo)</label>
+                    <input
+                      type="number"
+                      value={miscExpenses}
+                      onChange={(e) => setMiscExpenses(e.target.value)}
+                      placeholder="Misc & Maintenance (e.g. 10000)"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:border-emerald-500 transition-colors"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Benchmarks & Targets */}
+              <div className="pt-2 border-t border-slate-800/80">
+                <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">Targets &amp; Margin</h3>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label className="text-[10px] text-slate-400 block mb-0.5">Target Gross Margin (%)</label>
+                    <input
+                      type="number"
+                      value={targetMarginPct}
+                      onChange={(e) => setTargetMarginPct(e.target.value)}
+                      placeholder="Target Gross Margin % (e.g. 27)"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:border-emerald-500 transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-400 block mb-0.5">Daily Sales Target (₹)</label>
+                    <input
+                      type="number"
+                      value={dailyTargetSales}
+                      onChange={(e) => setDailyTargetSales(e.target.value)}
+                      placeholder="Daily Sales Target (e.g. 50000)"
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs font-mono focus:outline-none focus:border-emerald-500 transition-colors"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Live Preview Card */}
+              <div className="p-3 rounded-xl bg-emerald-950/30 border border-emerald-500/20 text-xs">
+                <div className="flex justify-between items-center text-slate-300">
+                  <span>Fixed Monthly Overhead:</span>
+                  <span className="font-mono font-bold text-rose-400">₹{totalExpenses.toLocaleString('en-IN')}</span>
+                </div>
+                <div className="flex justify-between items-center text-slate-300 mt-1">
+                  <span>Daily Break-Even Sale Needed:</span>
+                  <span className="font-mono font-bold text-emerald-400">₹{dailyBreakEven.toLocaleString('en-IN')}/day</span>
+                </div>
               </div>
             </div>
           )}

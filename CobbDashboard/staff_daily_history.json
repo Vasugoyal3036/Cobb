@@ -1,5 +1,37 @@
 [
   {
+    "date": "2026-10-06",
+    "year": 2026,
+    "month": 10,
+    "day": 6,
+    "dayOfWeek": "Tuesday",
+    "formattedDate": "06 Oct 2026",
+    "storeGrossSales": 3780,
+    "storeTotalBills": 1,
+    "storeTotalItems": 3,
+    "staffSales": 0,
+    "totalCommission": 0,
+    "activeStaffCount": 0,
+    "staff": [
+      {
+        "empCode": "0000000",
+        "name": "Simran",
+        "isUnassigned": true,
+        "isMissingName": false,
+        "hasCustomOverride": true,
+        "sales": 3780,
+        "items": 3,
+        "bills": 1,
+        "aov": 3780,
+        "upt": 3,
+        "commissionRate": 0,
+        "commission": 0,
+        "slabLabel": "POS Counter"
+      }
+    ],
+    "topStaff": null
+  },
+  {
     "date": "2026-10-05",
     "year": 2026,
     "month": 10,

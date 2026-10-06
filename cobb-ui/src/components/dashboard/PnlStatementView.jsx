@@ -12,8 +12,10 @@ import {
   Receipt,
   RotateCcw,
   Sparkles,
-  TrendingUp
+  TrendingUp,
+  Settings
 } from 'lucide-react';
+import StoreExpensesModal from '../StoreExpensesModal';
 
 export default function PnlStatementView({
   userRole,
@@ -21,29 +23,34 @@ export default function PnlStatementView({
   fetchPnl,
   isRefreshingPnl,
   formatCurrency = (val) => `₹${Number(val || 0).toLocaleString('en-IN')}`,
-  darkMode
+  darkMode,
+  API_BASE = 'http://localhost:5000',
+  activeStore = 'DEMO_STORE_001'
 }) {
   const [selectedPnlMonth, setSelectedPnlMonth] = useState('all');
   const [pnlSalesMode, setPnlSalesMode] = useState('gross');
   const [pnlCopied, setPnlCopied] = useState(false);
+  const [showExpensesModal, setShowExpensesModal] = useState(false);
 
   const copyPnlSummary = (data) => {
     if (!data) return;
     const rawSales = data.rawSales ?? data.taxableRevenue ?? (data.grossSales - data.taxCollected);
+    const exp = data.operatingExpenses || {};
+    const marginPct = exp.targetMarginPct || 27;
     const text = `📊 COBB POS - STORE P&L STATEMENT (${data.monthName || 'All-Time / Monthly'})
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 💰 GROSS TOTAL SALE (POS MATCH): ${formatCurrency(data.grossSales)}
 ⚡ RAW SALES (BEFORE TAXES): ${formatCurrency(rawSales)}
 🧾 Output GST Tax Collected: +${formatCurrency(data.taxCollected)}
 
-Wholesale COGS (~73% of Raw Sales): -${formatCurrency(data.costOfGoodsSold)}
-Gross Retail Margin Retained (27%): ${formatCurrency(data.grossProfit || Math.round(rawSales * 0.27))}
+Wholesale COGS (~${100 - marginPct}% of Raw Sales): -${formatCurrency(data.costOfGoodsSold)}
+Gross Retail Margin Retained (${marginPct}%): ${formatCurrency(data.grossProfit || Math.round(rawSales * (marginPct / 100)))}
 
-Fixed Operating Overheads: -${formatCurrency(data.operatingExpenses?.totalExpenses || 110000)}
-  • Store Rent (Pundri): -${formatCurrency(data.operatingExpenses?.rent || 40000)}
-  • Staff Salaries: -${formatCurrency(data.operatingExpenses?.staffSalaries || 45000)}
-  • Electricity & AC: -${formatCurrency(data.operatingExpenses?.electricity || 15000)}
-  • Misc & Maintenance: -${formatCurrency(data.operatingExpenses?.miscExpenses || 10000)}
+Fixed Operating Overheads: -${formatCurrency(exp.totalExpenses || 110000)}
+  • Store Rent: -${formatCurrency(exp.rent || 40000)}
+  • Staff Salaries: -${formatCurrency(exp.staffSalaries || 45000)}
+  • Electricity & AC: -${formatCurrency(exp.electricity || 15000)}
+  • Misc & Maintenance: -${formatCurrency(exp.miscExpenses || 10000)}${exp.franchiseRoyalty ? `\n  • Franchise / Tech Fee: -${formatCurrency(exp.franchiseRoyalty)}` : ''}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🏆 NET STORE PROFIT: ${formatCurrency(data.netStoreProfit)} (${data.profitMarginPct}% Net Margin)
 Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.avgBillValueRaw || Math.round(rawSales / (data.totalBills || 1)))}
@@ -91,6 +98,16 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
                     <RotateCcw className={`w-3.5 h-3.5 ${isRefreshingPnl ? 'animate-spin text-emerald-500' : 'text-slate-500'}`} />
                     <span>{isRefreshingPnl ? 'Syncing...' : 'Sync POS'}</span>
                   </button>
+                  {userRole === 'owner' && (
+                    <button
+                      onClick={() => setShowExpensesModal(true)}
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-xs font-bold transition-all cursor-pointer border border-emerald-200 dark:border-emerald-800 shadow-sm"
+                      title="Configure store operating expenses & targets"
+                    >
+                      <Settings className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                      <span>Store Expenses</span>
+                    </button>
+                  )}
                   <div className="flex items-center gap-2 bg-slate-900 text-white border border-slate-700 px-3.5 py-1.5 rounded-2xl shadow-sm">
                     <Receipt className="w-4 h-4 text-amber-400" />
                     <div className="text-left">
@@ -142,10 +159,11 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
                     costOfGoodsSold: ltCogs,
                     grossProfit: ltGrossProfit,
                     operatingExpenses: {
-                      rent: 40000 * (pnlData.lifetime?.activeMonthsCount || 2),
-                      electricity: 15000 * (pnlData.lifetime?.activeMonthsCount || 2),
-                      staffSalaries: 45000 * (pnlData.lifetime?.activeMonthsCount || 2),
-                      miscExpenses: 10000 * (pnlData.lifetime?.activeMonthsCount || 2),
+                      rent: (pnlData.operatingExpenses?.rent ?? 40000) * (pnlData.lifetime?.activeMonthsCount || 2),
+                      electricity: (pnlData.operatingExpenses?.electricity ?? 15000) * (pnlData.lifetime?.activeMonthsCount || 2),
+                      staffSalaries: (pnlData.operatingExpenses?.staffSalaries ?? 45000) * (pnlData.lifetime?.activeMonthsCount || 2),
+                      miscExpenses: (pnlData.operatingExpenses?.miscExpenses ?? 10000) * (pnlData.lifetime?.activeMonthsCount || 2),
+                      franchiseRoyalty: (pnlData.operatingExpenses?.franchiseRoyalty ?? 0) * (pnlData.lifetime?.activeMonthsCount || 2),
                       totalExpenses: ltExp
                     },
                     netStoreProfit: ltNet,
@@ -1194,6 +1212,19 @@ Total Bills: ${data.totalBills || 0} Checkouts | Raw AOV: ${formatCurrency(data.
                 </>
               );
             })() : <p className="text-slate-400">Loading P&amp;L statement...</p>}
+
+            {/* Store Operating Expenses & Targets Modal */}
+            <StoreExpensesModal
+              isOpen={showExpensesModal}
+              onClose={() => setShowExpensesModal(false)}
+              API_BASE={API_BASE}
+              activeStore={activeStore}
+              darkMode={darkMode}
+              onConfigSaved={(savedExpenses) => {
+                window.dispatchEvent(new CustomEvent('cobb_store_config_updated', { detail: savedExpenses }));
+                if (typeof fetchPnl === 'function') fetchPnl();
+              }}
+            />
           </div>
         )
   );

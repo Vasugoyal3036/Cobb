@@ -76,6 +76,16 @@ function getDefaultConfig() {
             ownerPhones: ['9138122820', '8708788707', '9034522000', '9466422821'],
             currency: '₹'
         },
+        operatingExpenses: {
+            rent: Number(process.env.STORE_RENT) || 40000,
+            staffSalaries: Number(process.env.STORE_STAFF_SALARIES) || 45000,
+            electricity: Number(process.env.STORE_ELECTRICITY) || 15000,
+            miscExpenses: Number(process.env.STORE_MISC_EXPENSES) || 10000,
+            franchiseRoyalty: Number(process.env.STORE_ROYALTY) || 0,
+            targetMarginPct: Number(process.env.STORE_MARGIN_PCT) || 27,
+            dailyTargetSales: Number(process.env.STORE_DAILY_TARGET) || 50000,
+            monthlyTargetSales: Number(process.env.STORE_MONTHLY_TARGET) || 1500000
+        },
         database: {
             engine: 'mssql',
             server: process.env.DB_SERVER || 'localhost',
@@ -94,15 +104,20 @@ function loadConfig() {
         if (fs.existsSync(CONFIG_FILE)) {
             const raw = fs.readFileSync(CONFIG_FILE, 'utf8');
             const parsed = JSON.parse(raw);
+            const defaults = getDefaultConfig();
             return {
-                ...getDefaultConfig(),
+                ...defaults,
                 ...parsed,
                 storeProfile: {
-                    ...getDefaultConfig().storeProfile,
+                    ...defaults.storeProfile,
                     ...(parsed.storeProfile || {})
                 },
+                operatingExpenses: {
+                    ...defaults.operatingExpenses,
+                    ...(parsed.operatingExpenses || {})
+                },
                 database: {
-                    ...getDefaultConfig().database,
+                    ...defaults.database,
                     ...(parsed.database || {})
                 }
             };

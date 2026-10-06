@@ -1,5 +1,5 @@
 import React from 'react';
-import { TrendingUp, ShoppingBag, ArrowRight } from 'lucide-react';
+import { TrendingUp, ShoppingBag, ArrowRight, Settings } from 'lucide-react';
 
 const ExecutiveKpiStrip = ({
   darkMode,
@@ -12,8 +12,54 @@ const ExecutiveKpiStrip = ({
   userRole,
   setActiveTab,
   setShowReconModal,
-  topCardRef
+  topCardRef,
+  pnlData
 }) => {
+  const [localExpConfig, setLocalExpConfig] = React.useState(() => {
+    try {
+      const raw = localStorage.getItem('cobb_store_config');
+      return raw ? JSON.parse(raw)?.operatingExpenses : null;
+    } catch (e) {
+      return null;
+    }
+  });
+
+  React.useEffect(() => {
+    const handleUpdate = (e) => {
+      try {
+        const raw = localStorage.getItem('cobb_store_config');
+        const parsed = e?.detail || (raw ? JSON.parse(raw)?.operatingExpenses : null);
+        if (parsed) setLocalExpConfig(parsed);
+      } catch (err) {}
+    };
+    window.addEventListener('cobb_store_config_updated', handleUpdate);
+    return () => window.removeEventListener('cobb_store_config_updated', handleUpdate);
+  }, []);
+
+  // Merge with precedence given to immediate local edits over pnlData
+  const expCfg = {
+    ...(pnlData?.operatingExpenses || {}),
+    ...(localExpConfig || {})
+  };
+  const targetMargin = Number(expCfg?.targetMarginPct ?? 27);
+  const marginFrac = targetMargin / 100;
+  const cogsFrac = 1 - marginFrac;
+  const cogsPct = Math.round(cogsFrac * 100);
+
+  const totalMonthlyExp = Number(expCfg?.totalExpenses ?? 110000);
+  const DAILY_EXPENSE = Number(
+    expCfg?.dailyExpense ??
+    expCfg?.dailyOpEx ??
+    expCfg?.dailyAmortizedExpense ??
+    Math.round(totalMonthlyExp / 30)
+  );
+  const bep = Number(
+    expCfg?.dailyBreakEvenSales ??
+    (marginFrac > 0 ? Math.round(DAILY_EXPENSE / marginFrac) : Math.round(DAILY_EXPENSE / 0.27))
+  );
+  const opExFormatted = DAILY_EXPENSE >= 1000 
+    ? `${(DAILY_EXPENSE / 1000).toFixed(DAILY_EXPENSE % 1000 === 0 ? 0 : 1)}k` 
+    : DAILY_EXPENSE.toLocaleString('en-IN');
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
       {/* Revenue Card with WoW/MoM Trends & Payment Breakdown */}
@@ -120,7 +166,19 @@ const ExecutiveKpiStrip = ({
       }`}>
         <div className="flex justify-between items-start relative z-10">
           <div>
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Daily Target</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Daily Target</span>
+              {userRole === 'owner' && (
+                <button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new Event('cobb_open_store_expenses'))}
+                  className="p-0.5 rounded text-slate-400 hover:text-emerald-400 transition-colors cursor-pointer"
+                  title="Click to edit Daily Target & Store Expenses"
+                >
+                  <Settings className="w-3 h-3" />
+                </button>
+              )}
+            </div>
             <h3 className="text-3xl sm:text-4xl font-black font-mono tracking-tight text-slate-900 dark:text-white mt-1">
               {formatCurrency(DAILY_TARGET)}
             </h3>
@@ -195,12 +253,23 @@ const ExecutiveKpiStrip = ({
         }`}>
           <div className="flex justify-between items-start mb-1">
             <div>
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Gross &amp; Net Margin</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">Gross &amp; Net Margin</span>
+                {userRole === 'owner' && (
+                  <button
+                    type="button"
+                    onClick={() => window.dispatchEvent(new Event('cobb_open_store_expenses'))}
+                    className="p-0.5 rounded text-slate-400 hover:text-emerald-400 transition-colors cursor-pointer"
+                    title="Click to edit Daily OpEx & Margin %"
+                  >
+                    <Settings className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
               {(() => {
                 const totalSales = overviewStats.today?.TotalSales || 0;
-                const cogs = Math.round(totalSales * 0.73);
+                const cogs = Math.round(totalSales * cogsFrac);
                 const grossProfit = totalSales - cogs;
-                const DAILY_EXPENSE = 4000;
                 const netMargin = grossProfit - DAILY_EXPENSE;
                 const isProfitable = netMargin >= 0;
                 return (
@@ -218,29 +287,28 @@ const ExecutiveKpiStrip = ({
           {(() => {
             const totalSales = overviewStats.today?.TotalSales || 0;
             const total = totalSales > 0 ? totalSales : 1;
-            const DAILY_EXPENSE = 4000;
-            const bep = Math.round(DAILY_EXPENSE / 0.27);
-            const cogs = Math.round(totalSales * 0.73);
+            const cogs = Math.round(totalSales * cogsFrac);
             const grossProfit = totalSales - cogs;
             const netMargin = grossProfit - DAILY_EXPENSE;
             const isProfitable = netMargin >= 0;
+            const targetMarginInt = Math.round(marginFrac * 100);
             const opExBarPct = isProfitable 
-              ? Math.min(27, Math.round((DAILY_EXPENSE / total) * 100))
-              : Math.round((Math.max(0, grossProfit) / DAILY_EXPENSE) * 27);
-            const netBarPct = isProfitable ? Math.max(0, 100 - 73 - opExBarPct) : 0;
-            const deficitBarPct = isProfitable ? 0 : (27 - opExBarPct);
+              ? Math.min(targetMarginInt, Math.round((DAILY_EXPENSE / total) * 100))
+              : (DAILY_EXPENSE > 0 ? Math.round((Math.max(0, grossProfit) / DAILY_EXPENSE) * targetMarginInt) : 0);
+            const netBarPct = isProfitable ? Math.max(0, 100 - cogsPct - opExBarPct) : 0;
+            const deficitBarPct = isProfitable ? 0 : (targetMarginInt - opExBarPct);
 
             return (
               <div className="space-y-1.5 my-1">
                 <div className="flex justify-between text-[11px] font-semibold">
-                  <span className="text-slate-500 dark:text-slate-400">Cost (73%)</span>
-                  <span className="text-amber-500 dark:text-amber-400">OpEx (₹4k)</span>
+                  <span className="text-slate-500 dark:text-slate-400">Cost ({cogsPct}%)</span>
+                  <span className="text-amber-500 dark:text-amber-400">OpEx (₹{opExFormatted})</span>
                   <span className={isProfitable ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}>
                     {isProfitable ? 'Profit' : 'Deficit'}
                   </span>
                 </div>
                 <div className={`w-full h-2 rounded-full flex overflow-hidden ${darkMode ? 'bg-slate-800' : 'bg-slate-100'}`}>
-                  <div className="bg-slate-500 h-full" style={{ width: '73%' }}></div>
+                  <div className="bg-slate-500 h-full" style={{ width: `${cogsPct}%` }}></div>
                   <div className="bg-amber-400 h-full" style={{ width: `${Math.max(2, opExBarPct)}%` }}></div>
                   {isProfitable ? (
                     <div className="bg-emerald-500 h-full" style={{ width: `${Math.max(2, netBarPct)}%` }}></div>
@@ -257,7 +325,15 @@ const ExecutiveKpiStrip = ({
           })()}
 
           <div className="pt-3 border-t border-slate-100 dark:border-slate-800/80 flex justify-between items-center text-xs">
-            <span className="text-xs text-slate-400 font-medium">Breakeven at ₹14,815</span>
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new Event('cobb_open_store_expenses'))}
+              className="text-xs text-slate-400 hover:text-emerald-400 font-medium transition-colors cursor-pointer flex items-center gap-1"
+              title="Click to edit Daily OpEx & Breakeven"
+            >
+              <span>Breakeven at {formatCurrency(bep)}</span>
+              <Settings className="w-2.5 h-2.5 opacity-60" />
+            </button>
             <button
               onClick={() => setActiveTab('pnl')}
               className="font-bold text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer transition-colors"

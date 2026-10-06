@@ -149,7 +149,8 @@ const operationalEndpoints = [
     { url: "/api/sales/cancelled?limit=15", docName: "sales_cancelled" },
     "/api/alterations",
     "/api/parcels/transit",
-    "/api/ratings"
+    "/api/ratings",
+    { url: "/api/config/current", docName: "store_config" }
 ];
 
 // Tier 2: Standard Daily Operations (Every 15 minutes)

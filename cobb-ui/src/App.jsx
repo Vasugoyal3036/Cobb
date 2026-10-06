@@ -524,13 +524,39 @@ export default function App() {
   const [isRefreshingPnl, setIsRefreshingPnl] = useState(false);
   const [isRefreshingMonthly, setIsRefreshingMonthly] = useState(false);
 
+  const [localExpConfig, setLocalExpConfig] = useState(() => {
+    try {
+      const raw = localStorage.getItem('cobb_store_config');
+      return raw ? JSON.parse(raw)?.operatingExpenses : null;
+    } catch (e) {
+      return null;
+    }
+  });
+
   const fetchPnl = async () => {
     setIsRefreshingPnl(true);
     try {
-      const res = await axios.get(`${API_BASE}/api/financials/pnl`);
+      const res = await axios.get(`${API_BASE}/api/financials/pnl?refresh=true&t=${Date.now()}`);
       if (!res?.data?.error && res?.data) {
-        setPnlData(res.data);
-        setLocalCache('pnlData', res.data);
+        let merged = res.data;
+        try {
+          const raw = localStorage.getItem('cobb_store_config');
+          if (raw) {
+            const exp = JSON.parse(raw)?.operatingExpenses;
+            if (exp) {
+              merged = {
+                ...merged,
+                operatingExpenses: {
+                  ...(merged.operatingExpenses || {}),
+                  ...exp
+                }
+              };
+            }
+          }
+        } catch (e) {}
+
+        setPnlData(merged);
+        setLocalCache('pnlData', merged);
       }
       return res.data;
     } catch (e) {
@@ -539,6 +565,29 @@ export default function App() {
       setIsRefreshingPnl(false);
     }
   };
+
+  // Listen for live store expenses and configuration updates from modal
+  useEffect(() => {
+    const handleConfigUpdate = (e) => {
+      try {
+        const raw = localStorage.getItem('cobb_store_config');
+        const parsed = e?.detail || (raw ? JSON.parse(raw)?.operatingExpenses : null);
+        if (parsed) {
+          setLocalExpConfig(parsed);
+          setPnlData(prev => ({
+            ...(prev || {}),
+            operatingExpenses: {
+              ...(prev?.operatingExpenses || {}),
+              ...parsed
+            }
+          }));
+        }
+      } catch (err) {}
+      fetchPnl();
+    };
+    window.addEventListener('cobb_store_config_updated', handleConfigUpdate);
+    return () => window.removeEventListener('cobb_store_config_updated', handleConfigUpdate);
+  }, []);
 
   const fetchMonthlyProducts = async () => {
     setIsRefreshingMonthly(true);
@@ -675,7 +724,11 @@ export default function App() {
     }
   }, [targetHighlightBill, liveBills]);
 
-  const DAILY_TARGET = 50000;
+  const DAILY_TARGET = Number(
+    localExpConfig?.dailyTargetSales ??
+    pnlData?.operatingExpenses?.dailyTargetSales ??
+    50000
+  );
 
   const processedBills = useRef(new Set());
   const initialLoadRef = useRef(true);
@@ -793,8 +846,11 @@ export default function App() {
           setLocalCache('monthlyProducts', res.data);
         }
       }).catch(console.error);
+
+      // Fetch P&L telemetry & operating expense benchmarks for executive dashboard
+      fetchPnl();
     }, 300);
-  }, []);
+  }, [activeStore]);
 
   // Lazy load data on-demand strictly when its tab becomes active
   useEffect(() => {
