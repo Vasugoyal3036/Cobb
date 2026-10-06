@@ -270,7 +270,21 @@ const TabFallback = () => (
   </div>
 );
 
+const DigitalCatalog = lazy(() => import('./components/DigitalCatalog'));
+
 export default function App() {
+  const [isCatalogMode, setIsCatalogMode] = useState(() => {
+    return window.location.pathname.includes('/shop') || window.location.search.includes('shop=');
+  });
+
+  if (isCatalogMode) {
+    return (
+      <Suspense fallback={<TabFallback />}>
+        <DigitalCatalog />
+      </Suspense>
+    );
+  }
+
   const { user, role, activeStore, switchStore, switchRole } = useAuth();
   const currentRole = role || user?.role || 'owner';
   const [showSetup, setShowSetup] = useState(false);
