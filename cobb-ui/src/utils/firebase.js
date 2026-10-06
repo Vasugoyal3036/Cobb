@@ -1,5 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
 // Firebase configuration - loaded from environment variables.
 // If no Firebase project is configured, the app runs fully offline (local SQL only).
@@ -18,12 +19,14 @@ export const hasConfig = Boolean(firebaseConfig.projectId);
 
 let app;
 let firestoreDb = null;
+let firebaseStorage = null;
 export let authPromise = Promise.resolve();
 
 if (hasConfig) {
   try {
     app = initializeApp(firebaseConfig);
     firestoreDb = getFirestore(app);
+    firebaseStorage = getStorage(app);
     authPromise = import('firebase/auth').then(({ getAuth, signInAnonymously }) => {
        const auth = getAuth(app);
        return signInAnonymously(auth).then(() => console.log('Firebase Anonymous Auth successful.')).catch(e => console.error('Anonymous Auth Failed:', e));
@@ -37,6 +40,7 @@ if (hasConfig) {
 }
 
 export const db = firestoreDb;
+export const storage = firebaseStorage;
 
 // Queue WhatsApp message to Firestore if online, or local array if offline.
 export const queueWhatsAppMessage = async (phone, message) => {

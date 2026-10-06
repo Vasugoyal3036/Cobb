@@ -1,7 +1,10 @@
 import React from 'react';
 import {
-  Package, Search, Sparkles, Wand2, Send, ChevronLeft, ChevronRight, Tag, Layers, Barcode
+  Package, Search, Sparkles, Wand2, Send, ChevronLeft, ChevronRight, Tag, Layers, Barcode, Camera, UploadCloud, Loader2
 } from 'lucide-react';
+import { db, storage } from '../../utils/firebase';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 const InventoryTab = (props) => {
   const { 
@@ -23,6 +26,48 @@ const InventoryTab = (props) => {
   React.useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery]);
+
+  const [uploadingArticle, setUploadingArticle] = React.useState(null);
+
+  const handleImageUpload = async (e, articleNo) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploadingArticle(articleNo);
+    try {
+      // 1. Upload to storage
+      const storageRef = ref(storage, `inventory/${articleNo}_${Date.now()}_${file.name}`);
+      await uploadBytes(storageRef, file);
+      const downloadURL = await getDownloadURL(storageRef);
+
+      // 2. Update Firestore
+      const docRef = doc(db, 'stores', 'DEMO_STORE_001', 'data', 'inventory');
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        const data = snap.data();
+        const items = data.items || [];
+        const updatedItems = items.map(i => {
+          if (i.ArticleNo === articleNo) {
+            return { ...i, imageUrl: downloadURL };
+          }
+          return i;
+        });
+        await updateDoc(docRef, { items: updatedItems });
+        
+        // Update local selected item so it re-renders immediately
+        setSelectedItem(prev => ({ ...prev, imageUrl: downloadURL }));
+        
+        // Ideally we should also update the `deadStock` prop to keep master list in sync,
+        // but it will re-fetch automatically next sync cycle.
+        alert('Image successfully uploaded and linked to ' + articleNo);
+      }
+    } catch (err) {
+      console.error('Upload failed', err);
+      alert('Failed to upload image. Make sure you are online.');
+    } finally {
+      setUploadingArticle(null);
+    }
+  };
 
   const rawList = Array.isArray(deadStock) ? deadStock : [];
   const filteredList = React.useMemo(() => {
@@ -172,15 +217,49 @@ const InventoryTab = (props) => {
             {/* Header */}
             <div className={`p-6 lg:p-8 border-b ${darkMode ? 'border-[#232e47] bg-slate-900/50' : 'border-slate-100 bg-slate-50'}`}>
               <span className="text-[10px] uppercase font-black text-blue-600 tracking-widest">Article Dossier</span>
-              <div className="mt-2 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                  <h3 className={`text-2xl lg:text-3xl font-black ${darkMode ? 'text-white' : 'text-slate-800'}`}>{selectedItem.ArticleNo}</h3>
-                  <p className={`mt-1 text-sm font-medium ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{selectedItem.ItemName}</p>
+              <div className="mt-2 flex flex-col md:flex-row md:items-start justify-between gap-4">
+                <div className="flex gap-6 items-start">
+                  {selectedItem.imageUrl ? (
+                    <div className="w-24 h-32 rounded-xl overflow-hidden border-2 border-slate-200 shadow-md relative group shrink-0 bg-slate-100">
+                      <img src={selectedItem.imageUrl} alt={selectedItem.ArticleNo} className="w-full h-full object-cover" />
+                      <label className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                        <Camera className="w-6 h-6 text-white" />
+                        <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleImageUpload(e, selectedItem.ArticleNo)} disabled={uploadingArticle === selectedItem.ArticleNo} />
+                      </label>
+                      {uploadingArticle === selectedItem.ArticleNo && (
+                        <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                          <Loader2 className="w-6 h-6 text-white animate-spin" />
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <label className={`w-24 h-32 rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-2 cursor-pointer transition-colors shrink-0 ${darkMode ? 'border-[#232e47] bg-[#1a2333] hover:bg-[#232e47] text-slate-500' : 'border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-400'}`}>
+                      {uploadingArticle === selectedItem.ArticleNo ? (
+                        <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
+                      ) : (
+                        <>
+                          <UploadCloud className="w-6 h-6" />
+                          <span className="text-[10px] font-bold uppercase text-center px-2">Add Photo</span>
+                        </>
+                      )}
+                      <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => handleImageUpload(e, selectedItem.ArticleNo)} disabled={uploadingArticle === selectedItem.ArticleNo} />
+                    </label>
+                  )}
+                  <div>
+                    <h3 className={`text-2xl lg:text-3xl font-black ${darkMode ? 'text-white' : 'text-slate-800'}`}>{selectedItem.ArticleNo}</h3>
+                    <p className={`mt-1 text-sm font-medium ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{selectedItem.ItemName}</p>
+                    
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <span className="px-2 py-1 rounded bg-blue-100 text-blue-800 text-xs font-bold">{selectedItem.Category || 'Apparel'}</span>
+                      <span className="px-2 py-1 rounded bg-slate-200 text-slate-800 text-xs font-bold">MRP ₹{selectedItem.MRP}</span>
+                    </div>
+                  </div>
                 </div>
+                
                 <button
                   onClick={() => handleGeneratePitch(selectedItem)}
                   disabled={isGeneratingOutfit && activeOutfitMatch === selectedItem.ArticleNo}
-                  className="inline-flex items-center px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/30 rounded-xl font-bold text-sm transition-all cursor-pointer disabled:opacity-50"
+                  className="inline-flex items-center px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/30 rounded-xl font-bold text-sm transition-all cursor-pointer disabled:opacity-50 mt-4 md:mt-0"
                 >
                   {isGeneratingOutfit && activeOutfitMatch === selectedItem.ArticleNo ? 'Generating Pitch...' : <><Sparkles className="w-4 h-4 mr-2" /> AI Style Pitch</>}
                 </button>
