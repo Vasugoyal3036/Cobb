@@ -2,9 +2,9 @@
   "name": "Cobb Store CRM",
   "short_name": "Cobb CRM",
   "description": "Cobb Retail POS & Store Intelligence Command Center",
-  "start_url": "/crm",
+  "start_url": "/",
   "scope": "/",
-  "id": "/crm",
+  "id": "/",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#020617",
@@ -35,7 +35,7 @@
       "name": "Cobb CRM POS",
       "short_name": "CRM",
       "description": "Open Cobb Store CRM POS",
-      "url": "/crm",
+      "url": "/",
       "icons": [{ "src": "/ors-logo.png", "sizes": "192x192" }]
     },
     {

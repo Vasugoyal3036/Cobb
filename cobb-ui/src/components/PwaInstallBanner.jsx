@@ -59,7 +59,7 @@ export default function PwaInstallBanner({ darkMode }) {
       setDeferredPrompt(null);
     } else {
       // If browser hasn't fired beforeinstallprompt or is in browser mode, guide user
-      alert("To install the shortcut on Android:\n1. Tap the 3 dots (⋮) in the top-right corner of Chrome.\n2. Tap 'Install app' or 'Add to Home screen'.\n\nIt will create a direct 1-tap shortcut to /crm!");
+      alert("To install the app on Android:\n1. Tap the 3 dots (⋮) in the top-right corner of Chrome.\n2. Tap 'Install app' or 'Add to Home screen'.\n\nIt will create a direct 1-tap shortcut to Cobb Store!");
     }
   };
 
@@ -83,8 +83,8 @@ export default function PwaInstallBanner({ darkMode }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
-              <h4 className="text-xs font-black tracking-wide uppercase">Cobb CRM Phone Shortcut</h4>
-              <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-blue-500/20 text-blue-400">/crm</span>
+              <h4 className="text-xs font-black tracking-wide uppercase">Cobb Store App</h4>
+              <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-blue-500/20 text-blue-400">Mobile PWA</span>
             </div>
             <button
               onClick={handleDismiss}
@@ -97,11 +97,11 @@ export default function PwaInstallBanner({ darkMode }) {
 
           <p className="text-[11px] text-slate-300 mt-1 leading-relaxed">
             {isIos ? (
-              <>Tap the <Share2 className="w-3 h-3 inline text-blue-400 mx-0.5" /> <b>Share button</b> in Safari and tap <PlusSquare className="w-3 h-3 inline text-blue-400 mx-0.5" /> <b>"Add to Home Screen"</b> for instant 1-tap CRM access.</>
+              <>Tap the <Share2 className="w-3 h-3 inline text-blue-400 mx-0.5" /> <b>Share button</b> in Safari and tap <PlusSquare className="w-3 h-3 inline text-blue-400 mx-0.5" /> <b>"Add to Home Screen"</b> for instant 1-tap access.</>
             ) : deferredPrompt ? (
               'Install directly to your phone home screen for instant 1-tap access to live Cobb Store POS & Telemetry.'
             ) : (
-              <>In Chrome, tap the menu (<b>⋮</b>) and select <b>"Install app"</b> or <b>"Add to Home screen"</b> to save the <b>/crm</b> shortcut.</>
+              <>In Chrome, tap the menu (<b>⋮</b>) and select <b>"Install app"</b> or <b>"Add to Home screen"</b> to save the shortcut.</>
             )}
           </p>
 

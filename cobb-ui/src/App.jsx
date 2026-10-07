@@ -274,44 +274,12 @@ const DigitalCatalog = lazy(() => import('./components/DigitalCatalog'));
 const AttendanceTab = lazy(() => import('./components/tabs/AttendanceTab'));
 
 export default function App() {
-  const [appRoute, setAppRoute] = useState(() => {
-    // 1. If running as the Electron Desktop App locally, always show the CRM POS
-    if (window.location.protocol === 'file:') return 'crm';
-
-    // 2. Check if running as an installed PWA / mobile home screen shortcut
-    const isStandalone = typeof window !== 'undefined' && (
-      window.matchMedia('(display-mode: standalone)').matches ||
-      window.navigator.standalone === true ||
-      document.referrer.includes('android-app://')
-    );
-
-    // 3. Show the public Digital Catalog ONLY on the /shop endpoint
-    if (window.location.pathname.includes('/shop')) {
-      return 'catalog';
-    }
-
-    // 4. Show CRM on /crm, with admin= param, or if launched from home-screen shortcut
-    if (
-      window.location.pathname.includes('/crm') ||
-      window.location.search.includes('admin=') ||
-      isStandalone
-    ) {
-      return 'crm';
-    }
-
-    // 5. Otherwise, leave it empty for now (root link)
-    return 'empty';
+  const [isCatalogMode, setIsCatalogMode] = useState(() => {
+    // 1. Show the public Digital Catalog ONLY on /shop
+    return window.location.pathname.includes('/shop') || window.location.search.includes('shop=');
   });
 
-  if (appRoute === 'empty') {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-slate-950 text-white font-black text-2xl">
-        Something Awesome is Coming...
-      </div>
-    );
-  }
-
-  if (appRoute === 'catalog') {
+  if (isCatalogMode) {
     return (
       <Suspense fallback={<TabFallback />}>
         <DigitalCatalog />
