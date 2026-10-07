@@ -354,13 +354,21 @@ async function checkAndDispatchCheckoutAlerts() {
             // Categorize Alert:
             // 1. Heavy Discount Warning (Fraud / Revenue Leakage Prevention)
             // 2. VIP Mega Sale Alert (High Value Purchase)
-            // 3. Regular New Sale
+            // 3. Exchange
+            // 4. Regular New Sale
+            const isExchange = Array.isArray(bill.Items) && bill.Items.some(it => (Number(it.Quantity) || 1) < 0);
+
             let alertType = 'sale';
             let title = `🧾 New Sale: ₹${amount.toLocaleString('en-IN')} | Bill #${billNo}`;
             let body = `🛍️ ${qty} Items: ${itemSummary}\n💳 ${paySummary}\n👤 Customer: ${custDisplay} • Staff: ${staff}`;
             let tag = `cobb-sale-${billNo}`;
 
-            if ((discountPct >= 35 && discountAmt >= 1000) || discountAmt >= 2500) {
+            if (isExchange) {
+                alertType = 'exchange';
+                title = `🔄 Product Exchange: ₹${amount.toLocaleString('en-IN')} | Bill #${billNo}`;
+                body = `🔄 Exchange Processed\n💳 ${paySummary}\n👤 Customer: ${custDisplay} • Staff: ${staff}`;
+                tag = `cobb-exchange-${billNo}`;
+            } else if ((discountPct >= 35 && discountAmt >= 1000) || discountAmt >= 2500) {
                 alertType = 'heavy_discount';
                 title = `⚠️ HEAVY DISCOUNT (${discountPct}% OFF) | Bill #${billNo}`;
                 body = `⚠️ Staff: ${staff} gave ₹${discountAmt.toLocaleString('en-IN')} (${discountPct}%) discount!\n🛍️ ${qty} Items: ${itemSummary}\n💳 ${paySummary}\n👤 Customer: ${custDisplay}`;
@@ -527,23 +535,42 @@ async function checkAndDispatchCheckoutAlerts() {
             }
 
             // Assemble the detailed WhatsApp checkout alert for owners
-            const waCheckoutText = 
-                `🧾 *NEW SALE RECORDED* — *Cobb Pundri*\n` +
-                `──────────────────────\n` +
-                `🔢 *Bill No:* #${billNo}\n` +
-                `🕒 *Time:* ${timeStrFormatted}\n` +
-                `👤 *Customer:* ${custDetailDisplay}\n` +
-                `👔 *Salesperson:* ${staff}\n\n` +
-                `📦 *PURCHASED ARTICLES (${qty} item${qty > 1 ? 's' : ''}):*\n` +
-                `${purchasedArticlesText}\n\n` +
-                `──────────────────────\n` +
-                `💰 *Gross MRP Total:* ₹${grossAmt.toLocaleString('en-IN')}\n` +
-                `${discountLine}\n` +
-                `✅ *Net Collected:* *₹${amount.toLocaleString('en-IN')}*\n` +
-                `💳 *Payment Mode:* ${payDetail}\n` +
-                `──────────────────────\n` +
-                (todayTillLine ? `${todayTillLine}` : '') +
-                `👉 *View Live Bill:* https://cobb-store.web.app/?tab=livebills`;
+            let waCheckoutText = '';
+            if (isExchange) {
+                waCheckoutText = 
+                    `🔄 *PRODUCT EXCHANGE RECORDED* — *Cobb Pundri*\n` +
+                    `──────────────────────\n` +
+                    `🔢 *Bill No:* #${billNo}\n` +
+                    `🕒 *Time:* ${timeStrFormatted}\n` +
+                    `👤 *Customer:* ${custDetailDisplay}\n` +
+                    `👔 *Salesperson:* ${staff}\n\n` +
+                    `📦 *EXCHANGE DETAILS (${qty} item${qty > 1 ? 's' : ''}):*\n` +
+                    `${purchasedArticlesText}\n\n` +
+                    `──────────────────────\n` +
+                    `✅ *Difference Collected:* *₹${amount.toLocaleString('en-IN')}*\n` +
+                    `💳 *Payment Mode:* ${payDetail}\n` +
+                    `──────────────────────\n` +
+                    (todayTillLine ? `${todayTillLine}` : '') +
+                    `👉 *View Live Bill:* https://cobb-store.web.app/?tab=livebills`;
+            } else {
+                waCheckoutText = 
+                    `🧾 *NEW SALE RECORDED* — *Cobb Pundri*\n` +
+                    `──────────────────────\n` +
+                    `🔢 *Bill No:* #${billNo}\n` +
+                    `🕒 *Time:* ${timeStrFormatted}\n` +
+                    `👤 *Customer:* ${custDetailDisplay}\n` +
+                    `👔 *Salesperson:* ${staff}\n\n` +
+                    `📦 *PURCHASED ARTICLES (${qty} item${qty > 1 ? 's' : ''}):*\n` +
+                    `${purchasedArticlesText}\n\n` +
+                    `──────────────────────\n` +
+                    `💰 *Gross MRP Total:* ₹${grossAmt.toLocaleString('en-IN')}\n` +
+                    `${discountLine}\n` +
+                    `✅ *Net Collected:* *₹${amount.toLocaleString('en-IN')}*\n` +
+                    `💳 *Payment Mode:* ${payDetail}\n` +
+                    `──────────────────────\n` +
+                    (todayTillLine ? `${todayTillLine}` : '') +
+                    `👉 *View Live Bill:* https://cobb-store.web.app/?tab=livebills`;
+            }
 
             sendWhatsAppToOwners(waCheckoutText, `Checkout #${billNo}`).catch(() => {});
         }

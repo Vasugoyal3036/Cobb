@@ -1,5 +1,7 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { logAuthEvent } from '../utils/auditLogger';
+import { db } from '../utils/firebase';
+import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 
 export const AVAILABLE_STORES = [
   { id: 'DEMO_STORE_001', name: 'Cobb Pundri (Main)', shortName: 'Pundri', code: 'PUNDRI', location: 'Fatehpur Road, Pundri' },
@@ -30,39 +32,35 @@ export const ROLE_LABELS = {
   cashier: { label: 'Cashier', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
 };
 
-// -- PIN helpers --------------------------------------------------------------
-const PIN_STORAGE_KEY = 'cobb_role_pins';
-const REMEMBER_KEY    = 'cobb_owner_remembered';
+// -- Auth credentials -----------------------------------------------------------
+export const AUTH_CREDENTIALS = {
+  owner: [
+    { username: 'parbhat', password: 'baboo2525', name: 'Parbhat' },
+    { username: 'pardeep', password: 'pardeep2015', name: 'Pardeep' },
+    { username: 'vasu', password: 'vasu3003', name: 'Vasu' },
+    { username: 'akshat', password: 'akshat1519', name: 'Akshat' },
+  ],
+  manager: [
+    { username: 'manager1', password: 'password123', name: 'Store Manager' }
+  ]
+};
 
-/** Roles that require a PIN to switch to. Cashier is open. */
-export const PIN_PROTECTED_ROLES = ['owner', 'manager'];
-const DEFAULT_PINS = { owner: '1234', manager: '5678', cashier: '0000' };
-
-function loadPins() {
-  try {
-    const raw = localStorage.getItem(PIN_STORAGE_KEY);
-    if (!raw) return { ...DEFAULT_PINS };
-    return { ...DEFAULT_PINS, ...JSON.parse(raw) };
-  } catch { return { ...DEFAULT_PINS }; }
-}
-function savePins(pins) {
-  try { localStorage.setItem(PIN_STORAGE_KEY, JSON.stringify(pins)); } catch {}
-}
+const REMEMBER_KEY = 'cobb_owner_remembered';
 // ----------------------------------------------------------------------------
 
 const AuthContext = createContext();
 export const useAuth = () => useContext(AuthContext);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(() => {
+  const [user, setUser] = useState(null);
+
+  // Clear any previously saved sessions immediately
+  useEffect(() => {
     try {
-      const c = localStorage.getItem('cobb_auth_user');
-      if (!c) return null;
-      const parsed = JSON.parse(c);
-      if (parsed?.role === 'owner') parsed.name = 'Owner';
-      return parsed;
-    } catch { return null; }
-  });
+      localStorage.removeItem('cobb_auth_user');
+      localStorage.removeItem(REMEMBER_KEY);
+    } catch (e) {}
+  }, []);
 
   const [activeStore, setActiveStore] = useState(() => {
     const s = localStorage.getItem('cobb_active_store');
@@ -70,37 +68,10 @@ export const AuthProvider = ({ children }) => {
     return s;
   });
 
-  // -- PIN state --------------------------------------------
-  const [pins, setPins] = useState(loadPins);
-
-  const [rememberOwner, setRememberOwnerState] = useState(() => {
-    try { return localStorage.getItem(REMEMBER_KEY) === 'true'; } catch { return false; }
-  });
+  const [rememberOwner, setRememberOwnerState] = useState(false);
   const setRememberOwner = useCallback((val) => {
-    setRememberOwnerState(val);
-    try { localStorage.setItem(REMEMBER_KEY, String(val)); } catch {}
+    setRememberOwnerState(false);
   }, []);
-
-  /** Returns true if the pin matches the stored pin for that role */
-  const verifyPin = useCallback((role, pin) => pins[role] === pin, [pins]);
-
-  /** Change PIN after verifying old PIN. Returns { success, message? } */
-  const changePin = useCallback((role, oldPin, newPin) => {
-    if (pins[role] !== oldPin) return { success: false, message: 'Current PIN is incorrect.' };
-    if (!newPin || newPin.length < 4) return { success: false, message: 'New PIN must be at least 4 characters.' };
-    const updated = { ...pins, [role]: newPin };
-    setPins(updated);
-    savePins(updated);
-    return { success: true };
-  }, [pins]);
-
-  /** Returns true if switching to targetRole requires PIN entry */
-  const roleRequiresPin = useCallback((targetRole) => {
-    if (!PIN_PROTECTED_ROLES.includes(targetRole)) return false;
-    if (targetRole === 'owner' && rememberOwner) return false;
-    return true;
-  }, [rememberOwner]);
-  // --------------------------------------------------------
 
   const switchRole = (newRole, pin = null) => {
     const nameMap = { owner: 'Owner', manager: 'Store Manager', cashier: 'Counter Staff' };
@@ -137,42 +108,62 @@ export const AuthProvider = ({ children }) => {
     return true;
   };
 
-  const login = async (role = 'owner', pin = '', rememberDevice = true) => {
+  const login = async (role = 'owner', username = '', password = '') => {
     const nameMap = { owner: 'Owner', manager: 'Store Manager', cashier: 'Counter Staff' };
     const targetRole = (role || 'owner').toLowerCase();
+    
+    let loggedUser = null;
 
-    // Verify PIN if protected role
-    if (PIN_PROTECTED_ROLES.includes(targetRole)) {
-      const isValid = verifyPin(targetRole, pin);
-      if (!isValid) {
+    // Verify credentials if owner or manager
+    if (targetRole === 'owner' || targetRole === 'manager') {
+      let customUsers = [];
+      try {
+        const accountsRef = doc(db, 'stores', activeStore, 'data', 'accounts');
+        const snap = await getDoc(accountsRef);
+        if (snap.exists()) {
+          customUsers = snap.data().customUsers || [];
+        }
+      } catch (err) {
+        console.warn('Failed to fetch custom users', err);
+      }
+
+      const combinedUsers = [...AUTH_CREDENTIALS[targetRole], ...customUsers.filter(u => u.role === targetRole)];
+      const validUser = combinedUsers.find(u => u.username === username && u.password === password);
+      
+      if (!validUser) {
         logAuthEvent({
           role: targetRole,
-          userName: nameMap[targetRole] || 'Staff',
+          userName: username || 'Unknown',
           storeId: activeStore,
           action: 'LOGIN_FAILED',
           status: 'failed',
-          reason: 'Incorrect PIN entered',
-          method: 'PIN'
+          reason: 'Incorrect username or password',
+          method: 'CREDENTIALS'
         });
-        return { success: false, message: `Incorrect PIN for ${nameMap[targetRole]}.` };
+        return { success: false, message: `Incorrect username or password for ${nameMap[targetRole]}.` };
       }
+      
+      loggedUser = {
+        id: validUser.username,
+        username: validUser.username,
+        role: targetRole,
+        name: validUser.name,
+        loginTime: new Date().toISOString()
+      };
+    } else {
+      // Cashier
+      loggedUser = {
+        id: 'cashier',
+        username: 'cashier',
+        role: 'cashier',
+        name: nameMap.cashier,
+        loginTime: new Date().toISOString()
+      };
     }
-
-    const loggedUser = {
-      id: targetRole === 'owner' ? 1 : targetRole === 'manager' ? 2 : 3,
-      username: targetRole,
-      role: targetRole,
-      name: nameMap[targetRole] || 'Staff',
-      loginTime: new Date().toISOString()
-    };
 
     setUser(loggedUser);
 
-    if (rememberDevice) {
-      try { localStorage.setItem('cobb_auth_user', JSON.stringify(loggedUser)); } catch {}
-    } else {
-      try { localStorage.removeItem('cobb_auth_user'); } catch {}
-    }
+    try { localStorage.removeItem('cobb_auth_user'); } catch {}
 
     // Security: Automatically lock non-owners out of 'ALL' view
     if (targetRole !== 'owner') {
@@ -186,11 +177,66 @@ export const AuthProvider = ({ children }) => {
     // Record login audit event to Cloud Firestore & backend
     logAuthEvent({
       role: targetRole,
-      userName: nameMap[targetRole] || 'Staff',
+      userName: loggedUser.name,
       storeId: activeStore,
       action: 'LOGIN_SUCCESS',
       status: 'success',
-      method: 'PIN'
+      method: targetRole === 'cashier' ? '1-TAP' : 'CREDENTIALS'
+    });
+
+    return { success: true, user: loggedUser };
+  };
+
+  const loginWithBiometrics = async (username) => {
+    let customUsers = [];
+    try {
+      const accountsRef = doc(db, 'stores', activeStore, 'data', 'accounts');
+      const snap = await getDoc(accountsRef);
+      if (snap.exists()) {
+        customUsers = snap.data().customUsers || [];
+      }
+    } catch (err) {
+      console.warn('Failed to fetch custom users', err);
+    }
+
+    const allUsers = [
+      ...AUTH_CREDENTIALS.owner.map(u => ({ ...u, role: 'owner' })),
+      ...AUTH_CREDENTIALS.manager.map(u => ({ ...u, role: 'manager' })),
+      ...customUsers
+    ];
+
+    const validUser = allUsers.find(u => u.username.toLowerCase() === (username || '').toLowerCase());
+    if (!validUser) {
+      return { success: false, message: `Account '${username}' not found on this system.` };
+    }
+
+    const loggedUser = {
+      id: validUser.username,
+      username: validUser.username,
+      role: validUser.role || 'owner',
+      name: validUser.name || validUser.username,
+      loginTime: new Date().toISOString()
+    };
+
+    setUser(loggedUser);
+
+    try { localStorage.removeItem('cobb_auth_user'); } catch {}
+
+    if (loggedUser.role !== 'owner') {
+      setActiveStore(prev => {
+        const locked = (!prev || prev === 'ALL') ? 'DEMO_STORE_001' : prev;
+        try { localStorage.setItem('cobb_active_store', locked); } catch {}
+        return locked;
+      });
+    }
+
+    logAuthEvent({
+      role: loggedUser.role,
+      userName: loggedUser.name,
+      storeId: activeStore,
+      action: 'LOGIN_SUCCESS',
+      status: 'success',
+      method: 'BIOMETRICS'
     });
 
     return { success: true, user: loggedUser };
@@ -217,6 +263,31 @@ export const AuthProvider = ({ children }) => {
     return allowed.includes(tabId);
   };
 
+  const requestAccount = async (accountData) => {
+    try {
+      const accountsRef = doc(db, 'stores', activeStore, 'data', 'accounts');
+      const snap = await getDoc(accountsRef);
+      const pendingUsers = snap.exists() ? (snap.data().pendingUsers || []) : [];
+      
+      // Ensure unique ID
+      if (pendingUsers.find(u => u.username === accountData.username)) {
+        return { success: false, message: 'ID already requested.' };
+      }
+
+      const newRequest = {
+        ...accountData,
+        id: Date.now().toString(),
+        requestedAt: new Date().toISOString()
+      };
+
+      await setDoc(accountsRef, { pendingUsers: [...pendingUsers, newRequest] }, { merge: true });
+      return { success: true };
+    } catch (e) {
+      console.error(e);
+      return { success: false, message: 'Failed to submit request.' };
+    }
+  };
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -228,14 +299,12 @@ export const AuthProvider = ({ children }) => {
       ROLE_PERMISSIONS,
       ROLE_LABELS,
       login,
+      loginWithBiometrics,
       logout,
       canAccessTab,
-      verifyPin,
-      changePin,
-      roleRequiresPin,
       rememberOwner,
       setRememberOwner,
-      PIN_PROTECTED_ROLES,
+      requestAccount,
     }}>
       {children}
     </AuthContext.Provider>

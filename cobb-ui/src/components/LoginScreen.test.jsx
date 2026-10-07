@@ -16,6 +16,7 @@ describe('Frontend Component Test: LoginScreen', () => {
     vi.clearAllMocks();
     useAuth.mockReturnValue({
       login: mockLogin,
+      requestAccount: vi.fn(),
       activeStore: 'DEMO_STORE_001',
       AVAILABLE_STORES: [
         { id: 'DEMO_STORE_001', name: 'Cobb Pundri (Main)', code: 'PUNDRI' }
@@ -40,44 +41,45 @@ describe('Frontend Component Test: LoginScreen', () => {
     fireEvent.click(managerTab);
 
     expect(screen.getByText('Store Manager')).toBeDefined();
-    expect(screen.getByText('Default PIN: 5678')).toBeDefined();
+    expect(screen.getByText('Requires Username & Password')).toBeDefined();
   });
 
-  it('enters digits via numeric keypad and triggers login', async () => {
+  it('enters credentials and triggers login', async () => {
     mockLogin.mockResolvedValueOnce({ success: true });
 
     render(<LoginScreen onSetup={mockOnSetup} />);
 
-    // Click digits 1, 2, 3, 4
-    fireEvent.click(screen.getByText('1'));
-    fireEvent.click(screen.getByText('2'));
-    fireEvent.click(screen.getByText('3'));
-    fireEvent.click(screen.getByText('4'));
+    // Enter username and password
+    fireEvent.change(screen.getByPlaceholderText(/Enter Owner ID/i), { target: { value: 'parbhat' } });
+    fireEvent.change(screen.getByPlaceholderText(/Enter Password/i), { target: { value: 'baboo2525' } });
+
+    // Submit form
+    fireEvent.click(screen.getByText('Login securely'));
 
     await waitFor(() => {
-      expect(mockLogin).toHaveBeenCalledWith('owner', '1234', true);
+      expect(mockLogin).toHaveBeenCalledWith('owner', 'parbhat', 'baboo2525');
     });
   });
 
   it('displays error banner when authentication fails', async () => {
-    mockLogin.mockResolvedValueOnce({ success: false, message: 'Incorrect PIN for Owner.' });
+    mockLogin.mockResolvedValueOnce({ success: false, message: 'Incorrect credentials. Try again.' });
 
     render(<LoginScreen onSetup={mockOnSetup} />);
 
-    fireEvent.click(screen.getByText('9'));
-    fireEvent.click(screen.getByText('9'));
-    fireEvent.click(screen.getByText('9'));
-    fireEvent.click(screen.getByText('9'));
+    fireEvent.change(screen.getByPlaceholderText(/Enter Owner ID/i), { target: { value: 'wrong' } });
+    fireEvent.change(screen.getByPlaceholderText(/Enter Password/i), { target: { value: 'wrong' } });
+    
+    fireEvent.click(screen.getByText('Login securely'));
 
     await waitFor(() => {
-      expect(screen.getByText('Incorrect PIN for Owner.')).toBeDefined();
+      expect(screen.getByText('Incorrect credentials. Try again.')).toBeDefined();
     });
   });
 
   it('invokes onSetup callback when wizard button is clicked', () => {
     render(<LoginScreen onSetup={mockOnSetup} />);
 
-    const setupBtn = screen.getByText(/system diagnostics & setup wizard/i);
+    const setupBtn = screen.getByText(/system diagnostics/i);
     fireEvent.click(setupBtn);
 
     expect(mockOnSetup).toHaveBeenCalledTimes(1);

@@ -8,9 +8,11 @@ import SystemPowerModal from './SystemPowerModal';
 import PwaInstallBanner from './PwaInstallBanner';
 import StoreExpensesModal from './StoreExpensesModal';
 import LoginAuditModal from './LoginAuditModal';
+import AccountApprovalsModal from './AccountApprovalsModal';
 import {
   MessageCircle,
   Users,
+  UserPlus,
   AlertCircle,
   MessageSquare,
   LayoutDashboard,
@@ -78,8 +80,11 @@ import {
   BellRing,
   Volume2,
   Banknote,
-  Lock
+  Lock,
+  Fingerprint
 } from 'lucide-react';
+import BiometricModal from './BiometricModal';
+import { getEnrolledPasskey } from '../utils/webauthn';
 import { THEMES } from './DashboardBackground';
 
 const navigationItems = [
@@ -199,6 +204,11 @@ const Layout = ({
   const [healthStatus, setHealthStatus] = useState({ overall: 'healthy', inboundAlertsCount: 0 });
   const [showPowerModal, setShowPowerModal] = useState(false);
   const [showLoginAuditModal, setShowLoginAuditModal] = useState(false);
+  const [showApprovalsModal, setShowApprovalsModal] = useState(false);
+  const [showBiometricModal, setShowBiometricModal] = useState(false);
+  const [showBiometricBanner, setShowBiometricBanner] = useState(() => {
+    try { return !getEnrolledPasskey(); } catch { return false; }
+  });
 
   useEffect(() => {
     const handleOpenExpenses = () => setShowExpensesModal(true);
@@ -432,6 +442,25 @@ const Layout = ({
             </div>
           )}
 
+          {/* Phone Biometrics Action in Drawer */}
+          <button
+            type="button"
+            onClick={() => { setShowBiometricModal(true); setIsMobileMenuOpen(false); }}
+            className={`w-full mb-2 p-2.5 rounded-2xl flex items-center gap-3 border text-left cursor-pointer transition-all ${
+              darkMode
+                ? 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/25 text-amber-300'
+                : 'bg-amber-50 hover:bg-amber-100 border-amber-200 text-amber-800'
+            }`}
+          >
+            <div className="w-8 h-8 rounded-xl bg-amber-500/20 flex items-center justify-center shrink-0">
+              <Fingerprint className="w-4 h-4 text-amber-400" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold leading-tight">Phone Biometrics</p>
+              <p className="text-[10px] text-slate-400">Register Face ID / Fingerprint</p>
+            </div>
+          </button>
+
           <div
             onClick={() => setShowLoginAuditModal(true)}
             title="View Access & Security Logs"
@@ -580,6 +609,35 @@ const Layout = ({
                 <ShieldCheck className="w-3.5 h-3.5" />
               </button>
 
+              {/* Account Approvals (Owner Only) */}
+              {currentRole === 'owner' && (
+                <button
+                  type="button"
+                  onClick={() => setShowApprovalsModal(true)}
+                  className={`w-7 h-7 rounded-xl flex items-center justify-center cursor-pointer transition-all active:scale-95 ${
+                    darkMode ? 'bg-white/[0.05] text-blue-400 active:bg-white/10' : 'bg-slate-100 text-blue-600 active:bg-slate-200'
+                  }`}
+                  title="Account ID Approvals"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                </button>
+              )}
+
+              {/* Phone Biometrics Quick Pill (Mobile & Desktop Header) */}
+              <button
+                type="button"
+                onClick={() => setShowBiometricModal(true)}
+                className={`px-2 py-1 rounded-full font-bold text-[10px] border flex items-center gap-1 cursor-pointer transition-all active:scale-95 ${
+                  darkMode
+                    ? 'bg-amber-500/15 text-amber-300 border-amber-500/40 hover:bg-amber-500/25 shadow-sm shadow-amber-500/10'
+                    : 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100'
+                }`}
+                title="Phone Biometrics: Register Face ID / Fingerprint"
+              >
+                <Fingerprint className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span className="font-extrabold">Biometrics</span>
+              </button>
+
               {/* Dark / Light Mode Toggle */}
               <button
                 type="button"
@@ -599,6 +657,37 @@ const Layout = ({
             ? 'p-0 sm:p-4 lg:p-6 mx-auto w-full h-full'
             : 'p-3 sm:p-6 lg:p-8 max-w-7xl mx-auto'
         }>
+          {/* 1-Tap Biometric Setup Banner on Mobile & Desktop if not yet enrolled */}
+          {showBiometricBanner && (
+            <div className="mb-4 p-3 sm:p-4 rounded-2xl bg-gradient-to-r from-amber-950/70 via-slate-900/90 to-blue-950/70 border border-amber-500/40 flex items-center justify-between gap-3 shadow-lg backdrop-blur-md">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+                  <Fingerprint className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs font-extrabold text-white truncate">Enable 1-Tap Face ID & Fingerprint Login</p>
+                  <p className="text-[11px] text-slate-300 truncate">Register this phone's Face ID or fingerprint sensor to sign in without passwords next time.</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowBiometricModal(true)}
+                  className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-black transition-all active:scale-95 shadow-md shadow-amber-500/20 cursor-pointer"
+                >
+                  Register Now
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowBiometricBanner(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-white cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Multi-Store Executive HQ Mode Banner (Owner Exclusive) */}
           {activeStore === 'ALL' && currentRole === 'owner' && (
             <div className="mb-5 p-4 rounded-2xl bg-gradient-to-r from-blue-950/70 via-indigo-950/60 to-purple-950/70 border border-blue-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xl backdrop-blur-md">
@@ -1039,6 +1128,27 @@ const Layout = ({
                   POS Setup & DB
                 </span>
               </button>
+
+              {/* Phone Biometrics / Passkey */}
+              <button
+                type="button"
+                onClick={() => setShowBiometricModal(true)}
+                className={`w-full p-2 rounded-2xl font-bold text-xs flex items-center gap-2.5 transition-all duration-300 border cursor-pointer overflow-hidden group relative ${isRightSidebarCollapsed ? 'justify-center' : ''
+                  } ${darkMode
+                    ? 'bg-[#0b0f19] text-amber-400 hover:bg-[#121828] hover:text-white border-[#1e2638]'
+                    : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-200'
+                  }`}
+                title="Register / Manage Phone Biometrics (Face ID / Fingerprint)"
+              >
+                <div className="pointer-events-none absolute -inset-full bg-gradient-to-r from-transparent via-white/[0.08] to-transparent -translate-x-[150%] group-hover:translate-x-[150%] transition-transform duration-1000 transform -skew-x-25" />
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0">
+                  <Fingerprint className="transition-transform duration-700 group-hover:rotate-[360deg] w-4 h-4 text-amber-400" />
+                </div>
+                <span className={`truncate whitespace-nowrap transition-all duration-500 delay-[360ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none blur-md -translate-y-4' : 'w-full opacity-100 blur-0 translate-y-0'
+                  }`}>
+                  Phone Biometrics
+                </span>
+              </button>
             </div>
           </div>
 
@@ -1293,6 +1403,17 @@ const Layout = ({
       <LoginAuditModal
         isOpen={showLoginAuditModal}
         onClose={() => setShowLoginAuditModal(false)}
+      />
+
+      {/* Account Approvals Modal */}
+      {showApprovalsModal && (
+        <AccountApprovalsModal onClose={() => setShowApprovalsModal(false)} />
+      )}
+
+      {/* Phone Biometrics / Passkey Modal */}
+      <BiometricModal
+        isOpen={showBiometricModal}
+        onClose={() => setShowBiometricModal(false)}
       />
 
       {/* Progressive Web App Install Banner */}

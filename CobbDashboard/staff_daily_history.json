@@ -1,18 +1,66 @@
 [
   {
+    "date": "2026-10-07",
+    "year": 2026,
+    "month": 10,
+    "day": 7,
+    "dayOfWeek": "Wednesday",
+    "formattedDate": "07 Oct 2026",
+    "storeGrossSales": 2148,
+    "storeTotalBills": 1,
+    "storeTotalItems": 2,
+    "staffSales": 0,
+    "totalCommission": 0,
+    "activeStaffCount": 0,
+    "staff": [
+      {
+        "empCode": "0000000",
+        "name": "Simran",
+        "isUnassigned": true,
+        "isMissingName": false,
+        "hasCustomOverride": true,
+        "sales": 2148,
+        "items": 2,
+        "bills": 1,
+        "aov": 2148,
+        "upt": 2,
+        "commissionRate": 0,
+        "commission": 0,
+        "slabLabel": "POS Counter"
+      }
+    ],
+    "topStaff": null
+  },
+  {
     "date": "2026-10-06",
     "year": 2026,
     "month": 10,
     "day": 6,
     "dayOfWeek": "Tuesday",
     "formattedDate": "06 Oct 2026",
-    "storeGrossSales": 3780,
-    "storeTotalBills": 1,
-    "storeTotalItems": 3,
-    "staffSales": 0,
-    "totalCommission": 0,
-    "activeStaffCount": 0,
+    "storeGrossSales": 11670,
+    "storeTotalBills": 2,
+    "storeTotalItems": 11,
+    "staffSales": 7890,
+    "totalCommission": 39,
+    "activeStaffCount": 1,
     "staff": [
+      {
+        "empCode": "0001001",
+        "name": "Simran",
+        "isUnassigned": false,
+        "isMissingName": false,
+        "hasCustomOverride": true,
+        "sales": 7890,
+        "items": 8,
+        "bills": 1,
+        "aov": 7890,
+        "upt": 8,
+        "commissionRate": 0.5,
+        "commission": 39,
+        "slabLabel": "≤ 2L (0.5%)",
+        "rank": 1
+      },
       {
         "empCode": "0000000",
         "name": "Simran",
@@ -29,7 +77,16 @@
         "slabLabel": "POS Counter"
       }
     ],
-    "topStaff": null
+    "topStaff": {
+      "empCode": "0001001",
+      "name": "Simran",
+      "sales": 7890,
+      "bills": 1,
+      "items": 8,
+      "commission": 39,
+      "commissionRate": 0.5,
+      "slabLabel": "≤ 2L (0.5%)"
+    }
   },
   {
     "date": "2026-10-05",
