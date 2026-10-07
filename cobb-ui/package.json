@@ -67,6 +67,9 @@
   "build": {
     "appId": "com.cobb.app",
     "productName": "ORS",
+    "directories": {
+      "output": "release"
+    },
     "files": [
       "dist/**/*",
       "dist-electron/**/*"
