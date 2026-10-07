@@ -194,7 +194,7 @@ export default function LoginAuditModal({ isOpen, onClose }) {
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-xs sm:text-sm font-black text-white">
-                            {log.userName || (isOwner ? 'Parbhat Goyal' : 'Store Manager')}
+                            {log.userName || (isOwner ? 'Owner' : 'Store Manager')}
                           </span>
                           <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider ${
                             isFailed

@@ -28,7 +28,7 @@ describe('Frontend Component Test: LoginScreen', () => {
 
     expect(screen.getByText('COBB STORE')).toBeDefined();
     expect(screen.getByText('CRM POS')).toBeDefined();
-    expect(screen.getByText('Owner')).toBeDefined();
+    expect(screen.getAllByText('Owner').length).toBeGreaterThan(0);
     expect(screen.getByText('Manager')).toBeDefined();
     expect(screen.getByText('Cashier')).toBeDefined();
   });
@@ -60,7 +60,7 @@ describe('Frontend Component Test: LoginScreen', () => {
   });
 
   it('displays error banner when authentication fails', async () => {
-    mockLogin.mockResolvedValueOnce({ success: false, message: 'Incorrect PIN for Parbhat Goyal.' });
+    mockLogin.mockResolvedValueOnce({ success: false, message: 'Incorrect PIN for Owner.' });
 
     render(<LoginScreen onSetup={mockOnSetup} />);
 
@@ -70,7 +70,7 @@ describe('Frontend Component Test: LoginScreen', () => {
     fireEvent.click(screen.getByText('9'));
 
     await waitFor(() => {
-      expect(screen.getByText('Incorrect PIN for Parbhat Goyal.')).toBeDefined();
+      expect(screen.getByText('Incorrect PIN for Owner.')).toBeDefined();
     });
   });
 

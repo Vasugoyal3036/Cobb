@@ -57,7 +57,10 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
     try {
       const c = localStorage.getItem('cobb_auth_user');
-      return c ? JSON.parse(c) : null;
+      if (!c) return null;
+      const parsed = JSON.parse(c);
+      if (parsed?.role === 'owner') parsed.name = 'Owner';
+      return parsed;
     } catch { return null; }
   });
 
@@ -100,7 +103,7 @@ export const AuthProvider = ({ children }) => {
   // --------------------------------------------------------
 
   const switchRole = (newRole, pin = null) => {
-    const nameMap = { owner: 'Parbhat Goyal', manager: 'Store Manager', cashier: 'Counter Staff' };
+    const nameMap = { owner: 'Owner', manager: 'Store Manager', cashier: 'Counter Staff' };
     const updated = { ...user, role: newRole, name: nameMap[newRole] || 'Staff' };
     setUser(updated);
     try { localStorage.setItem('cobb_auth_user', JSON.stringify(updated)); } catch {}
@@ -135,7 +138,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const login = async (role = 'owner', pin = '', rememberDevice = true) => {
-    const nameMap = { owner: 'Parbhat Goyal', manager: 'Store Manager', cashier: 'Counter Staff' };
+    const nameMap = { owner: 'Owner', manager: 'Store Manager', cashier: 'Counter Staff' };
     const targetRole = (role || 'owner').toLowerCase();
 
     // Verify PIN if protected role

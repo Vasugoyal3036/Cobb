@@ -7,7 +7,7 @@ const ROLES = [
   {
     id: 'owner',
     title: 'Owner',
-    name: 'Parbhat Goyal',
+    name: 'Owner',
     badge: '👑 Executive HQ',
     desc: 'Full store access, financial telemetry & multi-store analytics',
     color: 'from-amber-500/20 to-amber-600/10 border-amber-500/40 text-amber-300',
