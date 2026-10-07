@@ -291,6 +291,13 @@ export default function App() {
   const currentRole = role || user?.role || 'owner';
   const [showSetup, setShowSetup] = useState(false);
 
+  useEffect(() => {
+    // If accessed via legacy /crm endpoint, seamlessly rewrite address bar back to root /
+    if (typeof window !== 'undefined' && window.location.pathname.includes('/crm')) {
+      window.history.replaceState(null, '', '/' + window.location.search);
+    }
+  }, []);
+
   let [vips, setVips] = useState(() => getLocalCache('vips', [])); if (!Array.isArray(vips)) vips = [];
   let [dormant, setDormant] = useState(() => getLocalCache('dormant', [])); if (!Array.isArray(dormant)) dormant = [];
 
