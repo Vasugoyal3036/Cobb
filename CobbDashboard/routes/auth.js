@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
+const path = require('path');
+const fs = require('fs');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_for_local_dev';
 
@@ -32,6 +34,47 @@ router.post('/login', (req, res) => {
     } else {
         res.status(401).json({ success: false, message: 'Invalid username' });
     }
+});
+
+const AUDIT_FILE = path.join(__dirname, '..', 'login_audit_logs.json');
+
+function readAuditLogs() {
+    try {
+        if (!fs.existsSync(AUDIT_FILE)) return [];
+        const raw = fs.readFileSync(AUDIT_FILE, 'utf-8');
+        return JSON.parse(raw);
+    } catch (e) {
+        return [];
+    }
+}
+
+function writeAuditLog(entry) {
+    try {
+        const logs = readAuditLogs();
+        logs.unshift(entry);
+        // Retain last 500 audit logs
+        const trimmed = logs.slice(0, 500);
+        fs.writeFileSync(AUDIT_FILE, JSON.stringify(trimmed, null, 2));
+        return true;
+    } catch (e) {
+        console.error('[AuthAudit] Failed to write local log:', e.message);
+        return false;
+    }
+}
+
+router.post('/login-audit', (req, res) => {
+    const entry = {
+        id: 'log_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7),
+        timestamp: new Date().toISOString(),
+        ...req.body
+    };
+    writeAuditLog(entry);
+    res.json({ success: true, logId: entry.id });
+});
+
+router.get('/login-audit', (req, res) => {
+    const logs = readAuditLogs();
+    res.json({ success: true, logs });
 });
 
 router.get('/verify', (req, res) => {

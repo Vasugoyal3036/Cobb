@@ -7,6 +7,7 @@ import SystemHealthModal from './SystemHealthModal';
 import SystemPowerModal from './SystemPowerModal';
 import PwaInstallBanner from './PwaInstallBanner';
 import StoreExpensesModal from './StoreExpensesModal';
+import LoginAuditModal from './LoginAuditModal';
 import {
   MessageCircle,
   Users,
@@ -197,6 +198,7 @@ const Layout = ({
   const [showThemePicker, setShowThemePicker] = useState(false);
   const [healthStatus, setHealthStatus] = useState({ overall: 'healthy', inboundAlertsCount: 0 });
   const [showPowerModal, setShowPowerModal] = useState(false);
+  const [showLoginAuditModal, setShowLoginAuditModal] = useState(false);
 
   useEffect(() => {
     const handleOpenExpenses = () => setShowExpensesModal(true);
@@ -430,7 +432,10 @@ const Layout = ({
             </div>
           )}
 
-          <div className={`flex items-center ${isLeftSidebarCollapsed ? 'justify-center p-1' : 'gap-3 p-2.5'} rounded-full cursor-pointer transition-colors ${darkMode ? 'hover:bg-white/10' : 'hover:bg-slate-200/50'}`}>
+          <div
+            onClick={() => setShowLoginAuditModal(true)}
+            title="View Access & Security Logs"
+            className={`flex items-center ${isLeftSidebarCollapsed ? 'justify-center p-1' : 'gap-3 p-2.5'} rounded-full cursor-pointer transition-colors ${darkMode ? 'hover:bg-white/10' : 'hover:bg-slate-200/50'}`}>
             <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border ${darkMode ? 'bg-gradient-to-tr from-slate-800 to-slate-700 border-white/20' : 'bg-gradient-to-tr from-slate-200 to-slate-300 border-slate-300'}`}>
               <span className={`text-xs font-black ${darkMode ? 'text-white' : 'text-slate-800'}`}>
                 {currentRole === 'owner' ? 'OW' : 'MG'}
@@ -561,6 +566,18 @@ const Layout = ({
                 {notificationsEnabled ? <BellRing className="w-3.5 h-3.5 text-indigo-400" /> : <Bell className="w-3.5 h-3.5 text-slate-400" />}
                 <span className={`absolute top-1 right-1 w-1.5 h-1.5 rounded-full ${notificationsEnabled ? 'bg-emerald-500' : 'bg-amber-500 animate-ping'
                   }`} />
+              </button>
+
+              {/* Security & Login Audit Logs */}
+              <button
+                type="button"
+                onClick={() => setShowLoginAuditModal(true)}
+                className={`w-7 h-7 rounded-xl flex items-center justify-center cursor-pointer transition-all active:scale-95 ${
+                  darkMode ? 'bg-white/[0.05] text-amber-400 active:bg-white/10' : 'bg-slate-100 text-amber-600 active:bg-slate-200'
+                }`}
+                title="Security & Login Audit Logs"
+              >
+                <ShieldCheck className="w-3.5 h-3.5" />
               </button>
 
               {/* Dark / Light Mode Toggle */}
@@ -1270,6 +1287,12 @@ const Layout = ({
         onTriggerTestAlert={onTriggerSystemTest}
         activeStore={activeStore}
         darkMode={darkMode}
+      />
+
+      {/* Access & Login Audit Logs Modal */}
+      <LoginAuditModal
+        isOpen={showLoginAuditModal}
+        onClose={() => setShowLoginAuditModal(false)}
       />
 
       {/* Progressive Web App Install Banner */}

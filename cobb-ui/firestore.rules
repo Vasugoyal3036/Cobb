@@ -87,6 +87,13 @@ service cloud.firestore {
           && request.resource.data.category is string;
         allow update, delete: if isAuthenticated() && isValidStoreId(storeId);
       }
+
+      // Login & Security Audit Logs (Owner & Manager Access tracking)
+      match /login_logs/{logId} {
+        allow read: if isAuthenticated() && isValidStoreId(storeId);
+        allow create: if isAuthenticated() && isValidStoreId(storeId);
+        allow update, delete: if isAuthenticated() && isValidStoreId(storeId);
+      }
     }
 
     // ===============================================================

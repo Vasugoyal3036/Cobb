@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
+import { logAuthEvent } from '../utils/auditLogger';
 
 export const AVAILABLE_STORES = [
   { id: 'DEMO_STORE_001', name: 'Cobb Pundri (Main)', shortName: 'Pundri', code: 'PUNDRI', location: 'Fatehpur Road, Pundri' },
@@ -8,9 +9,9 @@ export const AVAILABLE_STORES = [
 
 /**
  * ROLE_PERMISSIONS defines which navigation tab IDs are visible per role.
- * owner   ? sees everything
- * manager ? sees all operational + analytics tabs, hides financials/automation
- * cashier ? sees only the counter essentials (billing, exchanges, alterations, holds)
+ * owner   → sees everything
+ * manager → sees all operational + analytics tabs, hides financials/automation
+ * cashier → sees only the counter essentials (billing, exchanges, alterations, holds)
  */
 export const ROLE_PERMISSIONS = {
   owner: null, // null = all tabs allowed
@@ -35,7 +36,7 @@ const REMEMBER_KEY    = 'cobb_owner_remembered';
 
 /** Roles that require a PIN to switch to. Cashier is open. */
 export const PIN_PROTECTED_ROLES = ['owner', 'manager'];
-const DEFAULT_PINS = { owner: '1234', manager: '5678' };
+const DEFAULT_PINS = { owner: '1234', manager: '5678', cashier: '0000' };
 
 function loadPins() {
   try {
@@ -56,8 +57,8 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
     try {
       const c = localStorage.getItem('cobb_auth_user');
-      return c ? JSON.parse(c) : { id: 1, username: 'admin', role: 'owner', name: 'Parbhat Goyal' };
-    } catch { return { id: 1, username: 'admin', role: 'owner', name: 'Parbhat Goyal' }; }
+      return c ? JSON.parse(c) : null;
+    } catch { return null; }
   });
 
   const [activeStore, setActiveStore] = useState(() => {
@@ -98,7 +99,7 @@ export const AuthProvider = ({ children }) => {
   }, [rememberOwner]);
   // --------------------------------------------------------
 
-  const switchRole = (newRole) => {
+  const switchRole = (newRole, pin = null) => {
     const nameMap = { owner: 'Parbhat Goyal', manager: 'Store Manager', cashier: 'Counter Staff' };
     const updated = { ...user, role: newRole, name: nameMap[newRole] || 'Staff' };
     setUser(updated);
@@ -112,11 +113,18 @@ export const AuthProvider = ({ children }) => {
         return locked;
       });
     }
+
+    logAuthEvent({
+      role: newRole,
+      userName: nameMap[newRole],
+      storeId: activeStore,
+      action: 'ROLE_SWITCH',
+      status: 'success',
+      method: pin ? 'PIN' : 'SESSION'
+    });
   };
 
   const switchStore = (storeId) => {
-    // SECURITY: Store managers and counter staff are strictly locked to their single assigned branch.
-    // Only the business Owner (role === 'owner') can switch between branches or view 'ALL' stores.
     if (user?.role !== 'owner') {
       console.warn(`[AuthContext] Branch switch blocked: User role '${user?.role}' is restricted to their assigned branch.`);
       return false;
@@ -126,32 +134,78 @@ export const AuthProvider = ({ children }) => {
     return true;
   };
 
-  const login = async (username, password, role = 'owner') => {
+  const login = async (role = 'owner', pin = '', rememberDevice = true) => {
     const nameMap = { owner: 'Parbhat Goyal', manager: 'Store Manager', cashier: 'Counter Staff' };
-    const loggedUser = {
-      id: role === 'owner' ? 1 : role === 'manager' ? 2 : 3,
-      username: username || role,
-      role,
-      name: nameMap[role] || 'Staff',
-    };
-    setUser(loggedUser);
-    try { localStorage.setItem('cobb_auth_user', JSON.stringify(loggedUser)); } catch {}
+    const targetRole = (role || 'owner').toLowerCase();
 
-    // Security: Automatically lock non-owners out of 'ALL' (Consolidated Multi-Store HQ) view
-    if (role !== 'owner') {
+    // Verify PIN if protected role
+    if (PIN_PROTECTED_ROLES.includes(targetRole)) {
+      const isValid = verifyPin(targetRole, pin);
+      if (!isValid) {
+        logAuthEvent({
+          role: targetRole,
+          userName: nameMap[targetRole] || 'Staff',
+          storeId: activeStore,
+          action: 'LOGIN_FAILED',
+          status: 'failed',
+          reason: 'Incorrect PIN entered',
+          method: 'PIN'
+        });
+        return { success: false, message: `Incorrect PIN for ${nameMap[targetRole]}.` };
+      }
+    }
+
+    const loggedUser = {
+      id: targetRole === 'owner' ? 1 : targetRole === 'manager' ? 2 : 3,
+      username: targetRole,
+      role: targetRole,
+      name: nameMap[targetRole] || 'Staff',
+      loginTime: new Date().toISOString()
+    };
+
+    setUser(loggedUser);
+
+    if (rememberDevice) {
+      try { localStorage.setItem('cobb_auth_user', JSON.stringify(loggedUser)); } catch {}
+    } else {
+      try { localStorage.removeItem('cobb_auth_user'); } catch {}
+    }
+
+    // Security: Automatically lock non-owners out of 'ALL' view
+    if (targetRole !== 'owner') {
       setActiveStore(prev => {
         const locked = (!prev || prev === 'ALL') ? 'DEMO_STORE_001' : prev;
         try { localStorage.setItem('cobb_active_store', locked); } catch {}
         return locked;
       });
     }
-    return { success: true };
+
+    // Record login audit event to Cloud Firestore & backend
+    logAuthEvent({
+      role: targetRole,
+      userName: nameMap[targetRole] || 'Staff',
+      storeId: activeStore,
+      action: 'LOGIN_SUCCESS',
+      status: 'success',
+      method: 'PIN'
+    });
+
+    return { success: true, user: loggedUser };
   };
 
   const logout = () => {
-    const d = { id: 2, username: 'manager', role: 'manager', name: 'Store Manager' };
-    setUser(d);
-    try { localStorage.setItem('cobb_auth_user', JSON.stringify(d)); } catch {}
+    if (user) {
+      logAuthEvent({
+        role: user.role,
+        userName: user.name,
+        storeId: activeStore,
+        action: 'LOGOUT',
+        status: 'success',
+        method: 'MANUAL'
+      });
+    }
+    setUser(null);
+    try { localStorage.removeItem('cobb_auth_user'); } catch {}
   };
 
   const canAccessTab = (tabId) => {

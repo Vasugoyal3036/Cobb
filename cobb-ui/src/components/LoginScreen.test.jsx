@@ -16,69 +16,68 @@ describe('Frontend Component Test: LoginScreen', () => {
     vi.clearAllMocks();
     useAuth.mockReturnValue({
       login: mockLogin,
-      currentUser: null,
+      activeStore: 'DEMO_STORE_001',
+      AVAILABLE_STORES: [
+        { id: 'DEMO_STORE_001', name: 'Cobb Pundri (Main)', code: 'PUNDRI' }
+      ]
     });
   });
 
-  it('renders all essential login elements', () => {
+  it('renders role selectors and Cobb store branding', () => {
     render(<LoginScreen onSetup={mockOnSetup} />);
 
-    expect(screen.getByText('ORS')).toBeDefined();
-    expect(screen.getByPlaceholderText('admin')).toBeDefined();
-    expect(screen.getByPlaceholderText('••••••••')).toBeDefined();
-    expect(screen.getByRole('button', { name: /sign in/i })).toBeDefined();
-    expect(screen.getByText(/first time setup\? run the wizard/i)).toBeDefined();
+    expect(screen.getByText('COBB STORE')).toBeDefined();
+    expect(screen.getByText('CRM POS')).toBeDefined();
+    expect(screen.getByText('Owner')).toBeDefined();
+    expect(screen.getByText('Manager')).toBeDefined();
+    expect(screen.getByText('Cashier')).toBeDefined();
   });
 
-  it('updates form inputs when user types', () => {
+  it('switches roles when clicking role tabs', () => {
     render(<LoginScreen onSetup={mockOnSetup} />);
 
-    const usernameInput = screen.getByPlaceholderText('admin');
-    const passwordInput = screen.getByPlaceholderText('••••••••');
+    const managerTab = screen.getByText('Manager');
+    fireEvent.click(managerTab);
 
-    fireEvent.change(usernameInput, { target: { value: 'store_owner' } });
-    fireEvent.change(passwordInput, { target: { value: 'secretpass' } });
-
-    expect(usernameInput.value).toBe('store_owner');
-    expect(passwordInput.value).toBe('secretpass');
+    expect(screen.getByText('Store Manager')).toBeDefined();
+    expect(screen.getByText('Default PIN: 5678')).toBeDefined();
   });
 
-  it('submits credentials to auth context upon clicking Sign In', async () => {
+  it('enters digits via numeric keypad and triggers login', async () => {
     mockLogin.mockResolvedValueOnce({ success: true });
 
     render(<LoginScreen onSetup={mockOnSetup} />);
 
-    fireEvent.change(screen.getByPlaceholderText('admin'), { target: { value: 'admin' } });
-    fireEvent.change(screen.getByPlaceholderText('••••••••'), { target: { value: 'admin123' } });
-
-    const submitBtn = screen.getByRole('button', { name: /sign in/i });
-    fireEvent.click(submitBtn);
+    // Click digits 1, 2, 3, 4
+    fireEvent.click(screen.getByText('1'));
+    fireEvent.click(screen.getByText('2'));
+    fireEvent.click(screen.getByText('3'));
+    fireEvent.click(screen.getByText('4'));
 
     await waitFor(() => {
-      expect(mockLogin).toHaveBeenCalledWith('admin', 'admin123');
+      expect(mockLogin).toHaveBeenCalledWith('owner', '1234', true);
     });
   });
 
   it('displays error banner when authentication fails', async () => {
-    mockLogin.mockResolvedValueOnce({ success: false, message: 'Invalid credentials provided' });
+    mockLogin.mockResolvedValueOnce({ success: false, message: 'Incorrect PIN for Parbhat Goyal.' });
 
     render(<LoginScreen onSetup={mockOnSetup} />);
 
-    fireEvent.change(screen.getByPlaceholderText('admin'), { target: { value: 'wronguser' } });
-    fireEvent.change(screen.getByPlaceholderText('••••••••'), { target: { value: 'wrongpass' } });
-
-    const submitBtn = screen.getByRole('button', { name: /sign in/i });
-    fireEvent.click(submitBtn);
+    fireEvent.click(screen.getByText('9'));
+    fireEvent.click(screen.getByText('9'));
+    fireEvent.click(screen.getByText('9'));
+    fireEvent.click(screen.getByText('9'));
 
     await waitFor(() => {
-      expect(screen.getByText('Invalid credentials provided')).toBeDefined();
+      expect(screen.getByText('Incorrect PIN for Parbhat Goyal.')).toBeDefined();
     });
   });
 
   it('invokes onSetup callback when wizard button is clicked', () => {
     render(<LoginScreen onSetup={mockOnSetup} />);
 
-    const setupBtn = screen.getByText(/first time setup\? run the wizard/i);
+    const setupBtn = screen.getByText(/system diagnostics & setup wizard/i);
     fireEvent.click(setupBtn);
 
     expect(mockOnSetup).toHaveBeenCalledTimes(1);
