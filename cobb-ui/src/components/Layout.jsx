@@ -10,6 +10,7 @@ import StoreExpensesModal from './StoreExpensesModal';
 import LoginAuditModal from './LoginAuditModal';
 import AccountApprovalsModal from './AccountApprovalsModal';
 import {
+  User,
   MessageCircle,
   Users,
   UserPlus,
