@@ -9,6 +9,18 @@ import {
 import BiometricModal from '../BiometricModal';
 import LoginAuditModal from '../LoginAuditModal';
 
+const SectionHeader = ({ icon: Icon, title, description, darkMode }) => (
+  <div className="mb-4">
+    <h3 className={`text-lg font-bold flex items-center gap-2 ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+      <Icon className={`w-5 h-5 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+      {title}
+    </h3>
+    <p className={`text-sm mt-1 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+      {description}
+    </p>
+  </div>
+);
+
 export default function ProfileTab({ 
   darkMode, 
   setDarkMode, 
@@ -23,17 +35,6 @@ export default function ProfileTab({
   const [showBiometricModal, setShowBiometricModal] = useState(false);
   const [showAuditLog, setShowAuditLog] = useState(false);
 
-  const SectionHeader = ({ icon: Icon, title, description }) => (
-    <div className="mb-4">
-      <h3 className={`text-lg font-bold flex items-center gap-2 ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-        <Icon className={`w-5 h-5 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-        {title}
-      </h3>
-      <p className={`text-sm mt-1 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-        {description}
-      </p>
-    </div>
-  );
 
   return (
     <div className={`max-w-4xl mx-auto py-8 px-4 ${darkMode ? 'text-slate-200' : 'text-slate-800'}`}>
@@ -82,7 +83,7 @@ export default function ProfileTab({
         <div className={`p-6 rounded-3xl shadow-lg border ${
           darkMode ? 'bg-slate-900/50 border-white/5' : 'bg-white border-slate-200'
         }`}>
-          <SectionHeader icon={Palette} title="Appearance" description="Customize your workspace UI and colors." />
+          <SectionHeader icon={Palette} title="Appearance" description="Customize your workspace UI and colors." darkMode={darkMode} />
           
           <div className="space-y-4 mt-6">
             <div className={`flex items-center justify-between p-4 rounded-2xl border ${darkMode ? 'bg-slate-800/50 border-white/5' : 'bg-slate-50 border-slate-200'}`}>
@@ -134,7 +135,7 @@ export default function ProfileTab({
         <div className={`p-6 rounded-3xl shadow-lg border ${
           darkMode ? 'bg-slate-900/50 border-white/5' : 'bg-white border-slate-200'
         }`}>
-          <SectionHeader icon={Shield} title="Security & Access" description="Manage passkeys, biometrics, and sessions." />
+          <SectionHeader icon={Shield} title="Security & Access" description="Manage passkeys, biometrics, and sessions." darkMode={darkMode} />
           
           <div className="space-y-3 mt-6">
             <button 
@@ -193,7 +194,7 @@ export default function ProfileTab({
         <div className={`md:col-span-2 p-6 rounded-3xl shadow-lg border ${
           darkMode ? 'bg-slate-900/50 border-white/5' : 'bg-white border-slate-200'
         }`}>
-          <SectionHeader icon={Monitor} title="System & Notifications" description="Configure alerts, sounds, and push notifications." />
+          <SectionHeader icon={Monitor} title="System & Notifications" description="Configure alerts, sounds, and push notifications." darkMode={darkMode} />
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
             <div className={`flex items-center justify-between p-4 rounded-2xl border ${darkMode ? 'bg-slate-800/50 border-white/5' : 'bg-slate-50 border-slate-200'}`}>
