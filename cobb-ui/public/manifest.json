@@ -37,13 +37,6 @@
       "description": "Open Cobb Store CRM POS",
       "url": "/",
       "icons": [{ "src": "/ors-logo.png", "sizes": "192x192" }]
-    },
-    {
-      "name": "Digital Shop",
-      "short_name": "Shop",
-      "description": "Open Cobb Digital Catalog",
-      "url": "/shop",
-      "icons": [{ "src": "/ors-logo.png", "sizes": "192x192" }]
     }
   ]
 }

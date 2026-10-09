@@ -270,30 +270,14 @@ const TabFallback = () => (
   </div>
 );
 
-const DigitalCatalog = lazy(() => import('./components/DigitalCatalog'));
-const AttendanceTab = lazy(() => import('./components/tabs/AttendanceTab'));
-
 export default function App() {
-  const [isCatalogMode, setIsCatalogMode] = useState(() => {
-    // 1. Show the public Digital Catalog ONLY on /shop
-    return window.location.pathname.includes('/shop') || window.location.search.includes('shop=');
-  });
-
-  if (isCatalogMode) {
-    return (
-      <Suspense fallback={<TabFallback />}>
-        <DigitalCatalog />
-      </Suspense>
-    );
-  }
-
   const { user, role, activeStore, switchStore, switchRole } = useAuth();
   const currentRole = role || user?.role || 'owner';
   const [showSetup, setShowSetup] = useState(false);
 
   useEffect(() => {
-    // If accessed via legacy /crm endpoint, seamlessly rewrite address bar back to root /
-    if (typeof window !== 'undefined' && window.location.pathname.includes('/crm')) {
+    // If accessed via legacy /crm or /shop endpoint, seamlessly rewrite address bar back to root /
+    if (typeof window !== 'undefined' && (window.location.pathname.includes('/crm') || window.location.pathname.includes('/shop'))) {
       window.history.replaceState(null, '', '/' + window.location.search);
     }
   }, []);
@@ -301,7 +285,7 @@ export default function App() {
   let [vips, setVips] = useState(() => getLocalCache('vips', [])); if (!Array.isArray(vips)) vips = [];
   let [dormant, setDormant] = useState(() => getLocalCache('dormant', [])); if (!Array.isArray(dormant)) dormant = [];
 
-  const [darkMode, setDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
+  const [darkMode, setDarkMode] = useState(true);
   const [dashTheme, setDashTheme] = useState(() => localStorage.getItem('dashTheme') || 'noise-grain');
 
   useEffect(() => {
@@ -2379,11 +2363,6 @@ export default function App() {
             {/* 20. GOODS IN TRANSIT */}
             {activeTab === 'transit' && (
               <GoodsInTransitTab darkMode={darkMode} API_BASE={API_BASE} />
-            )}
-
-            {/* 20A. ATTENDANCE & CLOCK-IN */}
-            {activeTab === 'attendance' && (
-              <AttendanceTab activeStore={activeStore} />
             )}
 
             {/* 20B. INTER-BRANCH TRANSFERS */}

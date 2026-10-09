@@ -84,6 +84,9 @@ import {
   Fingerprint
 } from 'lucide-react';
 import BiometricModal from './BiometricModal';
+import GlobalCommandBar from './GlobalCommandBar';
+import ActionCenterModal from './ActionCenterModal';
+import MobileNav from './MobileNav';
 import { getEnrolledPasskey } from '../utils/webauthn';
 import { THEMES } from './DashboardBackground';
 
@@ -137,7 +140,6 @@ const navigationItems = [
   {
     category: "System", items: [
       { id: "automation", label: "Automation Engine", icon: Terminal },
-      { id: "attendance", label: "Anti-Fraud Attendance", icon: ShieldCheck, colorClass: "text-indigo-600 dark:text-indigo-400 hover:bg-slate-900 hover:text-white font-bold", activeColorClass: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 font-bold border-l-2 border-indigo-500 shadow-sm shadow-indigo-500/20" },
     ]
   }
 ];
@@ -176,7 +178,11 @@ const Layout = ({
   playCheckoutChime,
   systemStatus = null,
   onTriggerSystemTest,
-  onTriggerTestAlert
+  onTriggerTestAlert,
+  globalCustomers = [],
+  liveBills = [],
+  inventory = [],
+  deadStock = []
 }) => {
 
   const {
@@ -206,9 +212,22 @@ const Layout = ({
   const [showLoginAuditModal, setShowLoginAuditModal] = useState(false);
   const [showApprovalsModal, setShowApprovalsModal] = useState(false);
   const [showBiometricModal, setShowBiometricModal] = useState(false);
+  const [showCommandBar, setShowCommandBar] = useState(false);
+  const [showActionCenter, setShowActionCenter] = useState(false);
   const [showBiometricBanner, setShowBiometricBanner] = useState(() => {
     try { return !getEnrolledPasskey(); } catch { return false; }
   });
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowCommandBar(true);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   useEffect(() => {
     const handleOpenExpenses = () => setShowExpensesModal(true);
@@ -583,7 +602,7 @@ const Layout = ({
                 type="button"
                 onClick={async () => {
                   if (notificationsEnabled) {
-                    setShowAlertModal(true);
+                    setShowActionCenter(true);
                   } else {
                     if (typeof onEnableNotifications === 'function') await onEnableNotifications();
                   }
@@ -1414,6 +1433,33 @@ const Layout = ({
       <BiometricModal
         isOpen={showBiometricModal}
         onClose={() => setShowBiometricModal(false)}
+      />
+
+      {/* Global Command Bar (Ctrl+K) */}
+      <GlobalCommandBar 
+        isOpen={showCommandBar} 
+        onClose={() => setShowCommandBar(false)} 
+        darkMode={darkMode}
+        globalCustomers={globalCustomers}
+        liveBills={liveBills}
+        inventory={deadStock}
+        setActiveTab={setActiveTab}
+      />
+
+      {/* Action Center Drawer */}
+      <ActionCenterModal 
+        isOpen={showActionCenter} 
+        onClose={() => setShowActionCenter(false)} 
+        darkMode={darkMode} 
+      />
+
+      {/* Mobile Bottom Navigation */}
+      <MobileNav 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab} 
+        setShowCommandBar={setShowCommandBar} 
+        setShowActionCenter={setShowActionCenter} 
+        darkMode={darkMode} 
       />
 
       {/* Progressive Web App Install Banner */}

@@ -1438,5 +1438,113 @@
     "reason": "exchange",
     "status": "not_on_whatsapp",
     "detail": "Phone number is not registered on WhatsApp"
+  },
+  {
+    "timestamp": "2026-10-07T12:01:56.104429",
+    "date": "2026-10-07",
+    "time": "12:01 PM",
+    "billNo": "STST27-00776   ",
+    "cmId": "ST01127000STST27-00776",
+    "customerName": "Rahul",
+    "phone": "7988455199",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-10-07T14:56:23.155373",
+    "date": "2026-10-07",
+    "time": "02:56 PM",
+    "billNo": "STST27-00777   ",
+    "cmId": "ST01127000STST27-00777",
+    "customerName": "Goldy",
+    "phone": "9991500369",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-10-07T20:28:52.273320",
+    "date": "2026-10-07",
+    "time": "08:28 PM",
+    "billNo": "STST27-00778   ",
+    "cmId": "ST01127000STST27-00778",
+    "customerName": "Raj Kumar Verma",
+    "phone": "9996060605",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-10-08T16:42:44.012136",
+    "date": "2026-10-08",
+    "time": "04:42 PM",
+    "billNo": "STST27-00779   ",
+    "cmId": "ST01127000STST27-00779",
+    "customerName": "Sonu Sirsal",
+    "phone": "7206548883",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-10-09T11:01:19.723941",
+    "date": "2026-10-09",
+    "time": "11:01 AM",
+    "billNo": "STST27-00780   ",
+    "cmId": "ST01127000STST27-00780",
+    "customerName": "Ramkumar",
+    "phone": "9813836540",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-10-09T11:35:40.987235",
+    "date": "2026-10-09",
+    "time": "11:35 AM",
+    "billNo": "STST27-00781   ",
+    "cmId": "ST01127000STST27-00781",
+    "customerName": "Deepak",
+    "phone": "8295125425",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-10-09T12:49:33.579359",
+    "date": "2026-10-09",
+    "time": "12:49 PM",
+    "billNo": "STST27-00782   ",
+    "cmId": "ST01127000STST27-00782",
+    "customerName": "Balvinder",
+    "phone": "9996411380",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-10-09T15:31:35.170114",
+    "date": "2026-10-09",
+    "time": "03:31 PM",
+    "billNo": "STST27-00783   ",
+    "cmId": "ST01127000STST27-00783",
+    "customerName": "Sapna",
+    "phone": "9368618550",
+    "reason": "checkout",
+    "status": "not_on_whatsapp",
+    "detail": "Phone number is not registered on WhatsApp"
+  },
+  {
+    "timestamp": "2026-10-09T17:35:11.919454",
+    "date": "2026-10-09",
+    "time": "05:35 PM",
+    "billNo": "STST27-00784   ",
+    "cmId": "ST01127000STST27-00784",
+    "customerName": "Satish Walia",
+    "phone": "9896472422",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
   }
 ]

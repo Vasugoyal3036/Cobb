@@ -4,9 +4,9 @@ import { db } from '../utils/firebase';
 import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 
 export const AVAILABLE_STORES = [
-  { id: 'DEMO_STORE_001', name: 'Cobb Pundri (Main)', shortName: 'Pundri', code: 'PUNDRI', location: 'Fatehpur Road, Pundri' },
-  { id: 'STORE_02', name: 'Cobb Branch 2 (New)', shortName: 'Branch 2', code: 'BRANCH_2', location: 'New Branch Market' },
-  { id: 'ALL', name: 'All Stores (Combined)', shortName: 'All Stores', code: 'ALL', location: 'Consolidated Multi-Store View' }
+  { id: 'DEMO_STORE_001', name: 'Cobb Pundri (Main)', shortName: 'Pundri', code: 'PUNDRI', location: 'Fatehpur Road, Pundri', coordinates: { lat: 29.7562, lng: 76.5619 } },
+  { id: 'STORE_02', name: 'Cobb Branch 2 (New)', shortName: 'Branch 2', code: 'BRANCH_2', location: 'New Branch Market', coordinates: { lat: 29.7600, lng: 76.5700 } },
+  { id: 'ALL', name: 'All Stores (Combined)', shortName: 'All Stores', code: 'ALL', location: 'Consolidated Multi-Store View', coordinates: null }
 ];
 
 /**
@@ -21,7 +21,7 @@ export const ROLE_PERMISSIONS = {
     'copilot','dashboard','speed_billing','analytics','monthly','live',
     'staff_leaderboard','pocket_khata','denomination','hold_desk','returns',
     'alterations','topmovers','sizematrix','transit','ibt','deadstock','reorder',
-    'smart_bundles','loyalty','ratings','vip','dormant','wardrobe','retention',
+    'smart_bundles','loyalty','ratings','vip','dormant','wardrobe','retention'
   ],
   cashier: ['speed_billing','live','denomination','returns','alterations','hold_desk','deadstock'],
 };
@@ -128,7 +128,9 @@ export const AuthProvider = ({ children }) => {
       }
 
       const combinedUsers = [...AUTH_CREDENTIALS[targetRole], ...customUsers.filter(u => u.role === targetRole)];
-      const validUser = combinedUsers.find(u => u.username === username && u.password === password);
+      const cleanUsername = username ? String(username).toLowerCase().trim() : '';
+      const cleanPassword = password ? String(password).trim() : '';
+      const validUser = combinedUsers.find(u => String(u.username).toLowerCase() === cleanUsername && u.password === cleanPassword);
       
       if (!validUser) {
         logAuthEvent({

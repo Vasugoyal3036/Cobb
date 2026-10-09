@@ -76,6 +76,9 @@ export async function logAuthEvent({
   reason = null,
   method = 'PIN'
 }) {
+  // Login logging disabled per user request
+  return;
+
   const device = getDeviceDetails();
   const timestamp = new Date().toISOString();
 

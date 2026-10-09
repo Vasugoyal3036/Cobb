@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
 // Firebase configuration - loaded from environment variables.
@@ -25,13 +25,16 @@ export let authPromise = Promise.resolve();
 if (hasConfig) {
   try {
     app = initializeApp(firebaseConfig);
-    firestoreDb = getFirestore(app);
+    // Initialize Firestore with offline persistence
+    firestoreDb = initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+    });
     firebaseStorage = getStorage(app);
     authPromise = import('firebase/auth').then(({ getAuth, signInAnonymously }) => {
        const auth = getAuth(app);
        return signInAnonymously(auth).then(() => console.log('Firebase Anonymous Auth successful.')).catch(e => console.error('Anonymous Auth Failed:', e));
     });
-    console.log('Firebase initialized successfully.');
+    console.log('Firebase initialized successfully with offline persistence.');
   } catch (error) {
     console.error('Error initializing Firebase:', error);
   }

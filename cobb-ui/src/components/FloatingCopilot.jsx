@@ -183,10 +183,10 @@ export default function FloatingCopilot({
     }
   }, [messages, isOpen, loading]);
 
-  // Global Ctrl+K shortcut to toggle copilot
+  // Global Ctrl+J shortcut to toggle copilot
   useEffect(() => {
     const handleGlobalKey = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'j') {
         e.preventDefault();
         setIsOpen(prev => !prev);
       }
@@ -398,7 +398,7 @@ export default function FloatingCopilot({
           type="button"
           onClick={() => setIsOpen(true)}
           className="flex fixed bottom-6 right-6 z-50 items-center space-x-2.5 px-4 py-3 rounded-full bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white shadow-xl hover:shadow-indigo-500/30 hover:scale-105 active:scale-95 transition-all cursor-pointer border border-white/20 group"
-          title="Open Cobb AI Copilot (Ctrl+K)"
+          title="Open Cobb AI Copilot (Ctrl+J)"
         >
           <div className="relative">
             <Sparkles className="w-5 h-5 group-hover:rotate-12 transition-transform" />
@@ -406,7 +406,7 @@ export default function FloatingCopilot({
           </div>
           <span className="text-xs font-bold tracking-wide">Ask Cobb AI</span>
           <span className="hidden sm:inline-block px-1.5 py-0.5 rounded text-[10px] bg-white/20 font-mono font-semibold">
-            Ctrl+K
+            Ctrl+J
           </span>
         </button>
       )}

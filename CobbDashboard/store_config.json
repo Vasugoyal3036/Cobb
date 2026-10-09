@@ -9,17 +9,17 @@
     "rent": 40000,
     "staffSalaries": 46000,
     "electricity": 10000,
-    "miscExpenses": 3000,
+    "miscExpenses": 5000,
     "franchiseRoyalty": 0,
-    "totalExpenses": 99000,
-    "dailyExpense": 3300,
-    "dailyOpEx": 3300,
-    "dailyAmortizedExpense": 3300,
+    "totalExpenses": 101000,
+    "dailyExpense": 3367,
+    "dailyOpEx": 3367,
+    "dailyAmortizedExpense": 3367,
     "targetMarginPct": 25,
     "dailyTargetSales": 50000,
     "monthlyTargetSales": 900000,
-    "dailyBreakEvenSales": 13200,
-    "monthlyBreakEvenSales": 396000
+    "dailyBreakEvenSales": 13468,
+    "monthlyBreakEvenSales": 404000
   },
   "database": {
     "engine": "mssql",
@@ -31,5 +31,5 @@
     "password": "",
     "port": 1433
   },
-  "lastUpdated": "2026-10-06T06:31:31.855Z"
+  "lastUpdated": "2026-10-09T11:56:39.911Z"
 }

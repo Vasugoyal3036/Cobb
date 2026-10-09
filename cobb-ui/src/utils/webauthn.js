@@ -101,6 +101,10 @@ export async function authenticateWithBiometrics() {
   }
 
   const enrolled = getEnrolledPasskey();
+  if (!enrolled) {
+    throw new Error('No passkey is registered on this device. Please set up Biometrics first in your profile.');
+  }
+  
   const challenge = new Uint8Array(32);
   window.crypto.getRandomValues(challenge);
 

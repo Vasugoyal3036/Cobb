@@ -504,6 +504,7 @@ const DashboardTab = (props) => {
             />
           )}
 
+
           {/* ZONE 2: ASYMMETRIC BENTO COMMAND CENTER (7 COLS LEFT | 5 COLS RIGHT) */}
           {(dashboardZone === 'all' || dashboardZone === 'executive') && (
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start">

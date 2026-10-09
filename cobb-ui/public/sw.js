@@ -47,15 +47,13 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 1. Navigation requests (HTML pages & SPA routes like /crm, /shop):
+  // 1. Navigation requests (HTML pages & SPA routes like /crm):
   // ALWAYS Network-First so users get latest updates instantly, with offline/launch fallback to /index.html
   if (
     event.request.mode === 'navigate' ||
     url.pathname === '/' ||
     url.pathname === '/crm' ||
     url.pathname.startsWith('/crm/') ||
-    url.pathname === '/shop' ||
-    url.pathname.startsWith('/shop/') ||
     url.pathname.endsWith('.html')
   ) {
     event.respondWith(
