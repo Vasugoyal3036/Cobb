@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, Search, BellRing, Package, Receipt, Sparkles } from 'lucide-react';
+import { LayoutDashboard, Search, BellRing, Package, Receipt, Sparkles, User } from 'lucide-react';
 
 export default function MobileNav({ activeTab, setActiveTab, setShowCommandBar, setShowActionCenter, darkMode }) {
   const navItems = [
@@ -7,7 +7,7 @@ export default function MobileNav({ activeTab, setActiveTab, setShowCommandBar, 
     { id: 'live', label: 'Bills', icon: Receipt },
     { id: 'search', label: 'Search', icon: Search, isAction: true, onClick: () => setShowCommandBar(true) },
     { id: 'copilot', label: 'AI', icon: Sparkles, highlight: true },
-    { id: 'alerts', label: 'Alerts', icon: BellRing, isAction: true, onClick: () => setShowActionCenter(true) },
+    { id: 'profile', label: 'Profile', icon: User },
   ];
 
   return (
