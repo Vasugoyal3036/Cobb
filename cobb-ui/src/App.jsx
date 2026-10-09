@@ -22,6 +22,7 @@ const StaffLeaderboardTab = lazy(() => import('./components/tabs/StaffLeaderboar
 const ThermalReceiptModal = lazy(() => import('./components/ThermalReceiptModal'));
 const CustomerProfileModal = lazy(() => import('./components/CustomerProfileModal'));
 const RatingsTab = lazy(() => import('./components/tabs/RatingsTab'));
+const ProfileTab = lazy(() => import('./components/tabs/ProfileTab'));
 const SetupScreen = lazy(() => import('./components/SetupScreen'));
 const DepreciationClockTab = lazy(() => import('./components/tabs/DepreciationClockTab'));
 const WardrobePassportModal = lazy(() => import('./components/WardrobePassportModal'));
@@ -2275,6 +2276,19 @@ export default function App() {
             {/* CUSTOMER RATINGS & NPS TAB */}
             {activeTab === 'ratings' && (
               <RatingsTab {...appState} openCustomerCard={openCustomerCard} />
+            )}
+
+            {/* PROFILE TAB */}
+            {activeTab === 'profile' && (
+              <ProfileTab 
+                darkMode={darkMode}
+                setDarkMode={setDarkMode}
+                dashTheme={dashTheme}
+                setDashTheme={setDashTheme}
+                notificationsEnabled={notificationsEnabled}
+                onEnableNotifications={handleEnablePushNotifications}
+                playCheckoutChime={playCheckoutChime}
+              />
             )}
 
             {/* 6. AI CAMPAIGN BUILDER */}

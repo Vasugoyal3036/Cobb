@@ -421,86 +421,31 @@ const Layout = ({
             {isLeftSidebarCollapsed ? <span className="text-2xl leading-none -mt-0.5">+</span> : 'Post Update'}
           </button>
 
-          {/* Theme Picker */}
-          {darkMode && (
-            <div className="relative">
-              <button
-                onClick={() => setShowThemePicker(p => !p)}
-                className={`w-full flex items-center ${isLeftSidebarCollapsed ? 'justify-center px-0' : 'px-3 gap-2.5'} py-2 rounded-full text-xs font-semibold transition-all ${showThemePicker ? 'bg-white/10 text-white' : 'text-slate-500 hover:bg-white/[0.06] hover:text-slate-300'}`}
-              >
-                <span className="text-base shrink-0">🎨</span>
-                <div className={`flex flex-1 items-center overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isLeftSidebarCollapsed ? 'w-0 opacity-0' : 'w-full opacity-100'}`}>
-                  <span className="whitespace-nowrap">Dashboard Theme</span>
-                  <span className="ml-auto text-[10px] opacity-60 truncate pl-2">({THEMES.find(t => t.key === dashTheme)?.label || 'Custom'})</span>
-                </div>
-              </button>
-
-              {showThemePicker && (
-                <div className={`absolute bottom-10 left-0 right-0 rounded-2xl p-3 z-50 border shadow-2xl space-y-1.5 ${darkMode ? 'bg-[#111318] border-white/10 shadow-black/60' : 'bg-white border-slate-200'
-                  }`}>
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 px-1 mb-2">Choose Theme</p>
-                  {THEMES.map(t => (
-                    <button
-                      key={t.key}
-                      onClick={() => { setDashTheme(t.key); setShowThemePicker(false); }}
-                      className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-xs font-medium transition-all ${dashTheme === t.key
-                          ? 'bg-white/10 text-white ring-1 ring-white/20'
-                          : 'text-slate-400 hover:bg-white/[0.05] hover:text-white'
-                        }`}
-                    >
-                      <span
-                        className="w-5 h-5 rounded-full shrink-0 border border-white/10"
-                        style={{ background: `linear-gradient(135deg, ${t.color}, ${t.accent})` }}
-                      />
-                      {t.label}
-                      {dashTheme === t.key && <span className="ml-auto text-[10px] text-white/50">✓ Active</span>}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Phone Biometrics Action in Drawer */}
+          {/* Profile & Settings Navigation */}
           <button
-            type="button"
-            onClick={() => { setShowBiometricModal(true); setIsMobileMenuOpen(false); }}
-            className={`w-full mb-2 p-2.5 rounded-2xl flex items-center gap-3 border text-left cursor-pointer transition-all ${
-              darkMode
-                ? 'bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/25 text-amber-300'
-                : 'bg-amber-50 hover:bg-amber-100 border-amber-200 text-amber-800'
+            onClick={() => setActiveTab('profile')}
+            title="Profile & Settings"
+            className={`w-full flex items-center ${isLeftSidebarCollapsed ? 'justify-center p-1' : 'gap-3 p-2.5'} rounded-full cursor-pointer transition-all ${
+              activeTab === 'profile' 
+                ? (darkMode ? 'bg-white/10 ring-1 ring-white/20' : 'bg-slate-200 ring-1 ring-slate-300') 
+                : (darkMode ? 'hover:bg-white/10' : 'hover:bg-slate-200/50')
             }`}
           >
-            <div className="w-8 h-8 rounded-xl bg-amber-500/20 flex items-center justify-center shrink-0">
-              <Fingerprint className="w-4 h-4 text-amber-400" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold leading-tight">Phone Biometrics</p>
-              <p className="text-[10px] text-slate-400">Register Face ID / Fingerprint</p>
-            </div>
-          </button>
-
-          <div
-            onClick={() => setShowLoginAuditModal(true)}
-            title="View Access & Security Logs"
-            className={`flex items-center ${isLeftSidebarCollapsed ? 'justify-center p-1' : 'gap-3 p-2.5'} rounded-full cursor-pointer transition-colors ${darkMode ? 'hover:bg-white/10' : 'hover:bg-slate-200/50'}`}>
             <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border ${darkMode ? 'bg-gradient-to-tr from-slate-800 to-slate-700 border-white/20' : 'bg-gradient-to-tr from-slate-200 to-slate-300 border-slate-300'}`}>
-              <span className={`text-xs font-black ${darkMode ? 'text-white' : 'text-slate-800'}`}>
-                {currentRole === 'owner' ? 'OW' : 'MG'}
-              </span>
+              <User className={`w-5 h-5 ${darkMode ? 'text-white' : 'text-slate-800'}`} />
             </div>
             <div className={`flex flex-1 items-center overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isLeftSidebarCollapsed ? 'w-0 opacity-0' : 'w-full opacity-100'}`}>
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 text-left">
                 <p className={`text-sm font-bold truncate leading-tight ${darkMode ? 'text-white' : 'text-slate-900'}`}>
                   {currentRole === 'owner' ? 'Store Owner' : 'Store Manager'}
                 </p>
                 <p className={`text-xs truncate ${darkMode ? 'text-slate-500' : 'text-slate-500'}`}>
-                  @cobb_{AVAILABLE_STORES.find(s => s.id === activeStore)?.shortName?.toLowerCase() || 'pundri'}
+                  Settings & Preferences
                 </p>
               </div>
-              <MoreHorizontal className={`w-5 h-5 shrink-0 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`} />
+              <ChevronRight className={`w-5 h-5 shrink-0 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`} />
             </div>
-          </div>
+          </button>
         </div>
       </div>
 
