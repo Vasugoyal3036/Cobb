@@ -52,11 +52,10 @@ export default function ProfileTab({
         <div className="relative z-10 flex-1">
           <h1 className="text-3xl font-black mb-1">{user?.username || 'Guest User'}</h1>
           <div className="flex items-center gap-3">
-            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-              role === 'owner' ? 'bg-purple-500/20 text-purple-400' : 
-              role === 'manager' ? 'bg-amber-500/20 text-amber-500' : 'bg-blue-500/20 text-blue-400'
+            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider border ${
+              ROLE_LABELS[role]?.color || 'bg-slate-500/20 text-slate-400 border-slate-500/30'
             }`}>
-              {ROLE_LABELS[role] || role}
+              {ROLE_LABELS[role]?.label || role}
             </span>
             <span className={`text-sm font-medium ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
               Branch: {activeStore || 'None'}
