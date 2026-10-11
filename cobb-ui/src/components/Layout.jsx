@@ -189,8 +189,10 @@ const Layout = ({
   const {
     role: contextRole, switchRole, activeStore, switchStore, user,
     verifyPin, changePin, roleRequiresPin, rememberOwner, setRememberOwner,
+    AVAILABLE_STORES: dynamicStores
   } = useAuth();
   const currentRole = contextRole || propUserRole || 'owner';
+  const AVAILABLE_STORES = dynamicStores || [];
 
   // ── PIN modal state ───────────────────────────────────────
   const [pinModal, setPinModal] = useState(null); // { targetRole: 'owner'|'manager' } | null

@@ -1,13 +1,15 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { logAuthEvent } from '../utils/auditLogger';
 import { db } from '../utils/firebase';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, collection, onSnapshot } from 'firebase/firestore';
 
-export const AVAILABLE_STORES = [
+export const DEFAULT_STORES = [
   { id: 'DEMO_STORE_001', name: 'Cobb Pundri (Main)', shortName: 'Pundri', code: 'PUNDRI', location: 'Fatehpur Road, Pundri', coordinates: { lat: 29.7562, lng: 76.5619 } },
-  { id: 'STORE_02', name: 'Cobb Branch 2 (New)', shortName: 'Branch 2', code: 'BRANCH_2', location: 'New Branch Market', coordinates: { lat: 29.7600, lng: 76.5700 } },
+  { id: 'STORE_NIGDHU_002', name: 'Cobb Nigdhu', shortName: 'Nigdhu', code: 'NIGDHU', location: 'Main Market, Nigdhu', coordinates: { lat: 29.8500, lng: 76.9200 } },
   { id: 'ALL', name: 'All Stores (Combined)', shortName: 'All Stores', code: 'ALL', location: 'Consolidated Multi-Store View', coordinates: null }
 ];
+
+export const AVAILABLE_STORES = DEFAULT_STORES;
 
 /**
  * ROLE_PERMISSIONS defines which navigation tab IDs are visible per role.
@@ -62,11 +64,54 @@ export const AuthProvider = ({ children }) => {
     } catch (e) {}
   }, []);
 
+  const [storesList, setStoresList] = useState(DEFAULT_STORES);
   const [activeStore, setActiveStore] = useState(() => {
     const s = localStorage.getItem('cobb_active_store');
     if (!s || s === 'STORE_01') return 'DEMO_STORE_001';
     return s;
   });
+
+  // Dynamically listen to all registered stores in Cloud Firestore
+  useEffect(() => {
+    if (!db) return;
+    try {
+      const unsub = onSnapshot(collection(db, 'stores'), (snapshot) => {
+        if (!snapshot.empty) {
+          const fetched = [];
+          snapshot.forEach(docSnap => {
+            const data = docSnap.data();
+            fetched.push({
+              id: docSnap.id,
+              name: data.name || (docSnap.id === 'DEMO_STORE_001' ? 'Cobb Pundri (Main)' : `Cobb ${docSnap.id}`),
+              shortName: data.name ? data.name.replace('Cobb ', '') : docSnap.id,
+              code: data.code || docSnap.id,
+              location: data.location || 'Retail Outlet',
+              coordinates: data.coordinates || null
+            });
+          });
+
+          // Always ensure 'ALL' combined option is present for owner multi-store analytics
+          if (!fetched.find(s => s.id === 'ALL')) {
+            fetched.push({
+              id: 'ALL',
+              name: 'All Stores (Combined)',
+              shortName: 'All Stores',
+              code: 'ALL',
+              location: 'Consolidated Multi-Store View',
+              coordinates: null
+            });
+          }
+
+          setStoresList(fetched);
+        }
+      }, (err) => {
+        console.debug('[AuthContext] Firestore stores sync note:', err.message);
+      });
+      return () => unsub();
+    } catch (e) {
+      console.debug('[AuthContext] Firestore stores listener note:', e.message);
+    }
+  }, []);
 
   const [rememberOwner, setRememberOwnerState] = useState(false);
   const setRememberOwner = useCallback((val) => {
@@ -297,7 +342,8 @@ export const AuthProvider = ({ children }) => {
       switchRole,
       activeStore,
       switchStore,
-      AVAILABLE_STORES,
+      AVAILABLE_STORES: storesList,
+      storesList,
       ROLE_PERMISSIONS,
       ROLE_LABELS,
       login,

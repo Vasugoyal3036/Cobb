@@ -55,8 +55,12 @@ service cloud.firestore {
     // ===============================================================
 
     match /stores/{storeId} {
-      allow read: if isAuthenticated() && isValidStoreId(storeId);
+      allow read: if isAuthenticated();
       allow write: if isAuthenticated() && isValidStoreId(storeId);
+
+      match /inventory/{itemId} {
+        allow read, write: if isAuthenticated();
+      }
 
       // Synced Analytics, Inventory, Staff Leaderboard, and System Status
       match /data/{docName} {

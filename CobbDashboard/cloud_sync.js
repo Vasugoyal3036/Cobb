@@ -111,6 +111,9 @@ if (serviceAccount) {
     }
 }
 const STORE_ID = process.env.STORE_ID || "DEMO_STORE_001";
+const STORE_NAME = process.env.STORE_NAME || "Cobb Pundri";
+const STORE_LOCATION = process.env.STORE_LOCATION || "Fatehpur Road, Pundri";
+const STORE_CODE = process.env.STORE_CODE || "PUNDRI";
 const LOCAL_API = process.env.LOCAL_API || `http://localhost:${process.env.PORT || 5000}`;
 
 // --- STORE OWNER WHATSAPP NOTIFICATION CONFIGURATION ---
@@ -226,6 +229,18 @@ async function syncEndpointList(items, tierName = 'Sync') {
                 // Ensure data is an object before pushing (if it's an array, wrap it)
                 const payload = Array.isArray(response.data) ? { items: response.data } : response.data;
                 payload.lastUpdated = FieldValue.serverTimestamp();
+
+                if (docName === 'sales_overview' && payload.today) {
+                    await db.collection("stores").doc(STORE_ID).set({
+                        name: STORE_NAME,
+                        location: STORE_LOCATION,
+                        code: STORE_CODE,
+                        currentRevenue: payload.today.TotalSales || 0,
+                        previousRevenue: payload.yesterday?.TotalSales || 0,
+                        walkins: payload.today.BillCount || 0,
+                        lastUpdated: FieldValue.serverTimestamp()
+                    }, { merge: true });
+                }
 
                 await db.collection("stores").doc(STORE_ID).collection("data").doc(docName).set(payload, { merge: true });
                 lastPayloadHash.set(docName, jsonStr);
@@ -512,6 +527,14 @@ async function checkAndDispatchCheckoutAlerts() {
             let todayTillLine = '';
             try {
                 const ovRes = await axios.get(`${LOCAL_API}/api/sales/overview`, { timeout: 3000 });
+                if (ovRes.data && ovRes.data.today) {
+                    await db.collection("stores").doc(STORE_ID).set({
+                        currentRevenue: ovRes.data.today.TotalSales || 0,
+                        previousRevenue: ovRes.data.yesterday?.TotalSales || 0,
+                        walkins: ovRes.data.today.BillCount || 0,
+                        lastUpdated: FieldValue.serverTimestamp()
+                    }, { merge: true });
+                }
                 const todayData = ovRes.data?.today;
                 if (todayData && (todayData.TotalSales > 0 || todayData.BillCount > 0)) {
                     todayTillLine = `📈 *Today's Till Total:* ₹${Math.round(todayData.TotalSales).toLocaleString('en-IN')} (across ${todayData.BillCount} bill${todayData.BillCount > 1 ? 's' : ''})\n`;
@@ -538,7 +561,7 @@ async function checkAndDispatchCheckoutAlerts() {
             let waCheckoutText = '';
             if (isExchange) {
                 waCheckoutText = 
-                    `🔄 *PRODUCT EXCHANGE RECORDED* — *Cobb Pundri*\n` +
+                    `🔄 *PRODUCT EXCHANGE RECORDED* — *${STORE_NAME}*\n` +
                     `──────────────────────\n` +
                     `🔢 *Bill No:* #${billNo}\n` +
                     `🕒 *Time:* ${timeStrFormatted}\n` +
@@ -554,7 +577,7 @@ async function checkAndDispatchCheckoutAlerts() {
                     `👉 *View Live Bill:* https://cobb-store.web.app/?tab=livebills`;
             } else {
                 waCheckoutText = 
-                    `🧾 *NEW SALE RECORDED* — *Cobb Pundri*\n` +
+                    `🧾 *NEW SALE RECORDED* — *${STORE_NAME}*\n` +
                     `──────────────────────\n` +
                     `🔢 *Bill No:* #${billNo}\n` +
                     `🕒 *Time:* ${timeStrFormatted}\n` +
@@ -676,7 +699,7 @@ async function checkAndDispatchCancelledBillAlerts() {
 
             // Dispatch WhatsApp cancelled bill alert to 4 store owners
             const waCancelledText = 
-                `⚠️ *CANCELLED BILL ALERT* — *Cobb Pundri*\n` +
+                `⚠️ *CANCELLED BILL ALERT* — *${STORE_NAME}*\n` +
                 `──────────────────────\n` +
                 `🔢 *Bill No:* #${billNo}\n` +
                 `💰 *Amount:* ₹${amount.toLocaleString('en-IN')}\n` +
@@ -813,8 +836,8 @@ async function dispatchSystemStatusAlert(status, reason = '') {
         ? `🟢 Store System Online | ${timeStr}`
         : `🔴 Store System Turned OFF | ${timeStr}`;
     const body = isOnline
-        ? `Cobb Pundri POS booted up on ${dateStr} at ${timeStr}. Store system is now active.`
-        : `Cobb Pundri POS shut down on ${dateStr} at ${timeStr}${reason ? ` (${reason})` : ''}. Store system is now closed.`;
+        ? `${STORE_NAME} POS booted up on ${dateStr} at ${timeStr}. Store system is now active.`
+        : `${STORE_NAME} POS shut down on ${dateStr} at ${timeStr}${reason ? ` (${reason})` : ''}. Store system is now closed.`;
 
     const alertId = `sys_${status}_${Date.now()}`;
     const payload = {
@@ -883,8 +906,8 @@ async function dispatchSystemStatusAlert(status, reason = '') {
 
         // 4. Dispatch WhatsApp system status message to all 4 store owners
         const waStatusText = isOnline
-            ? `🟢 *STORE POS IS ONLINE* — *Cobb Pundri*\n──────────────────────\n🖥️ POS Counter Computer powered ON at ${timeStr} (${dateStr}).\n⚡ Billing counter & sync agent are active and ready.`
-            : `🔴 *STORE POS SHUT DOWN* — *Cobb Pundri*\n──────────────────────\n🕒 POS Counter Computer shut down at ${timeStr} (${dateStr})${reason ? ` [${reason}]` : ''}.\nStore system is now closed.`;
+            ? `🟢 *STORE POS IS ONLINE* — *${STORE_NAME}*\n──────────────────────\n🖥️ POS Counter Computer powered ON at ${timeStr} (${dateStr}).\n⚡ Billing counter & sync agent are active and ready.`
+            : `🔴 *STORE POS SHUT DOWN* — *${STORE_NAME}*\n──────────────────────\n🕒 POS Counter Computer shut down at ${timeStr} (${dateStr})${reason ? ` [${reason}]` : ''}.\nStore system is now closed.`;
 
         sendWhatsAppToOwners(waStatusText, `System ${status.toUpperCase()}`).catch(() => {});
 
@@ -971,7 +994,7 @@ function listenForTestAlertsAndDispatchFcm() {
 
                         // Also dispatch test to WhatsApp if requested (or to test number)
                         const testPhone = data.testPhone || '8708788707';
-                        const waTestMsg = `🔔 *Cobb Pundri POS Alert Test*\n──────────────────────\n📌 *Title:* ${title}\n💬 *Details:* ${body}\n🔗 *Link:* https://cobb-store.web.app${url}\n🕒 *Time:* ${formatTimeAMPM(new Date())}`;
+                        const waTestMsg = `🔔 *${STORE_NAME} POS Alert Test*\n──────────────────────\n📌 *Title:* ${title}\n💬 *Details:* ${body}\n🔗 *Link:* https://cobb-store.web.app${url}\n🕒 *Time:* ${formatTimeAMPM(new Date())}`;
                         sendWhatsAppToOwners(waTestMsg, 'TEST', [testPhone]).catch(() => {});
 
                         await docSnap.ref.update({ fcmDispatched: true }).catch(() => {});
@@ -1113,7 +1136,7 @@ async function handleGracefulShutdown(signal) {
         const dateStr = formatDateString(now);
         const isOnline = false;
         const title = `🔴 Store System Turned OFF | ${timeStr}`;
-        const body = `Cobb Pundri POS shut down on ${dateStr} at ${timeStr} (${signal}). Store system is now closed.`;
+        const body = `${STORE_NAME} POS shut down on ${dateStr} at ${timeStr} (${signal}). Store system is now closed.`;
         const alertId = `sys_offline_${Date.now()}`;
         const payload = {
             type: 'system_status', status: 'offline', reason: signal,
@@ -1175,7 +1198,7 @@ async function handleGracefulShutdown(signal) {
 
                     // Dispatch WhatsApp Shutdown Alert to all 4 store owners
                     const waShutdownText = 
-                        `🔴 *STORE POS SHUT DOWN* — *Cobb Pundri*\n` +
+                        `🔴 *STORE POS SHUT DOWN* — *${STORE_NAME}*\n` +
                         `──────────────────────\n` +
                         `🕒 POS Counter Computer shut down on ${dateStr} at ${timeStr} (${signal}).\n` +
                         `Store system is now closed.`;
@@ -1231,7 +1254,7 @@ async function checkAndDispatchPcBootAlert() {
             const ageMs = Date.now() - (sentinel.shutdownAtMs || 0);
             if (ageMs < 48 * 60 * 60 * 1000) {
                 const title = `🔴 Store System Turned OFF | ${sentinel.timeStr}`;
-                const body = `Cobb Pundri POS shut down on ${sentinel.dateStr} at ${sentinel.timeStr} (${sentinel.signal || 'Clean Shutdown'}). Store system is now closed.`;
+                const body = `${STORE_NAME} POS shut down on ${sentinel.dateStr} at ${sentinel.timeStr} (${sentinel.signal || 'Clean Shutdown'}). Store system is now closed.`;
                 const alertId = `sys_offline_${sentinel.shutdownAtMs || Date.now()}`;
                 const payload = {
                     type: 'system_status', status: 'offline',
@@ -1250,7 +1273,7 @@ async function checkAndDispatchPcBootAlert() {
                     console.log(`[SYNC AGENT] ✅ Retroactive shutdown alert dispatched to phone: ${title}`);
 
                     const waRetroText = 
-                        `🔴 *STORE POS PREVIOUS SHUTDOWN REPORT* — *Cobb Pundri*\n` +
+                        `🔴 *STORE POS PREVIOUS SHUTDOWN REPORT* — *${STORE_NAME}*\n` +
                         `──────────────────────\n` +
                         `🕒 POS Counter Computer shut down on ${sentinel.dateStr} at ${sentinel.timeStr}.\n` +
                         `_Delivered upon reboot._`;

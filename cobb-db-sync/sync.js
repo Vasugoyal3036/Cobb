@@ -121,11 +121,19 @@ async function runAutoSync() {
             process.exit(1);
         }
 
+        const { getApp, getApps, initializeApp, cert } = require('firebase-admin/app');
+        const { getFirestore } = require('firebase-admin/firestore');
         const serviceAccount = require('./serviceAccountKey.json');
-        admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount)
-        });
-        const db = admin.firestore();
+        
+        let appAdmin;
+        if (!getApps().length) {
+            appAdmin = initializeApp({
+                credential: cert(serviceAccount)
+            });
+        } else {
+            appAdmin = getApp();
+        }
+        const db = getFirestore();
 
         console.log("    ✅ Connected to Firebase!");
         console.log(`\n[6] Syncing ${formattedItems.length} items to Digital Catalog (DEMO_STORE_001)...`);
