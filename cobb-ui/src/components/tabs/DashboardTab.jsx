@@ -82,6 +82,8 @@ import WhatsAppAutomationWidget from '../dashboard/WhatsAppAutomationWidget';
 import QuickToolsWidget from '../dashboard/QuickToolsWidget';
 import AlterationSlipModal from '../AlterationSlipModal';
 import PnlStatementView from '../dashboard/PnlStatementView';
+import StaffFloorRaceWidget from '../dashboard/StaffFloorRaceWidget';
+import ExecutiveVisualHeatmap from '../dashboard/ExecutiveVisualHeatmap';
 
 const DashboardTab = (props) => {
   const { userRole, activeStore, totalMonthlyUnits, totalMonthlyRevenue, maxHourlyRevenue, averageOrderValue, DAILY_TARGET, targetProgress, API_BASE, vips, setVips, dormant, setDormant, darkMode, setDarkMode, overviewStats, setOverviewStats, returnsData, setReturnsData, bundles, setBundles, isLoadingBundles, setIsLoadingBundles, fetchBundles, globalCustomers, setGlobalCustomers, isSearchingCustomers, setIsSearchingCustomers, liveBills, setLiveBills, inventory, setInventory, deadStock, setDeadStock, hourlySales, setHourlySales, dailySales, setDailySales, monthlyProducts, setMonthlyProducts, gstSummary, setGstSummary, gstRateSlab, setGstRateSlab, gstCopied, setGstCopied, sizeMatrix, setSizeMatrix, wardrobeProfiles, setWardrobeProfiles, pnlData, setPnlData, fetchPnl, isRefreshingPnl, fetchMonthlyProducts, isRefreshingMonthly, retentionData, setRetentionData, reconData, setReconData, countedCashInput, setCountedCashInput, reconNotes, setReconNotes, showReconModal, setShowReconModal, showEodModal, setShowEodModal, eodSummaryText, setEodSummaryText, eodCopied, setEodCopied, isMobileMenuOpen, setIsMobileMenuOpen, matrixCategoryFilter, setMatrixCategoryFilter, isListenerRunning, setIsListenerRunning, isTogglingListener, setIsTogglingListener, listenerLogs, setListenerLogs, automationDispatches, isGatewayRunning, setIsGatewayRunning, isTogglingGateway, setIsTogglingGateway, isGatewayReady, setIsGatewayReady, gatewayQr, setGatewayQr, gatewayLogs, setGatewayLogs, testPhone, setTestPhone, testMsg, setTestMsg, isSendingTestWa, setIsSendingTestWa, broadcastGroup, setBroadcastGroup, broadcastGroupCount, setBroadcastGroupCount, broadcastStatus, setBroadcastStatus, broadcastMsg, setBroadcastMsg, isStartingBroadcast, setIsStartingBroadcast, isSyncingGroup, setIsSyncingGroup, groupSearchQuery, setGroupSearchQuery, topMoversData, setTopMoversData, activeTab, setActiveTab, activeConsole, setActiveConsole, searchQuery, setSearchQuery, selectedCustomer, setSelectedCustomer, customerHistory, setCustomerHistory, loadingHistory, setLoadingHistory, customerPersona, setCustomerPersona, loadingPersona, setLoadingPersona, aiMessageType, setAiMessageType, generatedMsg, setGeneratedMsg, isGenerating, setIsGenerating, generateWhatsAppDraft, activeOutfitMatch, setActiveOutfitMatch, outfitPitch, setOutfitPitch, isGeneratingOutfit, setIsGeneratingOutfit, openMonth, setOpenMonth, selectedCalendarDay, setSelectedCalendarDay, expandedBillId, setExpandedBillId, billItemsCache, setBillItemsCache, loadingBillItems, setLoadingBillItems, handleKeyDown, toggleBillExpansion, fetchAutomationStatus, toggleListener, toggleGateway, handleSendTestWhatsApp, handleSyncBroadcastGroup, handleStartBroadcast, handleStopBroadcast, handleExportGroupCsv, openCustomerCard, handleGenerateAI, handleGenerateOutfitMatch, handleSaveReconciliation, handleGenerateEodReport, handleMasterRestock, formatCurrency, MASTER_CATEGORIES, classifySubCategory, handleGlobalSearch, renderLogLine, persona } = props;
@@ -89,7 +91,8 @@ const DashboardTab = (props) => {
   const [safetyMode, setSafetyMode] = React.useState('ultra');
   const [batchSize, setBatchSize] = React.useState(20);
   const [includeOptOut, setIncludeOptOut] = React.useState(true);
-  const [dashboardZone, setDashboardZone] = React.useState('all'); // 'all' | 'executive' | 'counter'
+  const [dashboardZone, setDashboardZone] = React.useState('all'); // 'all' | 'race' | 'heatmaps' | 'executive' | 'counter'
+  const [activeInteractiveDeck, setActiveInteractiveDeck] = React.useState('all'); // 'all' | 'race' | 'heatmaps'
 
   // Pocket Khata state for Dashboard Desk
   const [khataSummary, setKhataSummary] = React.useState({ totalSpent: 0, totalCount: 0, items: [] });
@@ -411,16 +414,18 @@ const DashboardTab = (props) => {
               </div>
 
               {/* Mobile Zone Segmented Pills */}
-              <div className="grid grid-cols-3 gap-1 bg-slate-100 dark:bg-slate-900/90 p-1 rounded-xl border border-slate-200/80 dark:border-slate-800 text-[11px] font-bold">
+              <div className="grid grid-cols-5 gap-1 bg-slate-100 dark:bg-slate-900/90 p-1 rounded-xl border border-slate-200/80 dark:border-slate-800 text-[10px] font-bold">
                 {[
                   { id: 'all', label: '⚡ Full' },
+                  { id: 'race', label: '🏁 Race' },
+                  { id: 'heatmaps', label: '🌌 Rush' },
                   { id: 'executive', label: '📊 Stats' },
                   { id: 'counter', label: '🏷️ Desk' },
                 ].map(zone => (
                   <button
                     key={zone.id}
                     onClick={() => setDashboardZone(zone.id)}
-                    className={`py-1 rounded-lg transition-all text-center font-bold ${dashboardZone === zone.id
+                    className={`py-1 rounded-lg transition-all text-center font-bold truncate ${dashboardZone === zone.id
                         ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border border-slate-200/60 dark:border-slate-700'
                         : 'text-slate-500 dark:text-slate-400'
                       }`}
@@ -468,6 +473,8 @@ const DashboardTab = (props) => {
               <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/90 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700/80 text-xs font-bold">
                 {[
                   { id: 'all', label: '⚡ Full Command' },
+                  { id: 'race', label: '🏁 Floor Race' },
+                  { id: 'heatmaps', label: '🌌 Rush Heatmap' },
                   { id: 'executive', label: '📊 Telemetry' },
                   { id: 'counter', label: '🏷️ Counter Desk' },
                 ].map(zone => (
@@ -487,7 +494,7 @@ const DashboardTab = (props) => {
           </div>
 
           {/* ZONE 1: EXECUTIVE KPI STRIP (4 METRICS) */}
-          {(dashboardZone === 'all' || dashboardZone === 'executive') && (
+          {(dashboardZone === 'all' || dashboardZone === 'executive' || dashboardZone === 'race' || dashboardZone === 'heatmaps') && (
             <ExecutiveKpiStrip
               darkMode={darkMode}
               formatCurrency={formatCurrency}
@@ -799,6 +806,75 @@ const DashboardTab = (props) => {
 
               </div>
 
+            </div>
+          )}
+
+          {/* ZONE 2.5: GAMIFIED FLOOR RACE & EXECUTIVE VISUALIZATIONS DECK */}
+          {(dashboardZone === 'all' || dashboardZone === 'race' || dashboardZone === 'heatmaps') && (
+            <div className="space-y-6">
+              {/* When in 'all' Full Command mode, show an engaging hub switcher */}
+              {dashboardZone === 'all' && (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-200/80 dark:border-slate-800">
+                  <div className="flex items-center gap-2">
+                    <span className="p-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-rose-500 text-white text-xs shadow-xs font-bold">
+                      ✨
+                    </span>
+                    <div>
+                      <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
+                        Interactive Floor Race & Rush Intelligence Deck
+                      </h3>
+                      <p className="text-[11px] text-slate-400">
+                        Gamified staff performance racetrack & executive hourly traffic radar
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-900/90 p-1 rounded-xl border border-slate-200/80 dark:border-slate-800 text-[11px] font-bold">
+                    {[
+                      { id: 'all', label: '⚡ Both Desks' },
+                      { id: 'race', label: '🏁 Floor Race' },
+                      { id: 'heatmaps', label: '🌌 Rush Heatmap' },
+                    ].map(tab => (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setActiveInteractiveDeck(tab.id)}
+                        className={`px-3 py-1 rounded-lg transition-all cursor-pointer font-bold ${
+                          activeInteractiveDeck === tab.id
+                            ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border border-slate-200/60 dark:border-slate-700'
+                            : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
+                        }`}
+                      >
+                        {tab.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* RENDER GAMIFIED STAFF FLOOR RACE WIDGET */}
+              {(dashboardZone === 'race' || (dashboardZone === 'all' && (activeInteractiveDeck === 'all' || activeInteractiveDeck === 'race'))) && (
+                <StaffFloorRaceWidget
+                  darkMode={darkMode}
+                  formatCurrency={formatCurrency}
+                  API_BASE={API_BASE}
+                  activeStore={activeStore}
+                  setActiveTab={setActiveTab}
+                />
+              )}
+
+              {/* RENDER EXECUTIVE VISUAL HEATMAP WIDGET */}
+              {(dashboardZone === 'heatmaps' || (dashboardZone === 'all' && (activeInteractiveDeck === 'all' || activeInteractiveDeck === 'heatmaps'))) && (
+                <ExecutiveVisualHeatmap
+                  hourlySales={hourlySales}
+                  liveBills={liveBills}
+                  DAILY_TARGET={DAILY_TARGET}
+                  averageOrderValue={averageOrderValue}
+                  formatCurrency={formatCurrency}
+                  darkMode={darkMode}
+                  setActiveTab={setActiveTab}
+                />
+              )}
             </div>
           )}
 

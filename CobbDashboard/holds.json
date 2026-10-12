@@ -11,5 +11,31 @@
     "status": "expired",
     "createdAt": "2026-09-28T08:29:53.604Z",
     "reminderSent": false
+  },
+  {
+    "id": "hold_1791636379645_9mw3zk",
+    "customerName": "Walk-in Customer",
+    "customerPhone": "",
+    "articleNo": "",
+    "articleName": "0078859393",
+    "size": "",
+    "category": "",
+    "expiresAt": "2026-10-11T08:46:19.645Z",
+    "status": "expired",
+    "createdAt": "2026-10-10T12:46:19.645Z",
+    "reminderSent": false
+  },
+  {
+    "id": "hold_1791636402490_fkbe4m",
+    "customerName": "Walk-in Customer",
+    "customerPhone": "",
+    "articleNo": "",
+    "articleName": "0081847169",
+    "size": "",
+    "category": "",
+    "expiresAt": "2026-10-11T08:46:42.490Z",
+    "status": "expired",
+    "createdAt": "2026-10-10T12:46:42.490Z",
+    "reminderSent": false
   }
 ]
