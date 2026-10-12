@@ -474,11 +474,116 @@ const InventoryTab = (props) => {
       <div className="flex-1 flex overflow-hidden relative">
 
         {/* ------------------------------------------------------------ */}
-        {/* VIEW 1: CATEGORY STOCK LEDGER TABLE (Exact requested format)  */}
+        {/* VIEW 1: CATEGORY STOCK LEDGER TABLE & MOBILE CARDS           */}
         {/* ------------------------------------------------------------ */}
         {activeTab === 'LEDGER' ? (
           <div className="flex-1 overflow-auto custom-scrollbar">
-            <table className="w-full border-collapse text-xs whitespace-nowrap">
+            {/* Mobile Cards (Screens < md) */}
+            <div className="md:hidden p-3 space-y-3">
+              {filteredItems.map((row) => {
+                const isSelected = selectedItem?.subSection === row.subSection;
+                return (
+                  <div
+                    key={`${row.section}-${row.subSection}`}
+                    onClick={() => setSelectedItem(row)}
+                    className={`p-3.5 rounded-2xl border transition-all cursor-pointer ${
+                      isSelected
+                        ? 'border-blue-500 ring-2 ring-blue-500/20 shadow-md'
+                        : darkMode ? 'bg-[#0f131c] border-[#1f283d] text-white active:bg-white/[0.04]' : 'bg-white border-slate-200 text-slate-800 shadow-xs active:bg-slate-50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      {/* Photo Thumbnail */}
+                      <div className="shrink-0" onClick={e => e.stopPropagation()}>
+                        {row.imageUrl ? (
+                          <div 
+                            className="w-12 h-12 rounded-xl overflow-hidden border border-blue-500/30 relative cursor-pointer"
+                            onClick={() => setZoomImage(row.imageUrl)}
+                          >
+                            <img src={row.imageUrl} alt={row.subSection} className="w-full h-full object-cover" />
+                          </div>
+                        ) : (
+                          <label className="w-12 h-12 rounded-xl border border-dashed border-slate-600/50 flex items-center justify-center cursor-pointer text-slate-400">
+                            {uploadingKey === row.subSection ? (
+                              <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                            ) : (
+                              <Camera className="w-4 h-4" />
+                            )}
+                            <input
+                              type="file"
+                              accept="image/*"
+                              capture="environment"
+                              className="hidden"
+                              onChange={(e) => handlePhotoUpload(e, row)}
+                            />
+                          </label>
+                        )}
+                      </div>
+
+                      {/* Title & Section */}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-1">
+                          <h4 className="font-bold text-sm truncate">{row.subSection}</h4>
+                          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
+                            row.sellThru > 0 
+                              ? (darkMode ? 'bg-emerald-950/40 text-emerald-400 border-emerald-800/50' : 'bg-emerald-50 text-emerald-700 border-emerald-200')
+                              : (darkMode ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-slate-100 text-slate-500 border-slate-200')
+                          }`}>
+                            {formatNum(row.sellThru)}% STR
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-400">{row.section}</p>
+                      </div>
+                    </div>
+
+                    {/* Stock Metrics Row */}
+                    <div className="grid grid-cols-4 gap-1.5 mt-3 pt-2.5 border-t border-slate-100 dark:border-white/[0.06] text-center">
+                      <div className="p-1.5 rounded-xl bg-slate-50 dark:bg-white/[0.02]">
+                        <span className="text-[9px] text-slate-400 block font-semibold">OBS</span>
+                        <span className="text-xs font-mono font-bold text-blue-400">{formatNum(row.obsQty)}</span>
+                      </div>
+                      <div className="p-1.5 rounded-xl bg-slate-50 dark:bg-white/[0.02]">
+                        <span className="text-[9px] text-slate-400 block font-semibold">NET SLS</span>
+                        <span className={`text-xs font-mono font-bold ${row.netSlsQty > 0 ? 'text-emerald-400' : 'text-slate-400'}`}>{formatNum(row.netSlsQty)}</span>
+                      </div>
+                      <div className="p-1.5 rounded-xl bg-slate-50 dark:bg-white/[0.02]">
+                        <span className="text-[9px] text-slate-400 block font-semibold">CHI/CHO</span>
+                        <span className="text-xs font-mono font-bold text-slate-400">+{formatNum(row.chiQty)}/-{formatNum(row.choQty)}</span>
+                      </div>
+                      <div className="p-1.5 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                        <span className="text-[9px] text-blue-400 block font-bold">CBS CLOSING</span>
+                        <span className="text-xs font-mono font-black text-blue-400">{formatNum(row.cbsQty)}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Mobile Gross Total Banner */}
+              <div className="p-3.5 rounded-2xl bg-[#9a3412] text-white shadow-lg space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="font-black text-sm">Gross Total (All Categories)</span>
+                  <span className="font-mono font-black text-sm">{formatNum(grossTotal.sellThru)}% STR</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-center text-xs font-mono font-black">
+                  <div className="p-1.5 rounded-lg bg-black/20">
+                    <span className="text-[9px] opacity-75 block">OPENING (OBS)</span>
+                    <span>{formatNum(grossTotal.obs)}</span>
+                  </div>
+                  <div className="p-1.5 rounded-lg bg-black/20">
+                    <span className="text-[9px] opacity-75 block">TOTAL SALES</span>
+                    <span>{formatNum(grossTotal.sls)}</span>
+                  </div>
+                  <div className="p-1.5 rounded-lg bg-black/20">
+                    <span className="text-[9px] opacity-75 block">CLOSING (CBS)</span>
+                    <span>{formatNum(grossTotal.cbs)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Desktop Table (Screens >= md) */}
+            <table className="hidden md:table w-full border-collapse text-xs whitespace-nowrap">
               
               {/* Header */}
               <thead className={`sticky top-0 z-20 font-bold border-b select-none ${
