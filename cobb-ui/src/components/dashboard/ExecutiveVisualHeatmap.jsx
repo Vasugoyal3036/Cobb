@@ -15,7 +15,8 @@ import {
   AlertCircle,
   HelpCircle,
   Layers,
-  ChevronRight
+  ChevronRight,
+  ChevronLeft
 } from 'lucide-react';
 
 const ExecutiveVisualHeatmap = ({
@@ -230,8 +231,8 @@ const ExecutiveVisualHeatmap = ({
         </div>
 
         {/* METRIC SELECTOR & ACTIONS */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700/80 text-xs font-bold">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+          <div className="flex bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700/80 text-xs font-bold w-full sm:w-auto overflow-x-auto no-scrollbar">
             {[
               { id: 'revenue', label: 'Revenue Rush' },
               { id: 'bills', label: 'Bill Footfall' },
@@ -240,7 +241,7 @@ const ExecutiveVisualHeatmap = ({
               <button
                 key={m.id}
                 onClick={() => setViewMetric(m.id)}
-                className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                className={`flex-1 sm:flex-initial text-center px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
                   viewMetric === m.id
                     ? 'bg-rose-500 text-white shadow-md font-black'
                     : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
@@ -254,7 +255,7 @@ const ExecutiveVisualHeatmap = ({
           {typeof setActiveTab === 'function' && (
             <button
               onClick={() => setActiveTab('analytics')}
-              className={`p-2 rounded-xl border text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
+              className={`p-2 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer shrink-0 active:scale-95 ${
                 darkMode
                   ? 'bg-slate-800/80 border-slate-700 text-slate-300 hover:text-white'
                   : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
@@ -269,7 +270,7 @@ const ExecutiveVisualHeatmap = ({
       </div>
 
       {/* TOP STRIP: 3 VELOCITY SPEEDOMETERS / COCKPIT GAUGES */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 relative z-10">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4 mt-5 sm:mt-6 relative z-10">
 
         {/* GAUGE 1: BASKET DEPTH (UPT - UNITS PER TRANSACTION) */}
         <div className={`p-4 rounded-2xl border flex items-center justify-between ${
@@ -428,14 +429,19 @@ const ExecutiveVisualHeatmap = ({
         <div className="lg:col-span-8 space-y-3">
           <div className="flex items-center justify-between">
             <span className="text-xs font-black uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-              <Clock className="w-3.5 h-3.5 text-rose-500" />
-              <span>Hourly Store Rush Intensity (10 AM — 10 PM)</span>
+              <Clock className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+              <span>Hourly Rush Intensity (10 AM — 10 PM)</span>
             </span>
-            <span className="text-[10px] text-slate-400">Click hour to inspect</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-slate-400 hidden sm:inline">Tap hour to inspect</span>
+              <span className="text-[10px] text-rose-500 font-bold sm:hidden flex items-center gap-1">
+                <span>Swipe Timeline ↔️</span>
+              </span>
+            </div>
           </div>
 
-          {/* THERMAL CELLS ROW */}
-          <div className="grid grid-cols-4 sm:grid-cols-7 md:grid-cols-13 gap-2">
+          {/* THERMAL CELLS ROW: Responsive Horizontal Swipe on Mobile, 13-Col Panoramic Grid on Desktop */}
+          <div className="flex md:grid md:grid-cols-13 gap-2 overflow-x-auto no-scrollbar pb-2 touch-snap-x">
             {retailHours.map(hour => {
               const data = hourlyDataMap[hour];
               const isSelected = activeHourData?.hour === hour;
@@ -447,7 +453,7 @@ const ExecutiveVisualHeatmap = ({
                   key={hour}
                   type="button"
                   onClick={() => setSelectedHour(hour)}
-                  className={`p-2 rounded-2xl border transition-all duration-300 flex flex-col items-center justify-between min-h-[140px] cursor-pointer relative group ${
+                  className={`p-2 rounded-2xl border transition-all duration-300 flex flex-col items-center justify-between min-h-[125px] sm:min-h-[140px] w-[74px] sm:w-[82px] md:w-auto shrink-0 md:shrink touch-snap-item cursor-pointer relative group active:scale-95 ${
                     isSelected
                       ? 'ring-2 ring-rose-500 scale-102 z-20 shadow-xl'
                       : 'hover:scale-101'
@@ -493,21 +499,21 @@ const ExecutiveVisualHeatmap = ({
           </div>
 
           {/* THERMAL COLOR LEGEND */}
-          <div className="flex items-center justify-between text-[11px] text-slate-400 pt-2 px-1">
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-md bg-slate-200 dark:bg-slate-800 inline-block"></span>
-              <span>Low Footfall</span>
+          <div className="flex items-center justify-between text-[10.5px] sm:text-[11px] text-slate-400 pt-2 px-1 overflow-x-auto no-scrollbar gap-2">
+            <span className="flex items-center gap-1.5 shrink-0">
+              <span className="w-2.5 h-2.5 rounded-md bg-slate-200 dark:bg-slate-800 inline-block"></span>
+              <span>Low</span>
             </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-md bg-emerald-500 inline-block"></span>
-              <span>Moderate Rush</span>
+            <span className="flex items-center gap-1.5 shrink-0">
+              <span className="w-2.5 h-2.5 rounded-md bg-emerald-500 inline-block"></span>
+              <span>Moderate</span>
             </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-md bg-amber-500 inline-block"></span>
-              <span>High Rush</span>
+            <span className="flex items-center gap-1.5 shrink-0">
+              <span className="w-2.5 h-2.5 rounded-md bg-amber-500 inline-block"></span>
+              <span>High</span>
             </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded-md bg-rose-600 inline-block"></span>
+            <span className="flex items-center gap-1.5 shrink-0">
+              <span className="w-2.5 h-2.5 rounded-md bg-rose-600 inline-block"></span>
               <span>🔥 Peak Hour</span>
             </span>
           </div>
@@ -515,29 +521,55 @@ const ExecutiveVisualHeatmap = ({
 
         {/* RIGHT 4 COLS: ACTIVE HOUR INSPECTOR CARD */}
         <div className="lg:col-span-4">
-          <div className={`p-5 rounded-2xl border ${
+          <div className={`p-4 sm:p-5 rounded-2xl border ${
             darkMode ? 'bg-[#121829] border-slate-800' : 'bg-white border-slate-200'
-          } shadow-sm space-y-4`}>
-            <div className="flex items-center justify-between border-b pb-3 border-slate-100 dark:border-slate-800">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-rose-500/10 text-rose-500">
+          } shadow-sm space-y-3.5 sm:space-y-4`}>
+            <div className="flex items-center justify-between border-b pb-3 border-slate-100 dark:border-slate-800 gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="p-2 rounded-xl bg-rose-500/10 text-rose-500 shrink-0">
                   <Activity className="w-4 h-4" />
                 </div>
-                <div>
-                  <h4 className="font-black text-sm text-slate-900 dark:text-white">
+                <div className="min-w-0">
+                  <h4 className="font-black text-sm text-slate-900 dark:text-white truncate">
                     {activeHourData ? `${activeHourData.hour}:00 — ${activeHourData.hour + 1}:00` : 'Hour Inspector'}
                   </h4>
-                  <span className="text-[10px] text-slate-400">
+                  <span className="text-[10px] text-slate-400 block truncate">
                     {activeHourData?.revenue > 0 ? 'Rush Window Telemetry' : 'Quiet Operating Window'}
                   </span>
                 </div>
               </div>
 
-              {rankedHours.indexOf(activeHourData?.hour) !== -1 && (
-                <span className="text-xs font-black px-2 py-0.5 rounded-lg bg-rose-500/10 text-rose-500 border border-rose-500/20">
-                  #{rankedHours.indexOf(activeHourData.hour) + 1} Busiest
-                </span>
-              )}
+              <div className="flex items-center gap-1 shrink-0">
+                {rankedHours.indexOf(activeHourData?.hour) !== -1 && (
+                  <span className="text-[10px] font-black px-1.5 py-0.5 rounded-md bg-rose-500/10 text-rose-500 border border-rose-500/20 mr-1 hidden sm:inline">
+                    #{rankedHours.indexOf(activeHourData.hour) + 1}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const currIdx = retailHours.indexOf(activeHourData?.hour);
+                    if (currIdx > 0) setSelectedHour(retailHours[currIdx - 1]);
+                  }}
+                  disabled={retailHours.indexOf(activeHourData?.hour) <= 0}
+                  className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white disabled:opacity-30 cursor-pointer active:scale-95"
+                  title="Previous Hour"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const currIdx = retailHours.indexOf(activeHourData?.hour);
+                    if (currIdx < retailHours.length - 1) setSelectedHour(retailHours[currIdx + 1]);
+                  }}
+                  disabled={retailHours.indexOf(activeHourData?.hour) >= retailHours.length - 1}
+                  className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white disabled:opacity-30 cursor-pointer active:scale-95"
+                  title="Next Hour"
+                >
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
 
             {/* Hour Metrics Grid */}

@@ -814,22 +814,22 @@ const DashboardTab = (props) => {
             <div className="space-y-6">
               {/* When in 'all' Full Command mode, show an engaging hub switcher */}
               {dashboardZone === 'all' && (
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-slate-200/80 dark:border-slate-800">
-                  <div className="flex items-center gap-2">
-                    <span className="p-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-rose-500 text-white text-xs shadow-xs font-bold">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-slate-200/80 dark:border-slate-800">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="p-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-rose-500 text-white text-xs shadow-xs font-bold shrink-0">
                       ✨
                     </span>
-                    <div>
-                      <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200">
-                        Interactive Floor Race & Rush Intelligence Deck
+                    <div className="min-w-0">
+                      <h3 className="text-xs font-black uppercase tracking-wider text-slate-800 dark:text-slate-200 truncate">
+                        Floor Race &amp; Rush Intelligence Deck
                       </h3>
-                      <p className="text-[11px] text-slate-400">
-                        Gamified staff performance racetrack & executive hourly traffic radar
+                      <p className="text-[10px] sm:text-[11px] text-slate-400 truncate">
+                        Staff racetrack &amp; hourly traffic radar
                       </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-900/90 p-1 rounded-xl border border-slate-200/80 dark:border-slate-800 text-[11px] font-bold">
+                  <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-900/90 p-1 rounded-xl border border-slate-200/80 dark:border-slate-800 text-[11px] font-bold overflow-x-auto no-scrollbar w-full sm:w-auto">
                     {[
                       { id: 'all', label: '⚡ Both Desks' },
                       { id: 'race', label: '🏁 Floor Race' },
@@ -839,7 +839,7 @@ const DashboardTab = (props) => {
                         key={tab.id}
                         type="button"
                         onClick={() => setActiveInteractiveDeck(tab.id)}
-                        className={`px-3 py-1 rounded-lg transition-all cursor-pointer font-bold ${
+                        className={`flex-1 sm:flex-none shrink-0 px-2.5 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer font-bold text-center text-[10.5px] sm:text-[11px] whitespace-nowrap active:scale-95 ${
                           activeInteractiveDeck === tab.id
                             ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs border border-slate-200/60 dark:border-slate-700'
                             : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'

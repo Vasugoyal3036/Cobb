@@ -209,6 +209,30 @@ html.dark ::-webkit-scrollbar-thumb:hover {
     height: 0;
   }
 }
+
+/* Safe Area Inset Utilities for Mobile Notches & Gesture Bars */
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 14px);
+}
+.pt-safe {
+  padding-top: max(env(safe-area-inset-top, 0px), 8px);
+}
+.mb-safe {
+  margin-bottom: max(env(safe-area-inset-bottom, 0px), 14px);
+}
+
+/* Touch-optimized horizontal scrolling tracks */
+.touch-snap-x {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+.touch-snap-item {
+  scroll-snap-align: start;
+  flex-shrink: 0;
+}
 @keyframes lockScreenDrop { 0% { opacity: 0; transform: scale(0.9) translateY(-30px) rotateX(10deg); } 100% { opacity: 1; transform: scale(1) translateY(0) rotateX(0deg); } }
 .animate-lock-drop { animation: lockScreenDrop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; perspective: 1000px; }
 @keyframes blurBackdrop { 0% { opacity: 0; backdrop-filter: blur(0px); } 100% { opacity: 1; backdrop-filter: blur(12px); } }
