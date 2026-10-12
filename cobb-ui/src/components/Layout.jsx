@@ -356,23 +356,24 @@ const Layout = ({
       )}
 
       {/* Sidebar Navigation - Glassmorphism Floating Theme */}
-      <div className={`fixed lg:static inset-y-0 left-0 lg:my-4 lg:ml-4 lg:mr-2 lg:h-[calc(100vh-32px)] lg:rounded-[2rem] flex flex-col z-40 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} ${isLeftSidebarCollapsed ? 'w-[80px]' : 'w-64'} ${darkMode ? 'bg-white/[0.03] backdrop-blur-xl border border-white/[0.08] shadow-[0_8px_32px_0_rgba(0,0,0,0.36)]' : 'bg-white/80 backdrop-blur-xl border border-slate-200/50 shadow-[0_8px_30px_rgb(0,0,0,0.04)]'}`}>
-        <div className={`p-5 pb-4 flex items-center border-b transition-all duration-500 ${isLeftSidebarCollapsed ? 'justify-center px-2' : 'justify-between'} ${darkMode ? 'border-white/[0.06]' : 'border-slate-100'}`}>
-          <div className="flex items-center gap-3">
-            <OrsLogo size={42} />
+      <div className={`fixed lg:static inset-y-0 left-0 lg:my-4 lg:ml-4 lg:mr-2 lg:h-[calc(100vh-32px)] lg:rounded-[2rem] flex flex-col z-40 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isMobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0'} ${isLeftSidebarCollapsed ? 'w-[80px]' : 'w-[85vw] max-w-xs lg:w-64'} ${darkMode ? 'bg-[#0d111a] lg:bg-white/[0.03] backdrop-blur-xl border-r lg:border border-white/[0.08] shadow-[0_8px_32px_0_rgba(0,0,0,0.6)]' : 'bg-white lg:bg-white/80 backdrop-blur-xl border-r lg:border border-slate-200/50 shadow-[0_8px_30px_rgb(0,0,0,0.06)]'}`}>
+        <div className={`p-4 lg:p-5 pb-3 flex items-center border-b transition-all duration-500 pt-safe ${isLeftSidebarCollapsed ? 'justify-center px-2' : 'justify-between'} ${darkMode ? 'border-white/[0.06]' : 'border-slate-100'}`}>
+          <div className="flex items-center gap-2.5">
+            <OrsLogo size={38} />
             <div className={`flex-1 min-w-0 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isLeftSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none blur-md -translate-y-4' : 'w-full opacity-100 blur-0 translate-y-0'}`}>
               <div className="flex items-center gap-1.5">
-                <span className={`text-lg font-black tracking-wider leading-none ${darkMode ? 'text-white' : 'text-slate-900'}`}>ORS</span>
+                <span className={`text-base font-black tracking-wider leading-none ${darkMode ? 'text-white' : 'text-slate-900'}`}>ORS</span>
                 <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">CRM</span>
               </div>
-              <p className={`text-[10px] font-bold tracking-tight uppercase truncate mt-0.5 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+              <p className={`text-[9px] font-bold tracking-tight uppercase truncate mt-0.5 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                 Complete CRM Solutions
               </p>
             </div>
           </div>
           <button
             onClick={() => setIsMobileMenuOpen(false)}
-            className={`lg:hidden p-1 rounded-full ${darkMode ? 'text-slate-400 hover:text-white hover:bg-white/10' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}
+            className={`lg:hidden p-2 rounded-xl active:scale-90 transition-all ${darkMode ? 'text-slate-300 hover:text-white bg-white/5' : 'text-slate-600 hover:text-slate-900 bg-slate-100'}`}
+            title="Close menu"
           >
             <X className="w-5 h-5" />
           </button>
@@ -385,7 +386,58 @@ const Layout = ({
           </button>
         </div>
 
-        <nav className="flex-1 px-3 space-y-4 mt-6 overflow-y-auto custom-scrollbar">
+        {/* Mobile Quick Control Grid (App Mode Only) */}
+        <div className="lg:hidden px-3 pt-3 pb-1 border-b border-white/[0.06] space-y-2">
+          {/* Active Store & Role Switch */}
+          <div className="flex items-center justify-between gap-1.5">
+            <button
+              onClick={() => handleRoleSwitch(currentRole === 'owner' ? 'manager' : 'owner')}
+              className={`flex-1 py-1.5 px-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 border transition-all active:scale-95 ${
+                currentRole === 'owner'
+                  ? (darkMode ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' : 'bg-amber-50 text-amber-800 border-amber-200')
+                  : (darkMode ? 'bg-blue-500/15 text-blue-300 border-blue-500/30' : 'bg-blue-50 text-blue-800 border-blue-200')
+              }`}
+            >
+              <span>{currentRole === 'owner' ? '👑 Owner' : '👔 Manager'}</span>
+              <span className="text-[10px] opacity-60 underline">Switch</span>
+            </button>
+
+            {/* Dark / Light Toggle */}
+            <button
+              onClick={() => setDarkMode(!darkMode)}
+              className={`p-2 rounded-xl border transition-all active:scale-95 ${
+                darkMode ? 'bg-white/5 border-white/10 text-amber-400' : 'bg-slate-100 border-slate-200 text-slate-700'
+              }`}
+              title="Toggle theme"
+            >
+              {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </button>
+
+            {/* Biometric Passkey */}
+            <button
+              onClick={() => { setShowBiometricModal(true); setIsMobileMenuOpen(false); }}
+              className={`p-2 rounded-xl border transition-all active:scale-95 ${
+                darkMode ? 'bg-white/5 border-white/10 text-emerald-400' : 'bg-slate-100 border-slate-200 text-emerald-700'
+              }`}
+              title="Phone Biometrics"
+            >
+              <Fingerprint className="w-4 h-4" />
+            </button>
+
+            {/* Expenses */}
+            <button
+              onClick={() => { setShowExpensesModal(true); setIsMobileMenuOpen(false); }}
+              className={`p-2 rounded-xl border transition-all active:scale-95 ${
+                darkMode ? 'bg-white/5 border-white/10 text-rose-400' : 'bg-slate-100 border-slate-200 text-rose-700'
+              }`}
+              title="Quick Expense Logger"
+            >
+              <Wallet className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        <nav className="flex-1 px-3 space-y-4 mt-4 lg:mt-6 overflow-y-auto custom-scrollbar">
           {filteredNavigation.map((cat, catIdx) => (
             <div key={catIdx} className="space-y-1">
               <p className={`px-4 text-[10px] font-bold uppercase tracking-wider mb-2 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] overflow-hidden whitespace-nowrap ${isLeftSidebarCollapsed ? 'h-0 opacity-0 my-0 py-0' : 'h-4 opacity-100'
@@ -459,94 +511,57 @@ const Layout = ({
       {/* Main Content Area */}
       <div className={`flex-1 overflow-auto relative min-w-0 pb-24 lg:pb-0 transition-colors duration-200 lg:my-4 lg:mx-2 lg:rounded-[2rem] border ${darkMode ? 'bg-[#0f1115] border-white/[0.05] shadow-[inset_0_0_40px_rgba(0,0,0,0.5)]' : 'bg-white border-slate-200/50 shadow-sm'}`}>
 
-        {/* Top App Bar (Mobile Only — Clean Modern Single-Row Navigation) */}
-        <header className={`lg:hidden px-3 py-2 border-b sticky top-0 z-30 transition-colors backdrop-blur-xl ${darkMode ? 'bg-[#0d1017]/95 border-white/[0.06] text-white' : 'bg-white/95 border-slate-200/80 text-slate-800'
-          }`}>
-          <div className="flex items-center justify-between gap-2 max-w-full overflow-hidden">
-            {/* Left: Hamburger + Brand Logo */}
-            <div className="flex items-center gap-1.5 shrink-0">
+        {/* Top App Bar (Mobile Only — Native Mobile App Bar with Clean Controls) */}
+        <header className={`lg:hidden px-3.5 py-2.5 border-b sticky top-0 z-30 transition-colors backdrop-blur-2xl select-none pt-safe ${
+          darkMode ? 'bg-[#0d1017]/92 border-white/[0.08] text-white shadow-sm' : 'bg-white/92 border-slate-200/90 text-slate-800 shadow-xs'
+        }`}>
+          <div className="flex items-center justify-between gap-2 max-w-full">
+            {/* Left: Hamburger Drawer + Branch Name & Live Indicator */}
+            <div className="flex items-center gap-2 min-w-0">
               <button
                 type="button"
                 onClick={() => typeof setIsMobileMenuOpen === 'function' && setIsMobileMenuOpen(true)}
-                className={`p-1.5 rounded-xl transition-colors cursor-pointer ${darkMode ? 'text-slate-300 hover:text-white hover:bg-white/10 active:bg-white/20' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 active:bg-slate-200'
-                  }`}
+                className={`p-1.5 rounded-xl transition-all cursor-pointer active:scale-95 shrink-0 ${
+                  darkMode ? 'bg-white/[0.06] text-white hover:bg-white/10' : 'bg-slate-100 text-slate-800 hover:bg-slate-200'
+                }`}
                 title="Open Navigation Menu"
               >
                 <Menu className="w-5 h-5" />
               </button>
-              <div className="flex items-center gap-1 select-none">
+
+              <div className="flex items-center gap-1.5 min-w-0">
                 <OrsLogo size={24} showGlow={false} />
-                <div className="leading-tight flex flex-col justify-center">
-                  <span className={`font-black text-xs tracking-tight leading-none ${darkMode ? 'text-white' : 'text-slate-900'}`}>ORS</span>
-                  <span className="text-[7.5px] font-bold text-slate-400 tracking-wider leading-none mt-0.5">COBB</span>
+                <div className="min-w-0 leading-tight">
+                  <div className="flex items-center gap-1.5">
+                    <span className={`font-black text-xs tracking-tight truncate ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+                      {AVAILABLE_STORES.find(s => s.id === activeStore)?.shortName || 'Cobb Pundri'}
+                    </span>
+                    <span className="relative flex h-2 w-2 shrink-0">
+                      {(systemStatus?.isOnline ?? true) && (
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      )}
+                      <span className={`relative inline-flex rounded-full h-2 w-2 ${(systemStatus?.isOnline ?? true) ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                    </span>
+                  </div>
+                  <span className="text-[9.5px] font-bold text-slate-400 tracking-tight block truncate">
+                    {currentRole === 'owner' ? '👑 Owner' : currentRole === 'manager' ? '👔 Manager' : '🧾 Cashier'} • POS Live
+                  </span>
                 </div>
               </div>
             </div>
 
-            {/* Right: Clean compact controls cluster */}
+            {/* Right: Clean Native App Actions (Spotlight Search, Alerts, Store Switcher) */}
             <div className="flex items-center gap-1.5 shrink-0 ml-auto">
-              {/* Store Switcher */}
-              <div className={`flex items-center gap-1 px-2 py-1 rounded-full border text-[10px] font-bold ${darkMode ? 'bg-blue-500/10 border-blue-500/25 text-blue-300' : 'bg-blue-50 border-blue-200 text-blue-700'
-                }`}>
-                <Store className="w-3 h-3 shrink-0 opacity-70" />
-                {currentRole === 'owner' ? (
-                  <select
-                    value={activeStore}
-                    onChange={(e) => switchStore(e.target.value)}
-                    className="bg-transparent font-bold focus:outline-none cursor-pointer text-inherit max-w-[62px] truncate"
-                    title="Switch Cobb Store Branch (Owner Exclusive)"
-                  >
-                    {AVAILABLE_STORES.map(store => (
-                      <option key={store.id} value={store.id} className={darkMode ? 'bg-[#0b0e17] text-white' : 'bg-white text-slate-800'}>
-                        {store.shortName || store.name.split(' ')[0]}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <span 
-                    className="max-w-[62px] truncate flex items-center gap-0.5 cursor-default font-bold select-none" 
-                    title="Branch access is fixed to your assigned store"
-                  >
-                    {AVAILABLE_STORES.find(s => s.id === activeStore)?.shortName || 'Pundri'}
-                    <Lock className="w-2.5 h-2.5 opacity-60 shrink-0" />
-                  </span>
-                )}
-              </div>
-
-              {/* Role Mode Chip */}
+              {/* Universal Spotlight Search Button */}
               <button
                 type="button"
-                onClick={() => {
-                  const cycle = { owner: 'manager', manager: 'cashier', cashier: 'owner' };
-                  handleRoleSwitch(cycle[currentRole] || 'owner');
-                }}
-                className={`px-2 py-1 rounded-full font-bold text-[10px] border flex items-center gap-1 cursor-pointer transition-all active:scale-95 ${currentRole === 'owner'
-                    ? darkMode ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' : 'bg-amber-50 text-amber-800 border-amber-200'
-                    : currentRole === 'manager'
-                      ? darkMode ? 'bg-blue-500/15 text-blue-300 border-blue-500/30' : 'bg-blue-50 text-blue-800 border-blue-200'
-                      : darkMode ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                  }`}
-                title="Tap to switch active role"
-              >
-                <span>{currentRole === 'owner' ? '👑 Owner' : currentRole === 'manager' ? '👔 Mgr' : '🧾 POS'}</span>
-              </button>
-
-              {/* POS Watchdog Heartbeat Status */}
-              <button
-                type="button"
-                onClick={() => setShowPowerModal(true)}
-                className={`w-7 h-7 rounded-xl flex items-center justify-center cursor-pointer transition-all active:scale-95 ${
-                  darkMode ? 'bg-white/[0.05] hover:bg-white/10' : 'bg-slate-100 hover:bg-slate-200'
+                onClick={() => setShowCommandBar(true)}
+                className={`p-2 rounded-xl transition-all cursor-pointer active:scale-95 ${
+                  darkMode ? 'bg-white/[0.06] text-slate-300 hover:text-white' : 'bg-slate-100 text-slate-600 hover:text-slate-900'
                 }`}
-                title={`POS: ${(systemStatus?.isOnline ?? true) ? 'Online' : 'Offline'}`}
+                title="Universal Search (Ctrl+K)"
               >
-                <span className="relative flex h-2 w-2">
-                  {(systemStatus?.isOnline ?? true) && (
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  )}
-                  <span className={`relative inline-flex rounded-full h-2 w-2 ${(systemStatus?.isOnline ?? true) ? 'bg-emerald-500' : systemStatus?.status === 'unresponsive' ? 'bg-amber-500' : 'bg-rose-500'
-                    }`}></span>
-                </span>
+                <Search className="w-4 h-4 text-blue-400" />
               </button>
 
               {/* Notification Alerts Bell */}
@@ -559,66 +574,40 @@ const Layout = ({
                     if (typeof onEnableNotifications === 'function') await onEnableNotifications();
                   }
                 }}
-                className={`relative w-7 h-7 rounded-xl flex items-center justify-center cursor-pointer transition-all active:scale-95 ${darkMode ? 'bg-white/[0.05] text-slate-300 active:bg-white/10' : 'bg-slate-100 text-slate-600 active:bg-slate-200'
-                  }`}
+                className={`relative p-2 rounded-xl transition-all cursor-pointer active:scale-95 ${
+                  darkMode ? 'bg-white/[0.06] text-slate-300 hover:text-white' : 'bg-slate-100 text-slate-600 hover:text-slate-900'
+                }`}
                 title="Notification alerts"
               >
-                {notificationsEnabled ? <BellRing className="w-3.5 h-3.5 text-indigo-400" /> : <Bell className="w-3.5 h-3.5 text-slate-400" />}
-                <span className={`absolute top-1 right-1 w-1.5 h-1.5 rounded-full ${notificationsEnabled ? 'bg-emerald-500' : 'bg-amber-500 animate-ping'
-                  }`} />
+                {notificationsEnabled ? <BellRing className="w-4 h-4 text-indigo-400" /> : <Bell className="w-4 h-4 text-slate-400" />}
+                <span className={`absolute top-1.5 right-1.5 w-2 h-2 rounded-full ${
+                  notificationsEnabled ? 'bg-emerald-500' : 'bg-amber-500 animate-ping'
+                }`} />
               </button>
 
-              {/* Security & Login Audit Logs */}
-              <button
-                type="button"
-                onClick={() => setShowLoginAuditModal(true)}
-                className={`w-7 h-7 rounded-xl flex items-center justify-center cursor-pointer transition-all active:scale-95 ${
-                  darkMode ? 'bg-white/[0.05] text-amber-400 active:bg-white/10' : 'bg-slate-100 text-amber-600 active:bg-slate-200'
-                }`}
-                title="Security & Login Audit Logs"
-              >
-                <ShieldCheck className="w-3.5 h-3.5" />
-              </button>
-
-              {/* Account Approvals (Owner Only) */}
-              {currentRole === 'owner' && (
-                <button
-                  type="button"
-                  onClick={() => setShowApprovalsModal(true)}
-                  className={`w-7 h-7 rounded-xl flex items-center justify-center cursor-pointer transition-all active:scale-95 ${
-                    darkMode ? 'bg-white/[0.05] text-blue-400 active:bg-white/10' : 'bg-slate-100 text-blue-600 active:bg-slate-200'
-                  }`}
-                  title="Account ID Approvals"
-                >
-                  <UserPlus className="w-3.5 h-3.5" />
-                </button>
-              )}
-
-              {/* Phone Biometrics Quick Pill (Mobile & Desktop Header) */}
-              <button
-                type="button"
-                onClick={() => setShowBiometricModal(true)}
-                className={`px-2 py-1 rounded-full font-bold text-[10px] border flex items-center gap-1 cursor-pointer transition-all active:scale-95 ${
-                  darkMode
-                    ? 'bg-amber-500/15 text-amber-300 border-amber-500/40 hover:bg-amber-500/25 shadow-sm shadow-amber-500/10'
-                    : 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100'
-                }`}
-                title="Phone Biometrics: Register Face ID / Fingerprint"
-              >
-                <Fingerprint className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                <span className="font-extrabold">Biometrics</span>
-              </button>
-
-              {/* Dark / Light Mode Toggle */}
-              <button
-                type="button"
-                onClick={() => setDarkMode(!darkMode)}
-                className={`w-7 h-7 rounded-xl flex items-center justify-center cursor-pointer transition-all active:scale-95 ${darkMode ? 'bg-white/[0.05] text-amber-400 active:bg-white/10' : 'bg-slate-100 text-slate-600 active:bg-slate-200'
-                  }`}
-                title={darkMode ? 'Light Mode' : 'Dark Mode'}
-              >
-                {darkMode ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
-              </button>
+              {/* Quick Branch Dropdown Pill */}
+              <div className={`flex items-center px-2 py-1 rounded-xl border text-[10.5px] font-bold cursor-pointer active:scale-95 ${
+                darkMode ? 'bg-blue-500/10 border-blue-500/30 text-blue-300' : 'bg-blue-50 border-blue-200 text-blue-700'
+              }`}>
+                {currentRole === 'owner' ? (
+                  <select
+                    value={activeStore}
+                    onChange={(e) => switchStore(e.target.value)}
+                    className="bg-transparent font-bold focus:outline-none cursor-pointer text-inherit max-w-[55px] truncate text-center"
+                    title="Switch Branch"
+                  >
+                    {AVAILABLE_STORES.map(store => (
+                      <option key={store.id} value={store.id} className={darkMode ? 'bg-[#0b0e17] text-white' : 'bg-white text-slate-800'}>
+                        {store.shortName || store.name.split(' ')[0]}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className="truncate max-w-[55px] select-none">
+                    {AVAILABLE_STORES.find(s => s.id === activeStore)?.shortName || 'Pundri'}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </header>
