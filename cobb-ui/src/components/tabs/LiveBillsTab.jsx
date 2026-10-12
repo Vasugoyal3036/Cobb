@@ -79,9 +79,15 @@ const LiveBillsTab = (props) => {
   // Filter States
   const [dateFilter, setDateFilter] = useState('today'); // 'today' | 'yesterday' | '7days' | 'custom'
   const [customDate, setCustomDate] = useState(yesterdayStr);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(props.searchQuery || '');
   const [paymentFilter, setPaymentFilter] = useState('all'); // 'all' | 'Cash' | 'UPI / Online' | 'Debit / Credit Card' | 'Split'
   const dateInputRef = useRef(null);
+
+  useEffect(() => {
+    if (typeof props.searchQuery === 'string') {
+      setSearchQuery(props.searchQuery);
+    }
+  }, [props.searchQuery]);
   
   // Data States
   const [bills, setBills] = useState([]);

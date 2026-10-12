@@ -183,7 +183,11 @@ const Layout = ({
   globalCustomers = [],
   liveBills = [],
   inventory = [],
-  deadStock = []
+  deadStock = [],
+  vips = [],
+  dormant = [],
+  openCustomerCard,
+  toggleBillExpansion
 }) => {
 
   const {
@@ -867,29 +871,35 @@ const Layout = ({
 
             {/* 3. Global Search */}
             <div
-              onClick={() => { if (isRightSidebarCollapsed) setIsRightSidebarCollapsed(false); }}
-              className={`relative flex items-center p-2 rounded-2xl border transition-all duration-300 overflow-hidden group ${isRightSidebarCollapsed ? 'justify-center cursor-pointer hover:border-slate-500' : ''
+              onClick={() => {
+                if (isRightSidebarCollapsed) setIsRightSidebarCollapsed(false);
+                setShowCommandBar(true);
+              }}
+              className={`relative flex items-center p-2 rounded-2xl border transition-all duration-300 overflow-hidden group cursor-pointer ${isRightSidebarCollapsed ? 'justify-center hover:border-slate-500' : 'hover:border-blue-500/50'
                 } ${darkMode ? 'bg-[#0b0e17]/80 border-white/[0.06]' : 'bg-slate-50 border-slate-200/80'
                 }`}
-              title="Search: Bill / Item / Phone (Click to expand)"
+              title="Universal Search (Ctrl+K): Bill / Item / Customer Phone"
             >
-              <div className="w-8 h-8 rounded-xl bg-slate-500/10 border border-slate-500/20 flex items-center justify-center text-slate-400 shrink-0">
+              <div className="w-8 h-8 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
                 <Search className="w-4 h-4" />
               </div>
               <div className={`flex-1 min-w-0 relative ml-2 transition-all duration-500 delay-[105ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none blur-md -translate-y-4' : 'w-full opacity-100 blur-0 translate-y-0'
                 }`}>
                 <input
                   type="text"
-                  placeholder="Search: Bill / Item / Phone..."
+                  placeholder="Universal Search (Ctrl+K)..."
                   value={searchQuery}
+                  onFocus={() => setShowCommandBar(true)}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={handleGlobalSearch}
-                  className={`w-full pr-7 py-1 text-xs font-medium focus:outline-none bg-transparent ${darkMode ? 'text-white placeholder-slate-500' : 'text-slate-800 placeholder-slate-400'
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') setShowCommandBar(true);
+                  }}
+                  className={`w-full pr-8 py-1 text-xs font-medium focus:outline-none bg-transparent cursor-pointer ${darkMode ? 'text-white placeholder-slate-500' : 'text-slate-800 placeholder-slate-400'
                     }`}
                 />
                 <kbd className={`absolute right-0 top-1 px-1.5 py-0.5 text-[9px] font-mono font-semibold rounded border pointer-events-none ${darkMode ? 'bg-[#151b2a] border-[#252f44] text-slate-400' : 'bg-slate-200 border-slate-300 text-slate-600'
                   }`}>
-                  ↵
+                  ⌘K
                 </kbd>
               </div>
             </div>
@@ -1383,15 +1393,22 @@ const Layout = ({
         onClose={() => setShowBiometricModal(false)}
       />
 
-      {/* Global Command Bar (Ctrl+K) */}
+      {/* Universal Global Command Bar (Ctrl+K) */}
       <GlobalCommandBar 
         isOpen={showCommandBar} 
         onClose={() => setShowCommandBar(false)} 
         darkMode={darkMode}
         globalCustomers={globalCustomers}
         liveBills={liveBills}
-        inventory={deadStock}
+        inventory={deadStock || inventory}
+        vips={vips}
+        dormant={dormant}
         setActiveTab={setActiveTab}
+        openCustomerCard={openCustomerCard}
+        toggleBillExpansion={toggleBillExpansion}
+        API_BASE={API_BASE}
+        initialQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
       />
 
       {/* Action Center Drawer */}

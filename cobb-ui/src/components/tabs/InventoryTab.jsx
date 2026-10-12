@@ -67,13 +67,19 @@ const InventoryTab = (props) => {
 
   const [activeTab, setActiveTab] = useState('LEDGER'); // 'LEDGER' | 'GALLERY'
   const [items, setItems] = useState(INITIAL_CATEGORY_DATA);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState(props.searchQuery || '');
   const [selectedSection, setSelectedSection] = useState('ALL');
   const [filterMissingPhoto, setFilterMissingPhoto] = useState(false);
   const [selectedItem, setSelectedItem] = useState(INITIAL_CATEGORY_DATA[7]); // CASUAL FULL SL default
   const [uploadingKey, setUploadingKey] = useState(null);
   const [zoomImage, setZoomImage] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (typeof props.searchQuery === 'string') {
+      setSearchQuery(props.searchQuery);
+    }
+  }, [props.searchQuery]);
 
   const activeStoreId = (!activeStore || activeStore === 'ALL' || activeStore === 'STORE_01') ? 'DEMO_STORE_001' : activeStore;
 

@@ -1539,29 +1539,52 @@ export default function App() {
       const isAmount = /^\d+(\.\d{1,2})?$/.test(query);
       const isPhone = /^[0-9]{10}$/.test(query);
 
-      // Check local VIP/Dormant lists first for quick matches
-      const matchesLocalCustomer = [...vips, ...dormant].some(c =>
-        `${c.FirstName || ''} ${c.LastName || ''}`.toLowerCase().includes(query) ||
-        c.Phone?.includes(query) ||
-        (isAmount && Math.round(c.LifetimeSpend) === Math.round(parseFloat(query)))
+      // 1. Check if it matches an Invoice/Bill in memory
+      const matchedBill = (liveBills || []).find(b => 
+        String(b.BillNo || b.id || '').toLowerCase().includes(query) ||
+        String(b.Phone || '').includes(query)
       );
-
-      if (matchesLocalCustomer) {
-        setActiveTab('vip');
+      if (matchedBill) {
+        setActiveTab('live');
+        if (typeof toggleBillExpansion === 'function') {
+          toggleBillExpansion(matchedBill.BillId || matchedBill.id || matchedBill.BillNo);
+        }
         setToasts(prev => [
           ...prev,
-          { id: Date.now(), title: 'CUSTOMER SEARCH 🔍', message: `Found local match for: ${query}` }
+          { id: Date.now(), title: 'BILL FOUND 🧾', message: `Opening Invoice #${matchedBill.BillNo || matchedBill.id}` }
         ]);
         return;
       }
 
-      // If not found locally, ask the backend directly to see if any customer exists
+      // 2. Check local VIP/Dormant lists first for quick customer matches
+      const matchedCustomer = [...vips, ...dormant].find(c =>
+        `${c.FirstName || ''} ${c.LastName || ''}`.toLowerCase().includes(query) ||
+        String(c.Phone || '').includes(query) ||
+        (isAmount && Math.round(c.LifetimeSpend) === Math.round(parseFloat(query)))
+      );
+
+      if (matchedCustomer) {
+        if (typeof openCustomerCard === 'function') {
+          openCustomerCard(matchedCustomer);
+        }
+        setActiveTab('vip');
+        setToasts(prev => [
+          ...prev,
+          { id: Date.now(), title: 'CUSTOMER FOUND 🔍', message: `Found profile for: ${matchedCustomer.FirstName || matchedCustomer.Phone}` }
+        ]);
+        return;
+      }
+
+      // 3. If not found locally, ask the backend directly for customers
       try {
         const res = await axios.get(`${API_BASE}/api/customers/search?q=${encodeURIComponent(query)}`);
         const foundCustomers = res.data;
 
         if (foundCustomers && foundCustomers.length > 0) {
           setGlobalCustomers(foundCustomers);
+          if (foundCustomers.length === 1 && typeof openCustomerCard === 'function') {
+            openCustomerCard(foundCustomers[0]);
+          }
           setActiveTab('vip');
           setToasts(prev => [
             ...prev,
@@ -1573,11 +1596,31 @@ export default function App() {
         console.error('Customer search error:', err);
       }
 
-      // If still no customer found, treat as an inventory search
+      // 4. Ask the backend for past invoices / bill lookup
+      if (query.length >= 3) {
+        try {
+          const bRes = await axios.get(`${API_BASE}/api/sales/bill-lookup/${encodeURIComponent(query)}`);
+          if (bRes.data?.bills && bRes.data.bills.length > 0) {
+            setActiveTab('live');
+            if (typeof toggleBillExpansion === 'function') {
+              toggleBillExpansion(bRes.data.bills[0].BillId);
+            }
+            setToasts(prev => [
+              ...prev,
+              { id: Date.now(), title: 'INVOICE FOUND 🧾', message: `Found Invoice #${bRes.data.bills[0].BillNumber} in database` }
+            ]);
+            return;
+          }
+        } catch (bErr) {
+          console.warn('Bill search error:', bErr);
+        }
+      }
+
+      // 5. If still no customer/bill found, route as an inventory search
       setActiveTab('inventory');
       setToasts(prev => [
         ...prev,
-        { id: Date.now(), title: 'STOCK SCAN / SEARCH 🔍', message: `Filtering inventory for: ${query}` }
+        { id: Date.now(), title: 'STOCK SEARCH 📦', message: `Filtering inventory for: ${query}` }
       ]);
     }
   };
@@ -2243,6 +2286,14 @@ export default function App() {
         systemStatus={systemStatus}
         onTriggerSystemTest={handleTriggerSystemTest}
         onTriggerTestAlert={handleTriggerTestAlert}
+        globalCustomers={globalCustomers}
+        liveBills={liveBills}
+        inventory={deadStock}
+        deadStock={deadStock}
+        vips={vips}
+        dormant={dormant}
+        openCustomerCard={openCustomerCard}
+        toggleBillExpansion={toggleBillExpansion}
       >
 
         {/* Dynamic Views */}
