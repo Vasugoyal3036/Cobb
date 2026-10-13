@@ -72,7 +72,10 @@ function y() {
 			webSecurity: !1
 		}
 	}), h.setMenuBarVisibility(!1), h.setAutoHideMenuBar(!0), h.webContents.on("console-message", (e, t, n, r, i) => {
-		console.log(`[Renderer Console] ${n} (line ${r} in ${i})`);
+		let a = typeof e == "object" && e?.message !== void 0 ? e.message : n;
+		console.log(`[Renderer Console] ${a}`);
+	}), h.webContents.on("before-input-event", (e, t) => {
+		t.key === "F11" && t.type === "keyDown" ? (h.setFullScreen(!h.isFullScreen()), e.preventDefault()) : t.key === "F5" && t.type === "keyDown" ? (h.reload(), e.preventDefault()) : t.control && t.shift && t.key.toLowerCase() === "i" && t.type === "keyDown" && (h.webContents.toggleDevTools(), e.preventDefault());
 	}), h.webContents.setWindowOpenHandler(({ url: e }) => ((e.startsWith("https://") || e.startsWith("http://wa") || e.startsWith("whatsapp://")) && a.openExternal(e), { action: "deny" })), f ? (console.log("[Electron] Loading dev server URL:", f), h.loadURL(f)) : (console.log("[Electron] Loading app://index.html"), h.loadURL("app://-/index.html")), h.webContents.on("did-fail-load", (e, t, n) => {
 		console.error("[Electron] Failed to load:", t, n);
 	});

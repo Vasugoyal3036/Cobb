@@ -28,6 +28,7 @@ const DepreciationClockTab = lazy(() => import('./components/tabs/DepreciationCl
 const WardrobePassportModal = lazy(() => import('./components/WardrobePassportModal'));
 const DenominationModal = lazy(() => import('./components/DenominationModal'));
 const SpeedBillingModal = lazy(() => import('./components/SpeedBillingModal'));
+import CelebrationModal from './components/CelebrationModal';
 
 import { fetchWithOfflineFallback, subscribeToData } from './utils/offlineDb';
 
@@ -996,13 +997,71 @@ export default function App() {
     return () => clearTimeout(delayDebounceFn);
   }, [searchQuery, activeTab]);
 
+  // Global POS Force Sync Trigger
+  const forceSyncOverviewAndBills = async () => {
+    try {
+      const [overviewRes, liveRes] = await Promise.allSettled([
+        axios.get(`${API_BASE}/api/sales/overview?t=${Date.now()}`),
+        axios.get(`${API_BASE}/api/sales/live?t=${Date.now()}`)
+      ]);
+      if (overviewRes.status === 'fulfilled' && overviewRes.value?.data && !overviewRes.value.data.error) {
+        setOverviewStats(overviewRes.value.data);
+        setLocalCache('overviewStats', overviewRes.value.data);
+      }
+      if (liveRes.status === 'fulfilled' && liveRes.value?.data && !liveRes.value.data.error) {
+        const bills = Array.isArray(liveRes.value.data) ? liveRes.value.data : [];
+        setLiveBills(bills);
+      }
+      setToasts(prev => [
+        ...prev,
+        { id: Date.now(), title: 'CLOUD SYNC COMPLETE 🔄', message: 'Sales, live invoices & target milestones synced successfully!' }
+      ]);
+    } catch (e) {
+      console.error('[SYNC] Force sync error:', e);
+    }
+  };
+
+  useEffect(() => {
+    const handleForceSync = () => forceSyncOverviewAndBills();
+    const handleOpenSpeed = () => setActiveTab('speed_billing');
+    window.addEventListener('cobb_force_sync', handleForceSync);
+    window.addEventListener('cobb_open_speed_billing', handleOpenSpeed);
+    return () => {
+      window.removeEventListener('cobb_force_sync', handleForceSync);
+      window.removeEventListener('cobb_open_speed_billing', handleOpenSpeed);
+    };
+  }, [API_BASE]);
+
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // F1 to jump to Speed Billing POS from anywhere
-      if (e.key === 'F1') {
+      // 1. F1 or Ctrl+B / Cmd+B: Instant Jump to Speed Billing POS
+      if (e.key === 'F1' || ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B'))) {
         e.preventDefault();
         setActiveTab('speed_billing');
         return;
+      }
+
+      // 2. Ctrl+S / Cmd+S: Gun Barcode Scanner Focus
+      if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('cobb_focus_scanner'));
+        return;
+      }
+
+      // 3. Ctrl+Shift+R / Cmd+Shift+R: Force Cloud & POS Sync
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'r' || e.key === 'R')) {
+        e.preventDefault();
+        forceSyncOverviewAndBills();
+        return;
+      }
+
+      // 4. Escape: Dismiss Speed Billing or Return to Dashboard
+      if (e.key === 'Escape') {
+        if (activeTab === 'speed_billing') {
+          e.preventDefault();
+          setActiveTab('dashboard');
+          return;
+        }
       }
 
       const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
@@ -1040,7 +1099,7 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [activeTab, API_BASE]);
 
   const toggleBillExpansion = async (billId) => {
     if (expandedBillId === billId) {
@@ -3032,6 +3091,15 @@ export default function App() {
           onClose={() => setActiveCheckoutAlert(null)}
           onOpenBill={handleOpenBillFromNotification}
           onOpenEod={() => handleGenerateEodReport()}
+        />
+
+        {/* Real-time Target Milestone Celebration Engine (Canvas Confetti + Fanfare Chimes + Mobile Vibration) */}
+        <CelebrationModal
+          targetProgress={targetProgress}
+          DAILY_TARGET={DAILY_TARGET}
+          todaySales={overviewStats?.today?.TotalSales || 0}
+          formatCurrency={formatCurrency}
+          darkMode={darkMode}
         />
       </Layout>
     </div>

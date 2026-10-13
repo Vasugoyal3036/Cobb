@@ -426,15 +426,15 @@ const LiveBillsTab = (props) => {
     <div className={`space-y-6 transition-colors ${darkMode ? 'text-slate-100' : 'text-slate-800'}`}>
       
       {/* Header Section */}
-      <div className={`pb-5 mb-6 border-b flex flex-col md:flex-row md:items-center justify-between gap-4 ${darkMode ? 'border-[#2e3342]' : 'border-slate-200'}`}>
+      <div className="glass-header-bar p-4 sm:p-5 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-md mb-6">
         <div className="flex items-center">
           <div className={`p-3 rounded-2xl mr-3.5 shadow-sm border ${darkMode ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' : 'bg-blue-50 border-blue-200 text-blue-600'}`}>
             <Receipt className="w-7 h-7" />
           </div>
           <div>
             <div className="flex items-center gap-2.5">
-              <h2 className={`text-2xl sm:text-3xl font-black tracking-tight ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-                Transaction History & Bills
+              <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
+                Transaction History &amp; Bills
               </h2>
               {dateFilter === 'today' && (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 animate-pulse">
@@ -442,20 +442,20 @@ const LiveBillsTab = (props) => {
                 </span>
               )}
             </div>
-            <p className={`text-sm mt-1 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+            <p className="text-xs sm:text-sm mt-1 text-slate-500 dark:text-slate-400">
               Browse today's live checkouts, inspect yesterday's transactions, and view itemized bill details.
             </p>
           </div>
         </div>
 
         {/* Right Header Status / Refresh */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <button
             onClick={() => fetchBills(dateFilter, customDate)}
             disabled={isLoading}
-            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold border transition cursor-pointer shadow-sm ${
+            className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold border transition cursor-pointer shadow-sm active:scale-95 ${
               darkMode 
-                ? 'bg-[#12141a] hover:bg-[#1a1d26] border-[#2e3342] text-slate-200 hover:text-white' 
+                ? 'bg-white/[0.05] hover:bg-white/[0.1] border-white/10 text-slate-200 hover:text-white' 
                 : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700'
             }`}
             title="Refresh transaction data"
@@ -465,7 +465,7 @@ const LiveBillsTab = (props) => {
           </button>
           
           <span className={`text-xs font-semibold px-3 py-2 rounded-xl border ${
-            darkMode ? 'bg-[#12141a] border-[#2e3342] text-slate-400' : 'bg-slate-100 border-slate-200 text-slate-600'
+            darkMode ? 'bg-black/30 border-white/[0.08] text-slate-400 font-mono' : 'bg-slate-100 border-slate-200 text-slate-600'
           }`}>
             {filteredBills.length} {filteredBills.length === 1 ? 'Invoice' : 'Invoices'} Listed
           </span>
@@ -473,9 +473,7 @@ const LiveBillsTab = (props) => {
       </div>
 
       {/* Date & Filter Control Bar */}
-      <div className={`p-4 rounded-2xl border mb-6 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4 ${
-        darkMode ? 'bg-[#0f1117] border-[#2e3342]' : 'bg-white border-slate-200'
-      }`}>
+      <div className="glass-card-obsidian p-4 rounded-2xl mb-6 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-4">
         
         {/* Date Selector Buttons */}
         <div className="flex flex-wrap items-center gap-2">
@@ -625,18 +623,16 @@ const LiveBillsTab = (props) => {
       {/* KPI Metrics Summary Bar for the selected view */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mb-6">
         {/* Total Sales */}
-        <div className={`p-4 rounded-2xl border transition-all ${
-          darkMode ? 'bg-[#0f1117] border-[#2e3342]' : 'bg-white border-slate-200 shadow-sm'
-        }`}>
+        <div className="glass-card-obsidian p-4 sm:p-5 rounded-2xl transition-all">
           <div className="flex items-center justify-between mb-1.5">
             <span className={`text-xs font-bold uppercase tracking-wider ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
               {dateFilter === 'today' ? "Today's Sales" : dateFilter === 'yesterday' ? "Yesterday's Sales" : "Period Sales"}
             </span>
-            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-500">
+            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
               <DollarSign className="w-4 h-4" />
             </div>
           </div>
-          <div className={`text-2xl font-black ${darkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+          <div className={`text-2xl font-black font-mono ${darkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
             {formatCurrency(summaryKpis.totalRev)}
           </div>
           <div className={`text-[11px] mt-1 font-medium ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
@@ -645,18 +641,16 @@ const LiveBillsTab = (props) => {
         </div>
 
         {/* Total Invoices & Items */}
-        <div className={`p-4 rounded-2xl border transition-all ${
-          darkMode ? 'bg-[#0f1117] border-[#2e3342]' : 'bg-white border-slate-200 shadow-sm'
-        }`}>
+        <div className="glass-card-obsidian p-4 sm:p-5 rounded-2xl transition-all">
           <div className="flex items-center justify-between mb-1.5">
             <span className={`text-xs font-bold uppercase tracking-wider ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-              Invoices & Units
+              Invoices &amp; Units
             </span>
-            <div className="p-2 rounded-xl bg-blue-500/10 text-blue-500">
+            <div className="p-2 rounded-xl bg-blue-500/10 text-blue-500 border border-blue-500/20">
               <ShoppingBag className="w-4 h-4" />
             </div>
           </div>
-          <div className={`text-2xl font-black ${darkMode ? 'text-white' : 'text-slate-800'}`}>
+          <div className={`text-2xl font-black font-mono ${darkMode ? 'text-white' : 'text-slate-800'}`}>
             {summaryKpis.count} <span className="text-sm font-semibold text-slate-400">({summaryKpis.totalQty} units)</span>
           </div>
           <div className={`text-[11px] mt-1 font-medium ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
@@ -665,18 +659,16 @@ const LiveBillsTab = (props) => {
         </div>
 
         {/* Average Order Value (AOV) */}
-        <div className={`p-4 rounded-2xl border transition-all ${
-          darkMode ? 'bg-[#0f1117] border-[#2e3342]' : 'bg-white border-slate-200 shadow-sm'
-        }`}>
+        <div className="glass-card-obsidian p-4 sm:p-5 rounded-2xl transition-all">
           <div className="flex items-center justify-between mb-1.5">
             <span className={`text-xs font-bold uppercase tracking-wider ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
               Average Bill (AOV)
             </span>
-            <div className="p-2 rounded-xl bg-purple-500/10 text-purple-500">
+            <div className="p-2 rounded-xl bg-purple-500/10 text-purple-500 border border-purple-500/20">
               <TrendingUp className="w-4 h-4" />
             </div>
           </div>
-          <div className={`text-2xl font-black ${darkMode ? 'text-purple-400' : 'text-purple-600'}`}>
+          <div className={`text-2xl font-black font-mono ${darkMode ? 'text-purple-400' : 'text-purple-600'}`}>
             {formatCurrency(summaryKpis.aov)}
           </div>
           <div className={`text-[11px] mt-1 font-medium ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
@@ -685,18 +677,16 @@ const LiveBillsTab = (props) => {
         </div>
 
         {/* Payment Split */}
-        <div className={`p-4 rounded-2xl border transition-all ${
-          darkMode ? 'bg-[#0f1117] border-[#2e3342]' : 'bg-white border-slate-200 shadow-sm'
-        }`}>
+        <div className="glass-card-obsidian p-4 sm:p-5 rounded-2xl transition-all">
           <div className="flex items-center justify-between mb-1.5">
             <span className={`text-xs font-bold uppercase tracking-wider ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
               Payment Split
             </span>
-            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500">
+            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500 border border-amber-500/20">
               <Banknote className="w-4 h-4" />
             </div>
           </div>
-          <div className="flex items-center justify-between text-xs font-bold pt-1">
+          <div className="flex items-center justify-between text-xs font-bold pt-1 font-mono">
             <span className="text-emerald-500">💵 {formatCurrency(summaryKpis.cashRev)}</span>
             <span className="text-purple-500">⚡ {formatCurrency(summaryKpis.upiRev)}</span>
             <span className="text-blue-500">💳 {formatCurrency(summaryKpis.cardRev)}</span>
@@ -712,7 +702,7 @@ const LiveBillsTab = (props) => {
       {/* Mobile Bills Card Feed (< md) */}
       <div className="md:hidden space-y-3 mb-6">
         {isLoading && (
-          <div className={`p-8 rounded-2xl border text-center ${darkMode ? 'bg-[#0f1117] border-[#2e3342]' : 'bg-white border-slate-200'}`}>
+          <div className="glass-card-obsidian p-8 rounded-2xl text-center">
             <div className="w-7 h-7 rounded-full border-2 border-blue-500 border-t-transparent animate-spin mx-auto mb-2"></div>
             <span className={`text-xs font-semibold ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
               Loading transactions...
@@ -733,9 +723,7 @@ const LiveBillsTab = (props) => {
             <div
               key={bill.BillId || idx}
               onClick={() => toggleBillExpansion(bill.BillId)}
-              className={`p-3.5 rounded-2xl border transition-all cursor-pointer ${
-                darkMode ? 'bg-[#0f1117] border-[#202738] text-white active:bg-white/[0.04]' : 'bg-white border-slate-200 text-slate-800 shadow-xs active:bg-slate-50'
-              }`}
+              className="glass-card-obsidian p-3.5 sm:p-4 rounded-2xl transition-all cursor-pointer"
             >
               {/* Top row: Invoice #, Time, Amount */}
               <div className="flex items-start justify-between gap-2">
@@ -853,14 +841,14 @@ const LiveBillsTab = (props) => {
       </div>
 
       {/* Transaction Table (Desktop >= md) */}
-      <div className={`hidden md:block rounded-2xl border shadow-sm overflow-hidden ${
-        darkMode ? 'bg-[#0f1117] border-[#2e3342]' : 'bg-white border-slate-200'
+      <div className={`hidden md:block rounded-2xl border shadow-xl overflow-hidden transition-all duration-300 ${
+        darkMode ? 'glass-card-obsidian' : 'bg-white border-slate-200'
       }`}>
         <div className="overflow-x-auto">
           <table className="min-w-full text-left border-collapse">
             <thead>
               <tr className={`border-b text-xs font-bold uppercase tracking-wider ${
-                darkMode ? 'bg-[#141720] border-[#2e3342] text-slate-400' : 'bg-slate-50 border-slate-200 text-slate-500'
+                darkMode ? 'bg-slate-900/70 border-white/10 text-slate-300' : 'bg-slate-50 border-slate-200 text-slate-500'
               }`}>
                 <th className="px-6 py-4 whitespace-nowrap">Date & Time</th>
                 <th className="px-6 py-4 whitespace-nowrap">Invoice No.</th>
@@ -871,7 +859,7 @@ const LiveBillsTab = (props) => {
                 <th className="px-4 py-4 w-12 text-center"></th>
               </tr>
             </thead>
-            <tbody className={`divide-y ${darkMode ? 'divide-[#1e222e]' : 'divide-slate-100'}`}>
+            <tbody className={`divide-y ${darkMode ? 'divide-white/5' : 'divide-slate-100'}`}>
               {isLoading && (
                 <tr>
                   <td colSpan="7" className="px-6 py-12 text-center">

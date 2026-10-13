@@ -133,14 +133,17 @@ const QuickToolsWidget = ({
 
         {/* TILE 1: FAST BARCODE & SIZE CHECKER */}
         <div 
-          className={`p-4 sm:p-5 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-all group ${
-            darkMode ? 'bg-[#0e1320] border-[#1c2436] text-slate-100' : 'bg-white border-slate-200 text-slate-800'
+          className={`p-4 sm:p-5 rounded-2xl border shadow-lg flex flex-col justify-between hover:shadow-xl transition-all duration-300 group ${
+            darkMode ? 'glass-card-obsidian text-slate-100' : 'bg-white border-slate-200 text-slate-800'
           }`}
           onClick={() => quickScanInputRef.current?.focus()}
         >
           <div className="flex justify-between items-start">
             <div>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Barcode &amp; Size Matrix</p>
+              <div className="flex items-center gap-1.5">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Barcode &amp; Size Matrix</p>
+                <span className="text-[8.5px] px-1.5 py-0.2 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-mono font-bold">Ctrl+S</span>
+              </div>
               <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mt-1 flex items-center gap-1.5">
                 {quickScanResult ? (
                   <span className="font-mono text-blue-500 dark:text-blue-400 truncate max-w-[170px]">
@@ -381,8 +384,8 @@ const QuickToolsWidget = ({
         </div>
 
         {/* TILE 2: SMART COUNTER DISCOUNT & OFFER CALC */}
-        <div className={`p-4 sm:p-5 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-all ${
-          darkMode ? 'bg-[#0e1320] border-[#1c2436] text-slate-100' : 'bg-white border-slate-200 text-slate-800'
+        <div className={`p-4 sm:p-5 rounded-2xl border shadow-lg flex flex-col justify-between hover:shadow-xl transition-all duration-300 ${
+          darkMode ? 'glass-card-obsidian text-slate-100' : 'bg-white border-slate-200 text-slate-800'
         }`}>
           <div className="flex justify-between items-start">
             <div>
@@ -489,8 +492,8 @@ const QuickToolsWidget = ({
         </div>
 
         {/* TILE 3: HOLD DESK */}
-        <div className={`p-4 sm:p-5 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-all ${
-          darkMode ? 'bg-[#0e1320] border-[#1c2436] text-slate-100' : 'bg-white border-slate-200 text-slate-800'
+        <div className={`p-4 sm:p-5 rounded-2xl border shadow-lg flex flex-col justify-between hover:shadow-xl transition-all duration-300 ${
+          darkMode ? 'glass-card-obsidian text-slate-100' : 'bg-white border-slate-200 text-slate-800'
         }`}>
           <div className="flex justify-between items-start">
             <div>
@@ -539,8 +542,8 @@ const QuickToolsWidget = ({
         </div>
 
         {/* TILE 4: POCKET KHATA */}
-        <div className={`p-4 sm:p-5 rounded-2xl border shadow-sm flex flex-col justify-between hover:shadow-md transition-all ${
-          darkMode ? 'bg-[#0e1320] border-[#1c2436] text-slate-100' : 'bg-white border-slate-200 text-slate-800'
+        <div className={`p-4 sm:p-5 rounded-2xl border shadow-lg flex flex-col justify-between hover:shadow-xl transition-all duration-300 ${
+          darkMode ? 'glass-card-obsidian text-slate-100' : 'bg-white border-slate-200 text-slate-800'
         }`}>
           <div className="flex justify-between items-start">
             <div>

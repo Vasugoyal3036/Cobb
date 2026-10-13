@@ -214,6 +214,16 @@ const StaffFloorRaceWidget = ({
   const handleTriggerCelebration = () => {
     setConfettiActive(true);
     setTimeout(() => setConfettiActive(false), 3000);
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('cobb_celebrate', {
+          detail: {
+            title: '🏆 FLOOR CHAMPION RECOGNITION!',
+            subtitle: `Floor leader ${gamifiedStaff[0]?.displayName || 'Top Performer'} is smashing targets!`
+          }
+        })
+      );
+    }
   };
 
   const filteredStaff = useMemo(() => {
@@ -224,7 +234,7 @@ const StaffFloorRaceWidget = ({
   return (
     <div className={`p-5 sm:p-6 rounded-3xl border shadow-xl relative overflow-hidden transition-all duration-300 ${
       darkMode
-        ? 'bg-gradient-to-b from-[#0e1424] via-[#10172a] to-[#0a0f1d] border-[#1e293b] text-slate-100 shadow-blue-950/20'
+        ? 'glass-card-obsidian text-slate-100 shadow-blue-950/20'
         : 'bg-gradient-to-b from-white via-slate-50 to-amber-50/20 border-slate-200/90 text-slate-800 shadow-slate-200/50'
     }`}>
       {/* Ambient Cyber Grid & Glow */}

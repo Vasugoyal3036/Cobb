@@ -1,5 +1,62 @@
 [
   {
+    "date": "2026-10-13",
+    "year": 2026,
+    "month": 10,
+    "day": 13,
+    "dayOfWeek": "Tuesday",
+    "formattedDate": "13 Oct 2026",
+    "storeGrossSales": 12347,
+    "storeTotalBills": 5,
+    "storeTotalItems": 13,
+    "staffSales": 4000,
+    "totalCommission": 20,
+    "activeStaffCount": 1,
+    "staff": [
+      {
+        "empCode": "2800003",
+        "name": "Vikas",
+        "isUnassigned": false,
+        "isMissingName": false,
+        "hasCustomOverride": true,
+        "sales": 4000,
+        "items": 3,
+        "bills": 1,
+        "aov": 4000,
+        "upt": 3,
+        "commissionRate": 0.5,
+        "commission": 20,
+        "slabLabel": "≤ 2L (0.5%)",
+        "rank": 1
+      },
+      {
+        "empCode": "0000000",
+        "name": "Simran",
+        "isUnassigned": true,
+        "isMissingName": false,
+        "hasCustomOverride": true,
+        "sales": 8347,
+        "items": 10,
+        "bills": 4,
+        "aov": 2087,
+        "upt": 2.5,
+        "commissionRate": 0,
+        "commission": 0,
+        "slabLabel": "POS Counter"
+      }
+    ],
+    "topStaff": {
+      "empCode": "2800003",
+      "name": "Vikas",
+      "sales": 4000,
+      "bills": 1,
+      "items": 3,
+      "commission": 20,
+      "commissionRate": 0.5,
+      "slabLabel": "≤ 2L (0.5%)"
+    }
+  },
+  {
     "date": "2026-10-12",
     "year": 2026,
     "month": 10,

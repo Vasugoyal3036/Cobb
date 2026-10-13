@@ -250,3 +250,53 @@ body {
 @keyframes blurBackdrop { 0% { opacity: 0; backdrop-filter: blur(0px); } 100% { opacity: 1; backdrop-filter: blur(12px); } }
 .animate-blur-backdrop { animation: blurBackdrop 0.5s ease-out forwards; }
 
+/* ============================================================
+   SLEEK OBSIDIAN GLASSMORHPISM DESIGN SYSTEM
+   ============================================================ */
+.glass-card-obsidian {
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark .glass-card-obsidian,
+.dark-mode .glass-card-obsidian,
+html.dark .glass-card-obsidian {
+  background: rgba(11, 15, 25, 0.78);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 8px 32px -4px rgba(0, 0, 0, 0.45);
+}
+
+.glass-card-obsidian:hover {
+  border-color: rgba(148, 163, 184, 0.35);
+}
+
+.dark .glass-card-obsidian:hover,
+.dark-mode .glass-card-obsidian:hover,
+html.dark .glass-card-obsidian:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 12px 36px -4px rgba(0, 0, 0, 0.6), 0 0 20px -2px rgba(16, 185, 129, 0.08);
+}
+
+.glass-header-bar {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+}
+
+.dark .glass-header-bar,
+.dark-mode .glass-header-bar,
+html.dark .glass-header-bar {
+  background: rgba(10, 14, 23, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.5);
+}
+

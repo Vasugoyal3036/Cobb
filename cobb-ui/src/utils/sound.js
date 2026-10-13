@@ -193,3 +193,42 @@ export const speakCheckoutVoice = ({ amount, paymentMode = 'UPI' }) => {
     window.speechSynthesis.speak(utterance);
   } catch (e) {}
 };
+
+/**
+ * Triumphant 4-note victory fanfare for Target Milestones (50%, 75%, 100%)
+ * C5 -> E5 -> G5 -> C6 with warm harmonics and brass synth sparkle
+ */
+export const playMilestoneFanfare = (externalCtx = null) => {
+  const { soundEnabled } = getSoundSettings();
+  if (!soundEnabled) return;
+
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    const ctx = externalCtx || new AudioContextClass();
+
+    const notes = [
+      { freq: 523.25, start: 0, dur: 0.14 },    // C5
+      { freq: 659.25, start: 0.12, dur: 0.14 },   // E5
+      { freq: 783.99, start: 0.24, dur: 0.18 },   // G5
+      { freq: 1046.50, start: 0.40, dur: 0.55 }   // C6 High Triumph
+    ];
+
+    notes.forEach(({ freq, start, dur }) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.value = freq;
+
+      const noteStart = ctx.currentTime + start;
+      gain.gain.setValueAtTime(0.01, noteStart);
+      gain.gain.linearRampToValueAtTime(0.32, noteStart + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, noteStart + dur);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(noteStart);
+      osc.stop(noteStart + dur);
+    });
+  } catch (e) {}
+};

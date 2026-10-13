@@ -105,7 +105,22 @@ function createWindow() {
   win.setAutoHideMenuBar(true);
 
   win.webContents.on('console-message', (event, level, message, line, sourceId) => {
-    console.log(`[Renderer Console] ${message} (line ${line} in ${sourceId})`);
+    const text = (typeof event === 'object' && event?.message !== undefined) ? event.message : message;
+    console.log(`[Renderer Console] ${text}`);
+  });
+
+  // Desktop POS Keyboard Controls (F11 Fullscreen, F5 Reload, Ctrl+Shift+I DevTools)
+  win.webContents.on('before-input-event', (event, input) => {
+    if (input.key === 'F11' && input.type === 'keyDown') {
+      win.setFullScreen(!win.isFullScreen());
+      event.preventDefault();
+    } else if (input.key === 'F5' && input.type === 'keyDown') {
+      win.reload();
+      event.preventDefault();
+    } else if (input.control && input.shift && input.key.toLowerCase() === 'i' && input.type === 'keyDown') {
+      win.webContents.toggleDevTools();
+      event.preventDefault();
+    }
   });
 
   // Open external links (wa.me, https://) in the system browser, not in Electron

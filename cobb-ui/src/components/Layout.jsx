@@ -592,7 +592,13 @@ const Layout = ({
                 {currentRole === 'owner' ? (
                   <select
                     value={activeStore}
-                    onChange={(e) => switchStore(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      switchStore(val);
+                      if (val === 'ALL' && typeof window !== 'undefined') {
+                        window.dispatchEvent(new CustomEvent('cobb_open_fleet_benchmark'));
+                      }
+                    }}
                     className="bg-transparent font-bold focus:outline-none cursor-pointer text-inherit max-w-[55px] truncate text-center"
                     title="Switch Branch"
                   >
@@ -762,7 +768,13 @@ const Layout = ({
                 {currentRole === 'owner' ? (
                   <select
                     value={activeStore}
-                    onChange={(e) => switchStore(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      switchStore(val);
+                      if (val === 'ALL' && typeof window !== 'undefined') {
+                        window.dispatchEvent(new CustomEvent('cobb_open_fleet_benchmark'));
+                      }
+                    }}
                     className={`w-full text-xs font-bold rounded-lg py-1 px-1.5 focus:outline-none cursor-pointer border ${darkMode ? 'border-[#1e2638] text-white bg-[#0f1422]' : 'border-slate-200 text-slate-800 bg-white shadow-xs'
                       }`}
                     title="Switch Cobb Store Branch (Owner Exclusive)"
