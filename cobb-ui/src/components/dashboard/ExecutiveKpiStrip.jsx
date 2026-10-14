@@ -1,5 +1,6 @@
-import React from 'react';
-import { TrendingUp, ShoppingBag, ArrowRight, Settings } from 'lucide-react';
+import React, { useState } from 'react';
+import { TrendingUp, ShoppingBag, ArrowRight, Settings, Activity } from 'lucide-react';
+import AppleWatchRings from './AppleWatchRings';
 
 const ExecutiveKpiStrip = ({
   darkMode,
@@ -60,6 +61,7 @@ const ExecutiveKpiStrip = ({
   const opExFormatted = DAILY_EXPENSE >= 1000 
     ? `${(DAILY_EXPENSE / 1000).toFixed(DAILY_EXPENSE % 1000 === 0 ? 0 : 1)}k` 
     : DAILY_EXPENSE.toLocaleString('en-IN');
+  const [targetViewMode, setTargetViewMode] = useState('rings');
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 lg:gap-5">
       {/* Revenue Card with WoW/MoM Trends & Payment Breakdown */}
@@ -166,7 +168,7 @@ const ExecutiveKpiStrip = ({
       }`}>
         <div className="flex justify-between items-start relative z-10">
           <div>
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
               <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider block">Daily Target</span>
               {userRole === 'owner' && (
                 <button
@@ -179,28 +181,55 @@ const ExecutiveKpiStrip = ({
                 </button>
               )}
             </div>
-            <h3 className="text-lg sm:text-2xl lg:text-3xl font-black font-mono tracking-tight text-slate-900 dark:text-white mt-1">
+            <h3 className="text-lg sm:text-2xl lg:text-3xl font-black font-mono tracking-tight text-slate-900 dark:text-white mt-0.5">
               {formatCurrency(DAILY_TARGET)}
             </h3>
           </div>
-          <div className="text-right">
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setTargetViewMode((m) => (m === 'rings' ? 'bar' : 'rings'))}
+              className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-white/10 hover:bg-white/20 text-slate-300 transition-all cursor-pointer"
+              title={targetViewMode === 'rings' ? 'Switch to Bar View' : 'Switch to 3-Ring Activity Halo'}
+            >
+              {targetViewMode === 'rings' ? '⭕ Rings' : '📊 Bar'}
+            </button>
             <span className="text-[10px] sm:text-xs font-bold font-mono px-1.5 py-0.5 rounded-lg bg-blue-500/15 text-blue-400 border border-blue-500/30">
               {targetProgress.toFixed(0)}%
             </span>
           </div>
         </div>
 
-        <div className="mt-2.5 relative z-10">
-          <div className="w-full bg-slate-100 dark:bg-slate-800/80 rounded-full h-2 overflow-hidden p-0.5">
-            <div className="bg-gradient-to-r from-blue-500 via-indigo-500 to-cyan-400 h-full rounded-full transition-all duration-1000 shadow-xs" style={{ width: `${Math.min(100, targetProgress)}%` }}></div>
+        {targetViewMode === 'rings' ? (
+          <div className="my-2 relative z-10 flex items-center justify-center">
+            <AppleWatchRings
+              size={92}
+              todaySales={overviewStats?.today?.TotalSales || 0}
+              dailyTarget={DAILY_TARGET}
+              todayBills={overviewStats?.today?.BillCount || 0}
+              expectedBills={Math.max(15, Math.round(DAILY_TARGET / 3500))}
+              targetMargin={targetMargin}
+              actualMargin={targetMargin}
+              formatCurrency={formatCurrency}
+              showLegend={true}
+            />
           </div>
-          <div className="flex justify-between items-center text-[10px] sm:text-xs text-slate-400 mt-1.5 font-medium">
-            <span>{formatCurrency(Math.max(0, DAILY_TARGET - (overviewStats?.today?.TotalSales || 0)))} left</span>
-            <span className="text-blue-400 font-bold hidden sm:inline">On Pace</span>
+        ) : (
+          <div className="mt-2.5 relative z-10">
+            <div className="w-full bg-slate-100 dark:bg-slate-800/80 rounded-full h-2 overflow-hidden p-0.5">
+              <div
+                className="bg-gradient-to-r from-blue-500 via-indigo-500 to-cyan-400 h-full rounded-full transition-all duration-1000 shadow-xs"
+                style={{ width: `${Math.min(100, targetProgress)}%` }}
+              ></div>
+            </div>
+            <div className="flex justify-between items-center text-[10px] sm:text-xs text-slate-400 mt-1.5 font-medium">
+              <span>{formatCurrency(Math.max(0, DAILY_TARGET - (overviewStats?.today?.TotalSales || 0)))} left</span>
+              <span className="text-blue-400 font-bold hidden sm:inline">On Pace</span>
+            </div>
           </div>
-        </div>
+        )}
 
-        <div className="pt-2 mt-2 border-t border-slate-100 dark:border-slate-800/80 text-[10px] sm:text-xs flex justify-between items-center text-slate-400">
+        <div className="pt-2 mt-1 border-t border-slate-100 dark:border-slate-800/80 text-[10px] sm:text-xs flex justify-between items-center text-slate-400 relative z-10">
           <span className="font-medium">Run Rate:</span>
           <span className="font-mono font-bold text-slate-200">
             {formatCurrency(Math.round(Math.max(0, DAILY_TARGET - (overviewStats?.today?.TotalSales || 0)) / 5))}/hr

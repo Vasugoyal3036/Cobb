@@ -39,7 +39,8 @@ import {
   Radio,
   X,
   Wifi,
-  WifiOff
+  WifiOff,
+  Tv
 } from 'lucide-react';
 import ExecutiveKpiStrip from './ExecutiveKpiStrip';
 import GoodsInTransitDesk from '../GoodsInTransitDesk';
@@ -49,6 +50,7 @@ import QuickToolsWidget from './QuickToolsWidget';
 import AlterationSlipModal from '../AlterationSlipModal';
 import LivePulseFeed from './LivePulseFeed';
 import MultiStoreFleetMatrix from './MultiStoreFleetMatrix';
+import MissionControlModal from './MissionControlModal';
 
 /**
  * Unified Executive Bento Grid V2
@@ -105,6 +107,24 @@ const ExecutiveBentoDashboard = (props) => {
 
   // Primary Perspective Switcher: 'bento' (Unified Bento V2), 'racing' (Floor Race & Rush Radar), 'counter' (Counter Tools)
   const [activePerspective, setActivePerspective] = useState('bento');
+  const [showMissionControl, setShowMissionControl] = useState(false);
+
+  // Global listener for TV Wall trigger & Ctrl+Shift+T
+  useEffect(() => {
+    const handleOpenTv = () => setShowMissionControl(true);
+    const handleKey = (e) => {
+      if (e.ctrlKey && e.shiftKey && (e.key === 'T' || e.key === 't')) {
+        e.preventDefault();
+        setShowMissionControl(prev => !prev);
+      }
+    };
+    window.addEventListener('cobb_open_mission_control', handleOpenTv);
+    window.addEventListener('keydown', handleKey);
+    return () => {
+      window.removeEventListener('cobb_open_mission_control', handleOpenTv);
+      window.removeEventListener('keydown', handleKey);
+    };
+  }, []);
 
   // Pulse River Search & Payment Filter
   const [pulseSearchQuery, setPulseSearchQuery] = useState('');
@@ -381,6 +401,16 @@ const ExecutiveBentoDashboard = (props) => {
                 <span className="hidden sm:inline">EOD</span>
               </button>
             )}
+
+            <button
+              type="button"
+              onClick={() => setShowMissionControl(true)}
+              className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black shadow-md shadow-emerald-600/25 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+              title="Open Fullscreen TV Wall / Mission Control Mode (Ctrl+Shift+T)"
+            >
+              <Tv className="w-3.5 h-3.5" />
+              <span>TV Wall</span>
+            </button>
           </div>
 
           {/* Perspective Selector Segmented Control */}
@@ -388,8 +418,7 @@ const ExecutiveBentoDashboard = (props) => {
             {[
               { id: 'bento', label: '✨ Executive Bento V2' },
               { id: 'racing', label: '🏁 Floor Race & Rush' },
-              { id: 'counter', label: '🏷️ Counter Desk' },
-              { id: 'fleet', label: '🏢 Fleet Benchmark' }
+              { id: 'counter', label: '🏷️ Counter Desk' }
             ].map((view) => (
               <button
                 key={view.id}
@@ -1019,6 +1048,18 @@ const ExecutiveBentoDashboard = (props) => {
           darkMode={darkMode}
         />
       )}
+
+      {/* Mission Control / TV Wall Fullscreen Experience */}
+      <MissionControlModal
+        isOpen={showMissionControl}
+        onClose={() => setShowMissionControl(false)}
+        overviewStats={overviewStats}
+        liveBills={liveBills}
+        DAILY_TARGET={DAILY_TARGET}
+        targetProgress={targetProgress}
+        formatCurrency={formatCurrency}
+        activeStore={activeStore}
+      />
     </div>
   );
 };
