@@ -596,7 +596,7 @@ export default function SoundboxModal({ isOpen, onClose }) {
               <div className="p-4 rounded-2xl bg-gradient-to-r from-rose-950/40 via-purple-950/40 to-slate-900 border border-rose-500/30 flex items-start gap-3 text-xs text-rose-200">
                 <Sparkles className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
                 <p>
-                  Choose any of the 10 iconic Bollywood superstars below! Once selected, all live billing counter checkouts and <kbd className="px-1 py-0.5 bg-black/40 rounded text-rose-300 font-mono">Alt+R</kbd> replays will be announced with their signature dialogues, catchphrases, and voice modulation.
+                  Select a celebrity voice profile below. When active, all live checkouts and <kbd className="px-1 py-0.5 bg-black/40 rounded text-rose-300 font-mono">Alt+R</kbd> replays speak the exact bill payment announcement (e.g. <em>"Cobb Pundri par ₹2,499 praapt hue UPI dwara"</em>) cleanly in their vocal style—without any movie dialogues or jokes.
                 </p>
               </div>
 

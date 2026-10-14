@@ -282,205 +282,172 @@ export const BOLLYWOOD_ACTORS = {
   amitabh: {
     id: 'amitabh',
     name: 'Amitabh Bachchan',
-    character: 'Big B / KBC Host',
+    character: 'Deep Baritone Voice',
     avatar: '🎙️',
     category: 'titans',
-    pitch: 0.82,
-    rate: 0.92,
+    pitch: 0.78,
+    rate: 0.90,
     chimeType: 'chime',
-    tagline: 'Deviyon aur sajjano... Lock kar diya jaye!',
-    formatAnnouncement: ({ amount, paymentMode, staffName, isReplay, isBigBill, isJackpot }) => {
-      if (isJackpot) {
-        return `Adbhut! Anokha! Deviyon aur sajjano, Cobb Pundri par Rupees ${amount.toLocaleString('en-IN')} ka maha jackpot checkout! Computer ji, yeh dhanrashi sidhe khate mein lock kiya jaye!`;
-      }
-      if (isBigBill) {
-        return `Deviyon aur sajjano! Cobb Pundri par Rupees ${amount.toLocaleString('en-IN')} ki shandaar payment praapt hui ${paymentMode} dwara. Shubhkaamnaye!`;
-      }
+    tagline: 'Deep Baritone Hindi Announcement',
+    formatAnnouncement: ({ amount, paymentMode, staffName, isReplay }) => {
       const prefix = isReplay ? 'Dobara suchna: ' : '';
       const staff = staffName ? `. Billed by ${staffName}` : '';
-      return `${prefix}Deviyon aur sajjano! Cobb Pundri par Rupees ${amount.toLocaleString('en-IN')} praapt hue ${paymentMode} dwara. Computer ji lock kar diya jaye!${staff}`;
+      return `${prefix}Cobb Pundri par Rupees ${amount.toLocaleString('en-IN')} praapt hue ${paymentMode} dwara${staff}.`;
     },
-    tannoy: 'Deviyon aur sajjano, Cobb Pundri mein aap sabhi ka hardik swagat hai! Computer ji, Buy 3 Get 70% off flat discount lock kiya jaye!'
+    tannoy: 'Cobb Pundri showroom mein aap sabhi grahakon ka swagat hai. Aaj ke vishesh offers ki jaankari counter par praapt karein.'
   },
   srk: {
     id: 'srk',
     name: 'Shah Rukh Khan',
-    character: 'King Khan / Rahul',
+    character: 'Charismatic Tenor Voice',
     avatar: '👑',
     category: 'titans',
     pitch: 1.05,
-    rate: 1.05,
+    rate: 1.02,
     chimeType: 'chime',
-    tagline: 'Rahul... naam toh suna hoga?',
-    formatAnnouncement: ({ amount, paymentMode, staffName, isReplay, isBigBill, isJackpot }) => {
-      if (isJackpot) {
-        return `Picture abhi baaki hai mere dost! Cobb Pundri par Rupees ${amount.toLocaleString('en-IN')} ka blockbuster sale! It is all about loving your clothes!`;
-      }
+    tagline: 'Warm Expressive English & Hinglish',
+    formatAnnouncement: ({ amount, paymentMode, staffName, isReplay }) => {
       const prefix = isReplay ? 'Repeat: ' : '';
       const staff = staffName ? `. Billed by ${staffName}` : '';
-      return `${prefix}Rahul... naam toh suna hoga? Cobb Pundri par Rupees ${amount.toLocaleString('en-IN')} received via ${paymentMode}. Bade bade deshon mein aisi payments hoti rehti hain, Senorita!${staff}`;
+      return `${prefix}Cobb Pundri: Rupees ${amount.toLocaleString('en-IN')} received via ${paymentMode}${staff}.`;
     },
-    tannoy: 'Zindagi mein agar style chahiye, toh sirf Cobb Pundri aao! Discount dekh ke dil to pagal hai ho jayega!'
+    tannoy: 'Welcome to Cobb Pundri. Please visit the billing counter for special store discounts on shirts and denims.'
   },
   salman: {
     id: 'salman',
     name: 'Salman Khan',
-    character: 'Bhaijaan / Chulbul Pandey',
+    character: 'Punchy Swagger Voice',
     avatar: '🕶️',
     category: 'titans',
-    pitch: 0.95,
-    rate: 1.0,
-    chimeType: 'airhorn',
-    tagline: 'Ek baar jo commitment kar di...',
-    formatAnnouncement: ({ amount, paymentMode, staffName, isReplay, isBigBill, isJackpot }) => {
-      if (isJackpot) {
-        return `Swag se swagat boss! Cobb Pundri pe Rupees ${amount.toLocaleString('en-IN')} ka dabangg sale! Ek baar jo commitment kar di, toh main khud ki bhi nahi sunta!`;
-      }
-      const prefix = isReplay ? 'Repeat suno: ' : '';
+    pitch: 0.92,
+    rate: 0.98,
+    chimeType: 'kaching',
+    tagline: 'Bold Direct Hindi Announcement',
+    formatAnnouncement: ({ amount, paymentMode, staffName, isReplay }) => {
+      const prefix = isReplay ? 'Dobara suchit kiya jata hai: ' : '';
       const staff = staffName ? `. Billed by ${staffName}` : '';
-      return `${prefix}Swag se swagat! Cobb Pundri pe Rupees ${amount.toLocaleString('en-IN')} receive ho gaye ${paymentMode} par. Ek baar jo commitment kar di, done hai boss!${staff}`;
+      return `${prefix}Cobb Pundri par Rupees ${amount.toLocaleString('en-IN')} ${paymentMode} se receive hue${staff}.`;
     },
-    tannoy: 'Swag se karenge sabka swagat! Cobb Pundri showroom pe special discount chal raha hai, jaldi counter pe aao!'
+    tannoy: 'Cobb Pundri par sabhi grahakon ka swagat hai. Kripya counter par billing aur offers ki jaankari lein.'
   },
   sunny: {
     id: 'sunny',
     name: 'Sunny Deol',
-    character: 'Tara Singh / Dhai Kilo Ka Haath',
+    character: 'Powerful Resonant Voice',
     avatar: '💥',
     category: 'titans',
-    pitch: 0.88,
-    rate: 1.05,
+    pitch: 0.85,
+    rate: 1.0,
     chimeType: 'kaching',
-    tagline: 'Tarikh pe tarikh nahi, payment turant!',
-    formatAnnouncement: ({ amount, paymentMode, staffName, isReplay, isBigBill, isJackpot }) => {
-      if (isJackpot) {
-        return `Oye balle balle! Cobb Pundri par Rupees ${amount.toLocaleString('en-IN')} ka dhai kilo ka checkout! Hindustan zindabad tha, zindabad hai, aur rahega!`;
-      }
+    tagline: 'High Impact Solid Announcement',
+    formatAnnouncement: ({ amount, paymentMode, staffName, isReplay }) => {
       const prefix = isReplay ? 'Dobara suniye: ' : '';
       const staff = staffName ? `. Billed by ${staffName}` : '';
-      return `${prefix}Yeh Cobb Pundri ka haath hai! Tarikh pe tarikh nahi, Rupees ${amount.toLocaleString('en-IN')} ki payment turant confirm ho gayi ${paymentMode} par! Oye balle balle!${staff}`;
+      return `${prefix}Cobb Pundri par Rupees ${amount.toLocaleString('en-IN')} ki payment confirm ho gayi ${paymentMode} par${staff}.`;
     },
-    tannoy: 'Oye Pundri walon! Cobb showroom mein flat discount ka halla bol! Tarikh pe tarikh nahi, abhi khareedo!'
+    tannoy: 'Cobb Pundri showroom mein naye collection par flat discount uplabdh hai. Kripya counter par sampark karein.'
   },
   babu_bhaiya: {
     id: 'babu_bhaiya',
     name: 'Paresh Rawal',
-    character: 'Babu Bhaiya (Hera Pheri)',
+    character: 'Sharp Expressive Hindi Voice',
     avatar: '👓',
     category: 'comedy',
-    pitch: 1.12,
-    rate: 1.08,
+    pitch: 1.10,
+    rate: 1.05,
     chimeType: 'kaching',
-    tagline: 'Utha le re deva... payment utha le!',
-    formatAnnouncement: ({ amount, paymentMode, staffName, isReplay, isBigBill, isJackpot }) => {
-      if (isJackpot) {
-        return `Aye khopdi phod saale ka! Arre Rupees ${amount.toLocaleString('en-IN')} aagaya re deva! Utha le re baba, seedha khate mein utha le! Chamak gaya apna dhandha!`;
-      }
-      const prefix = isReplay ? 'Dobara sun re: ' : '';
+    tagline: 'Fast Natural Hindi Announcement',
+    formatAnnouncement: ({ amount, paymentMode, staffName, isReplay }) => {
+      const prefix = isReplay ? 'Dobara suchna: ' : '';
       const staff = staffName ? `. Billed by ${staffName}` : '';
-      return `${prefix}Arre deva re deva! Cobb Pundri pe Rupees ${amount.toLocaleString('en-IN')} aagaya re baba ${paymentMode} se! Utha le re deva, payment seedha khate mein!${staff}`;
+      return `${prefix}Cobb Pundri par Rupees ${amount.toLocaleString('en-IN')} praapt hue ${paymentMode} ke dwara${staff}.`;
     },
-    tannoy: 'Arre ae Raju, Shyam! Dekho Cobb Pundri pe kitna shandaar offer hai! Chalo jaldi counter pe aao re baba!'
+    tannoy: 'Cobb Pundri showroom mein aapka swagat hai. Billing counter khula hai.'
   },
   raju: {
     id: 'raju',
     name: 'Akshay Kumar',
-    character: 'Raju (Phir Hera Pheri)',
+    character: 'Energetic Crisp Voice',
     avatar: '🕺',
     category: 'comedy',
-    pitch: 1.04,
-    rate: 1.15,
+    pitch: 1.02,
+    rate: 1.08,
     chimeType: 'jackpot',
-    tagline: 'Zor zor se bolke scheme bata de!',
-    formatAnnouncement: ({ amount, paymentMode, staffName, isReplay, isBigBill, isJackpot }) => {
-      if (isJackpot) {
-        return `Paisa hi paisa hoga! Cobb Pundri par Rupees ${amount.toLocaleString('en-IN')} received! Zor zor se bolke sabko scheme bata de! 25 din mein paisa double!`;
-      }
-      const prefix = isReplay ? 'Repeat scheme: ' : '';
+    tagline: 'Crisp Upbeat Bill Announcement',
+    formatAnnouncement: ({ amount, paymentMode, staffName, isReplay }) => {
+      const prefix = isReplay ? 'Repeat: ' : '';
       const staff = staffName ? `. Billed by ${staffName}` : '';
-      return `${prefix}Zor zor se bolke sabko scheme bata de! Cobb Pundri par Rupees ${amount.toLocaleString('en-IN')} received on ${paymentMode}. Mast plan hai boss!${staff}`;
+      return `${prefix}Cobb Pundri par Rupees ${amount.toLocaleString('en-IN')} received on ${paymentMode}${staff}.`;
     },
-    tannoy: 'Paisa hi paisa hoga! Cobb Pundri mein Buy 3 Get 70% offer chal raha hai! Zor zor se bolke sabko scheme bata do!'
+    tannoy: 'Welcome to Cobb Pundri. Buy 3 Get 70% off flat discount is currently active on selected garments.'
   },
   nana: {
     id: 'nana',
     name: 'Nana Patekar',
-    character: 'Nana / Uday Shetty',
+    character: 'Intense Staccato Voice',
     avatar: '🎭',
     category: 'comedy',
-    pitch: 0.92,
-    rate: 1.15,
+    pitch: 0.90,
+    rate: 1.08,
     chimeType: 'chime',
-    tagline: 'Achha hai! Bahut achha hai... Control Uday!',
-    formatAnnouncement: ({ amount, paymentMode, staffName, isReplay, isBigBill, isJackpot }) => {
-      if (isJackpot) {
-        return `Achha hai! Bahut achha hai! Cobb Pundri par Rupees ${amount.toLocaleString('en-IN')} ki mega entry! Ek machhar... aur yeh jackpot checkout! Ek number!`;
-      }
-      const prefix = isReplay ? 'Dobara bolta hoon: ' : '';
+    tagline: 'Staccato Firm Delivery',
+    formatAnnouncement: ({ amount, paymentMode, staffName, isReplay }) => {
+      const prefix = isReplay ? 'Dobara suchna: ' : '';
       const staff = staffName ? `. Billed by ${staffName}` : '';
-      return `${prefix}Achha hai! Bahut achha hai! Cobb Pundri pe Rupees ${amount.toLocaleString('en-IN')} praapt hue ${paymentMode} par. Control Uday control!${staff}`;
+      return `${prefix}Cobb Pundri par Rupees ${amount.toLocaleString('en-IN')} safaltapoorvak praapt hue ${paymentMode} se${staff}.`;
     },
-    tannoy: 'Achha hai, bahut achha hai! Cobb Pundri showroom ke kapde dekh kar dil khush ho gaya! Ekdum ek number quality!'
+    tannoy: 'Cobb Pundri mein aap sabhi ka swagat hai. Quality kapde aur discount counter par uplabdh hain.'
   },
   munna_bhai: {
     id: 'munna_bhai',
     name: 'Sanjay Dutt',
-    character: 'Munna Bhai M.B.B.S.',
+    character: 'Relaxed Deep Voice',
     avatar: '🩺',
     category: 'comedy',
-    pitch: 0.90,
-    rate: 0.96,
+    pitch: 0.88,
+    rate: 0.94,
     chimeType: 'chime',
-    tagline: 'Bole toh ekdum jhakas mamu!',
-    formatAnnouncement: ({ amount, paymentMode, staffName, isReplay, isBigBill, isJackpot }) => {
-      if (isJackpot) {
-        return `Bole toh ekdum jhakas mamu! Cobb Pundri pe Rupees ${amount.toLocaleString('en-IN')} ka bham-bham sale! Circuit, customer ko full samman aur jaadu ki jhappi de re!`;
-      }
-      const prefix = isReplay ? 'Repeat sun mamu: ' : '';
+    tagline: 'Deep Smooth Indian Tone',
+    formatAnnouncement: ({ amount, paymentMode, staffName, isReplay }) => {
+      const prefix = isReplay ? 'Dobara suniye: ' : '';
       const staff = staffName ? `. Billed by ${staffName}` : '';
-      return `${prefix}Bole toh ekdum jhakas mamu! Cobb Pundri pe Rupees ${amount.toLocaleString('en-IN')} aagayela hai ${paymentMode} se. Customer ko ek jaadu ki jhappi do re!${staff}`;
+      return `${prefix}Cobb Pundri par Rupees ${amount.toLocaleString('en-IN')} praapt hue ${paymentMode} dwara${staff}.`;
     },
-    tannoy: 'Bole toh tension lene ka nahi, sirf dene ka mamu! Cobb Pundri ke brand new collection pe full discount chalu hai!'
+    tannoy: 'Cobb Pundri mein aapka swagat hai. Billing counter ready hai.'
   },
   ranveer: {
     id: 'ranveer',
     name: 'Ranveer Singh',
-    character: 'Rocky / High Energy',
+    character: 'High-Tempo Vibrant Voice',
     avatar: '⚡',
     category: 'cult',
-    pitch: 1.15,
-    rate: 1.20,
+    pitch: 1.12,
+    rate: 1.15,
     chimeType: 'airhorn',
-    tagline: 'Booooom! Full power, full energy!',
-    formatAnnouncement: ({ amount, paymentMode, staffName, isReplay, isBigBill, isJackpot }) => {
-      if (isJackpot) {
-        return `Booooom! Fire on floor boss! Cobb Pundri pe Rupees ${amount.toLocaleString('en-IN')} ki mega dhamaka payment! What energy, kya baat hai boss!`;
-      }
-      const prefix = isReplay ? 'Once more boss: ' : '';
+    tagline: 'Fast Vibrant Payment Announcement',
+    formatAnnouncement: ({ amount, paymentMode, staffName, isReplay }) => {
+      const prefix = isReplay ? 'Repeat: ' : '';
       const staff = staffName ? `. Billed by ${staffName}` : '';
-      return `${prefix}Booooom! Full power, full energy boss! Cobb Pundri pe Rupees ${amount.toLocaleString('en-IN')} ki blockbuster entry ho chuki hai ${paymentMode} par!${staff}`;
+      return `${prefix}Cobb Pundri: Rupees ${amount.toLocaleString('en-IN')} payment successful via ${paymentMode}${staff}.`;
     },
-    tannoy: 'What energy boss! Welcome to Cobb Pundri! Full swag, killer shirts, and bombastic offers wait kar rahe hain!'
+    tannoy: 'Welcome to Cobb Pundri. Check out our latest apparel collection and festive offers!'
   },
   mogambo: {
     id: 'mogambo',
     name: 'Amrish Puri',
-    character: 'Mogambo (Mr. India)',
+    character: 'Resonant Bass Voice',
     avatar: '🦹',
     category: 'cult',
-    pitch: 0.78,
-    rate: 0.88,
+    pitch: 0.72,
+    rate: 0.85,
     chimeType: 'kaching',
-    tagline: 'Mogambo khush hua!',
-    formatAnnouncement: ({ amount, paymentMode, staffName, isReplay, isBigBill, isJackpot }) => {
-      if (isJackpot) {
-        return `Hahaha! Mogambo behad khush hua! Cobb Pundri par Rupees ${amount.toLocaleString('en-IN')} ka aalishan checkout dekh kar... Mogambo khush hua!`;
-      }
-      const prefix = isReplay ? 'Dobara suno: ' : '';
+    tagline: 'Ultra-Deep Resonant Bass',
+    formatAnnouncement: ({ amount, paymentMode, staffName, isReplay }) => {
+      const prefix = isReplay ? 'Dobara suchit kiya jata hai: ' : '';
       const staff = staffName ? `. Billed by ${staffName}` : '';
-      return `${prefix}Mogambo khush hua! Cobb Pundri par Rupees ${amount.toLocaleString('en-IN')} ki payment dekh kar ${paymentMode} par... Mogambo khush hua!${staff}`;
+      return `${prefix}Cobb Pundri par Rupees ${amount.toLocaleString('en-IN')} ki payment praapt hui ${paymentMode} dwara${staff}.`;
     },
-    tannoy: 'Mogambo khush hua! Cobb Pundri showroom mein sabse behtareen kapde aur offers dekh kar... Mogambo khush hua!'
+    tannoy: 'Cobb Pundri showroom mein sabhi grahakon ka hardik swagat hai.'
   }
 };
 
