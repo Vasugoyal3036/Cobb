@@ -54,6 +54,8 @@ export const getSoundboxSettings = () => {
         mode: parsed.mode || 'voice_and_chime',
         language: parsed.language || 'hinglish',
         actorPersona: parsed.actorPersona || 'none',
+        useNeuralVoice: parsed.useNeuralVoice !== undefined ? Boolean(parsed.useNeuralVoice) : true,
+        neuralVoiceId: parsed.neuralVoiceId || 'madhur',
         speechRate: Number(parsed.speechRate || 1.0),
         speechPitch: Number(parsed.speechPitch || 1.0),
         volume: Number(parsed.volume !== undefined ? parsed.volume : 1.0),
@@ -73,6 +75,8 @@ export const getSoundboxSettings = () => {
     mode: 'voice_and_chime',
     language: 'english',
     actorPersona: 'none',
+    useNeuralVoice: false,
+    neuralVoiceId: 'madhur',
     speechRate: 1.05,
     speechPitch: 1.0,
     volume: 1.0,
@@ -275,6 +279,177 @@ export const playCheckoutChime = (externalCtx = null) => {
 };
 
 /**
+ * Option C: High-Fidelity Indian Neural Voices (Edge Neural TTS)
+ * Natural human studio announcers with zero robotic artifacts.
+ */
+export const NEURAL_VOICES = {
+  madhur: {
+    id: 'madhur',
+    name: 'Madhur (Deep Baritone)',
+    actorStyle: 'Deep Baritone Studio Announcer',
+    gender: 'Male',
+    lang: 'hi-IN',
+    tagline: 'Deep Indian Studio Baritone (Authentic News & Store Announcer)',
+    avatar: '🎙️',
+    badge: 'Recommended HD',
+    sampleFile: '/audio/neural/test_madhur_2499.mp3',
+    edgeVoice: 'hi-IN-MadhurNeural'
+  },
+  swara: {
+    id: 'swara',
+    name: 'Swara (Studio Hindi)',
+    actorStyle: 'Smooth Hindi Studio Announcer',
+    gender: 'Female',
+    lang: 'hi-IN',
+    tagline: 'Natural Hindi Female Studio Announcer',
+    avatar: '🌸',
+    badge: 'Hindi HD',
+    sampleFile: '/audio/neural/test_swara_2499.mp3',
+    edgeVoice: 'hi-IN-SwaraNeural'
+  },
+  prabhat: {
+    id: 'prabhat',
+    name: 'Prabhat (Indian English)',
+    actorStyle: 'Executive Retail Announcer',
+    gender: 'Male',
+    lang: 'en-IN',
+    tagline: 'Executive Indian English Male Announcer',
+    avatar: '👔',
+    badge: 'English HD',
+    sampleFile: '/audio/neural/test_prabhat_2499.mp3',
+    edgeVoice: 'en-IN-PrabhatNeural'
+  },
+  neerja: {
+    id: 'neerja',
+    name: 'Neerja (Indian English)',
+    actorStyle: 'Fluent English Anchor',
+    gender: 'Female',
+    lang: 'en-IN',
+    tagline: 'Clear Fluent Indian English Female Announcer',
+    avatar: '💼',
+    badge: 'English HD',
+    sampleFile: '/audio/neural/test_neerja_2499.mp3',
+    edgeVoice: 'en-IN-NeerjaNeural'
+  }
+};
+
+let currentActiveAudio = null;
+
+export const stopNeuralSpeechAudio = () => {
+  if (currentActiveAudio) {
+    try {
+      currentActiveAudio.pause();
+      currentActiveAudio.currentTime = 0;
+    } catch (e) {}
+    currentActiveAudio = null;
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('cobb_soundbox_idle'));
+    }
+  }
+};
+
+export const playNeuralSpeechAudio = async ({
+  text,
+  voiceId = 'madhur',
+  amount = 0,
+  isReplay = false,
+  broadcastType = ''
+}) => {
+  if (typeof window === 'undefined' || typeof window.Audio === 'undefined') return false;
+
+  stopNeuralSpeechAudio();
+
+  try {
+    let staticUrl = null;
+    const cleanAmount = Math.round(Number(amount || 0));
+
+    // Instant static asset match (Zero latency & works offline on Firebase hosting)
+    if (broadcastType === 'welcome') {
+      if (voiceId === 'swara') staticUrl = '/audio/neural/welcome_swara.mp3';
+      else if (voiceId === 'prabhat' || voiceId === 'neerja') staticUrl = '/audio/neural/welcome_prabhat.mp3';
+      else staticUrl = '/audio/neural/welcome_madhur.mp3';
+    } else if (broadcastType === 'offer') {
+      if (voiceId === 'swara') staticUrl = '/audio/neural/offer_swara.mp3';
+      else staticUrl = '/audio/neural/offer_madhur.mp3';
+    } else if (broadcastType === 'closing') {
+      staticUrl = '/audio/neural/closing_madhur.mp3';
+    } else if (!isReplay) {
+      if (cleanAmount === 2499) {
+        if (voiceId === 'swara') staticUrl = '/audio/neural/test_swara_2499.mp3';
+        else if (voiceId === 'prabhat') staticUrl = '/audio/neural/test_prabhat_2499.mp3';
+        else if (voiceId === 'neerja') staticUrl = '/audio/neural/test_neerja_2499.mp3';
+        else staticUrl = '/audio/neural/test_madhur_2499.mp3';
+      } else if (cleanAmount === 1499 && voiceId === 'madhur') {
+        staticUrl = '/audio/neural/test_madhur_1499.mp3';
+      } else if (cleanAmount === 4999 && voiceId === 'madhur') {
+        staticUrl = '/audio/neural/test_madhur_4999.mp3';
+      }
+    }
+
+    let audioSrc = staticUrl;
+
+    // If dynamic amount and no pre-rendered static match, call backend neural tts endpoint
+    if (!audioSrc && text) {
+      const apiBase = (typeof window !== 'undefined' && window.__COBB_API_BASE__) || '';
+      const endpoint = `${apiBase}/api/soundbox/neural-tts`;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text, voice: voiceId }),
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
+        if (response.ok) {
+          const blob = await response.blob();
+          audioSrc = URL.createObjectURL(blob);
+        }
+      } catch (err) {
+        clearTimeout(timeoutId);
+        return false;
+      }
+    }
+
+    if (!audioSrc) return false;
+
+    const audio = new Audio(audioSrc);
+    currentActiveAudio = audio;
+    const settings = getSoundboxSettings();
+    audio.volume = Number(settings.volume !== undefined ? settings.volume : 1.0);
+
+    window.dispatchEvent(new CustomEvent('cobb_soundbox_speaking', {
+      detail: {
+        spokenText: text,
+        amount: cleanAmount,
+        neuralVoice: voiceId,
+        isReplay
+      }
+    }));
+
+    audio.onended = () => {
+      if (currentActiveAudio === audio) currentActiveAudio = null;
+      window.dispatchEvent(new CustomEvent('cobb_soundbox_idle'));
+      if (audioSrc.startsWith('blob:')) URL.revokeObjectURL(audioSrc);
+    };
+
+    audio.onerror = () => {
+      if (currentActiveAudio === audio) currentActiveAudio = null;
+      window.dispatchEvent(new CustomEvent('cobb_soundbox_idle'));
+      if (audioSrc.startsWith('blob:')) URL.revokeObjectURL(audioSrc);
+    };
+
+    await audio.play();
+    return true;
+  } catch (err) {
+    return false;
+  }
+};
+
+/**
  * 10-Actor Bollywood Superstar & Comedy Legends Pack
  * Signature voice parameters, catchphrases, jackpot reactions, and tannoy broadcasts.
  */
@@ -451,8 +626,51 @@ export const BOLLYWOOD_ACTORS = {
   }
 };
 
+const fallbackSpeakSynthesis = (utterance, spokenText, cleanAmount, paymentMode, staffName, actor, isReplay, settings) => {
+  if (typeof window === 'undefined' || !window.speechSynthesis) return;
+
+  const voices = window.speechSynthesis.getVoices();
+  if (voices && voices.length > 0) {
+    if (settings.selectedVoiceURI) {
+      const customVoice = voices.find(v => v.voiceURI === settings.selectedVoiceURI);
+      if (customVoice) utterance.voice = customVoice;
+    }
+    if (!utterance.voice) {
+      if (actor || settings.language === 'hindi') {
+        const hiVoice = voices.find(v => v.lang === 'hi-IN' || v.lang.startsWith('hi'));
+        if (hiVoice) utterance.voice = hiVoice;
+      }
+      if (!utterance.voice) {
+        const indianVoice = voices.find(v => v.lang === 'en-IN' || v.lang.includes('IN'));
+        if (indianVoice) utterance.voice = indianVoice;
+      }
+    }
+  }
+
+  // Dispatch UI event for LED glow and speech bubble
+  window.dispatchEvent(new CustomEvent('cobb_soundbox_speaking', {
+    detail: {
+      spokenText,
+      amount: cleanAmount,
+      paymentMode,
+      staffName,
+      actor: actor ? actor.name : null,
+      isReplay
+    }
+  }));
+
+  utterance.onend = () => {
+    window.dispatchEvent(new CustomEvent('cobb_soundbox_idle'));
+  };
+  utterance.onerror = () => {
+    window.dispatchEvent(new CustomEvent('cobb_soundbox_idle'));
+  };
+
+  window.speechSynthesis.speak(utterance);
+};
+
 /**
- * Text-to-speech counter announcement (Soundbox mode V2 with Bollywood Support)
+ * Text-to-speech counter announcement (Soundbox mode V2 with Neural Studio & Bollywood Support)
  */
 export const speakCheckoutVoice = ({
   amount,
@@ -462,7 +680,8 @@ export const speakCheckoutVoice = ({
   billNumber = '',
   isReplay = false,
   customText = null,
-  overrideActor = null
+  overrideActor = null,
+  overrideNeuralVoice = null
 }) => {
   const settings = getSoundboxSettings();
   if (!settings.voiceEnabled || settings.mode === 'muted' || settings.mode === 'chime_only') {
@@ -472,6 +691,8 @@ export const speakCheckoutVoice = ({
 
   try {
     window.speechSynthesis.cancel(); // Cancel any prior speech
+    stopNeuralSpeechAudio();
+
     const cleanAmount = Math.round(Number(amount || 0));
     if (cleanAmount <= 0 && !customText) return;
 
@@ -536,47 +757,45 @@ export const speakCheckoutVoice = ({
     utterance.pitch = speechPitch;
     utterance.volume = Number(settings.volume !== undefined ? settings.volume : 1.0);
 
-    // Voice selector logic
-    const voices = window.speechSynthesis.getVoices();
-    if (voices && voices.length > 0) {
-      if (settings.selectedVoiceURI) {
-        const customVoice = voices.find(v => v.voiceURI === settings.selectedVoiceURI);
-        if (customVoice) utterance.voice = customVoice;
-      }
-      if (!utterance.voice) {
-        if (actor || settings.language === 'hindi') {
-          const hiVoice = voices.find(v => v.lang === 'hi-IN' || v.lang.startsWith('hi'));
-          if (hiVoice) utterance.voice = hiVoice;
+    // If Neural Studio Voice is enabled and Audio is supported in browser
+    const shouldUseNeural = (overrideNeuralVoice !== null) || settings.useNeuralVoice;
+    if (shouldUseNeural && typeof window !== 'undefined' && typeof window.Audio !== 'undefined') {
+      const neuralVoice = overrideNeuralVoice || settings.neuralVoiceId || (actor ? 'madhur' : 'madhur');
+
+      // Build clean Hindi or English string for Edge Neural
+      let neuralText = spokenText;
+      if (!customText) {
+        if (neuralVoice === 'madhur' || neuralVoice === 'swara') {
+          const store = settings.announceStoreName ? 'कौब पुंडरी पर ' : '';
+          const mode = settings.announceMode ? ` ${paymentMode} द्वारा` : '';
+          const staff = (settings.announceStaffName && staffName) ? `। बिलर ${staffName}` : '';
+          const prefix = isReplay ? 'दोबारा सुनिए: ' : '';
+          neuralText = `${prefix}${store}${cleanAmount.toLocaleString('en-IN')} रुपये प्राप्त हुए${mode}${staff}।`;
+        } else {
+          const store = settings.announceStoreName ? 'Cobb Pundri: ' : '';
+          const mode = settings.announceMode ? ` received via ${paymentMode}` : ' received';
+          const staff = (settings.announceStaffName && staffName) ? `. Billed by ${staffName}` : '';
+          const prefix = isReplay ? 'Repeat: ' : '';
+          neuralText = `${prefix}${store}Rupees ${cleanAmount.toLocaleString('en-IN')}${mode}${staff}.`;
         }
-        if (!utterance.voice) {
-          const indianVoice = voices.find(v => v.lang === 'en-IN' || v.lang.includes('IN'));
-          if (indianVoice) utterance.voice = indianVoice;
-        }
       }
+
+      playNeuralSpeechAudio({
+        text: neuralText,
+        voiceId: neuralVoice,
+        amount: cleanAmount,
+        isReplay
+      }).then((success) => {
+        if (!success) {
+          fallbackSpeakSynthesis(utterance, spokenText, cleanAmount, paymentMode, staffName, actor, isReplay, settings);
+        }
+      }).catch(() => {
+        fallbackSpeakSynthesis(utterance, spokenText, cleanAmount, paymentMode, staffName, actor, isReplay, settings);
+      });
+      return;
     }
 
-    // Dispatch UI event for LED glow and speech bubble
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('cobb_soundbox_speaking', {
-        detail: {
-          spokenText,
-          amount: cleanAmount,
-          paymentMode,
-          staffName,
-          actor: actor ? actor.name : null,
-          isReplay
-        }
-      }));
-
-      utterance.onend = () => {
-        window.dispatchEvent(new CustomEvent('cobb_soundbox_idle'));
-      };
-      utterance.onerror = () => {
-        window.dispatchEvent(new CustomEvent('cobb_soundbox_idle'));
-      };
-    }
-
-    window.speechSynthesis.speak(utterance);
+    fallbackSpeakSynthesis(utterance, spokenText, cleanAmount, paymentMode, staffName, actor, isReplay, settings);
   } catch (e) {}
 };
 
@@ -648,6 +867,7 @@ export const triggerCheckoutAudio = ({
  * Store Floor Audio Tannoy / Broadcast Presets
  */
 export const speakStoreBroadcast = (type = 'welcome', customText = '') => {
+  const settings = getSoundboxSettings();
   const PRESETS = {
     welcome: 'Welcome to Cobb Pundri. Explore our latest collection of premium shirts, blazers, and denims with special seasonal offers!',
     offer: 'Attention shoppers: Exclusive store offer at Cobb Pundri today! Buy 3 garments and get 70% off flat. Please ask our staff for assistance.',
@@ -658,11 +878,28 @@ export const speakStoreBroadcast = (type = 'welcome', customText = '') => {
 
   const textToSpeak = customText || PRESETS[type] || PRESETS.welcome;
   playCheckoutChime();
+
   setTimeout(() => {
-    speakCheckoutVoice({
-      amount: 0,
-      customText: textToSpeak
-    });
+    if (settings.useNeuralVoice && typeof window !== 'undefined' && typeof window.Audio !== 'undefined') {
+      const voiceId = settings.neuralVoiceId || 'madhur';
+      playNeuralSpeechAudio({
+        text: textToSpeak,
+        voiceId,
+        amount: 0,
+        broadcastType: type
+      }).then((success) => {
+        if (!success) {
+          speakCheckoutVoice({ amount: 0, customText: textToSpeak });
+        }
+      }).catch(() => {
+        speakCheckoutVoice({ amount: 0, customText: textToSpeak });
+      });
+    } else {
+      speakCheckoutVoice({
+        amount: 0,
+        customText: textToSpeak
+      });
+    }
   }, 450);
 };
 

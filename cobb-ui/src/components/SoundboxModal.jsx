@@ -35,6 +35,7 @@ import {
   playCashRegisterChaching,
   playJackpotChime,
   playAirhorn,
+  NEURAL_VOICES,
   BOLLYWOOD_ACTORS
 } from '../utils/sound';
 
@@ -149,6 +150,22 @@ export default function SoundboxModal({ isOpen, onClose }) {
     }, 400);
   };
 
+  const handleTestNeuralVoice = (voiceId) => {
+    const v = NEURAL_VOICES[voiceId];
+    if (!v) return;
+    playCheckoutChime();
+    setTimeout(() => {
+      speakCheckoutVoice({
+        amount: 2499,
+        paymentMode: 'UPI',
+        staffName: 'Simran',
+        customerName: 'Rahul Verma',
+        billNumber: 'CB-1042',
+        overrideNeuralVoice: voiceId
+      });
+    }, 350);
+  };
+
   const handleBroadcast = (type, text) => {
     speakStoreBroadcast(type, text);
   };
@@ -166,6 +183,10 @@ export default function SoundboxModal({ isOpen, onClose }) {
     if (!settings.actorPersona || settings.actorPersona === 'none') return null;
     return BOLLYWOOD_ACTORS[settings.actorPersona] || null;
   }, [settings.actorPersona]);
+
+  const activeNeuralVoice = useMemo(() => {
+    return NEURAL_VOICES[settings.neuralVoiceId || 'madhur'] || NEURAL_VOICES.madhur;
+  }, [settings.neuralVoiceId]);
 
   // Filter and sort voices: prioritize Indian English and Hindi
   const sortedVoices = useMemo(() => {
@@ -193,10 +214,10 @@ export default function SoundboxModal({ isOpen, onClose }) {
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base sm:text-lg font-black tracking-wide text-white">
-                  COBB SOUNDBOX &bull; BOLLYWOOD CELEBRITY EDITION
+                  COBB SOUNDBOX &bull; NEURAL STUDIO &amp; CELEBRITY EDITION
                 </h2>
-                <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/30">
-                  10 STARS
+                <span className="px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  OPTION C &bull; STUDIO HD
                 </span>
               </div>
               <p className="text-xs text-slate-400 font-mono">
@@ -226,6 +247,21 @@ export default function SoundboxModal({ isOpen, onClose }) {
           >
             <Radio className="w-4 h-4" />
             <span>Soundbox Device</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('neural')}
+            className={`py-3 px-3 sm:px-4 border-b-2 flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === 'neural'
+                ? 'border-amber-400 text-amber-300 bg-amber-500/10'
+                : 'border-transparent text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Sparkles className="w-4 h-4 text-amber-400" />
+            <span className="font-black">🎙️ Neural Studio HD (Option C)</span>
+            {settings.useNeuralVoice && (
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+            )}
           </button>
 
           <button
@@ -317,6 +353,8 @@ export default function SoundboxModal({ isOpen, onClose }) {
                           </div>
                         ) : activeActorObj ? (
                           <span className="text-3xl filter drop-shadow">{activeActorObj.avatar}</span>
+                        ) : settings.useNeuralVoice ? (
+                          <span className="text-3xl filter drop-shadow">{activeNeuralVoice.avatar}</span>
                         ) : settings.mode === 'muted' ? (
                           <VolumeX className="w-8 h-8 text-rose-400" />
                         ) : (
@@ -332,12 +370,14 @@ export default function SoundboxModal({ isOpen, onClose }) {
                           ? 'bg-emerald-500 text-slate-950 border-emerald-400 animate-pulse'
                           : activeActorObj
                           ? 'bg-rose-500 text-white border-rose-400'
+                          : settings.useNeuralVoice
+                          ? 'bg-amber-500 text-slate-950 border-amber-400'
                           : settings.mode === 'muted'
                           ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
                           : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/40'
                       }`}
                     >
-                      {isSpeaking ? 'Speaking' : activeActorObj ? activeActorObj.name.split(' ')[0] : settings.mode === 'muted' ? 'Muted' : 'Standby'}
+                      {isSpeaking ? 'Speaking' : activeActorObj ? activeActorObj.name.split(' ')[0] : settings.useNeuralVoice ? activeNeuralVoice.name.split(' ')[0] : settings.mode === 'muted' ? 'Muted' : 'Standby'}
                     </span>
                   </div>
 
@@ -348,7 +388,7 @@ export default function SoundboxModal({ isOpen, onClose }) {
                       <div className="flex items-center justify-between text-[10px] text-cyan-400 font-bold uppercase tracking-wider">
                         <span>📟 COBB-BOX-001</span>
                         <span>
-                          {activeActorObj ? `STAR: ${activeActorObj.name.toUpperCase()}` : `${settings.language.toUpperCase()}`} &bull; VOL {Math.round(settings.volume * 100)}%
+                          {activeActorObj ? `STAR: ${activeActorObj.name.toUpperCase()}` : settings.useNeuralVoice ? `HD: ${activeNeuralVoice.name.toUpperCase()}` : `${settings.language.toUpperCase()}`} &bull; VOL {Math.round(settings.volume * 100)}%
                         </span>
                       </div>
                       <p className="text-xs sm:text-sm font-black text-white truncate">
@@ -392,6 +432,52 @@ export default function SoundboxModal({ isOpen, onClose }) {
                       </button>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              {/* OPTION C: NEURAL STUDIO HD BANNER */}
+              <div
+                onClick={() => setActiveTab('neural')}
+                className={`p-4 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
+                  settings.useNeuralVoice
+                    ? 'bg-gradient-to-r from-amber-950/40 via-yellow-950/30 to-slate-900 border-amber-500/40 shadow-lg shadow-amber-950/30'
+                    : 'bg-white/5 hover:bg-white/10 border-white/10'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="text-3xl p-2 rounded-xl bg-white/10 shrink-0">
+                    {activeNeuralVoice ? activeNeuralVoice.avatar : '🎙️'}
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black text-white">
+                        {settings.useNeuralVoice ? `${activeNeuralVoice.name} (Option C HD)` : 'Neural Studio HD Voices (Option C)'}
+                      </span>
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                        {settings.useNeuralVoice ? 'STUDIO HD' : 'OPTION C'}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-300 mt-0.5 font-mono italic">
+                      "{activeNeuralVoice ? activeNeuralVoice.tagline : 'Authentic human baritone studio voice • Zero dialogues or jokes'}"
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleTestNeuralVoice(settings.neuralVoiceId || 'madhur');
+                    }}
+                    className="py-1.5 px-3 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold transition flex items-center gap-1 active:scale-95 cursor-pointer"
+                    title="Test Neural Studio Announcer"
+                  >
+                    <Play className="w-3 h-3 fill-current" />
+                    <span>Test HD</span>
+                  </button>
+                  <span className="p-1.5 rounded-lg bg-amber-500/20 text-amber-300 text-xs font-bold">
+                    &rarr;
+                  </span>
                 </div>
               </div>
 
@@ -587,6 +673,134 @@ export default function SoundboxModal({ isOpen, onClose }) {
                 </div>
               </div>
 
+            </div>
+          )}
+
+          {/* TAB: NEURAL STUDIO HD VOICES (OPTION C) */}
+          {activeTab === 'neural' && (
+            <div className="space-y-5">
+              <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-950/40 via-yellow-950/40 to-slate-900 border border-amber-500/30 flex items-start gap-3 text-xs text-amber-200">
+                <Sparkles className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-white mb-1">
+                    Option C: High-Fidelity Indian Neural Voices (Studio HD)
+                  </p>
+                  <p>
+                    Powered by high-fidelity Indian neural voices (e.g. <strong>hi-IN-MadhurNeural</strong>). Announcements speak strictly payment transactions (e.g. <em>"कौब पुंडरी पर 2,499 रुपये प्राप्त हुए यूपीआई द्वारा"</em>) with authentic human studio announcer timbre—<strong>zero movie dialogues, jokes, or catchphrases</strong>.
+                  </p>
+                </div>
+              </div>
+
+              {/* Master HD Toggle */}
+              <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between">
+                <div>
+                  <div className="text-xs font-black text-white flex items-center gap-2">
+                    <Zap className="w-4 h-4 text-amber-400" />
+                    <span>Neural Studio HD Speech</span>
+                    <span className="px-1.5 py-0.2 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded text-[9px] font-mono font-bold uppercase">
+                      Recommended
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Plays human studio audio instead of robotic browser text-to-speech.
+                  </p>
+                </div>
+
+                <div
+                  onClick={() => updateSetting('useNeuralVoice', !settings.useNeuralVoice)}
+                  className="cursor-pointer"
+                >
+                  <div className={`w-11 h-6 rounded-full p-1 transition-colors ${settings.useNeuralVoice ? 'bg-amber-500' : 'bg-slate-700'}`}>
+                    <div className={`w-4 h-4 rounded-full bg-white transition-transform ${settings.useNeuralVoice ? 'translate-x-5' : 'translate-x-0'}`} />
+                  </div>
+                </div>
+              </div>
+
+              {/* 4 Neural Voices Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {Object.values(NEURAL_VOICES).map((voice) => {
+                  const isSelected = settings.neuralVoiceId === voice.id && settings.useNeuralVoice;
+                  return (
+                    <div
+                      key={voice.id}
+                      className={`p-4 rounded-2xl border transition-all flex flex-col justify-between space-y-3 relative overflow-hidden ${
+                        isSelected
+                          ? 'bg-gradient-to-br from-amber-950/40 via-slate-900 to-indigo-950/40 border-amber-400 shadow-xl shadow-amber-950/40'
+                          : 'bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/[0.07]'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <span className="text-3xl p-2 rounded-2xl bg-black/40 border border-white/10 shrink-0 shadow-inner">
+                            {voice.avatar}
+                          </span>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="text-sm font-black text-white">{voice.name}</h3>
+                              {isSelected && (
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-black uppercase tracking-wider bg-amber-500 text-slate-950 font-bold">
+                                  ACTIVE
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-[11px] font-mono text-amber-300 block">
+                              {voice.actorStyle}
+                            </span>
+                          </div>
+                        </div>
+
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded uppercase font-bold bg-amber-500/10 text-amber-300 border border-amber-500/20 shrink-0">
+                          {voice.badge}
+                        </span>
+                      </div>
+
+                      <div className="p-2.5 rounded-xl bg-black/40 border border-white/5 text-xs font-mono italic text-slate-300">
+                        "{voice.tagline}"
+                      </div>
+
+                      <div className="flex items-center gap-2 pt-1">
+                        <button
+                          onClick={() => handleTestNeuralVoice(voice.id)}
+                          className="flex-1 py-2 px-3 rounded-xl bg-white/10 hover:bg-white/15 text-slate-200 border border-white/10 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                          title={`Listen to sample studio announcement by ${voice.name}`}
+                        >
+                          <Play className="w-3.5 h-3.5 fill-current text-amber-400" />
+                          <span>Test Voice</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            updateSetting('neuralVoiceId', voice.id);
+                            updateSetting('useNeuralVoice', true);
+                            updateSetting('actorPersona', 'none');
+                            handleTestNeuralVoice(voice.id);
+                          }}
+                          className={`py-2 px-4 rounded-xl text-xs font-black transition flex items-center gap-1.5 cursor-pointer active:scale-95 ${
+                            isSelected
+                              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/30'
+                              : 'bg-gradient-to-r from-amber-600 to-yellow-600 hover:from-amber-500 hover:to-yellow-500 text-white'
+                          }`}
+                        >
+                          {isSelected ? (
+                            <>
+                              <Check className="w-3.5 h-3.5" />
+                              <span>Selected</span>
+                            </>
+                          ) : (
+                            <span>Select Voice</span>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Quick Info Box */}
+              <div className="p-3.5 rounded-xl bg-black/40 border border-white/5 text-xs text-slate-400 font-mono flex items-center justify-between">
+                <span>⚡ Pre-rendered offline studio audio ready for ₹2,499 &amp; common announcements</span>
+                <span className="text-amber-400 font-bold">100% Studio Quality</span>
+              </div>
             </div>
           )}
 

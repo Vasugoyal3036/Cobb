@@ -47,6 +47,9 @@ app.use('/api/whatsapp/concierge', whatsappConciergeRouter);
 const alterationsRouter = require('./routes/alterations');
 app.use('/api/alterations', alterationsRouter);
 
+const soundboxRouter = require('./routes/soundbox');
+app.use('/api/soundbox', soundboxRouter);
+
 
 const GlobalNodeCache = require('node-cache');
 const globalApiCache = new GlobalNodeCache({ stdTTL: 180 }); // Default fallback
@@ -125,6 +128,10 @@ app.post('/api/cache/invalidate-sales', (req, res) => {
     invalidateSalesCache();
     res.json({ success: true, message: 'Sales cache cleared' });
 });
+
+// Soundbox Neural Voice TTS API
+app.use('/api/soundbox', require('./routes/soundbox'));
+
 // Serve the compiled frontend UI so it can be accessed on a phone via tunneling port 5000
 const frontendPath = path.join(__dirname, '../cobb-ui/dist');
 if (fs.existsSync(frontendPath)) {
