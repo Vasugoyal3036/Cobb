@@ -1750,5 +1750,53 @@
     "reason": "checkout",
     "status": "sent",
     "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-10-13T18:30:46.594819",
+    "date": "2026-10-13",
+    "time": "06:30 PM",
+    "billNo": "STST27-00802   ",
+    "cmId": "ST01127000STST27-00802",
+    "customerName": "Santosh Bansal",
+    "phone": "8053524400",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-10-13T18:39:24.650891",
+    "date": "2026-10-13",
+    "time": "06:39 PM",
+    "billNo": "STST27-00803   ",
+    "cmId": "ST01127000STST27-00803",
+    "customerName": "Santosh Bansal",
+    "phone": "8053524400",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-10-13T19:10:39.575841",
+    "date": "2026-10-13",
+    "time": "07:10 PM",
+    "billNo": "STST27-00804   ",
+    "cmId": "ST01127000STST27-00804",
+    "customerName": "Mohit",
+    "phone": "7419003499",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-10-14T10:35:41.570499",
+    "date": "2026-10-14",
+    "time": "10:35 AM",
+    "billNo": "STST27-00805   ",
+    "cmId": "ST01127000STST27-00805",
+    "customerName": "Simren Vest",
+    "phone": "9728277798",
+    "reason": "exchange",
+    "status": "sent",
+    "detail": "Official Exchange Slip sent"
   }
 ]
