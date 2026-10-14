@@ -53,17 +53,12 @@ export const getSoundboxSettings = () => {
         voiceEnabled: legacy.voiceEnabled,
         mode: parsed.mode || 'voice_and_chime',
         language: parsed.language || 'hinglish',
-        actorPersona: parsed.actorPersona || 'none',
         useNeuralVoice: parsed.useNeuralVoice !== undefined ? Boolean(parsed.useNeuralVoice) : true,
-        neuralVoiceId: parsed.neuralVoiceId || 'madhur',
-        speechRate: Number(parsed.speechRate || 1.0),
-        speechPitch: Number(parsed.speechPitch || 1.0),
         volume: Number(parsed.volume !== undefined ? parsed.volume : 1.0),
         announceStoreName: parsed.announceStoreName !== undefined ? Boolean(parsed.announceStoreName) : true,
-        announceStaffName: parsed.announceStaffName !== undefined ? Boolean(parsed.announceStaffName) : true,
+        announceStaffName: parsed.announceStaffName !== undefined ? Boolean(parsed.announceStaffName) : false,
         announceMode: parsed.announceMode !== undefined ? Boolean(parsed.announceMode) : true,
-        minAmount: Number(parsed.minAmount || 0),
-        selectedVoiceURI: parsed.selectedVoiceURI || ''
+        minAmount: Number(parsed.minAmount || 0)
       };
     }
   } catch (e) {}
@@ -74,17 +69,12 @@ export const getSoundboxSettings = () => {
     voiceEnabled: legacy.voiceEnabled,
     mode: 'voice_and_chime',
     language: 'english',
-    actorPersona: 'none',
     useNeuralVoice: false,
-    neuralVoiceId: 'madhur',
-    speechRate: 1.05,
-    speechPitch: 1.0,
     volume: 1.0,
     announceStoreName: false,
     announceStaffName: false,
     announceMode: true,
-    minAmount: 0,
-    selectedVoiceURI: ''
+    minAmount: 0
   };
 };
 
@@ -279,59 +269,19 @@ export const playCheckoutChime = (externalCtx = null) => {
 };
 
 /**
- * Option C: High-Fidelity Indian Neural Voices (Edge Neural TTS)
- * Natural human studio announcers with zero robotic artifacts.
+ * Single Clear Male Voice Announcer (Madhur Baritone)
+ * Authentic Indian studio male voice for reading checkout bills.
  */
-export const NEURAL_VOICES = {
-  madhur: {
-    id: 'madhur',
-    name: 'Madhur (Deep Baritone)',
-    actorStyle: 'Deep Baritone Studio Announcer',
-    gender: 'Male',
-    lang: 'hi-IN',
-    tagline: 'Deep Indian Studio Baritone (Authentic News & Store Announcer)',
-    avatar: '🎙️',
-    badge: 'Recommended HD',
-    sampleFile: '/audio/neural/test_madhur_2499.mp3',
-    edgeVoice: 'hi-IN-MadhurNeural'
-  },
-  swara: {
-    id: 'swara',
-    name: 'Swara (Studio Hindi)',
-    actorStyle: 'Smooth Hindi Studio Announcer',
-    gender: 'Female',
-    lang: 'hi-IN',
-    tagline: 'Natural Hindi Female Studio Announcer',
-    avatar: '🌸',
-    badge: 'Hindi HD',
-    sampleFile: '/audio/neural/test_swara_2499.mp3',
-    edgeVoice: 'hi-IN-SwaraNeural'
-  },
-  prabhat: {
-    id: 'prabhat',
-    name: 'Prabhat (Indian English)',
-    actorStyle: 'Executive Retail Announcer',
-    gender: 'Male',
-    lang: 'en-IN',
-    tagline: 'Executive Indian English Male Announcer',
-    avatar: '👔',
-    badge: 'English HD',
-    sampleFile: '/audio/neural/test_prabhat_2499.mp3',
-    edgeVoice: 'en-IN-PrabhatNeural'
-  },
-  neerja: {
-    id: 'neerja',
-    name: 'Neerja (Indian English)',
-    actorStyle: 'Fluent English Anchor',
-    gender: 'Female',
-    lang: 'en-IN',
-    tagline: 'Clear Fluent Indian English Female Announcer',
-    avatar: '💼',
-    badge: 'English HD',
-    sampleFile: '/audio/neural/test_neerja_2499.mp3',
-    edgeVoice: 'en-IN-NeerjaNeural'
-  }
+export const CLEAR_MALE_VOICE = {
+  id: 'madhur',
+  name: 'Madhur (Clear Studio Baritone)',
+  edgeVoice: 'hi-IN-MadhurNeural',
+  tagline: 'Clear, deep Indian male studio announcer for store checkouts.',
+  avatar: '🎙️'
 };
+
+// Backwards compatibility aliases
+export const NEURAL_VOICES = { madhur: CLEAR_MALE_VOICE };
 
 let currentActiveAudio = null;
 
@@ -350,10 +300,8 @@ export const stopNeuralSpeechAudio = () => {
 
 export const playNeuralSpeechAudio = async ({
   text,
-  voiceId = 'madhur',
   amount = 0,
-  isReplay = false,
-  broadcastType = ''
+  isReplay = false
 }) => {
   if (typeof window === 'undefined' || typeof window.Audio === 'undefined') return false;
 
@@ -363,27 +311,11 @@ export const playNeuralSpeechAudio = async ({
     let staticUrl = null;
     const cleanAmount = Math.round(Number(amount || 0));
 
-    // Instant static asset match (Zero latency & works offline on Firebase hosting)
-    if (broadcastType === 'welcome') {
-      if (voiceId === 'swara') staticUrl = '/audio/neural/welcome_swara.mp3';
-      else if (voiceId === 'prabhat' || voiceId === 'neerja') staticUrl = '/audio/neural/welcome_prabhat.mp3';
-      else staticUrl = '/audio/neural/welcome_madhur.mp3';
-    } else if (broadcastType === 'offer') {
-      if (voiceId === 'swara') staticUrl = '/audio/neural/offer_swara.mp3';
-      else staticUrl = '/audio/neural/offer_madhur.mp3';
-    } else if (broadcastType === 'closing') {
-      staticUrl = '/audio/neural/closing_madhur.mp3';
-    } else if (!isReplay) {
-      if (cleanAmount === 2499) {
-        if (voiceId === 'swara') staticUrl = '/audio/neural/test_swara_2499.mp3';
-        else if (voiceId === 'prabhat') staticUrl = '/audio/neural/test_prabhat_2499.mp3';
-        else if (voiceId === 'neerja') staticUrl = '/audio/neural/test_neerja_2499.mp3';
-        else staticUrl = '/audio/neural/test_madhur_2499.mp3';
-      } else if (cleanAmount === 1499 && voiceId === 'madhur') {
-        staticUrl = '/audio/neural/test_madhur_1499.mp3';
-      } else if (cleanAmount === 4999 && voiceId === 'madhur') {
-        staticUrl = '/audio/neural/test_madhur_4999.mp3';
-      }
+    // Pre-rendered instant static assets for common checkout amounts & test bench
+    if (!isReplay) {
+      if (cleanAmount === 2499) staticUrl = '/audio/neural/test_madhur_2499.mp3';
+      else if (cleanAmount === 1499) staticUrl = '/audio/neural/test_madhur_1499.mp3';
+      else if (cleanAmount === 4999) staticUrl = '/audio/neural/test_madhur_4999.mp3';
     }
 
     let audioSrc = staticUrl;
@@ -399,7 +331,7 @@ export const playNeuralSpeechAudio = async ({
         const response = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text, voice: voiceId }),
+          body: JSON.stringify({ text, voice: 'madhur' }),
           signal: controller.signal
         });
         clearTimeout(timeoutId);
@@ -425,7 +357,7 @@ export const playNeuralSpeechAudio = async ({
       detail: {
         spokenText: text,
         amount: cleanAmount,
-        neuralVoice: voiceId,
+        voice: 'madhur',
         isReplay
       }
     }));
@@ -449,201 +381,18 @@ export const playNeuralSpeechAudio = async ({
   }
 };
 
-/**
- * 10-Actor Bollywood Superstar & Comedy Legends Pack
- * Signature voice parameters, catchphrases, jackpot reactions, and tannoy broadcasts.
- */
-export const BOLLYWOOD_ACTORS = {
-  amitabh: {
-    id: 'amitabh',
-    name: 'Amitabh Bachchan',
-    character: 'Deep Baritone Voice',
-    avatar: '🎙️',
-    category: 'titans',
-    pitch: 0.78,
-    rate: 0.90,
-    chimeType: 'chime',
-    tagline: 'Deep Baritone Hindi Announcement',
-    formatAnnouncement: ({ amount, paymentMode, staffName, isReplay }) => {
-      const prefix = isReplay ? 'Dobara suchna: ' : '';
-      const staff = staffName ? `. Billed by ${staffName}` : '';
-      return `${prefix}Cobb Pundri par Rupees ${amount.toLocaleString('en-IN')} praapt hue ${paymentMode} dwara${staff}.`;
-    },
-    tannoy: 'Cobb Pundri showroom mein aap sabhi grahakon ka swagat hai. Aaj ke vishesh offers ki jaankari counter par praapt karein.'
-  },
-  srk: {
-    id: 'srk',
-    name: 'Shah Rukh Khan',
-    character: 'Charismatic Tenor Voice',
-    avatar: '👑',
-    category: 'titans',
-    pitch: 1.05,
-    rate: 1.02,
-    chimeType: 'chime',
-    tagline: 'Warm Expressive English & Hinglish',
-    formatAnnouncement: ({ amount, paymentMode, staffName, isReplay }) => {
-      const prefix = isReplay ? 'Repeat: ' : '';
-      const staff = staffName ? `. Billed by ${staffName}` : '';
-      return `${prefix}Cobb Pundri: Rupees ${amount.toLocaleString('en-IN')} received via ${paymentMode}${staff}.`;
-    },
-    tannoy: 'Welcome to Cobb Pundri. Please visit the billing counter for special store discounts on shirts and denims.'
-  },
-  salman: {
-    id: 'salman',
-    name: 'Salman Khan',
-    character: 'Punchy Swagger Voice',
-    avatar: '🕶️',
-    category: 'titans',
-    pitch: 0.92,
-    rate: 0.98,
-    chimeType: 'kaching',
-    tagline: 'Bold Direct Hindi Announcement',
-    formatAnnouncement: ({ amount, paymentMode, staffName, isReplay }) => {
-      const prefix = isReplay ? 'Dobara suchit kiya jata hai: ' : '';
-      const staff = staffName ? `. Billed by ${staffName}` : '';
-      return `${prefix}Cobb Pundri par Rupees ${amount.toLocaleString('en-IN')} ${paymentMode} se receive hue${staff}.`;
-    },
-    tannoy: 'Cobb Pundri par sabhi grahakon ka swagat hai. Kripya counter par billing aur offers ki jaankari lein.'
-  },
-  sunny: {
-    id: 'sunny',
-    name: 'Sunny Deol',
-    character: 'Powerful Resonant Voice',
-    avatar: '💥',
-    category: 'titans',
-    pitch: 0.85,
-    rate: 1.0,
-    chimeType: 'kaching',
-    tagline: 'High Impact Solid Announcement',
-    formatAnnouncement: ({ amount, paymentMode, staffName, isReplay }) => {
-      const prefix = isReplay ? 'Dobara suniye: ' : '';
-      const staff = staffName ? `. Billed by ${staffName}` : '';
-      return `${prefix}Cobb Pundri par Rupees ${amount.toLocaleString('en-IN')} ki payment confirm ho gayi ${paymentMode} par${staff}.`;
-    },
-    tannoy: 'Cobb Pundri showroom mein naye collection par flat discount uplabdh hai. Kripya counter par sampark karein.'
-  },
-  babu_bhaiya: {
-    id: 'babu_bhaiya',
-    name: 'Paresh Rawal',
-    character: 'Sharp Expressive Hindi Voice',
-    avatar: '👓',
-    category: 'comedy',
-    pitch: 1.10,
-    rate: 1.05,
-    chimeType: 'kaching',
-    tagline: 'Fast Natural Hindi Announcement',
-    formatAnnouncement: ({ amount, paymentMode, staffName, isReplay }) => {
-      const prefix = isReplay ? 'Dobara suchna: ' : '';
-      const staff = staffName ? `. Billed by ${staffName}` : '';
-      return `${prefix}Cobb Pundri par Rupees ${amount.toLocaleString('en-IN')} praapt hue ${paymentMode} ke dwara${staff}.`;
-    },
-    tannoy: 'Cobb Pundri showroom mein aapka swagat hai. Billing counter khula hai.'
-  },
-  raju: {
-    id: 'raju',
-    name: 'Akshay Kumar',
-    character: 'Energetic Crisp Voice',
-    avatar: '🕺',
-    category: 'comedy',
-    pitch: 1.02,
-    rate: 1.08,
-    chimeType: 'jackpot',
-    tagline: 'Crisp Upbeat Bill Announcement',
-    formatAnnouncement: ({ amount, paymentMode, staffName, isReplay }) => {
-      const prefix = isReplay ? 'Repeat: ' : '';
-      const staff = staffName ? `. Billed by ${staffName}` : '';
-      return `${prefix}Cobb Pundri par Rupees ${amount.toLocaleString('en-IN')} received on ${paymentMode}${staff}.`;
-    },
-    tannoy: 'Welcome to Cobb Pundri. Buy 3 Get 70% off flat discount is currently active on selected garments.'
-  },
-  nana: {
-    id: 'nana',
-    name: 'Nana Patekar',
-    character: 'Intense Staccato Voice',
-    avatar: '🎭',
-    category: 'comedy',
-    pitch: 0.90,
-    rate: 1.08,
-    chimeType: 'chime',
-    tagline: 'Staccato Firm Delivery',
-    formatAnnouncement: ({ amount, paymentMode, staffName, isReplay }) => {
-      const prefix = isReplay ? 'Dobara suchna: ' : '';
-      const staff = staffName ? `. Billed by ${staffName}` : '';
-      return `${prefix}Cobb Pundri par Rupees ${amount.toLocaleString('en-IN')} safaltapoorvak praapt hue ${paymentMode} se${staff}.`;
-    },
-    tannoy: 'Cobb Pundri mein aap sabhi ka swagat hai. Quality kapde aur discount counter par uplabdh hain.'
-  },
-  munna_bhai: {
-    id: 'munna_bhai',
-    name: 'Sanjay Dutt',
-    character: 'Relaxed Deep Voice',
-    avatar: '🩺',
-    category: 'comedy',
-    pitch: 0.88,
-    rate: 0.94,
-    chimeType: 'chime',
-    tagline: 'Deep Smooth Indian Tone',
-    formatAnnouncement: ({ amount, paymentMode, staffName, isReplay }) => {
-      const prefix = isReplay ? 'Dobara suniye: ' : '';
-      const staff = staffName ? `. Billed by ${staffName}` : '';
-      return `${prefix}Cobb Pundri par Rupees ${amount.toLocaleString('en-IN')} praapt hue ${paymentMode} dwara${staff}.`;
-    },
-    tannoy: 'Cobb Pundri mein aapka swagat hai. Billing counter ready hai.'
-  },
-  ranveer: {
-    id: 'ranveer',
-    name: 'Ranveer Singh',
-    character: 'High-Tempo Vibrant Voice',
-    avatar: '⚡',
-    category: 'cult',
-    pitch: 1.12,
-    rate: 1.15,
-    chimeType: 'airhorn',
-    tagline: 'Fast Vibrant Payment Announcement',
-    formatAnnouncement: ({ amount, paymentMode, staffName, isReplay }) => {
-      const prefix = isReplay ? 'Repeat: ' : '';
-      const staff = staffName ? `. Billed by ${staffName}` : '';
-      return `${prefix}Cobb Pundri: Rupees ${amount.toLocaleString('en-IN')} payment successful via ${paymentMode}${staff}.`;
-    },
-    tannoy: 'Welcome to Cobb Pundri. Check out our latest apparel collection and festive offers!'
-  },
-  mogambo: {
-    id: 'mogambo',
-    name: 'Amrish Puri',
-    character: 'Resonant Bass Voice',
-    avatar: '🦹',
-    category: 'cult',
-    pitch: 0.72,
-    rate: 0.85,
-    chimeType: 'kaching',
-    tagline: 'Ultra-Deep Resonant Bass',
-    formatAnnouncement: ({ amount, paymentMode, staffName, isReplay }) => {
-      const prefix = isReplay ? 'Dobara suchit kiya jata hai: ' : '';
-      const staff = staffName ? `. Billed by ${staffName}` : '';
-      return `${prefix}Cobb Pundri par Rupees ${amount.toLocaleString('en-IN')} ki payment praapt hui ${paymentMode} dwara${staff}.`;
-    },
-    tannoy: 'Cobb Pundri showroom mein sabhi grahakon ka hardik swagat hai.'
-  }
-};
+export const BOLLYWOOD_ACTORS = {};
 
-const fallbackSpeakSynthesis = (utterance, spokenText, cleanAmount, paymentMode, staffName, actor, isReplay, settings) => {
+const fallbackSpeakSynthesis = (utterance, spokenText, cleanAmount, paymentMode, staffName, isReplay, settings) => {
   if (typeof window === 'undefined' || !window.speechSynthesis) return;
 
   const voices = window.speechSynthesis.getVoices();
   if (voices && voices.length > 0) {
-    if (settings.selectedVoiceURI) {
-      const customVoice = voices.find(v => v.voiceURI === settings.selectedVoiceURI);
-      if (customVoice) utterance.voice = customVoice;
-    }
-    if (!utterance.voice) {
-      if (actor || settings.language === 'hindi') {
-        const hiVoice = voices.find(v => v.lang === 'hi-IN' || v.lang.startsWith('hi'));
-        if (hiVoice) utterance.voice = hiVoice;
-      }
-      if (!utterance.voice) {
-        const indianVoice = voices.find(v => v.lang === 'en-IN' || v.lang.includes('IN'));
-        if (indianVoice) utterance.voice = indianVoice;
-      }
+    const hiVoice = voices.find(v => v.lang === 'hi-IN' || v.lang.startsWith('hi'));
+    if (hiVoice) utterance.voice = hiVoice;
+    else {
+      const indianVoice = voices.find(v => v.lang === 'en-IN' || v.lang.includes('IN'));
+      if (indianVoice) utterance.voice = indianVoice;
     }
   }
 
@@ -654,7 +403,6 @@ const fallbackSpeakSynthesis = (utterance, spokenText, cleanAmount, paymentMode,
       amount: cleanAmount,
       paymentMode,
       staffName,
-      actor: actor ? actor.name : null,
       isReplay
     }
   }));
@@ -670,7 +418,7 @@ const fallbackSpeakSynthesis = (utterance, spokenText, cleanAmount, paymentMode,
 };
 
 /**
- * Text-to-speech counter announcement (Soundbox mode V2 with Neural Studio & Bollywood Support)
+ * Reads the checkout bill out loud using a single clear male studio voice
  */
 export const speakCheckoutVoice = ({
   amount,
@@ -679,9 +427,7 @@ export const speakCheckoutVoice = ({
   customerName = '',
   billNumber = '',
   isReplay = false,
-  customText = null,
-  overrideActor = null,
-  overrideNeuralVoice = null
+  customText = null
 }) => {
   const settings = getSoundboxSettings();
   if (!settings.voiceEnabled || settings.mode === 'muted' || settings.mode === 'chime_only') {
@@ -690,7 +436,7 @@ export const speakCheckoutVoice = ({
   if (typeof window === 'undefined' || !window.speechSynthesis) return;
 
   try {
-    window.speechSynthesis.cancel(); // Cancel any prior speech
+    window.speechSynthesis.cancel();
     stopNeuralSpeechAudio();
 
     const cleanAmount = Math.round(Number(amount || 0));
@@ -710,28 +456,9 @@ export const speakCheckoutVoice = ({
       return;
     }
 
-    const activeActorId = overrideActor || settings.actorPersona;
-    const actor = (activeActorId && activeActorId !== 'none') ? BOLLYWOOD_ACTORS[activeActorId] : null;
-
     let spokenText = '';
-    let speechPitch = Number(settings.speechPitch || 1.0);
-    let speechRate = Number(settings.speechRate || 1.0);
-
     if (customText) {
       spokenText = customText;
-    } else if (actor) {
-      const isJackpot = cleanAmount >= 10000;
-      const isBigBill = cleanAmount >= 3000;
-      spokenText = actor.formatAnnouncement({
-        amount: cleanAmount,
-        paymentMode,
-        staffName,
-        isReplay,
-        isBigBill,
-        isJackpot
-      });
-      speechPitch = actor.pitch;
-      speechRate = actor.rate;
     } else if (settings.language === 'hindi') {
       const prefix = isReplay ? 'Dobara suchna: ' : '';
       const store = settings.announceStoreName ? 'Cobb Pundri mein ' : '';
@@ -753,49 +480,36 @@ export const speakCheckoutVoice = ({
     }
 
     const utterance = new SpeechSynthesisUtterance(spokenText);
-    utterance.rate = speechRate;
-    utterance.pitch = speechPitch;
+    utterance.rate = 1.0;
+    utterance.pitch = 0.95; // Deep clear male timbre
     utterance.volume = Number(settings.volume !== undefined ? settings.volume : 1.0);
 
-    // If Neural Studio Voice is enabled and Audio is supported in browser
-    const shouldUseNeural = (overrideNeuralVoice !== null) || settings.useNeuralVoice;
-    if (shouldUseNeural && typeof window !== 'undefined' && typeof window.Audio !== 'undefined') {
-      const neuralVoice = overrideNeuralVoice || settings.neuralVoiceId || (actor ? 'madhur' : 'madhur');
-
-      // Build clean Hindi or English string for Edge Neural
+    // Use single clear male neural voice (Madhur) whenever available
+    if (settings.useNeuralVoice && typeof window !== 'undefined' && typeof window.Audio !== 'undefined') {
       let neuralText = spokenText;
       if (!customText) {
-        if (neuralVoice === 'madhur' || neuralVoice === 'swara') {
-          const store = settings.announceStoreName ? 'कौब पुंडरी पर ' : '';
-          const mode = settings.announceMode ? ` ${paymentMode} द्वारा` : '';
-          const staff = (settings.announceStaffName && staffName) ? `। बिलर ${staffName}` : '';
-          const prefix = isReplay ? 'दोबारा सुनिए: ' : '';
-          neuralText = `${prefix}${store}${cleanAmount.toLocaleString('en-IN')} रुपये प्राप्त हुए${mode}${staff}।`;
-        } else {
-          const store = settings.announceStoreName ? 'Cobb Pundri: ' : '';
-          const mode = settings.announceMode ? ` received via ${paymentMode}` : ' received';
-          const staff = (settings.announceStaffName && staffName) ? `. Billed by ${staffName}` : '';
-          const prefix = isReplay ? 'Repeat: ' : '';
-          neuralText = `${prefix}${store}Rupees ${cleanAmount.toLocaleString('en-IN')}${mode}${staff}.`;
-        }
+        const store = settings.announceStoreName ? 'कौब पुंडरी पर ' : '';
+        const mode = settings.announceMode ? ` ${paymentMode} द्वारा` : '';
+        const staff = (settings.announceStaffName && staffName) ? `। बिलर ${staffName}` : '';
+        const prefix = isReplay ? 'दोबारा सुनिए: ' : '';
+        neuralText = `${prefix}${store}${cleanAmount.toLocaleString('en-IN')} रुपये प्राप्त हुए${mode}${staff}।`;
       }
 
       playNeuralSpeechAudio({
         text: neuralText,
-        voiceId: neuralVoice,
         amount: cleanAmount,
         isReplay
       }).then((success) => {
         if (!success) {
-          fallbackSpeakSynthesis(utterance, spokenText, cleanAmount, paymentMode, staffName, actor, isReplay, settings);
+          fallbackSpeakSynthesis(utterance, spokenText, cleanAmount, paymentMode, staffName, isReplay, settings);
         }
       }).catch(() => {
-        fallbackSpeakSynthesis(utterance, spokenText, cleanAmount, paymentMode, staffName, actor, isReplay, settings);
+        fallbackSpeakSynthesis(utterance, spokenText, cleanAmount, paymentMode, staffName, isReplay, settings);
       });
       return;
     }
 
-    fallbackSpeakSynthesis(utterance, spokenText, cleanAmount, paymentMode, staffName, actor, isReplay, settings);
+    fallbackSpeakSynthesis(utterance, spokenText, cleanAmount, paymentMode, staffName, isReplay, settings);
   } catch (e) {}
 };
 
@@ -1068,4 +782,3 @@ export const playAirhorn = (externalCtx = null) => {
     });
   } catch (e) {}
 };
-
