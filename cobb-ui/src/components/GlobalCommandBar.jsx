@@ -18,7 +18,8 @@ import {
   Loader2,
   Calendar,
   CheckCircle2,
-  Tag
+  Tag,
+  Crown
 } from 'lucide-react';
 
 export default function GlobalCommandBar({
@@ -142,6 +143,7 @@ export default function GlobalCommandBar({
       { id: 'alterations', title: '✂️ Alteration Desk', sub: 'Customer fit logs, tailor receipts & delivery', icon: Scissors, tab: 'alterations', keywords: ['alter', 'tailor', 'length', 'fitting', 'trouser'] },
       { id: 'depreciation_clock', title: '⏳ Dead Stock & Depreciation Clock', sub: 'Slow-moving inventory & markdown alerts', icon: Clock, tab: 'depreciation_clock', keywords: ['deadstock', 'ageing', 'discount', 'clearance'] },
       { id: 'ratings', title: '⭐ Customer Ratings & NPS Queue', sub: 'Feedback sentiment, reviews & CSAT', icon: Star, tab: 'ratings', keywords: ['nps', 'review', 'feedback', 'stars', 'satisfaction'] },
+      { id: 'godmode', title: '👑 Secret God Mode (Store Boss)', sub: 'Confetti explosion, slot counter & airhorns', icon: Crown, keywords: ['boss', 'godmode', 'cobb', 'secret', 'overlord', 'egg', 'confetti', 'airhorn', 'jackpot'], customAction: () => window.dispatchEvent(new CustomEvent('cobb_god_mode')) },
     ];
 
     if (!q) {
@@ -322,7 +324,11 @@ export default function GlobalCommandBar({
           bg: 'bg-amber-500/10',
           badge: 'Jump To Tab',
           action: () => {
-            if (setActiveTab) setActiveTab(act.tab);
+            if (act.customAction) {
+              act.customAction();
+            } else if (setActiveTab) {
+              setActiveTab(act.tab);
+            }
             onClose();
           }
         });

@@ -232,3 +232,131 @@ export const playMilestoneFanfare = (externalCtx = null) => {
     });
   } catch (e) {}
 };
+
+/**
+ * Arcade Slot Machine Jackpot Chime & Coin Cascade
+ */
+export const playJackpotChime = (externalCtx = null) => {
+  const { soundEnabled } = getSoundSettings();
+  if (!soundEnabled) return;
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    const ctx = externalCtx || new AudioContextClass();
+
+    // 8 rapid coin pings
+    const coinPitches = [987.77, 1174.66, 1318.51, 1567.98, 1760.00, 1975.53, 2093.00, 2637.02];
+    coinPitches.forEach((freq, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      const startTime = ctx.currentTime + idx * 0.055;
+      osc.frequency.setValueAtTime(freq, startTime);
+
+      gain.gain.setValueAtTime(0.01, startTime);
+      gain.gain.linearRampToValueAtTime(0.25, startTime + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.12);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(startTime);
+      osc.stop(startTime + 0.13);
+    });
+
+    // Triumphant chord finish
+    const chordTime = ctx.currentTime + coinPitches.length * 0.055 + 0.02;
+    [523.25, 659.25, 783.99, 1046.50, 1318.51].forEach((freq) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, chordTime);
+      gain.gain.setValueAtTime(0.01, chordTime);
+      gain.gain.linearRampToValueAtTime(0.2, chordTime + 0.03);
+      gain.gain.exponentialRampToValueAtTime(0.001, chordTime + 0.8);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(chordTime);
+      osc.stop(chordTime + 0.85);
+    });
+  } catch (e) {}
+};
+
+/**
+ * Metallic Cash Drawer Slide + Bell Ding (Ka-Ching!)
+ */
+export const playCashRegisterChaching = (externalCtx = null) => {
+  const { soundEnabled } = getSoundSettings();
+  if (!soundEnabled) return;
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    const ctx = externalCtx || new AudioContextClass();
+    const t = ctx.currentTime;
+
+    // Metallic ratchet clicks
+    [0, 0.025, 0.05].forEach((offset, idx) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(800 + idx * 250, t + offset);
+      gain.gain.setValueAtTime(0.12, t + offset);
+      gain.gain.exponentialRampToValueAtTime(0.01, t + offset + 0.02);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(t + offset);
+      osc.stop(t + offset + 0.025);
+    });
+
+    // Lingering brass bell ring
+    const bellOsc = ctx.createOscillator();
+    const bellGain = ctx.createGain();
+    bellOsc.type = 'sine';
+    bellOsc.frequency.setValueAtTime(2093.00, t + 0.07);
+    bellGain.gain.setValueAtTime(0.01, t + 0.07);
+    bellGain.gain.linearRampToValueAtTime(0.35, t + 0.08);
+    bellGain.gain.exponentialRampToValueAtTime(0.001, t + 1.2);
+    bellOsc.connect(bellGain);
+    bellGain.connect(ctx.destination);
+    bellOsc.start(t + 0.07);
+    bellOsc.stop(t + 1.2);
+  } catch (e) {}
+};
+
+/**
+ * Hip-Hop Stadium DJ Airhorn (b-b-b-baaaam!)
+ */
+export const playAirhorn = (externalCtx = null) => {
+  const { soundEnabled } = getSoundSettings();
+  if (!soundEnabled) return;
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    const ctx = externalCtx || new AudioContextClass();
+    const t = ctx.currentTime;
+
+    const blasts = [
+      { start: 0, dur: 0.11 },
+      { start: 0.14, dur: 0.11 },
+      { start: 0.28, dur: 0.42 }
+    ];
+
+    blasts.forEach(({ start, dur }) => {
+      const blastTime = t + start;
+      [466.16, 471.0].forEach((freq) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(freq, blastTime);
+        osc.frequency.linearRampToValueAtTime(freq * 0.96, blastTime + dur);
+
+        gain.gain.setValueAtTime(0.01, blastTime);
+        gain.gain.linearRampToValueAtTime(0.22, blastTime + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.01, blastTime + dur);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(blastTime);
+        osc.stop(blastTime + dur);
+      });
+    });
+  } catch (e) {}
+};
+

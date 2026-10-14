@@ -29,6 +29,7 @@ const WardrobePassportModal = lazy(() => import('./components/WardrobePassportMo
 const DenominationModal = lazy(() => import('./components/DenominationModal'));
 const SpeedBillingModal = lazy(() => import('./components/SpeedBillingModal'));
 import CelebrationModal from './components/CelebrationModal';
+import GodModeModal from './components/GodModeModal';
 
 import { fetchWithOfflineFallback, subscribeToData } from './utils/offlineDb';
 
@@ -3098,6 +3099,14 @@ export default function App() {
           targetProgress={targetProgress}
           DAILY_TARGET={DAILY_TARGET}
           todaySales={overviewStats?.today?.TotalSales || 0}
+          formatCurrency={formatCurrency}
+          darkMode={darkMode}
+        />
+
+        {/* Secret God Mode / Store Boss Easter Egg (Type 'cobb', Ctrl+Shift+C, or Konami Code) */}
+        <GodModeModal
+          overviewStats={overviewStats}
+          pnlData={pnlData}
           formatCurrency={formatCurrency}
           darkMode={darkMode}
         />
