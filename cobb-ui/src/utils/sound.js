@@ -5,6 +5,8 @@
 
 const STORAGE_KEY_SOUND = 'cobb_pos_sound_enabled';
 const STORAGE_KEY_VOICE = 'cobb_pos_voice_enabled';
+export const STORAGE_KEY_SOUNDBOX = 'cobb_soundbox_config_v2';
+export const STORAGE_KEY_LAST_BILL = 'cobb_last_checkout_bill';
 
 export const getSoundSettings = () => {
   if (typeof window === 'undefined') return { soundEnabled: true, voiceEnabled: true };
@@ -20,6 +22,108 @@ export const saveSoundSettings = ({ soundEnabled, voiceEnabled }) => {
   if (typeof window === 'undefined') return;
   if (typeof soundEnabled === 'boolean') localStorage.setItem(STORAGE_KEY_SOUND, String(soundEnabled));
   if (typeof voiceEnabled === 'boolean') localStorage.setItem(STORAGE_KEY_VOICE, String(voiceEnabled));
+};
+
+export const getSoundboxSettings = () => {
+  const legacy = getSoundSettings();
+  if (typeof window === 'undefined') {
+    return {
+      soundEnabled: true,
+      voiceEnabled: true,
+      mode: 'voice_and_chime',
+      language: 'hinglish',
+      speechRate: 1.0,
+      speechPitch: 1.0,
+      volume: 1.0,
+      announceStoreName: true,
+      announceStaffName: true,
+      announceMode: true,
+      minAmount: 0,
+      selectedVoiceURI: ''
+    };
+  }
+
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_SOUNDBOX);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return {
+        soundEnabled: legacy.soundEnabled,
+        voiceEnabled: legacy.voiceEnabled,
+        mode: parsed.mode || 'voice_and_chime',
+        language: parsed.language || 'hinglish',
+        speechRate: Number(parsed.speechRate || 1.0),
+        speechPitch: Number(parsed.speechPitch || 1.0),
+        volume: Number(parsed.volume !== undefined ? parsed.volume : 1.0),
+        announceStoreName: parsed.announceStoreName !== undefined ? Boolean(parsed.announceStoreName) : true,
+        announceStaffName: parsed.announceStaffName !== undefined ? Boolean(parsed.announceStaffName) : true,
+        announceMode: parsed.announceMode !== undefined ? Boolean(parsed.announceMode) : true,
+        minAmount: Number(parsed.minAmount || 0),
+        selectedVoiceURI: parsed.selectedVoiceURI || ''
+      };
+    }
+  } catch (e) {}
+
+  // Fallback default preserving legacy test format
+  return {
+    soundEnabled: legacy.soundEnabled,
+    voiceEnabled: legacy.voiceEnabled,
+    mode: 'voice_and_chime',
+    language: 'english',
+    speechRate: 1.05,
+    speechPitch: 1.0,
+    volume: 1.0,
+    announceStoreName: false,
+    announceStaffName: false,
+    announceMode: true,
+    minAmount: 0,
+    selectedVoiceURI: ''
+  };
+};
+
+export const saveSoundboxSettings = (updates = {}) => {
+  if (typeof window === 'undefined') return updates;
+  const current = getSoundboxSettings();
+  const next = { ...current, ...updates };
+
+  if (typeof updates.soundEnabled === 'boolean' || typeof updates.voiceEnabled === 'boolean') {
+    saveSoundSettings({
+      soundEnabled: updates.soundEnabled !== undefined ? updates.soundEnabled : current.soundEnabled,
+      voiceEnabled: updates.voiceEnabled !== undefined ? updates.voiceEnabled : current.voiceEnabled
+    });
+  }
+
+  try {
+    localStorage.setItem(STORAGE_KEY_SOUNDBOX, JSON.stringify(next));
+  } catch (e) {}
+
+  window.dispatchEvent(new CustomEvent('cobb_soundbox_settings_updated', { detail: next }));
+  return next;
+};
+
+export const saveLastCheckout = (bill) => {
+  if (typeof window === 'undefined' || !bill) return;
+  try {
+    const data = {
+      amount: Number(bill.amount || bill.finalPayable || 0),
+      paymentMode: bill.paymentMode || bill.payMode || 'UPI',
+      staffName: bill.staffName || bill.salesperson || '',
+      customerName: bill.customerName || bill.FirstName || '',
+      billNumber: bill.billNumber || bill.billNo || '',
+      timestamp: Date.now()
+    };
+    localStorage.setItem(STORAGE_KEY_LAST_BILL, JSON.stringify(data));
+  } catch (e) {}
+};
+
+export const getLastCheckout = () => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_LAST_BILL);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    return null;
+  }
 };
 
 export const playSound = (type = 'click') => {
@@ -168,30 +272,198 @@ export const playCheckoutChime = (externalCtx = null) => {
 };
 
 /**
- * Text-to-speech counter announcement (Soundbox mode)
+ * Text-to-speech counter announcement (Soundbox mode V2)
+ * Supports Hindi, Hinglish, English, Replay, Staff Credit, and Custom broadcasts.
  */
-export const speakCheckoutVoice = ({ amount, paymentMode = 'UPI' }) => {
-  const { voiceEnabled } = getSoundSettings();
-  if (!voiceEnabled) return;
+export const speakCheckoutVoice = ({
+  amount,
+  paymentMode = 'UPI',
+  staffName = '',
+  customerName = '',
+  billNumber = '',
+  isReplay = false,
+  customText = null
+}) => {
+  const settings = getSoundboxSettings();
+  if (!settings.voiceEnabled || settings.mode === 'muted' || settings.mode === 'chime_only') {
+    return;
+  }
   if (typeof window === 'undefined' || !window.speechSynthesis) return;
 
   try {
     window.speechSynthesis.cancel(); // Cancel any prior speech
     const cleanAmount = Math.round(Number(amount || 0));
-    if (cleanAmount <= 0) return;
+    if (cleanAmount <= 0 && !customText) return;
 
-    const spokenText = `Rupees ${cleanAmount.toLocaleString('en-IN')} received via ${paymentMode}`;
+    if (cleanAmount > 0) {
+      saveLastCheckout({
+        amount: cleanAmount,
+        paymentMode,
+        staffName,
+        customerName,
+        billNumber
+      });
+    }
+
+    if (cleanAmount > 0 && cleanAmount < (settings.minAmount || 0)) {
+      return;
+    }
+
+    let spokenText = '';
+    if (customText) {
+      spokenText = customText;
+    } else if (settings.language === 'hindi') {
+      const prefix = isReplay ? 'Dobara suchna: ' : '';
+      const store = settings.announceStoreName ? 'Cobb Pundri mein ' : '';
+      const modeText = settings.announceMode ? ` ${paymentMode} ke madhyam se` : '';
+      const staffText = (settings.announceStaffName && staffName) ? `. Salesperson ${staffName}` : '';
+      spokenText = `${prefix}${store}Rupees ${cleanAmount.toLocaleString('en-IN')} praapt hue${modeText}${staffText}`;
+    } else if (settings.language === 'hinglish') {
+      const prefix = isReplay ? 'Repeat: ' : '';
+      const store = settings.announceStoreName ? 'Cobb Pundri: ' : '';
+      const modeText = settings.announceMode ? ` received on ${paymentMode}` : ' received';
+      const staffText = (settings.announceStaffName && staffName) ? `. Billed by ${staffName}` : '';
+      spokenText = `${prefix}${store}Rupees ${cleanAmount.toLocaleString('en-IN')}${modeText}${staffText}`;
+    } else {
+      // Classic English (exact string matches unit tests)
+      const prefix = isReplay ? 'Repeat announcement: ' : '';
+      const store = settings.announceStoreName ? 'Cobb Pundri: ' : '';
+      const staffText = (settings.announceStaffName && staffName) ? `. Billed by ${staffName}` : '';
+      spokenText = `${prefix}${store}Rupees ${cleanAmount.toLocaleString('en-IN')} received via ${paymentMode}${staffText}`;
+    }
+
     const utterance = new SpeechSynthesisUtterance(spokenText);
-    utterance.rate = 1.05;
-    utterance.pitch = 1.0;
+    utterance.rate = Number(settings.speechRate || 1.0);
+    utterance.pitch = Number(settings.speechPitch || 1.0);
+    utterance.volume = Number(settings.volume !== undefined ? settings.volume : 1.0);
 
-    // Pick English (India) or general English voice if available
+    // Voice selector logic
     const voices = window.speechSynthesis.getVoices();
-    const indianVoice = voices.find(v => v.lang === 'en-IN' || v.lang.includes('IN'));
-    if (indianVoice) utterance.voice = indianVoice;
+    if (voices && voices.length > 0) {
+      if (settings.selectedVoiceURI) {
+        const customVoice = voices.find(v => v.voiceURI === settings.selectedVoiceURI);
+        if (customVoice) utterance.voice = customVoice;
+      }
+      if (!utterance.voice) {
+        if (settings.language === 'hindi') {
+          const hiVoice = voices.find(v => v.lang === 'hi-IN' || v.lang.startsWith('hi'));
+          if (hiVoice) utterance.voice = hiVoice;
+        }
+        if (!utterance.voice) {
+          const indianVoice = voices.find(v => v.lang === 'en-IN' || v.lang.includes('IN'));
+          if (indianVoice) utterance.voice = indianVoice;
+        }
+      }
+    }
+
+    // Dispatch UI event for LED glow and speech bubble
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('cobb_soundbox_speaking', {
+        detail: {
+          spokenText,
+          amount: cleanAmount,
+          paymentMode,
+          staffName,
+          isReplay
+        }
+      }));
+
+      utterance.onend = () => {
+        window.dispatchEvent(new CustomEvent('cobb_soundbox_idle'));
+      };
+      utterance.onerror = () => {
+        window.dispatchEvent(new CustomEvent('cobb_soundbox_idle'));
+      };
+    }
 
     window.speechSynthesis.speak(utterance);
   } catch (e) {}
+};
+
+/**
+ * Replays the last checkout transaction with 1-click or Alt+R
+ */
+export const replayLastCheckout = () => {
+  const last = getLastCheckout();
+  playCheckoutChime();
+  setTimeout(() => {
+    if (!last || !last.amount) {
+      speakCheckoutVoice({
+        amount: 2499,
+        paymentMode: 'UPI',
+        staffName: 'Simran',
+        isReplay: true
+      });
+    } else {
+      speakCheckoutVoice({
+        ...last,
+        isReplay: true
+      });
+    }
+  }, 350);
+};
+
+/**
+ * Tiered audio orchestration based on checkout value
+ * - Normal (< ₹3,000): Standard Chime + Voice
+ * - High Value (₹3,000 - ₹9,999): Cash Register Ka-Ching + Voice
+ * - Jackpot (>= ₹10,000): Vegas Jackpot Chime Cascade + Voice
+ */
+export const triggerCheckoutAudio = ({
+  amount = 0,
+  paymentMode = 'UPI',
+  staffName = '',
+  customerName = '',
+  billNumber = ''
+}) => {
+  const cleanAmt = Math.round(Number(amount || 0));
+  const settings = getSoundboxSettings();
+  if (settings.mode === 'muted') return;
+
+  if (settings.soundEnabled && settings.mode !== 'voice_only') {
+    if (cleanAmt >= 10000) {
+      playJackpotChime();
+    } else if (cleanAmt >= 3000) {
+      playCashRegisterChaching();
+    } else {
+      playCheckoutChime();
+    }
+  }
+
+  if (settings.voiceEnabled && settings.mode !== 'chime_only' && cleanAmt > 0) {
+    const delay = cleanAmt >= 10000 ? 750 : (cleanAmt >= 3000 ? 500 : 350);
+    setTimeout(() => {
+      speakCheckoutVoice({
+        amount: cleanAmt,
+        paymentMode,
+        staffName,
+        customerName,
+        billNumber
+      });
+    }, delay);
+  }
+};
+
+/**
+ * Store Floor Audio Tannoy / Broadcast Presets
+ */
+export const speakStoreBroadcast = (type = 'welcome', customText = '') => {
+  const PRESETS = {
+    welcome: 'Welcome to Cobb Pundri. Explore our latest collection of premium shirts, blazers, and denims with special seasonal offers!',
+    offer: 'Attention shoppers: Exclusive store offer at Cobb Pundri today! Buy 3 garments and get 70% off flat. Please ask our staff for assistance.',
+    closing: 'Attention valued customers: Cobb Pundri will be closing in 15 minutes. Please bring your selected items to the cash counter for billing.',
+    counter_ready: 'Next customer please, billing counter is open and ready for checkout.',
+    staff_huddle: 'Floor team attention: Evening rush hour target update. Let us give great service to every walk-in customer!'
+  };
+
+  const textToSpeak = customText || PRESETS[type] || PRESETS.welcome;
+  playCheckoutChime();
+  setTimeout(() => {
+    speakCheckoutVoice({
+      amount: 0,
+      customText: textToSpeak
+    });
+  }, 450);
 };
 
 /**

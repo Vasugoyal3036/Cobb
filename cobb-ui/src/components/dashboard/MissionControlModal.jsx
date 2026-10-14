@@ -16,7 +16,8 @@ import {
   Crown,
   Coins,
   ShieldCheck,
-  Trophy
+  Trophy,
+  Radio
 } from 'lucide-react';
 import AppleWatchRings from './AppleWatchRings';
 import {
@@ -248,6 +249,15 @@ export default function MissionControlModal({
           >
             {soundEnabled ? <Volume2 className="w-4 h-4 text-emerald-400" /> : <VolumeX className="w-4 h-4" />}
             <span className="hidden sm:inline">{soundEnabled ? 'Audio ON' : 'Muted'}</span>
+          </button>
+
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('cobb_soundbox_replay'))}
+            className="p-2.5 rounded-xl bg-cyan-500/20 text-cyan-300 hover:bg-cyan-500/30 border border-cyan-500/40 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
+            title="Replay Last Bill Voice Announcement (Alt+R)"
+          >
+            <Radio className="w-4 h-4 text-cyan-400" />
+            <span className="hidden sm:inline">Soundbox</span>
           </button>
 
           <button

@@ -20,7 +20,9 @@ import {
   CheckCircle2,
   Tag,
   Crown,
-  Tv
+  Tv,
+  Volume2,
+  Radio
 } from 'lucide-react';
 
 export default function GlobalCommandBar({
@@ -146,6 +148,8 @@ export default function GlobalCommandBar({
       { id: 'ratings', title: '⭐ Customer Ratings & NPS Queue', sub: 'Feedback sentiment, reviews & CSAT', icon: Star, tab: 'ratings', keywords: ['nps', 'review', 'feedback', 'stars', 'satisfaction'] },
       { id: 'godmode', title: '👑 Secret God Mode (Store Boss)', sub: 'Confetti explosion, slot counter & airhorns', icon: Crown, keywords: ['boss', 'godmode', 'cobb', 'secret', 'overlord', 'egg', 'confetti', 'airhorn', 'jackpot'], customAction: () => window.dispatchEvent(new CustomEvent('cobb_god_mode')) },
       { id: 'mission_control', title: '📺 Mission Control (TV Wall / Kiosk Mode)', sub: 'Fullscreen dark ambient dashboard with live sales ticker', icon: Tv, keywords: ['tv', 'wall', 'kiosk', 'screen', 'mission', 'control', 'ambient', 'bigscreen'], customAction: () => window.dispatchEvent(new CustomEvent('cobb_open_mission_control')) },
+      { id: 'soundbox', title: '🔊 Cobb Soundbox & Voice Announcer', sub: 'Tender announcements, voice accents & floor broadcast', icon: Radio, keywords: ['sound', 'soundbox', 'voice', 'speaker', 'audio', 'paytm', 'announcer', 'speech'], customAction: () => window.dispatchEvent(new CustomEvent('cobb_open_soundbox')) },
+      { id: 'replay_bill', title: '⚡ Replay Last Bill Announcement (Alt+R)', sub: 'Re-announce last customer checkout out loud', icon: Volume2, keywords: ['replay', 'repeat', 'last', 'bill', 'speak', 'again'], customAction: () => window.dispatchEvent(new CustomEvent('cobb_soundbox_replay')) },
     ];
 
     if (!q) {

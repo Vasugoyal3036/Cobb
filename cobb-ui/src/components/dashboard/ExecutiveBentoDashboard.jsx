@@ -40,7 +40,8 @@ import {
   X,
   Wifi,
   WifiOff,
-  Tv
+  Tv,
+  Volume2
 } from 'lucide-react';
 import ExecutiveKpiStrip from './ExecutiveKpiStrip';
 import GoodsInTransitDesk from '../GoodsInTransitDesk';
@@ -51,6 +52,8 @@ import AlterationSlipModal from '../AlterationSlipModal';
 import LivePulseFeed from './LivePulseFeed';
 import MultiStoreFleetMatrix from './MultiStoreFleetMatrix';
 import MissionControlModal from './MissionControlModal';
+import SoundboxModal from '../SoundboxModal';
+import { replayLastCheckout } from '../../utils/sound';
 
 /**
  * Unified Executive Bento Grid V2
@@ -108,20 +111,36 @@ const ExecutiveBentoDashboard = (props) => {
   // Primary Perspective Switcher: 'bento' (Unified Bento V2), 'racing' (Floor Race & Rush Radar), 'counter' (Counter Tools)
   const [activePerspective, setActivePerspective] = useState('bento');
   const [showMissionControl, setShowMissionControl] = useState(false);
+  const [showSoundboxModal, setShowSoundboxModal] = useState(false);
 
-  // Global listener for TV Wall trigger & Ctrl+Shift+T
+  // Global listener for TV Wall trigger & Ctrl+Shift+T, Soundbox & Alt+S/Alt+R
   useEffect(() => {
     const handleOpenTv = () => setShowMissionControl(true);
+    const handleOpenSoundbox = () => setShowSoundboxModal(true);
+    const handleReplay = () => replayLastCheckout();
+
     const handleKey = (e) => {
       if (e.ctrlKey && e.shiftKey && (e.key === 'T' || e.key === 't')) {
         e.preventDefault();
         setShowMissionControl(prev => !prev);
+      } else if (e.altKey && (e.key === 's' || e.key === 'S')) {
+        e.preventDefault();
+        setShowSoundboxModal(prev => !prev);
+      } else if (e.altKey && (e.key === 'r' || e.key === 'R')) {
+        e.preventDefault();
+        replayLastCheckout();
       }
     };
+
     window.addEventListener('cobb_open_mission_control', handleOpenTv);
+    window.addEventListener('cobb_open_soundbox', handleOpenSoundbox);
+    window.addEventListener('cobb_soundbox_replay', handleReplay);
     window.addEventListener('keydown', handleKey);
+
     return () => {
       window.removeEventListener('cobb_open_mission_control', handleOpenTv);
+      window.removeEventListener('cobb_open_soundbox', handleOpenSoundbox);
+      window.removeEventListener('cobb_soundbox_replay', handleReplay);
       window.removeEventListener('keydown', handleKey);
     };
   }, []);
@@ -410,6 +429,16 @@ const ExecutiveBentoDashboard = (props) => {
             >
               <Tv className="w-3.5 h-3.5" />
               <span>TV Wall</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setShowSoundboxModal(true)}
+              className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white text-xs font-black shadow-md shadow-cyan-600/25 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+              title="Open Cobb Soundbox & Floor Audio Broadcast (Alt+S, Replay: Alt+R)"
+            >
+              <Volume2 className="w-3.5 h-3.5" />
+              <span>Soundbox</span>
             </button>
           </div>
 
@@ -1059,6 +1088,12 @@ const ExecutiveBentoDashboard = (props) => {
         targetProgress={targetProgress}
         formatCurrency={formatCurrency}
         activeStore={activeStore}
+      />
+
+      {/* Cobb Soundbox & Floor Audio Broadcast Modal */}
+      <SoundboxModal
+        isOpen={showSoundboxModal}
+        onClose={() => setShowSoundboxModal(false)}
       />
     </div>
   );
