@@ -202,6 +202,53 @@ const ExecutiveKpiStrip = ({
   const simTomorrowBEP = marginFrac > 0 ? Math.round(simTomorrowCost / marginFrac) : 0;
   const isSimTomorrowPrePaid = simTomorrowBEP === 0;
 
+  // --- Week-over-Week (WoW) Day-Matched Benchmark (e.g. This Thursday vs Last Thursday) ---
+  const wowDayBenchmark = useMemo(() => {
+    const today = new Date();
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const currentDayName = overviewStats?.lastWeekSameDay?.DayName || dayNames[today.getDay()];
+    
+    // Calculate 7 days ago date string in YYYY-MM-DD
+    const lwDate = new Date(today);
+    lwDate.setDate(lwDate.getDate() - 7);
+    const lwYear = lwDate.getFullYear();
+    const lwMonth = String(lwDate.getMonth() + 1).padStart(2, '0');
+    const lwDay = String(lwDate.getDate()).padStart(2, '0');
+    const lwDateStr = `${lwYear}-${lwMonth}-${lwDay}`;
+
+    let lastWeekSales = Number(overviewStats?.lastWeekSameDay?.TotalSales || 0);
+    let lastWeekBills = Number(overviewStats?.lastWeekSameDay?.BillCount || 0);
+
+    // Fallback: If overviewStats doesn't have lastWeekSameDay or it is 0, check dailySales history
+    if (lastWeekSales === 0 && Array.isArray(dailySales) && dailySales.length > 0) {
+      const match = dailySales.find(d => {
+        const dStr = (d.SaleDate || d.date || '').slice(0, 10);
+        return dStr === lwDateStr || dStr === overviewStats?.lastWeekSameDay?.DateStr;
+      });
+      if (match) {
+        lastWeekSales = Number(match.TotalSales || match.sales || match.amount || 0);
+        lastWeekBills = Number(match.BillCount || match.bills || 0);
+      }
+    }
+
+    const currentSales = Number(overviewStats?.today?.TotalSales || 0);
+    const diff = currentSales - lastWeekSales;
+    const pctChange = lastWeekSales > 0 
+      ? Number(((diff / lastWeekSales) * 100).toFixed(1))
+      : (currentSales > 0 ? 100 : 0);
+    const isAhead = diff >= 0;
+
+    return {
+      dayName: currentDayName,
+      lastWeekSales,
+      lastWeekBills,
+      diff,
+      pctChange,
+      isAhead,
+      hasBenchmark: lastWeekSales > 0 || currentSales > 0
+    };
+  }, [overviewStats, dailySales]);
+
   return (
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 lg:gap-5">
@@ -211,19 +258,74 @@ const ExecutiveKpiStrip = ({
         <div ref={topCardRef} className={`col-span-1 p-4 sm:p-5 rounded-2xl border shadow-xs flex flex-col justify-between hover:shadow-md transition-all ${
           darkMode ? 'kpi-card-revenue text-white' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
         }`}>
-          <div className="flex justify-between items-start">
-            <div>
-              <span className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider block">Today's Revenue</span>
+          <div className="flex justify-between items-start gap-2">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider block">Today's Revenue</span>
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                  <Calendar className="w-2.5 h-2.5" />
+                  {wowDayBenchmark.dayName}
+                </span>
+              </div>
               <h3 className="text-2xl sm:text-3xl lg:text-4xl font-black font-mono tracking-tight text-slate-900 dark:text-white mt-1">
                 {formatCurrency(todaySales)}
               </h3>
             </div>
-            <div className="p-2 sm:p-2.5 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20 shrink-0">
+            <div className={`p-2 sm:p-2.5 rounded-xl border shrink-0 ${
+              wowDayBenchmark.isAhead
+                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+            }`}>
               <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs mb-2">
+          {/* WoW Day-Matched Benchmark Delta (e.g. Today vs Last Thursday) */}
+          <div className={`mt-2.5 px-2.5 py-2 rounded-xl border transition-all ${
+            wowDayBenchmark.isAhead
+              ? darkMode
+                ? 'bg-emerald-950/40 border-emerald-800/50 text-emerald-300'
+                : 'bg-emerald-50/90 border-emerald-200 text-emerald-900'
+              : darkMode
+                ? 'bg-rose-950/30 border-rose-800/40 text-rose-300'
+                : 'bg-rose-50/90 border-rose-200 text-rose-900'
+          }`}>
+            <div className="flex items-center justify-between gap-1 flex-wrap text-[11px]">
+              <div className="flex items-center gap-1.5">
+                <span className={`w-2 h-2 rounded-full ${wowDayBenchmark.isAhead ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'}`} />
+                <span className="text-slate-400 dark:text-slate-300 font-medium text-[11px]">
+                  vs Last {wowDayBenchmark.dayName}:
+                </span>
+                <span className="font-mono font-bold text-slate-900 dark:text-white text-[11px]">
+                  {formatCurrency(wowDayBenchmark.lastWeekSales)}
+                </span>
+              </div>
+              <div className="flex items-center gap-1 font-mono">
+                <span className={`px-1.5 py-0.5 rounded text-[10.5px] font-black border ${
+                  wowDayBenchmark.isAhead
+                    ? 'text-emerald-400 bg-emerald-900/40 border-emerald-700/50'
+                    : 'text-rose-400 bg-rose-900/40 border-rose-700/50'
+                }`}>
+                  {wowDayBenchmark.isAhead ? '+' : ''}{wowDayBenchmark.pctChange}% {wowDayBenchmark.isAhead ? '▲' : '▼'}
+                </span>
+                <span className={`text-[10.5px] font-black ${
+                  wowDayBenchmark.isAhead ? 'text-emerald-400' : 'text-rose-400'
+                }`}>
+                  ({wowDayBenchmark.diff >= 0 ? '+' : '-'}{formatCurrency(Math.abs(wowDayBenchmark.diff))})
+                </span>
+              </div>
+            </div>
+            <div className="flex items-center justify-between text-[10px] mt-1 pt-1 border-t border-slate-200/50 dark:border-white/5">
+              <span className="text-slate-400 font-medium">Retail Rhythm</span>
+              <span className={`font-semibold ${
+                wowDayBenchmark.isAhead ? 'text-emerald-400 dark:text-emerald-300' : 'text-rose-400 dark:text-rose-300'
+              }`}>
+                {wowDayBenchmark.isAhead ? 'Pacing Ahead of Normal Rhythm' : 'Pacing Below Normal Rhythm'}
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs mb-1">
             {/* vs Yesterday */}
             <div className="flex items-center gap-1.5">
               {(() => {
@@ -245,7 +347,7 @@ const ExecutiveKpiStrip = ({
                 );
               })()}
             </div>
-            {/* vs Last Week */}
+            {/* vs Last Week (7d total) */}
             <div className="flex items-center gap-1.5">
               {(() => {
                 const thisW = overviewStats?.thisWeek?.TotalSales || 0;
@@ -261,7 +363,7 @@ const ExecutiveKpiStrip = ({
                     }`}>
                       {isUp ? '↑' : '↓'} {Math.abs(diff)}%
                     </span>
-                    <span className="text-slate-400 text-xs font-medium">WoW</span>
+                    <span className="text-slate-400 text-xs font-medium">WoW (7d)</span>
                   </>
                 );
               })()}

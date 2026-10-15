@@ -230,6 +230,7 @@ app.get('/api/sales/overview', async (req, res) => {
         const batchResult = await sql.query(`
             DECLARE @todayStart DATE = CAST(GETDATE() AS DATE);
             DECLARE @yesterdayStart DATE = DATEADD(day, -1, @todayStart);
+            DECLARE @lastWeekSameDayStart DATE = DATEADD(day, -7, @todayStart);
             DECLARE @thisWeekStart DATE = DATEADD(day, 1 - DATEPART(dw, GETDATE()), @todayStart);
             DECLARE @lastWeekStart DATE = DATEADD(day, -7, @thisWeekStart);
             DECLARE @thisMonthStart DATE = DATEFROMPARTS(YEAR(@todayStart), MONTH(@todayStart), 1);
@@ -268,6 +269,20 @@ app.get('/api/sales/overview', async (req, res) => {
             SELECT ISNULL(SUM(NET_AMOUNT), 0) as TotalSales, COUNT(CM_ID) as BillCount
             FROM CMM01106 WITH (NOLOCK)
             WHERE CANCELLED = 0 AND CM_TIME >= @lastMonthStart AND CM_TIME < @thisMonthStart;
+
+            -- 7. Day-Matched Week-over-Week (WoW) Benchmark (e.g. This Thursday vs Last Thursday)
+            SELECT 
+                ISNULL(SUM(m.NET_AMOUNT), 0) as TotalSales, 
+                COUNT(m.CM_ID) as BillCount,
+                DATENAME(weekday, @todayStart) as DayName,
+                CONVERT(varchar(10), @lastWeekSameDayStart, 120) as DateStr,
+                ISNULL(SUM(p.CASH_AMOUNT), 0) as CashAmount,
+                ISNULL(SUM(p.CC_AMOUNT), 0) - ISNULL(SUM(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0)), 0) as CardAmount,
+                ISNULL(SUM(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0)), 0) as UPIAmount
+            FROM CMM01106 m WITH (NOLOCK)
+            LEFT JOIN VW_BILL_PAYMODE p WITH (NOLOCK) ON m.CM_ID = p.MEMO_ID
+            LEFT JOIN VW_WL_CASHMEMOLIST w WITH (NOLOCK) ON m.CM_ID = w.MEMO_ID
+            WHERE m.CM_TIME >= @lastWeekSameDayStart AND m.CM_TIME < DATEADD(day, 1, @lastWeekSameDayStart) AND m.CANCELLED = 0;
         `);
 
         const sets = batchResult.recordsets;
@@ -277,7 +292,8 @@ app.get('/api/sales/overview', async (req, res) => {
             thisWeek: sets[2]?.[0] || { TotalSales: 0, BillCount: 0 },
             lastWeek: sets[3]?.[0] || { TotalSales: 0, BillCount: 0 },
             thisMonth: sets[4]?.[0] || { TotalSales: 0, BillCount: 0 },
-            lastMonth: sets[5]?.[0] || { TotalSales: 0, BillCount: 0 }
+            lastMonth: sets[5]?.[0] || { TotalSales: 0, BillCount: 0 },
+            lastWeekSameDay: sets[6]?.[0] || { TotalSales: 0, BillCount: 0, DayName: '', DateStr: '', CashAmount: 0, CardAmount: 0, UPIAmount: 0 }
         };
         
         res.json(responseData);

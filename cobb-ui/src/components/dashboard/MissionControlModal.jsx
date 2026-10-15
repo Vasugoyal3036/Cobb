@@ -52,6 +52,18 @@ export default function MissionControlModal({
   const todayUPI = Number(overviewStats?.today?.UPIAmount || 14898);
   const todayCard = Number(overviewStats?.today?.CardAmount || 1499);
 
+  // WoW Day-Matched Benchmark
+  const wowBenchmark = useMemo(() => {
+    const today = new Date();
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const dayName = overviewStats?.lastWeekSameDay?.DayName || dayNames[today.getDay()];
+    const lwSales = Number(overviewStats?.lastWeekSameDay?.TotalSales || 0);
+    const diff = todaySales - lwSales;
+    const pct = lwSales > 0 ? Number(((diff / lwSales) * 100).toFixed(1)) : (todaySales > 0 ? 100 : 0);
+    const isAhead = diff >= 0;
+    return { dayName, lwSales, diff, pct, isAhead, hasData: lwSales > 0 || todaySales > 0 };
+  }, [overviewStats, todaySales]);
+
   // Live Digital Clock ticker
   useEffect(() => {
     if (!isOpen) return;
@@ -310,6 +322,28 @@ export default function MissionControlModal({
             🧾 {todayBillsCount} Bills Completed
           </span>
         </div>
+
+        {/* WoW Day-Matched Benchmark Chip */}
+        {wowBenchmark.hasData && (
+          <div className="mt-3.5 flex items-center justify-center">
+            <div className={`px-4 py-1.5 rounded-2xl border flex items-center gap-2.5 text-xs sm:text-sm font-semibold backdrop-blur-md transition-all ${
+              wowBenchmark.isAhead
+                ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-300'
+                : 'bg-rose-500/15 border-rose-500/30 text-rose-300'
+            }`}>
+              <span className={`w-2 h-2 rounded-full ${wowBenchmark.isAhead ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'}`} />
+              <span>
+                vs Last {wowBenchmark.dayName}: <strong className="font-mono text-white">{formatCurrency(wowBenchmark.lwSales)}</strong>
+              </span>
+              <span className="font-mono font-black">
+                ({wowBenchmark.isAhead ? '+' : ''}{wowBenchmark.pct}% {wowBenchmark.isAhead ? '▲' : '▼'} {wowBenchmark.diff >= 0 ? '+' : '-'}{formatCurrency(Math.abs(wowBenchmark.diff))})
+              </span>
+              <span className="hidden sm:inline text-[11px] opacity-75 font-normal">
+                • {wowBenchmark.isAhead ? 'Ahead of Retail Rhythm' : 'Below Retail Rhythm'}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Scaled 3-Ring Activity Halo & Target Progress */}
         <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-6 bg-slate-900/60 p-4 sm:p-5 rounded-3xl border border-white/10 backdrop-blur-md max-w-2xl w-full">
