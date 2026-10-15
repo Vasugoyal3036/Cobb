@@ -5,8 +5,6 @@
 
 const STORAGE_KEY_SOUND = 'cobb_pos_sound_enabled';
 const STORAGE_KEY_VOICE = 'cobb_pos_voice_enabled';
-export const STORAGE_KEY_SOUNDBOX = 'cobb_soundbox_config_v2';
-export const STORAGE_KEY_LAST_BILL = 'cobb_last_checkout_bill';
 
 export const getSoundSettings = () => {
   if (typeof window === 'undefined') return { soundEnabled: true, voiceEnabled: true };
@@ -22,105 +20,6 @@ export const saveSoundSettings = ({ soundEnabled, voiceEnabled }) => {
   if (typeof window === 'undefined') return;
   if (typeof soundEnabled === 'boolean') localStorage.setItem(STORAGE_KEY_SOUND, String(soundEnabled));
   if (typeof voiceEnabled === 'boolean') localStorage.setItem(STORAGE_KEY_VOICE, String(voiceEnabled));
-};
-
-export const getSoundboxSettings = () => {
-  const legacy = getSoundSettings();
-  if (typeof window === 'undefined') {
-    return {
-      soundEnabled: true,
-      voiceEnabled: true,
-      mode: 'voice_and_chime',
-      language: 'hinglish',
-      actorPersona: 'none',
-      speechRate: 1.0,
-      speechPitch: 1.0,
-      volume: 1.0,
-      announceStoreName: true,
-      announceStaffName: true,
-      announceMode: true,
-      minAmount: 0,
-      selectedVoiceURI: ''
-    };
-  }
-
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY_SOUNDBOX);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      return {
-        soundEnabled: legacy.soundEnabled,
-        voiceEnabled: legacy.voiceEnabled,
-        mode: parsed.mode || 'voice_and_chime',
-        language: parsed.language || 'hinglish',
-        useNeuralVoice: parsed.useNeuralVoice !== undefined ? Boolean(parsed.useNeuralVoice) : true,
-        volume: Number(parsed.volume !== undefined ? parsed.volume : 1.0),
-        announceStoreName: parsed.announceStoreName !== undefined ? Boolean(parsed.announceStoreName) : true,
-        announceStaffName: parsed.announceStaffName !== undefined ? Boolean(parsed.announceStaffName) : false,
-        announceMode: parsed.announceMode !== undefined ? Boolean(parsed.announceMode) : true,
-        minAmount: Number(parsed.minAmount || 0)
-      };
-    }
-  } catch (e) {}
-
-  // Fallback default preserving legacy test format
-  return {
-    soundEnabled: legacy.soundEnabled,
-    voiceEnabled: legacy.voiceEnabled,
-    mode: 'voice_and_chime',
-    language: 'english',
-    useNeuralVoice: false,
-    volume: 1.0,
-    announceStoreName: false,
-    announceStaffName: false,
-    announceMode: true,
-    minAmount: 0
-  };
-};
-
-export const saveSoundboxSettings = (updates = {}) => {
-  if (typeof window === 'undefined') return updates;
-  const current = getSoundboxSettings();
-  const next = { ...current, ...updates };
-
-  if (typeof updates.soundEnabled === 'boolean' || typeof updates.voiceEnabled === 'boolean') {
-    saveSoundSettings({
-      soundEnabled: updates.soundEnabled !== undefined ? updates.soundEnabled : current.soundEnabled,
-      voiceEnabled: updates.voiceEnabled !== undefined ? updates.voiceEnabled : current.voiceEnabled
-    });
-  }
-
-  try {
-    localStorage.setItem(STORAGE_KEY_SOUNDBOX, JSON.stringify(next));
-  } catch (e) {}
-
-  window.dispatchEvent(new CustomEvent('cobb_soundbox_settings_updated', { detail: next }));
-  return next;
-};
-
-export const saveLastCheckout = (bill) => {
-  if (typeof window === 'undefined' || !bill) return;
-  try {
-    const data = {
-      amount: Number(bill.amount || bill.finalPayable || 0),
-      paymentMode: bill.paymentMode || bill.payMode || 'UPI',
-      staffName: bill.staffName || bill.salesperson || '',
-      customerName: bill.customerName || bill.FirstName || '',
-      billNumber: bill.billNumber || bill.billNo || '',
-      timestamp: Date.now()
-    };
-    localStorage.setItem(STORAGE_KEY_LAST_BILL, JSON.stringify(data));
-  } catch (e) {}
-};
-
-export const getLastCheckout = () => {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY_LAST_BILL);
-    return raw ? JSON.parse(raw) : null;
-  } catch (e) {
-    return null;
-  }
 };
 
 export const playSound = (type = 'click') => {
@@ -269,352 +168,30 @@ export const playCheckoutChime = (externalCtx = null) => {
 };
 
 /**
- * Single Clear Male Voice Announcer (Madhur Baritone)
- * Authentic Indian studio male voice for reading checkout bills.
+ * Text-to-speech counter announcement (Soundbox mode)
  */
-export const CLEAR_MALE_VOICE = {
-  id: 'madhur',
-  name: 'Madhur (Clear Studio Baritone)',
-  edgeVoice: 'hi-IN-MadhurNeural',
-  tagline: 'Clear, deep Indian male studio announcer for store checkouts.',
-  avatar: '🎙️'
-};
-
-// Backwards compatibility aliases
-export const NEURAL_VOICES = { madhur: CLEAR_MALE_VOICE };
-
-let currentActiveAudio = null;
-
-export const stopNeuralSpeechAudio = () => {
-  if (currentActiveAudio) {
-    try {
-      currentActiveAudio.pause();
-      currentActiveAudio.currentTime = 0;
-    } catch (e) {}
-    currentActiveAudio = null;
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('cobb_soundbox_idle'));
-    }
-  }
-};
-
-export const playNeuralSpeechAudio = async ({
-  text,
-  amount = 0,
-  isReplay = false
-}) => {
-  if (typeof window === 'undefined' || typeof window.Audio === 'undefined') return false;
-
-  stopNeuralSpeechAudio();
-
-  try {
-    let staticUrl = null;
-    const cleanAmount = Math.round(Number(amount || 0));
-
-    // Pre-rendered instant static assets for common checkout amounts & test bench
-    if (!isReplay) {
-      if (cleanAmount === 2499) staticUrl = '/audio/neural/test_madhur_2499.mp3';
-      else if (cleanAmount === 1499) staticUrl = '/audio/neural/test_madhur_1499.mp3';
-      else if (cleanAmount === 4999) staticUrl = '/audio/neural/test_madhur_4999.mp3';
-    }
-
-    let audioSrc = staticUrl;
-
-    // If dynamic amount and no pre-rendered static match, call backend neural tts endpoint
-    if (!audioSrc && text) {
-      const apiBase = (typeof window !== 'undefined' && window.__COBB_API_BASE__) || '';
-      const endpoint = `${apiBase}/api/soundbox/neural-tts`;
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4000);
-
-      try {
-        const response = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text, voice: 'madhur' }),
-          signal: controller.signal
-        });
-        clearTimeout(timeoutId);
-
-        if (response.ok) {
-          const blob = await response.blob();
-          audioSrc = URL.createObjectURL(blob);
-        }
-      } catch (err) {
-        clearTimeout(timeoutId);
-        return false;
-      }
-    }
-
-    if (!audioSrc) return false;
-
-    const audio = new Audio(audioSrc);
-    currentActiveAudio = audio;
-    const settings = getSoundboxSettings();
-    audio.volume = Number(settings.volume !== undefined ? settings.volume : 1.0);
-
-    window.dispatchEvent(new CustomEvent('cobb_soundbox_speaking', {
-      detail: {
-        spokenText: text,
-        amount: cleanAmount,
-        voice: 'madhur',
-        isReplay
-      }
-    }));
-
-    audio.onended = () => {
-      if (currentActiveAudio === audio) currentActiveAudio = null;
-      window.dispatchEvent(new CustomEvent('cobb_soundbox_idle'));
-      if (audioSrc.startsWith('blob:')) URL.revokeObjectURL(audioSrc);
-    };
-
-    audio.onerror = () => {
-      if (currentActiveAudio === audio) currentActiveAudio = null;
-      window.dispatchEvent(new CustomEvent('cobb_soundbox_idle'));
-      if (audioSrc.startsWith('blob:')) URL.revokeObjectURL(audioSrc);
-    };
-
-    await audio.play();
-    return true;
-  } catch (err) {
-    return false;
-  }
-};
-
-export const BOLLYWOOD_ACTORS = {};
-
-const fallbackSpeakSynthesis = (utterance, spokenText, cleanAmount, paymentMode, staffName, isReplay, settings) => {
-  if (typeof window === 'undefined' || !window.speechSynthesis) return;
-
-  const voices = window.speechSynthesis.getVoices();
-  if (voices && voices.length > 0) {
-    const hiVoice = voices.find(v => v.lang === 'hi-IN' || v.lang.startsWith('hi'));
-    if (hiVoice) utterance.voice = hiVoice;
-    else {
-      const indianVoice = voices.find(v => v.lang === 'en-IN' || v.lang.includes('IN'));
-      if (indianVoice) utterance.voice = indianVoice;
-    }
-  }
-
-  // Dispatch UI event for LED glow and speech bubble
-  window.dispatchEvent(new CustomEvent('cobb_soundbox_speaking', {
-    detail: {
-      spokenText,
-      amount: cleanAmount,
-      paymentMode,
-      staffName,
-      isReplay
-    }
-  }));
-
-  utterance.onend = () => {
-    window.dispatchEvent(new CustomEvent('cobb_soundbox_idle'));
-  };
-  utterance.onerror = () => {
-    window.dispatchEvent(new CustomEvent('cobb_soundbox_idle'));
-  };
-
-  window.speechSynthesis.speak(utterance);
-};
-
-/**
- * Reads the checkout bill out loud using a single clear male studio voice
- */
-export const speakCheckoutVoice = ({
-  amount,
-  paymentMode = 'UPI',
-  staffName = '',
-  customerName = '',
-  billNumber = '',
-  isReplay = false,
-  customText = null
-}) => {
-  const settings = getSoundboxSettings();
-  if (!settings.voiceEnabled || settings.mode === 'muted' || settings.mode === 'chime_only') {
-    return;
-  }
+export const speakCheckoutVoice = ({ amount, paymentMode = 'UPI' }) => {
+  const { voiceEnabled } = getSoundSettings();
+  if (!voiceEnabled) return;
   if (typeof window === 'undefined' || !window.speechSynthesis) return;
 
   try {
-    window.speechSynthesis.cancel();
-    stopNeuralSpeechAudio();
-
+    window.speechSynthesis.cancel(); // Cancel any prior speech
     const cleanAmount = Math.round(Number(amount || 0));
-    if (cleanAmount <= 0 && !customText) return;
+    if (cleanAmount <= 0) return;
 
-    if (cleanAmount > 0) {
-      saveLastCheckout({
-        amount: cleanAmount,
-        paymentMode,
-        staffName,
-        customerName,
-        billNumber
-      });
-    }
-
-    if (cleanAmount > 0 && cleanAmount < (settings.minAmount || 0)) {
-      return;
-    }
-
-    let spokenText = '';
-    if (customText) {
-      spokenText = customText;
-    } else if (settings.language === 'hindi') {
-      const prefix = isReplay ? 'Dobara suchna: ' : '';
-      const store = settings.announceStoreName ? 'Cobb Pundri mein ' : '';
-      const modeText = settings.announceMode ? ` ${paymentMode} ke madhyam se` : '';
-      const staffText = (settings.announceStaffName && staffName) ? `. Salesperson ${staffName}` : '';
-      spokenText = `${prefix}${store}Rupees ${cleanAmount.toLocaleString('en-IN')} praapt hue${modeText}${staffText}`;
-    } else if (settings.language === 'hinglish') {
-      const prefix = isReplay ? 'Repeat: ' : '';
-      const store = settings.announceStoreName ? 'Cobb Pundri: ' : '';
-      const modeText = settings.announceMode ? ` received on ${paymentMode}` : ' received';
-      const staffText = (settings.announceStaffName && staffName) ? `. Billed by ${staffName}` : '';
-      spokenText = `${prefix}${store}Rupees ${cleanAmount.toLocaleString('en-IN')}${modeText}${staffText}`;
-    } else {
-      // Classic English (exact string matches unit tests)
-      const prefix = isReplay ? 'Repeat announcement: ' : '';
-      const store = settings.announceStoreName ? 'Cobb Pundri: ' : '';
-      const staffText = (settings.announceStaffName && staffName) ? `. Billed by ${staffName}` : '';
-      spokenText = `${prefix}${store}Rupees ${cleanAmount.toLocaleString('en-IN')} received via ${paymentMode}${staffText}`;
-    }
-
+    const spokenText = `Rupees ${cleanAmount.toLocaleString('en-IN')} received via ${paymentMode}`;
     const utterance = new SpeechSynthesisUtterance(spokenText);
-    utterance.rate = 1.0;
-    utterance.pitch = 0.95; // Deep clear male timbre
-    utterance.volume = Number(settings.volume !== undefined ? settings.volume : 1.0);
+    utterance.rate = 1.05;
+    utterance.pitch = 1.0;
 
-    // Use single clear male neural voice (Madhur) whenever available
-    if (settings.useNeuralVoice && typeof window !== 'undefined' && typeof window.Audio !== 'undefined') {
-      let neuralText = spokenText;
-      if (!customText) {
-        const store = settings.announceStoreName ? 'कौब पुंडरी पर ' : '';
-        const mode = settings.announceMode ? ` ${paymentMode} द्वारा` : '';
-        const staff = (settings.announceStaffName && staffName) ? `। बिलर ${staffName}` : '';
-        const prefix = isReplay ? 'दोबारा सुनिए: ' : '';
-        neuralText = `${prefix}${store}${cleanAmount.toLocaleString('en-IN')} रुपये प्राप्त हुए${mode}${staff}।`;
-      }
+    // Pick English (India) or general English voice if available
+    const voices = window.speechSynthesis.getVoices();
+    const indianVoice = voices.find(v => v.lang === 'en-IN' || v.lang.includes('IN'));
+    if (indianVoice) utterance.voice = indianVoice;
 
-      playNeuralSpeechAudio({
-        text: neuralText,
-        amount: cleanAmount,
-        isReplay
-      }).then((success) => {
-        if (!success) {
-          fallbackSpeakSynthesis(utterance, spokenText, cleanAmount, paymentMode, staffName, isReplay, settings);
-        }
-      }).catch(() => {
-        fallbackSpeakSynthesis(utterance, spokenText, cleanAmount, paymentMode, staffName, isReplay, settings);
-      });
-      return;
-    }
-
-    fallbackSpeakSynthesis(utterance, spokenText, cleanAmount, paymentMode, staffName, isReplay, settings);
+    window.speechSynthesis.speak(utterance);
   } catch (e) {}
-};
-
-/**
- * Replays the last checkout transaction with 1-click or Alt+R
- */
-export const replayLastCheckout = () => {
-  const last = getLastCheckout();
-  playCheckoutChime();
-  setTimeout(() => {
-    if (!last || !last.amount) {
-      speakCheckoutVoice({
-        amount: 2499,
-        paymentMode: 'UPI',
-        staffName: 'Simran',
-        isReplay: true
-      });
-    } else {
-      speakCheckoutVoice({
-        ...last,
-        isReplay: true
-      });
-    }
-  }, 350);
-};
-
-/**
- * Tiered audio orchestration based on checkout value
- * - Normal (< ₹3,000): Standard Chime + Voice
- * - High Value (₹3,000 - ₹9,999): Cash Register Ka-Ching + Voice
- * - Jackpot (>= ₹10,000): Vegas Jackpot Chime Cascade + Voice
- */
-export const triggerCheckoutAudio = ({
-  amount = 0,
-  paymentMode = 'UPI',
-  staffName = '',
-  customerName = '',
-  billNumber = ''
-}) => {
-  const cleanAmt = Math.round(Number(amount || 0));
-  const settings = getSoundboxSettings();
-  if (settings.mode === 'muted') return;
-
-  if (settings.soundEnabled && settings.mode !== 'voice_only') {
-    if (cleanAmt >= 10000) {
-      playJackpotChime();
-    } else if (cleanAmt >= 3000) {
-      playCashRegisterChaching();
-    } else {
-      playCheckoutChime();
-    }
-  }
-
-  if (settings.voiceEnabled && settings.mode !== 'chime_only' && cleanAmt > 0) {
-    const delay = cleanAmt >= 10000 ? 750 : (cleanAmt >= 3000 ? 500 : 350);
-    setTimeout(() => {
-      speakCheckoutVoice({
-        amount: cleanAmt,
-        paymentMode,
-        staffName,
-        customerName,
-        billNumber
-      });
-    }, delay);
-  }
-};
-
-/**
- * Store Floor Audio Tannoy / Broadcast Presets
- */
-export const speakStoreBroadcast = (type = 'welcome', customText = '') => {
-  const settings = getSoundboxSettings();
-  const PRESETS = {
-    welcome: 'Welcome to Cobb Pundri. Explore our latest collection of premium shirts, blazers, and denims with special seasonal offers!',
-    offer: 'Attention shoppers: Exclusive store offer at Cobb Pundri today! Buy 3 garments and get 70% off flat. Please ask our staff for assistance.',
-    closing: 'Attention valued customers: Cobb Pundri will be closing in 15 minutes. Please bring your selected items to the cash counter for billing.',
-    counter_ready: 'Next customer please, billing counter is open and ready for checkout.',
-    staff_huddle: 'Floor team attention: Evening rush hour target update. Let us give great service to every walk-in customer!'
-  };
-
-  const textToSpeak = customText || PRESETS[type] || PRESETS.welcome;
-  playCheckoutChime();
-
-  setTimeout(() => {
-    if (settings.useNeuralVoice && typeof window !== 'undefined' && typeof window.Audio !== 'undefined') {
-      const voiceId = settings.neuralVoiceId || 'madhur';
-      playNeuralSpeechAudio({
-        text: textToSpeak,
-        voiceId,
-        amount: 0,
-        broadcastType: type
-      }).then((success) => {
-        if (!success) {
-          speakCheckoutVoice({ amount: 0, customText: textToSpeak });
-        }
-      }).catch(() => {
-        speakCheckoutVoice({ amount: 0, customText: textToSpeak });
-      });
-    } else {
-      speakCheckoutVoice({
-        amount: 0,
-        customText: textToSpeak
-      });
-    }
-  }, 450);
 };
 
 /**
@@ -782,3 +359,4 @@ export const playAirhorn = (externalCtx = null) => {
     });
   } catch (e) {}
 };
+

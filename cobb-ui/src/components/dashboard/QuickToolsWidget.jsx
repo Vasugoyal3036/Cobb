@@ -1,5 +1,5 @@
 import React from 'react';
-import { Terminal, Barcode, Search, X, Calculator, AlarmClock, Wallet, ArrowRight, Scissors, Plus, Banknote, Zap, Volume2, Radio } from 'lucide-react';
+import { Terminal, Barcode, Search, X, Calculator, AlarmClock, Wallet, ArrowRight, Scissors, Plus, Banknote, Zap } from 'lucide-react';
 import DenominationModal from '../DenominationModal';
 
 const QuickToolsWidget = ({
@@ -116,26 +116,6 @@ const QuickToolsWidget = ({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => window.dispatchEvent(new CustomEvent('cobb_soundbox_replay'))}
-            className="text-xs font-bold text-cyan-500 dark:text-cyan-400 bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 transition active:scale-95 cursor-pointer shadow-xs"
-            title="Replay Last Bill Announcement (Alt+R)"
-          >
-            <Volume2 className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Replay</span>
-            <span className="text-[10px] px-1 bg-cyan-500/20 rounded font-mono">Alt+R</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => window.dispatchEvent(new CustomEvent('cobb_open_soundbox'))}
-            className="text-xs font-bold text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 border border-slate-200 dark:border-white/10 px-2.5 py-1.5 rounded-xl flex items-center gap-1 transition active:scale-95 cursor-pointer shadow-xs"
-            title="Soundbox Voice & Tuning Settings (Alt+S)"
-          >
-            <Radio className="w-3.5 h-3.5 text-cyan-500 dark:text-cyan-400" />
-            <span className="hidden md:inline">Soundbox</span>
-          </button>
 
           <button
             onClick={() => setActiveTab('speed_billing')}
