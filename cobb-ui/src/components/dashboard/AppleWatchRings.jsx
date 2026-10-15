@@ -18,6 +18,7 @@ export default function AppleWatchRings({
   actualMargin = 27,
   formatCurrency = (v) => `₹${Number(v || 0).toLocaleString('en-IN')}`,
   showLegend = true,
+  layout = 'auto', // 'auto' | 'col' | 'row'
   className = ''
 }) {
   const salesPct = dailyTarget > 0 ? Math.min(100, Math.max(0, (todaySales / dailyTarget) * 100)) : 0;
@@ -43,8 +44,14 @@ export default function AppleWatchRings({
 
   const allClosed = salesPct >= 100 && billsPct >= 100 && marginPct >= 100;
 
+  const containerFlexClass = layout === 'col' 
+    ? 'flex flex-col items-center justify-center gap-2' 
+    : layout === 'row' 
+      ? 'flex flex-row items-center gap-3.5' 
+      : 'flex flex-col sm:flex-row items-center gap-3.5';
+
   return (
-    <div className={`flex flex-col sm:flex-row items-center gap-3.5 select-none ${className}`}>
+    <div className={`${containerFlexClass} select-none ${className}`}>
       {/* SVG Concentric Rings */}
       <div className="relative shrink-0 flex items-center justify-center">
         <svg
@@ -141,29 +148,28 @@ export default function AppleWatchRings({
 
       {/* Interactive Legend (if enabled) */}
       {showLegend && (
-        <div className="flex flex-col gap-1 text-[11px] font-mono leading-tight">
+        <div className={`flex ${layout === 'col' ? 'flex-wrap justify-center items-center gap-1.5 pt-0.5' : 'flex-col gap-1'} text-[11px] font-mono leading-tight`}>
           {/* Ring 1 Legend */}
-          <div className="flex items-center gap-1.5" title={`Sales: ${formatCurrency(todaySales)} of ${formatCurrency(dailyTarget)}`}>
-            <span className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-rose-500 to-amber-400 shrink-0 shadow-xs" />
+          <div className={`flex items-center gap-1.5 ${layout === 'col' ? 'px-2 py-0.5 rounded-lg bg-white/5 border border-white/5' : ''}`} title={`Sales: ${formatCurrency(todaySales)} of ${formatCurrency(dailyTarget)}`}>
+            <span className="w-2 h-2 rounded-full bg-gradient-to-r from-rose-500 to-amber-400 shrink-0 shadow-xs" />
             <span className="text-slate-400 text-[10px] uppercase font-bold">Target:</span>
             <span className="font-black text-amber-300">{salesPct.toFixed(0)}%</span>
-            <span className="text-[10px] text-slate-500">({formatCurrency(todaySales)})</span>
+            {layout !== 'col' && <span className="text-[10px] text-slate-500">({formatCurrency(todaySales)})</span>}
           </div>
 
           {/* Ring 2 Legend */}
-          <div className="flex items-center gap-1.5" title={`Checkouts: ${todayBills} of ${expectedBills} expected pace`}>
-            <span className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 shrink-0 shadow-xs" />
+          <div className={`flex items-center gap-1.5 ${layout === 'col' ? 'px-2 py-0.5 rounded-lg bg-white/5 border border-white/5' : ''}`} title={`Checkouts: ${todayBills} of ${expectedBills} expected pace`}>
+            <span className="w-2 h-2 rounded-full bg-gradient-to-r from-cyan-400 to-blue-500 shrink-0 shadow-xs" />
             <span className="text-slate-400 text-[10px] uppercase font-bold">Bills:</span>
             <span className="font-black text-cyan-300">{todayBills}</span>
-            <span className="text-[10px] text-slate-500">/ {expectedBills} pace</span>
+            <span className="text-[10px] text-slate-500">/{expectedBills}</span>
           </div>
 
           {/* Ring 3 Legend */}
-          <div className="flex items-center gap-1.5" title={`Gross Margin: ${actualMargin}% retained vs ${targetMargin}% target`}>
-            <span className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-emerald-400 to-teal-400 shrink-0 shadow-xs" />
+          <div className={`flex items-center gap-1.5 ${layout === 'col' ? 'px-2 py-0.5 rounded-lg bg-white/5 border border-white/5' : ''}`} title={`Gross Margin: ${actualMargin}% retained vs ${targetMargin}% target`}>
+            <span className="w-2 h-2 rounded-full bg-gradient-to-r from-emerald-400 to-teal-400 shrink-0 shadow-xs" />
             <span className="text-slate-400 text-[10px] uppercase font-bold">Margin:</span>
             <span className="font-black text-emerald-300">{actualMargin}%</span>
-            <span className="text-[10px] text-slate-500">retained</span>
           </div>
         </div>
       )}

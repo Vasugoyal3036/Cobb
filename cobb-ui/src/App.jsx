@@ -2052,29 +2052,54 @@ export default function App() {
         
         ${getThemeCardCSS(dashTheme)}
 
-        /* MONOCHROME KPI METRIC TILES */
-        .dark-mode .kpi-card-revenue,
-        .dark-mode .kpi-card-target,
-        .dark-mode .kpi-card-aov,
-        .dark-mode .kpi-card-margin,
-        .dark-mode .kpi-card-daily-bep,
-        .dark-mode .kpi-card-monthly-bep {
-          background: rgba(30, 30, 32, 0.45) !important;
-          border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        /* EXECUTIVE KPI METRIC TILES (Rich Obsidian Glassmorphism with Signature Accents) */
+        .dark-mode .kpi-card-revenue {
+          background: rgba(16, 185, 129, 0.04) !important;
+          border: 1px solid rgba(16, 185, 129, 0.22) !important;
           backdrop-filter: blur(40px) saturate(150%) !important;
           -webkit-backdrop-filter: blur(40px) saturate(150%) !important;
           border-radius: 1.5rem !important;
-          box-shadow: 0 4px 24px 0 rgba(0, 0, 0, 0.4), inset 0 1px 0 0 rgba(255, 255, 255, 0.05) !important;
+          box-shadow: 0 4px 24px 0 rgba(0, 0, 0, 0.4), 0 0 20px -4px rgba(16, 185, 129, 0.1), inset 0 1px 0 0 rgba(255, 255, 255, 0.05) !important;
         }
-        .dark-mode .kpi-card-revenue:hover,
-        .dark-mode .kpi-card-target:hover,
-        .dark-mode .kpi-card-aov:hover,
-        .dark-mode .kpi-card-margin:hover,
-        .dark-mode .kpi-card-daily-bep:hover,
+        .dark-mode .kpi-card-target {
+          background: rgba(59, 130, 246, 0.04) !important;
+          border: 1px solid rgba(59, 130, 246, 0.22) !important;
+          backdrop-filter: blur(40px) saturate(150%) !important;
+          -webkit-backdrop-filter: blur(40px) saturate(150%) !important;
+          border-radius: 1.5rem !important;
+          box-shadow: 0 4px 24px 0 rgba(0, 0, 0, 0.4), 0 0 20px -4px rgba(59, 130, 246, 0.1), inset 0 1px 0 0 rgba(255, 255, 255, 0.05) !important;
+        }
+        .dark-mode .kpi-card-daily-bep {
+          background: rgba(245, 158, 11, 0.04) !important;
+          border: 1px solid rgba(245, 158, 11, 0.25) !important;
+          backdrop-filter: blur(40px) saturate(150%) !important;
+          -webkit-backdrop-filter: blur(40px) saturate(150%) !important;
+          border-radius: 1.5rem !important;
+          box-shadow: 0 4px 24px 0 rgba(0, 0, 0, 0.4), 0 0 24px -4px rgba(245, 158, 11, 0.12), inset 0 1px 0 0 rgba(255, 255, 255, 0.05) !important;
+        }
+        .dark-mode .kpi-card-monthly-bep {
+          background: rgba(99, 102, 241, 0.04) !important;
+          border: 1px solid rgba(99, 102, 241, 0.25) !important;
+          backdrop-filter: blur(40px) saturate(150%) !important;
+          -webkit-backdrop-filter: blur(40px) saturate(150%) !important;
+          border-radius: 1.5rem !important;
+          box-shadow: 0 4px 24px 0 rgba(0, 0, 0, 0.4), 0 0 24px -4px rgba(99, 102, 241, 0.12), inset 0 1px 0 0 rgba(255, 255, 255, 0.05) !important;
+        }
+        .dark-mode .kpi-card-revenue:hover {
+          border-color: rgba(16, 185, 129, 0.45) !important;
+          box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5), 0 0 28px -2px rgba(16, 185, 129, 0.2) !important;
+        }
+        .dark-mode .kpi-card-target:hover {
+          border-color: rgba(59, 130, 246, 0.45) !important;
+          box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5), 0 0 28px -2px rgba(59, 130, 246, 0.2) !important;
+        }
+        .dark-mode .kpi-card-daily-bep:hover {
+          border-color: rgba(245, 158, 11, 0.45) !important;
+          box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5), 0 0 28px -2px rgba(245, 158, 11, 0.2) !important;
+        }
         .dark-mode .kpi-card-monthly-bep:hover {
-          background: rgba(45, 45, 48, 0.55) !important;
-          border-color: rgba(255, 255, 255, 0.2) !important;
-          box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.08) !important;
+          border-color: rgba(99, 102, 241, 0.45) !important;
+          box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5), 0 0 28px -2px rgba(99, 102, 241, 0.2) !important;
         }
 
         /* RECESSED SUB-TILES, INNER BOXES & CONTAINERS */
@@ -2082,15 +2107,15 @@ export default function App() {
           background-color: transparent !important;
           color: #ffffff !important;
         }
-        .dark-mode .bg-slate-100,
-        .dark-mode .bg-gray-100,
-        .dark-mode [class*="bg-slate-100"],
-        .dark-mode .bg-slate-200,
-        .dark-mode .bg-gray-200,
-        .dark-mode [class*="bg-slate-200"],
-        .dark-mode [class*="bg-slate-800"],
-        .dark-mode [class*="bg-slate-850"],
-        .dark-mode [class*="bg-gray-800"] {
+        .dark-mode .bg-slate-100:not([class*="rounded-full"]):not([class*="h-"]),
+        .dark-mode .bg-gray-100:not([class*="rounded-full"]):not([class*="h-"]),
+        .dark-mode [class*="bg-slate-100"]:not([class*="rounded-full"]):not([class*="h-"]),
+        .dark-mode .bg-slate-200:not([class*="rounded-full"]):not([class*="h-"]),
+        .dark-mode .bg-gray-200:not([class*="rounded-full"]):not([class*="h-"]),
+        .dark-mode [class*="bg-slate-200"]:not([class*="rounded-full"]):not([class*="h-"]),
+        .dark-mode [class*="bg-slate-800"]:not([class*="rounded-full"]):not([class*="h-"]),
+        .dark-mode [class*="bg-slate-850"]:not([class*="rounded-full"]):not([class*="h-"]),
+        .dark-mode [class*="bg-gray-800"]:not([class*="rounded-full"]):not([class*="h-"]) {
           background-color: rgba(255, 255, 255, 0.02) !important;
           border-radius: 1rem !important;
           color: #e2e8f0 !important;
@@ -2104,11 +2129,17 @@ export default function App() {
         }
 
         /* HIGHLIGHTED TYPOGRAPHY (Max High Contrast against Pitch Black) */
-        /* Crisp, Pure Radiant White for Headings, Metrics & Key Figures */
-        .dark-mode h1, .dark-mode h2, .dark-mode h3, .dark-mode h4, .dark-mode h5, .dark-mode h6,
-        .dark-mode .text-slate-900, .dark-mode .text-slate-950, .dark-mode .text-gray-900, .dark-mode .text-black,
+        /* Crisp, Pure Radiant White for Headings without custom color overrides */
+        .dark-mode h1:not([class*="text-"]),
+        .dark-mode h2:not([class*="text-"]),
+        .dark-mode h3:not([class*="text-"]),
+        .dark-mode h4:not([class*="text-"]),
+        .dark-mode h5:not([class*="text-"]),
+        .dark-mode h6:not([class*="text-"]),
+        .dark-mode .text-slate-900:not([class*="text-amber"]):not([class*="text-indigo"]):not([class*="text-emerald"]):not([class*="text-blue"]):not([class*="text-rose"]),
+        .dark-mode .text-slate-950, .dark-mode .text-gray-900, .dark-mode .text-black,
         .dark-mode .text-white {
-          color: #ffffff !important;
+          color: #ffffff;
         }
         .dark-mode .font-black, .dark-mode .font-extrabold {
           color: #ffffff;

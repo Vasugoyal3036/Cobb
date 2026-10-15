@@ -13,7 +13,8 @@ import {
   X, 
   Maximize2,
   LineChart,
-  RotateCcw
+  RotateCcw,
+  Target
 } from 'lucide-react';
 import AppleWatchRings from './AppleWatchRings';
 import DynamicBreakevenTrendChart from './DynamicBreakevenTrendChart';
@@ -123,6 +124,11 @@ const ExecutiveKpiStrip = ({
   const hoursLeftToday = Math.max(1, Math.min(10.5, storeClosingHour - Math.max(storeOpeningHour, currentHourFloat)));
   const hourlyRunRateNeeded = Math.round(remainingTodayBEP / hoursLeftToday);
   const billsNeededEstimate = Math.ceil(remainingTodayBEP / 3500);
+
+  // --- Daily Target Figures ---
+  const remainingTarget = Math.max(0, DAILY_TARGET - todaySales);
+  const hourlyTargetPace = Math.round(remainingTarget / hoursLeftToday);
+  const isTargetMet = todaySales >= DAILY_TARGET;
 
   // --- Monthly Breakeven Figures ---
   const monthlyFixedOpEx = totalMonthlyExp;
@@ -424,77 +430,140 @@ const ExecutiveKpiStrip = ({
         {/* =========================================================================
             CARD 2: DAILY SALES TARGET / PACE (APPLE WATCH RINGS OR BAR)
             ========================================================================= */}
-        <div className={`col-span-1 p-3.5 sm:p-5 rounded-2xl border shadow-xs flex flex-col justify-between hover:shadow-md transition-all relative overflow-hidden ${
+        <div className={`col-span-1 p-4 sm:p-5 rounded-2xl border shadow-xs flex flex-col justify-between hover:shadow-md transition-all relative overflow-hidden ${
           darkMode ? 'kpi-card-target text-white' : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
         }`}>
-          <div className="flex justify-between items-start relative z-10">
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider block">Daily Target</span>
-                {userRole === 'owner' && (
+          <div className="space-y-2 relative z-10">
+            {/* Header */}
+            <div className="flex justify-between items-start">
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <Target className="w-3.5 h-3.5 text-sky-400" />
+                  <span className="text-[10px] sm:text-xs font-bold text-sky-400 uppercase tracking-wider block">Daily Target</span>
+                  {userRole === 'owner' && (
+                    <button
+                      type="button"
+                      onClick={() => window.dispatchEvent(new Event('cobb_open_store_expenses'))}
+                      className="p-0.5 rounded text-slate-400 hover:text-sky-400 transition-colors cursor-pointer"
+                      title="Click to edit Daily Target & Store Expenses"
+                    >
+                      <Settings className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                    </button>
+                  )}
+                </div>
+                <h3 className="text-xl sm:text-2xl lg:text-3xl font-black font-mono tracking-tight !text-sky-400 mt-0.5 drop-shadow-[0_2px_12px_rgba(56,189,248,0.25)]">
+                  {formatCurrency(DAILY_TARGET)}
+                </h3>
+              </div>
+
+              <div className="flex flex-col items-end gap-1">
+                <div className="flex items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => window.dispatchEvent(new Event('cobb_open_store_expenses'))}
-                    className="p-0.5 rounded text-slate-400 hover:text-emerald-400 transition-colors cursor-pointer"
-                    title="Click to edit Daily Target & Store Expenses"
+                    onClick={() => setTargetViewMode((m) => (m === 'rings' ? 'bar' : 'rings'))}
+                    className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-white/10 hover:bg-white/20 text-slate-300 transition-all cursor-pointer"
+                    title={targetViewMode === 'rings' ? 'Switch to Bar View' : 'Switch to 3-Ring Activity Halo'}
                   >
-                    <Settings className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                    {targetViewMode === 'rings' ? '⭕ Halo' : '📊 Bar'}
                   </button>
-                )}
+                  <span className="text-[10px] sm:text-xs font-bold font-mono px-1.5 py-0.5 rounded-lg bg-sky-500/15 text-sky-300 border border-sky-500/30">
+                    {targetProgress.toFixed(0)}%
+                  </span>
+                </div>
+                <span className="text-[10px] font-mono text-slate-400">
+                  {isTargetMet ? '🎯 Target Hit' : `Gap: ${formatCurrency(remainingTarget)}`}
+                </span>
               </div>
-              <h3 className="text-lg sm:text-2xl lg:text-3xl font-black font-mono tracking-tight text-slate-900 dark:text-white mt-0.5">
-                {formatCurrency(DAILY_TARGET)}
-              </h3>
             </div>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setTargetViewMode((m) => (m === 'rings' ? 'bar' : 'rings'))}
-                className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-white/10 hover:bg-white/20 text-slate-300 transition-all cursor-pointer"
-                title={targetViewMode === 'rings' ? 'Switch to Bar View' : 'Switch to 3-Ring Activity Halo'}
-              >
-                {targetViewMode === 'rings' ? '⭕ Rings' : '📊 Bar'}
-              </button>
-              <span className="text-[10px] sm:text-xs font-bold font-mono px-1.5 py-0.5 rounded-lg bg-blue-500/15 text-blue-400 border border-blue-500/30">
-                {targetProgress.toFixed(0)}%
-              </span>
-            </div>
+
+            {targetViewMode === 'rings' ? (
+              <div className="py-1 relative z-10 flex flex-col items-center justify-center">
+                <AppleWatchRings
+                  size={84}
+                  layout="col"
+                  todaySales={overviewStats?.today?.TotalSales || 0}
+                  dailyTarget={DAILY_TARGET}
+                  todayBills={overviewStats?.today?.BillCount || 0}
+                  expectedBills={Math.max(15, Math.round(DAILY_TARGET / 3500))}
+                  targetMargin={targetMargin}
+                  actualMargin={targetMargin}
+                  formatCurrency={formatCurrency}
+                  showLegend={true}
+                />
+              </div>
+            ) : (
+              <>
+                {/* Detailed Target Sub-Grid (Achieved vs Gap) */}
+                <div className="grid grid-cols-2 gap-1.5 pt-1 text-xs font-mono">
+                  <div className={`p-2 rounded-xl border flex flex-col justify-center backdrop-blur-md ${
+                    darkMode ? 'bg-sky-950/25 border-sky-800/40 text-sky-100' : 'bg-sky-50/70 border-sky-200/80 text-sky-900'
+                  }`}>
+                    <span className="text-[9px] text-slate-400 uppercase font-bold">Achieved Today</span>
+                    <span className="font-bold text-sky-300 mt-0.5">+{formatCurrency(todaySales)}</span>
+                    <span className="text-[9px] text-slate-400">{overviewStats?.today?.BillCount || 0} Bills Completed</span>
+                  </div>
+                  <div className={`p-2 rounded-xl border flex flex-col justify-center backdrop-blur-md ${
+                    darkMode ? 'bg-blue-950/25 border-blue-800/40 text-blue-100' : 'bg-blue-50/70 border-blue-200/80 text-blue-900'
+                  }`}>
+                    <span className="text-[9px] text-slate-400 uppercase font-bold">Remaining Gap</span>
+                    <span className={`font-bold mt-0.5 ${isTargetMet ? 'text-emerald-400' : 'text-blue-300'}`}>
+                      {isTargetMet ? '🎯 Conquered' : formatCurrency(remainingTarget)}
+                    </span>
+                    <span className="text-[9px] text-slate-400">Pace: ~{formatCurrency(hourlyTargetPace)}/hr</span>
+                  </div>
+                </div>
+
+                {/* Progress Bar & Gap Info */}
+                <div className="pt-1">
+                  <div className="w-full bg-black/40 border border-white/10 rounded-full h-2.5 overflow-hidden p-0.5" style={{ borderRadius: '9999px' }}>
+                    <div
+                      className="bg-gradient-to-r from-blue-500 via-indigo-500 to-cyan-400 h-full rounded-full transition-all duration-1000 shadow-xs"
+                      style={{ width: `${Math.min(100, targetProgress)}%`, borderRadius: '9999px' }}
+                    ></div>
+                  </div>
+                  <div className="flex justify-between items-center text-[10.5px] mt-1.5 font-medium">
+                    <span className="text-slate-400 font-mono">
+                      Sales: {formatCurrency(todaySales)} <span className="font-bold text-sky-400">({targetProgress.toFixed(0)}%)</span>
+                    </span>
+                    {isTargetMet ? (
+                      <span className="text-emerald-400 font-bold flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" /> Target Met!
+                      </span>
+                    ) : (
+                      <span className="text-sky-400 font-mono font-bold">
+                        {formatCurrency(remainingTarget)} left
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Pacing Info */}
+                <div className="text-[10px] text-slate-400 flex items-center justify-between font-mono pt-0.5">
+                  <span className="text-slate-400">
+                    Pace needed: <strong className="text-sky-300">~{formatCurrency(hourlyTargetPace)}/hr</strong> ({hoursLeftToday.toFixed(1)}h left)
+                  </span>
+                  <span className={`font-semibold ${isTargetMet ? 'text-emerald-400' : 'text-slate-400'}`}>
+                    {isTargetMet ? 'Pacing: 100%+' : 'On Target Run'}
+                  </span>
+                </div>
+              </>
+            )}
           </div>
 
-          {targetViewMode === 'rings' ? (
-            <div className="my-2 relative z-10 flex items-center justify-center">
-              <AppleWatchRings
-                size={92}
-                todaySales={overviewStats?.today?.TotalSales || 0}
-                dailyTarget={DAILY_TARGET}
-                todayBills={overviewStats?.today?.BillCount || 0}
-                expectedBills={Math.max(15, Math.round(DAILY_TARGET / 3500))}
-                targetMargin={targetMargin}
-                actualMargin={targetMargin}
-                formatCurrency={formatCurrency}
-                showLegend={true}
-              />
-            </div>
-          ) : (
-            <div className="mt-2.5 relative z-10">
-              <div className="w-full bg-slate-100 dark:bg-slate-800/80 rounded-full h-2 overflow-hidden p-0.5">
-                <div
-                  className="bg-gradient-to-r from-blue-500 via-indigo-500 to-cyan-400 h-full rounded-full transition-all duration-1000 shadow-xs"
-                  style={{ width: `${Math.min(100, targetProgress)}%` }}
-                ></div>
-              </div>
-              <div className="flex justify-between items-center text-[10px] sm:text-xs text-slate-400 mt-1.5 font-medium">
-                <span>{formatCurrency(Math.max(0, DAILY_TARGET - (overviewStats?.today?.TotalSales || 0)))} left</span>
-                <span className="text-blue-400 font-bold hidden sm:inline">On Pace</span>
-              </div>
-            </div>
-          )}
-
-          <div className="pt-2 mt-1 border-t border-slate-100 dark:border-slate-800/80 text-[10px] sm:text-xs flex justify-between items-center text-slate-400 relative z-10">
-            <span className="font-medium">Run Rate:</span>
-            <span className="font-mono font-bold text-slate-200">
-              {formatCurrency(Math.round(Math.max(0, DAILY_TARGET - (overviewStats?.today?.TotalSales || 0)) / 5))}/hr
+          {/* Footer */}
+          <div className="pt-2 mt-2 border-t border-slate-100 dark:border-slate-800/80 text-[10.5px] flex justify-between items-center text-slate-400 relative z-10">
+            <span className="font-medium font-mono text-slate-400">
+              Run Rate: <strong className="text-slate-200">~{formatCurrency(hourlyTargetPace)}/hr</strong>
             </span>
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new Event('cobb_open_store_expenses'))}
+              className="font-bold text-sky-400 hover:text-sky-300 flex items-center gap-0.5 cursor-pointer transition-colors"
+              title="Edit Store Expenses & Target"
+            >
+              <span>Target</span>
+              <ArrowRight className="w-3 h-3" />
+            </button>
           </div>
         </div>
 
@@ -509,6 +578,7 @@ const ExecutiveKpiStrip = ({
             <div className="flex justify-between items-start">
               <div>
                 <div className="flex items-center gap-1.5">
+                  <Scale className="w-3.5 h-3.5 text-amber-400" />
                   <span className="text-[10px] sm:text-xs font-bold text-amber-400 uppercase tracking-wider block">Daily Breakeven</span>
                   {userRole === 'owner' && (
                     <button
@@ -521,13 +591,12 @@ const ExecutiveKpiStrip = ({
                     </button>
                   )}
                 </div>
-                <h3 className="text-xl sm:text-2xl lg:text-3xl font-black font-mono tracking-tight text-amber-400 mt-0.5">
+                <h3 className="text-xl sm:text-2xl lg:text-3xl font-black font-mono tracking-tight !text-amber-400 mt-0.5 drop-shadow-[0_2px_12px_rgba(245,158,11,0.25)]">
                   {todayAdjustedBEP === 0 ? '₹0 (Pre-Paid 🎉)' : formatCurrency(todayAdjustedBEP)}
                 </h3>
               </div>
 
               <div className="flex flex-col items-end gap-1">
-                {/* Feature 3: Celebration button or status pill */}
                 {isTodayBreakevenMet ? (
                   <button
                     type="button"
@@ -637,12 +706,16 @@ const ExecutiveKpiStrip = ({
               <>
                 {/* Detailed Financial Sub-Grid (OpEx Cost vs Gross Margin) */}
                 <div className="grid grid-cols-2 gap-1.5 pt-1 text-xs font-mono">
-                  <div className={`p-1.5 rounded-xl border flex flex-col justify-center ${darkMode ? 'bg-[#080d14]/70 border-[#1a2538]' : 'bg-amber-50/60 border-amber-200/70'}`}>
+                  <div className={`p-2 rounded-xl border flex flex-col justify-center backdrop-blur-md ${
+                    darkMode ? 'bg-amber-950/25 border-amber-800/40 text-amber-100' : 'bg-amber-50/70 border-amber-200/80 text-amber-900'
+                  }`}>
                     <span className="text-[9px] text-slate-400 uppercase font-bold">Base Daily OpEx</span>
-                    <span className="font-bold text-slate-200 mt-0.5">₹{DAILY_EXPENSE.toLocaleString('en-IN')}/day</span>
-                    <span className="text-[9px] text-slate-400">Fixed Cost (27%)</span>
+                    <span className="font-bold text-amber-200 mt-0.5">₹{DAILY_EXPENSE.toLocaleString('en-IN')}/day</span>
+                    <span className="text-[9px] text-slate-400">Fixed Cost ({targetMargin}% Margin)</span>
                   </div>
-                  <div className={`p-1.5 rounded-xl border flex flex-col justify-center ${darkMode ? 'bg-[#080d14]/70 border-[#1a2538]' : 'bg-emerald-50/60 border-emerald-200/70'}`}>
+                  <div className={`p-2 rounded-xl border flex flex-col justify-center backdrop-blur-md ${
+                    darkMode ? 'bg-emerald-950/25 border-emerald-800/40 text-emerald-100' : 'bg-emerald-50/70 border-emerald-200/80 text-emerald-900'
+                  }`}>
                     <span className="text-[9px] text-slate-400 uppercase font-bold">Margin Earned</span>
                     <span className="font-bold text-emerald-400 mt-0.5">+{formatCurrency(todayGrossProfit)}</span>
                     <span className="text-[9px] text-slate-400">{Math.round((todaySales * marginFrac) > 0 ? ((todaySales * marginFrac) / DAILY_EXPENSE) * 100 : 0)}% of Daily OpEx</span>
@@ -651,14 +724,14 @@ const ExecutiveKpiStrip = ({
 
                 {/* Progress Bar & Gap Info */}
                 <div className="pt-1">
-                  <div className="w-full bg-slate-100 dark:bg-slate-800/80 rounded-full h-2 overflow-hidden p-0.5">
+                  <div className="w-full bg-black/40 border border-white/10 rounded-full h-2.5 overflow-hidden p-0.5" style={{ borderRadius: '9999px' }}>
                     <div
                       className={`h-full rounded-full transition-all duration-1000 shadow-xs ${
                         isTodayBreakevenMet
                           ? 'bg-gradient-to-r from-amber-500 via-emerald-400 to-emerald-500'
                           : 'bg-gradient-to-r from-amber-500 via-amber-400 to-orange-400'
                       }`}
-                      style={{ width: `${Math.min(100, todayBEPProgressPct)}%` }}
+                      style={{ width: `${Math.min(100, todayBEPProgressPct)}%`, borderRadius: '9999px' }}
                     ></div>
                   </div>
                   <div className="flex justify-between items-center text-[10.5px] mt-1.5 font-medium">
@@ -744,8 +817,11 @@ const ExecutiveKpiStrip = ({
             {/* Header */}
             <div className="flex justify-between items-start">
               <div>
-                <span className="text-[10px] sm:text-xs font-bold text-indigo-400 uppercase tracking-wider block">Monthly Breakeven</span>
-                <h3 className="text-xl sm:text-2xl lg:text-3xl font-black font-mono tracking-tight text-indigo-400 dark:text-indigo-300 mt-0.5">
+                <div className="flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-indigo-400" />
+                  <span className="text-[10px] sm:text-xs font-bold text-indigo-400 uppercase tracking-wider block">Monthly Breakeven</span>
+                </div>
+                <h3 className="text-xl sm:text-2xl lg:text-3xl font-black font-mono tracking-tight !text-indigo-400 dark:!text-indigo-300 mt-0.5 drop-shadow-[0_2px_12px_rgba(99,102,241,0.25)]">
                   {formatCurrency(monthlyBEP)}
                 </h3>
               </div>
@@ -761,28 +837,34 @@ const ExecutiveKpiStrip = ({
 
             {/* Detailed Financial Sub-Grid (Fixed OpEx vs MTD Margin Earned) */}
             <div className="grid grid-cols-2 gap-1.5 pt-1 text-xs font-mono">
-              <div className={`p-1.5 rounded-xl border flex flex-col justify-center ${darkMode ? 'bg-[#080d14]/70 border-[#1a2538]' : 'bg-indigo-50/60 border-indigo-200/70'}`}>
+              <div className={`p-2 rounded-xl border flex flex-col justify-center backdrop-blur-md ${
+                darkMode ? 'bg-indigo-950/25 border-indigo-800/40 text-indigo-100' : 'bg-indigo-50/70 border-indigo-200/80 text-indigo-900'
+              }`}>
                 <span className="text-[9px] text-slate-400 uppercase font-bold">Monthly OpEx</span>
-                <span className="font-bold text-slate-200 mt-0.5">₹{monthlyFixedOpEx.toLocaleString('en-IN')}</span>
-                <span className="text-[9px] text-slate-400">Rent 40k • Staff 45k</span>
+                <span className="font-bold text-indigo-200 mt-0.5">₹{monthlyFixedOpEx.toLocaleString('en-IN')}</span>
+                <span className="text-[9px] text-slate-400">
+                  {expCfg?.rent ? `Rent ₹${Math.round(expCfg.rent/1000)}k • Staff ₹${Math.round((expCfg.staffSalary || 45000)/1000)}k` : 'Store Fixed Cost'}
+                </span>
               </div>
-              <div className={`p-1.5 rounded-xl border flex flex-col justify-center ${darkMode ? 'bg-[#080d14]/70 border-[#1a2538]' : 'bg-purple-50/60 border-purple-200/70'}`}>
-                <span className="text-[9px] text-slate-400 uppercase font-bold">MTD Margin</span>
+              <div className={`p-2 rounded-xl border flex flex-col justify-center backdrop-blur-md ${
+                darkMode ? 'bg-purple-950/25 border-purple-800/40 text-purple-100' : 'bg-purple-50/70 border-purple-200/80 text-purple-900'
+              }`}>
+                <span className="text-[9px] text-slate-400 uppercase font-bold">MTD Margin Retained</span>
                 <span className="font-bold text-indigo-300 mt-0.5">+{formatCurrency(mtdMarginEarned)}</span>
-                <span className="text-[9px] text-slate-400">{costCoveredPct}% Cost Covered</span>
+                <span className="text-[9px] text-slate-400">{costCoveredPct}% OpEx Covered</span>
               </div>
             </div>
 
             {/* Monthly Progress Bar & Gap Info */}
             <div className="pt-1">
-              <div className="w-full bg-slate-100 dark:bg-slate-800/80 rounded-full h-2 overflow-hidden p-0.5">
+              <div className="w-full bg-black/40 border border-white/10 rounded-full h-2.5 overflow-hidden p-0.5" style={{ borderRadius: '9999px' }}>
                 <div
                   className={`h-full rounded-full transition-all duration-1000 shadow-xs ${
                     isMonthBEPMet
                       ? 'bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-400'
                       : 'bg-gradient-to-r from-indigo-500 via-purple-500 to-cyan-400'
                   }`}
-                  style={{ width: `${Math.min(100, monthBEPProgressPct)}%` }}
+                  style={{ width: `${Math.min(100, monthBEPProgressPct)}%`, borderRadius: '9999px' }}
                 ></div>
               </div>
               <div className="flex justify-between items-center text-[10.5px] mt-1.5 font-medium">
