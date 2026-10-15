@@ -7,6 +7,7 @@ const path = require('path');
 const fs = require('fs');
 const { checkPort } = require('./scanner');
 const compression = require('compression');
+const axios = require('axios');
 require('dotenv').config();
 
 const app = express();
@@ -85,7 +86,8 @@ const ENDPOINT_TTL = {
     '/api/loyalty/leaderboard': 300,
     '/api/customers/wardrobe-passport': 300,
     '/api/inventory/depreciation-clock': 600,
-    '/api/alterations': 20
+    '/api/alterations': 20,
+    '/api/financials/dynamic-breakeven': 30
 };
 
 // Global Cache Middleware
@@ -3083,6 +3085,150 @@ app.get('/api/financials/pnl', async (req, res) => {
     }
 });
 
+// 4b. Dynamic Rolling Breakeven & Cumulative Loss Engine
+app.get('/api/financials/dynamic-breakeven', async (req, res) => {
+    try {
+        const storeCfg = loadConfig();
+        const expCfg = storeCfg.operatingExpenses || {};
+        const rent = Number(expCfg.rent !== undefined ? expCfg.rent : 40000);
+        const electricity = Number(expCfg.electricity !== undefined ? expCfg.electricity : 15000);
+        const staffSalaries = Number(expCfg.staffSalaries !== undefined ? expCfg.staffSalaries : 45000);
+        const miscExpenses = Number(expCfg.miscExpenses !== undefined ? expCfg.miscExpenses : 10000);
+        const franchiseRoyalty = Number(expCfg.franchiseRoyalty !== undefined ? expCfg.franchiseRoyalty : 0);
+        const totalExpenses = rent + electricity + staffSalaries + miscExpenses + franchiseRoyalty;
+        const targetMarginPct = Number(expCfg.targetMarginPct !== undefined ? expCfg.targetMarginPct : 27);
+        const marginMultiplier = targetMarginPct / 100;
+        const dailyOpEx = Number(expCfg.dailyExpense ?? Math.round(totalExpenses / 30) ?? 3367);
+        const baseBreakEvenSales = Math.round(dailyOpEx / (marginMultiplier || 0.27));
+
+        // Get Month-to-date daily sales from SQL
+        const result = await sql.query(`
+            SELECT 
+                CONVERT(varchar(10), m.CM_TIME, 120) AS SaleDate,
+                ISNULL(SUM(m.NET_AMOUNT), 0) AS TotalSales,
+                COUNT(m.CM_ID) AS BillCount
+            FROM CMM01106 m WITH (NOLOCK)
+            WHERE m.CM_TIME >= DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1)
+              AND m.CANCELLED = 0
+            GROUP BY CONVERT(varchar(10), m.CM_TIME, 120)
+            ORDER BY SaleDate ASC
+        `);
+
+        // Load today's or date-based expenses from expenses_manager
+        const expensesManager = require('./expenses_manager');
+        const expensesList = expensesManager.loadExpenses();
+
+        const dailyRecords = result.recordset || [];
+        let cumulativeLossOnly = 0;
+        let rollingNetBalance = 0;
+        const history = [];
+
+        dailyRecords.forEach(day => {
+            const dateStr = day.SaleDate;
+            const sales = Number(day.TotalSales || 0);
+            const bills = Number(day.BillCount || 0);
+            
+            const dayExpenses = expensesList
+                .filter(e => e.date === dateStr)
+                .reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
+
+            const totalCost = dailyOpEx + dayExpenses;
+            const grossProfit = Math.round(sales * marginMultiplier);
+            const netProfit = grossProfit - totalCost;
+            
+            const carriedBalanceBefore = rollingNetBalance;
+            const prevLossBefore = cumulativeLossOnly;
+
+            let dayTargetOpEx = dailyOpEx;
+            if (carriedBalanceBefore < 0) {
+                dayTargetOpEx = dailyOpEx + Math.abs(carriedBalanceBefore);
+            } else if (carriedBalanceBefore > 0) {
+                dayTargetOpEx = Math.max(0, dailyOpEx - carriedBalanceBefore);
+            }
+
+            const adjustedBEPTwoWay = marginMultiplier > 0 ? Math.round(dayTargetOpEx / marginMultiplier) : 0;
+            const adjustedBEP = adjustedBEPTwoWay;
+            
+            rollingNetBalance += netProfit;
+            cumulativeLossOnly = Math.max(0, cumulativeLossOnly - netProfit);
+
+            let nextDayTargetOpEx = dailyOpEx;
+            if (rollingNetBalance < 0) {
+                nextDayTargetOpEx = dailyOpEx + Math.abs(rollingNetBalance);
+            } else if (rollingNetBalance > 0) {
+                nextDayTargetOpEx = Math.max(0, dailyOpEx - rollingNetBalance);
+            }
+            const nextDayBEP = marginMultiplier > 0 ? Math.round(nextDayTargetOpEx / marginMultiplier) : 0;
+
+            history.push({
+                date: dateStr,
+                sales,
+                bills,
+                dailyOpEx,
+                pettyExpenses: dayExpenses,
+                totalCost,
+                grossProfit,
+                netProfit,
+                isLoss: netProfit < 0,
+                isProfit: netProfit > 0,
+                lossAmount: netProfit < 0 ? Math.abs(netProfit) : 0,
+                profitAmount: netProfit > 0 ? netProfit : 0,
+                carriedBalanceBefore,
+                surplusProfitBefore: Math.max(0, carriedBalanceBefore),
+                carriedDeficitBefore: carriedBalanceBefore < 0 ? Math.abs(carriedBalanceBefore) : 0,
+                carriedLossBefore: prevLossBefore,
+                adjustedBEP,
+                adjustedBEPTwoWay,
+                adjustedBEPLossOnly: Math.round((dailyOpEx + prevLossBefore) / marginMultiplier),
+                carriedBalanceAfter: rollingNetBalance,
+                carriedLossAfter: cumulativeLossOnly,
+                nextDayBEP,
+                status: netProfit > 0 ? 'PROFIT' : (netProfit < 0 ? 'LOSS' : 'BREAKEVEN'),
+                isMet: sales >= adjustedBEP,
+                gap: Math.max(0, adjustedBEP - sales)
+            });
+        });
+
+        const todayDate = new Date().toISOString().split('T')[0];
+        const todayRecord = history.find(h => h.date === todayDate) || history[history.length - 1] || null;
+        const todayCarriedBalance = todayRecord ? todayRecord.carriedBalanceBefore : rollingNetBalance;
+        const todayCarriedLoss = todayCarriedBalance < 0 ? Math.abs(todayCarriedBalance) : 0;
+        const todaySurplus = todayCarriedBalance > 0 ? todayCarriedBalance : 0;
+        let todayCost = dailyOpEx;
+        if (todayCarriedBalance < 0) todayCost = dailyOpEx + Math.abs(todayCarriedBalance);
+        else if (todayCarriedBalance > 0) todayCost = Math.max(0, dailyOpEx - todayCarriedBalance);
+        
+        const todayAdjustedBEP = marginMultiplier > 0 ? Math.round(todayCost / marginMultiplier) : 0;
+        const todaySales = todayRecord ? todayRecord.sales : 0;
+        const remainingToBEP = Math.max(0, todayAdjustedBEP - todaySales);
+
+        res.json({
+            success: true,
+            baseBreakEvenSales,
+            dailyOpEx,
+            targetMarginPct,
+            today: {
+                date: todayDate,
+                sales: todaySales,
+                baseBEP: baseBreakEvenSales,
+                carriedBalance: todayCarriedBalance,
+                carriedLoss: todayCarriedLoss,
+                surplusProfit: todaySurplus,
+                isSurplus: todayCarriedBalance > 0,
+                isDeficit: todayCarriedBalance < 0,
+                adjustedBEP: todayAdjustedBEP,
+                remainingToBEP,
+                isBreakevenMet: todaySales >= todayAdjustedBEP,
+                progressPct: todayAdjustedBEP > 0 ? Math.min(100, Math.round((todaySales / todayAdjustedBEP) * 100)) : 100
+            },
+            history
+        });
+    } catch (err) {
+        console.error('[DynamicBreakeven] Error:', err.message);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 // 5. Repeat Customer Retention Radar Endpoint
 app.get('/api/analytics/retention-radar', async (req, res) => {
     try {
@@ -3410,6 +3556,276 @@ app.post('/api/inventory/generate-indent', (req, res) => {
 });
 
 // ===================================================================
+// FEATURE: AUTOMATED DAILY EOD FINANCIAL & P&L SUMMARY (WHATSAPP TO OWNERS)
+// ===================================================================
+
+async function buildEodReport(targetDateStr) {
+    await connectDB();
+    const dateStr = targetDateStr || new Date().toISOString().split('T')[0];
+    
+    // 1. Core sales metrics
+    const salesResult = await sql.query(`
+        SELECT
+            COUNT(m.CM_ID) AS BillCount,
+            ISNULL(SUM(m.NET_AMOUNT), 0) AS GrossSales,
+            ISNULL(SUM(m.DISCOUNT_AMOUNT), 0) AS TotalDiscount,
+            ISNULL(SUM(m.TOTAL_GST_AMOUNT), 0) AS TaxCollected,
+            ISNULL(SUM(m.NET_AMOUNT - m.TOTAL_GST_AMOUNT), 0) AS NetSales,
+            ISNULL(SUM(p.CASH_AMOUNT), 0) AS CashAmount,
+            ISNULL(SUM(p.CC_AMOUNT), 0) AS CardAmount,
+            ISNULL(SUM(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0)), 0) AS UpiAmount
+        FROM CMM01106 m WITH (NOLOCK)
+        LEFT JOIN VW_BILL_PAYMODE p WITH (NOLOCK) ON m.CM_ID = p.MEMO_ID
+        LEFT JOIN VW_WL_CASHMEMOLIST w WITH (NOLOCK) ON m.CM_ID = w.MEMO_ID
+        WHERE CONVERT(varchar(10), m.CM_TIME, 120) = '${dateStr}' AND m.CANCELLED = 0
+    `);
+    const s = salesResult.recordset[0] || {};
+    const grossSales = Math.round(Number(s.GrossSales || 0));
+    const billCount = Number(s.BillCount || 0);
+
+    let totalUnits = 0;
+    try {
+        const unitsRes = await sql.query(`
+            SELECT ISNULL(SUM(d.QUANTITY), 0) as Units
+            FROM CMD01106 d WITH (NOLOCK)
+            JOIN CMM01106 m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
+            WHERE CONVERT(varchar(10), m.CM_TIME, 120) = '${dateStr}' AND m.CANCELLED = 0
+        `);
+        totalUnits = Number(unitsRes.recordset[0]?.Units || 0);
+    } catch (e) {}
+
+    const totalDiscount = Math.round(Number(s.TotalDiscount || 0));
+    const taxCollected = Math.round(Number(s.TaxCollected || 0));
+    const cash = Math.round(Number(s.CashAmount || 0));
+    const card = Math.round(Number(s.CardAmount || 0));
+    const upi = Math.round(Number(s.UpiAmount || 0));
+    const aov = billCount > 0 ? Math.round(grossSales / billCount) : 0;
+    const upt = billCount > 0 ? (totalUnits / billCount).toFixed(1) : '0.0';
+
+    // 2. Top Section / Category
+    let topCategory = 'Apparel';
+    let topCategoryUnits = 0;
+    try {
+        const catRes = await sql.query(`
+            SELECT TOP 1 
+                ISNULL(i.SECTION_NAME, 'Apparel') as SectionName,
+                SUM(d.QUANTITY) as UnitsSold
+            FROM CMD01106 d WITH (NOLOCK)
+            JOIN CMM01106 m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
+            LEFT JOIN INM01106 i WITH (NOLOCK) ON d.ARTICLE_CODE = i.ARTICLE_CODE
+            WHERE CONVERT(varchar(10), m.CM_TIME, 120) = '${dateStr}' AND m.CANCELLED = 0
+            GROUP BY i.SECTION_NAME
+            ORDER BY UnitsSold DESC
+        `);
+        if (catRes.recordset && catRes.recordset.length > 0) {
+            topCategory = catRes.recordset[0].SectionName || 'Apparel';
+            topCategoryUnits = Number(catRes.recordset[0].UnitsSold || 0);
+        }
+    } catch (e) {}
+
+    // 3. Top Floor Racer / Salesman
+    let topSalesman = 'Sales Team';
+    let topSalesmanSales = 0;
+    try {
+        const staffRes = await sql.query(`
+            SELECT TOP 1
+                ISNULL(e.EMP_NAME, d.EMP_CODE) as StaffName,
+                SUM(d.NET_AMOUNT) as StaffSales
+            FROM CMD01106 d WITH (NOLOCK)
+            JOIN CMM01106 m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
+            LEFT JOIN VW_EMP_MASTER e WITH (NOLOCK) ON d.EMP_CODE = e.EMP_CODE
+            WHERE CONVERT(varchar(10), m.CM_TIME, 120) = '${dateStr}' AND m.CANCELLED = 0 AND d.EMP_CODE IS NOT NULL AND d.EMP_CODE != ''
+            GROUP BY ISNULL(e.EMP_NAME, d.EMP_CODE)
+            ORDER BY StaffSales DESC
+        `);
+        if (staffRes.recordset && staffRes.recordset.length > 0) {
+            topSalesman = staffRes.recordset[0].StaffName || 'Sales Team';
+            topSalesmanSales = Math.round(Number(staffRes.recordset[0].StaffSales || 0));
+        }
+    } catch (e) {}
+
+    // 4. Petty Cash Expenses
+    const expensesManager = require('./expenses_manager');
+    const expensesList = expensesManager.loadExpenses();
+    const dayExpensesList = expensesList.filter(e => e.date === dateStr);
+    const totalPettyExpenses = dayExpensesList.reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
+
+    // 5. Operating Expenses & Dynamic Rolling Breakeven
+    const storeCfg = loadConfig();
+    const expCfg = storeCfg.operatingExpenses || {};
+    const rent = Number(expCfg.rent !== undefined ? expCfg.rent : 40000);
+    const electricity = Number(expCfg.electricity !== undefined ? expCfg.electricity : 15000);
+    const staffSalaries = Number(expCfg.staffSalaries !== undefined ? expCfg.staffSalaries : 45000);
+    const miscExpenses = Number(expCfg.miscExpenses !== undefined ? expCfg.miscExpenses : 10000);
+    const franchiseRoyalty = Number(expCfg.franchiseRoyalty !== undefined ? expCfg.franchiseRoyalty : 0);
+    const totalMonthlyExp = rent + electricity + staffSalaries + miscExpenses + franchiseRoyalty;
+    const targetMarginPct = Number(expCfg.targetMarginPct !== undefined ? expCfg.targetMarginPct : 27);
+    const marginFrac = targetMarginPct / 100;
+    const dailyOpEx = Number(expCfg.dailyExpense ?? Math.round(totalMonthlyExp / 30) ?? 3367);
+    const baseDailyBEP = Math.round(dailyOpEx / (marginFrac || 0.27));
+
+    const grossProfit = Math.round(grossSales * marginFrac);
+    const totalCost = dailyOpEx + totalPettyExpenses;
+    const netProfit = grossProfit - totalCost;
+    const isProfitable = netProfit >= 0;
+
+    // Date formatting
+    const dateObj = new Date(dateStr);
+    const dateFormatted = dateObj.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+    const timeFormatted = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+    // Format Executive WhatsApp Message
+    const text = `📊 *COBB PUNDRI — STORE CLOSING EOD DIGEST*
+━━━━━━━━━━━━━━━━━━━━━━━━
+📅 *Date:* ${dateFormatted} • ⏰ *Time:* ${timeFormatted}
+🏪 *Store:* Cobb Apparels, Fatehpur Road, Pundri
+
+💰 *REVENUE & BILLING:*
+• Total Net Sales: *₹${grossSales.toLocaleString('en-IN')}* (${billCount} Bills)
+• Units Sold: *${totalUnits} pcs* (UPT: ${upt})
+• Average Ticket (AOV): *₹${aov.toLocaleString('en-IN')}*
+• Customer Discounts: *₹${totalDiscount.toLocaleString('en-IN')}*
+• GST Collected: *₹${taxCollected.toLocaleString('en-IN')}*
+
+💳 *PAYMENT COLLECTIONS:*
+• 💵 Cash in Drawer: *₹${cash.toLocaleString('en-IN')}*
+• 📱 UPI / Online: *₹${upi.toLocaleString('en-IN')}*
+• 💳 Debit / Credit Card: *₹${card.toLocaleString('en-IN')}*
+
+📈 *DAILY P&L & BREAKEVEN:*
+• Margin Earned (${targetMarginPct}%): *+₹${grossProfit.toLocaleString('en-IN')}*
+• Daily Operating Cost: *₹${totalCost.toLocaleString('en-IN')}* (Fixed: ₹${dailyOpEx.toLocaleString('en-IN')}${totalPettyExpenses > 0 ? ` + Petty: ₹${totalPettyExpenses.toLocaleString('en-IN')}` : ''})
+• Net Daily Result: *${isProfitable ? `+₹${netProfit.toLocaleString('en-IN')} (PROFIT 🎉)` : `-₹${Math.abs(netProfit).toLocaleString('en-IN')} (DEFICIT ⚠️)`}*
+• Breakeven Hurdle: *₹${baseDailyBEP.toLocaleString('en-IN')}* (${grossSales >= baseDailyBEP ? '✅ Target Met' : `⚠️ Gap: ₹${Math.max(0, baseDailyBEP - grossSales).toLocaleString('en-IN')}`})
+
+🏆 *TOP PERFORMERS:*
+• Floor Leader: *${topSalesman}* (₹${topSalesmanSales.toLocaleString('en-IN')})
+• Top Category: *${topCategory}* (${topCategoryUnits} units)
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+⚡ *Automated Executive Intelligence — Cobb CRM*`;
+
+    return {
+        summary: {
+            date: dateStr,
+            dateFormatted,
+            timeFormatted,
+            grossSales,
+            billCount,
+            totalUnits,
+            aov,
+            upt,
+            totalDiscount,
+            taxCollected,
+            cash,
+            upi,
+            card,
+            topCategory,
+            topCategoryUnits,
+            topSalesman,
+            topSalesmanSales,
+            dailyOpEx,
+            totalPettyExpenses,
+            totalCost,
+            grossProfit,
+            netProfit,
+            isProfitable,
+            baseDailyBEP,
+            isBreakevenMet: grossSales >= baseDailyBEP
+        },
+        text
+    };
+}
+
+// 1. Get EOD Summary Report Data & Text
+app.get('/api/reports/eod-summary', async (req, res) => {
+    try {
+        const { date } = req.query;
+        const report = await buildEodReport(date);
+        res.json(report);
+    } catch (err) {
+        console.error('[EOD SUMMARY ERROR]:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 2. Dispatch EOD Summary via WhatsApp to Store Owners
+app.post('/api/reports/eod-summary/send', async (req, res) => {
+    try {
+        const { date, numbers } = req.body || {};
+        const report = await buildEodReport(date);
+        
+        const recipients = (Array.isArray(numbers) && numbers.length > 0)
+            ? numbers
+            : (process.env.OWNER_WHATSAPP_NUMBERS
+                ? process.env.OWNER_WHATSAPP_NUMBERS.split(',').map(s => s.trim()).filter(Boolean)
+                : ['9138122820', '8708788707', '9034522000', '9466422821']);
+            
+        const results = [];
+        for (const rawPhone of recipients) {
+            const phone = String(rawPhone).replace(/\D/g, '').slice(-10);
+            if (phone.length === 10) {
+                try {
+                    const waRes = await axios.post('http://localhost:3000/send', {
+                        number: phone,
+                        message: report.text
+                    }, { timeout: 8000 });
+                    results.push({ phone, status: 'sent', data: waRes.data });
+                } catch (waErr) {
+                    results.push({ phone, status: 'error', error: waErr.message });
+                }
+            }
+        }
+
+        const todayStr = date || new Date().toISOString().split('T')[0];
+        try {
+            fs.writeFileSync(path.join(__dirname, 'sent_eod_date.txt'), todayStr, 'utf8');
+        } catch (e) {}
+
+        res.json({
+            success: true,
+            report,
+            recipients: results
+        });
+    } catch (err) {
+        console.error('[EOD SEND ERROR]:', err.message);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+async function dispatchEodReportToOwners(targetDateStr, labelSuffix = '') {
+    try {
+        const report = await buildEodReport(targetDateStr);
+        const recipients = process.env.OWNER_WHATSAPP_NUMBERS
+            ? process.env.OWNER_WHATSAPP_NUMBERS.split(',').map(s => s.trim()).filter(Boolean)
+            : ['9138122820', '8708788707', '9034522000', '9466422821'];
+
+        for (const rawPhone of recipients) {
+            const phone = String(rawPhone).replace(/\D/g, '').slice(-10);
+            if (phone.length === 10) {
+                try {
+                    await axios.post('http://localhost:3000/send', {
+                        number: phone,
+                        message: report.text + (labelSuffix ? `\n\n📌 *Tag:* ${labelSuffix}` : '')
+                    }, { timeout: 8000 });
+                    console.log(`[AUTO EOD DISPATCH] Sent to ${phone}`);
+                } catch (e) {
+                    console.warn(`[AUTO EOD DISPATCH WARN] Could not send to ${phone}: ${e.message}`);
+                }
+            }
+        }
+        const todayStr = targetDateStr || new Date().toISOString().split('T')[0];
+        try {
+            fs.writeFileSync(path.join(__dirname, 'sent_eod_date.txt'), todayStr, 'utf8');
+        } catch (e) {}
+        return true;
+    } catch (err) {
+        console.error('[AUTO EOD DISPATCH ERROR]:', err.message);
+        return false;
+    }
+}
+
+// ===================================================================
 // FEATURE: CASH DENOMINATION & NIGHT CLOSING SHEET
 // ===================================================================
 
@@ -3528,7 +3944,7 @@ ${notes ? `\n📝 Notes: ${notes}` : ''}
         // Auto-dispatch EOD closing digest to the 4 owners upon night closing save
         setTimeout(async () => {
             try {
-                // await dispatchEodReport (DISABLED)(null, ' (Store Closing Digest)');
+                await dispatchEodReportToOwners(null, ' (Night Cash Closing Save)');
             } catch (e) {
                 console.error('[AUTO EOD ON CLOSING SAVE ERROR]:', e.message);
             }
@@ -4226,7 +4642,6 @@ app.listen(PORT, () => {
     // --- AUTOMATIC EOD CLOSING DISPATCH & RECOVERY ENGINE ---
     let lastEodCheckTimestamp = 0;
     async function checkAndAutoDispatchEod() {
-        return; // Disabled per user request
         const nowMs = Date.now();
         if (nowMs - lastEodCheckTimestamp < 30000) return; // Run check every 30s
         lastEodCheckTimestamp = nowMs;
@@ -4249,8 +4664,8 @@ app.listen(PORT, () => {
             }
 
             // 1. Evening Closing Trigger:
-            // Scheduled Closing: 9:30 PM onwards (if PC is still running)
-            const isEveningSchedule = (hour > 21 || (hour === 21 && minute >= 30));
+            // Scheduled Closing: 8:30 PM onwards (20:30)
+            const isEveningSchedule = (hour > 20 || (hour === 20 && minute >= 30));
 
             if (lastSentDate !== todayStr && isEveningSchedule) {
                 await connectDB();
@@ -4262,8 +4677,8 @@ app.listen(PORT, () => {
                 const { billCount } = activityQuery.recordset[0] || { billCount: 0 };
 
                 if (billCount > 0) {
-                    console.log(`[AUTO EOD] 9:30 PM scheduled closing trigger (${hour}:${String(minute).padStart(2, '0')}) active for ${todayStr} (${billCount} bills). Auto-dispatching EOD digest to owners...`);
-                    // await dispatchEodReport (DISABLED)(todayStr, ' (Store Closing Digest)');
+                    console.log(`[AUTO EOD] 8:30 PM scheduled closing trigger (${hour}:${String(minute).padStart(2, '0')}) active for ${todayStr} (${billCount} bills). Auto-dispatching EOD digest to owners...`);
+                    await dispatchEodReportToOwners(todayStr, ' (Scheduled Store Closing at 8:30 PM)');
                 }
             }
 
@@ -4324,16 +4739,19 @@ async function handleProcessTermination(signal) {
         const day = String(now.getDate()).padStart(2, '0');
         const todayStr = `${year}-${month}-${day}`;
 
-        // Evening closing window: 6:00 PM (18:00) onwards
-        if (hour >= 18) {
+        // Shutdown near 7:30 PM onwards (from 7:15 PM / 19:15 onwards)
+        const isNear730OrLater = (hour > 19 || (hour === 19 && minute >= 15));
+        if (isNear730OrLater) {
             const sentFilePath = path.join(__dirname, 'sent_eod_date.txt');
             let lastSentDate = '';
             if (fs.existsSync(sentFilePath)) {
                 try { lastSentDate = fs.readFileSync(sentFilePath, 'utf8').trim(); } catch (e) {}
             }
             if (lastSentDate !== todayStr) {
-                console.log(`[PROCESS TERMINATION] Evening shutdown at ${hour}:${String(minute).padStart(2, '0')}. Dispatching EOD digest for ${todayStr}...`);
-                // await dispatchEodReport (DISABLED)(todayStr, ' (Store Closing Digest)');
+                console.log(`[PROCESS TERMINATION] Shutdown near 7:30 PM+ detected at ${hour}:${String(minute).padStart(2, '0')}. Auto-dispatching EOD digest for ${todayStr}...`);
+                await dispatchEodReportToOwners(todayStr, ` (Shutdown Closing at ${hour}:${String(minute).padStart(2, '0')})`);
+            } else {
+                console.log(`[PROCESS TERMINATION] EOD digest for ${todayStr} was already dispatched earlier today. Skipping.`);
             }
         }
     } catch (e) {

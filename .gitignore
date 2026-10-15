@@ -3,6 +3,7 @@ dist/
 dist-electron/
 .DS_Store
 *.log
+*git_log*
 __pycache__/
 *.pyc
 mingit/

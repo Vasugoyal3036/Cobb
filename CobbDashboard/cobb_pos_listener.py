@@ -382,15 +382,16 @@ def setup_windows_shutdown_watcher(cursor):
         def on_shutdown_event(hwnd):
             now = time.localtime()
             today_str = time.strftime('%Y-%m-%d', now)
-            # Store closing shutdown window: 8:00 PM (20:00) onwards
-            if now.tm_hour >= 20:
+            # Store closing shutdown window: near 7:30 PM (19:15) onwards
+            is_near_closing_shutdown = (now.tm_hour > 19 or (now.tm_hour == 19 and now.tm_min >= 15))
+            if is_near_closing_shutdown:
                 if is_eod_already_sent(today_str):
                     log_engine(f"[SHUTDOWN HOOK] EOD digest for {today_str} was already sent today. Skipping shutdown dispatch.")
                     return
-                log_engine(f"[SHUTDOWN HOOK] Windows system shutdown detected at {now.tm_hour}:{now.tm_min:02d}. Holding shutdown to dispatch EOD digest...")
+                log_engine(f"[SHUTDOWN HOOK] Windows system shutdown detected near 7:30 PM+ ({now.tm_hour}:{now.tm_min:02d}). Holding shutdown to dispatch EOD digest...")
                 try:
                     user32.ShutdownBlockReasonCreate(hwnd, "Dispatching Cobb Store EOD Closing Digest via WhatsApp...")
-                    trigger_eod_closing_dispatch(cursor, label_suffix=" (Store Closing Digest)")
+                    trigger_eod_closing_dispatch(cursor, label_suffix=f" (Shutdown at {now.tm_hour}:{now.tm_min:02d})")
                 except Exception as ex:
                     log_engine(f"[SHUTDOWN HOOK ERROR] {ex}")
                 finally:
@@ -703,10 +704,10 @@ def run_listener():
             today_str = time.strftime('%Y-%m-%d', now)
 
             # Evening Closing Schedule:
-            # - Trigger A: 9:30 PM (21:30) Scheduled Closing
-            # - Trigger B: Inactivity from 8:45 PM (20:45) onward: If bills exist and no new bill for >= 25 mins
-            is_night_schedule = (now.tm_hour > 21 or (now.tm_hour == 21 and now.tm_min >= 30))
-            is_closing_inactivity = (now.tm_hour > 20 or (now.tm_hour == 20 and now.tm_min >= 45))
+            # - Trigger A: 8:30 PM (20:30) Scheduled Closing
+            # - Trigger B: Inactivity from 8:00 PM (20:00) onward: If bills exist and no new bill for >= 25 mins
+            is_night_schedule = (now.tm_hour > 20 or (now.tm_hour == 20 and now.tm_min >= 30))
+            is_closing_inactivity = (now.tm_hour > 20 or (now.tm_hour == 20 and now.tm_min >= 0))
 
             if (is_night_schedule or is_closing_inactivity) and not is_eod_already_sent(today_str):
                 try:
@@ -726,7 +727,7 @@ def run_listener():
                         reason = ""
                         if is_night_schedule:
                             should_send = True
-                            reason = f"9:30 PM night closing schedule ({now.tm_hour}:{now.tm_min:02d})"
+                            reason = f"8:30 PM night closing schedule ({now.tm_hour}:{now.tm_min:02d})"
                         elif is_closing_inactivity and mins_since >= 25:
                             should_send = True
                             reason = f"Evening inactivity ({mins_since}m quiet since last bill at {now.tm_hour}:{now.tm_min:02d})"

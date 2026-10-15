@@ -590,7 +590,7 @@ export default function SetupWizardModal({ isOpen, onClose, onConfigSaved }) {
               {/* Owner WhatsApp Numbers for EOD Alerts */}
               <div className="space-y-2">
                 <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wide block">
-                  Owner WhatsApp Phone Numbers (Receives 9:30 PM EOD Summaries)
+                  Owner WhatsApp Phone Numbers (Receives 8:30 PM EOD Summaries)
                 </label>
                 
                 <div className="flex gap-2">

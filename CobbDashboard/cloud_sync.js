@@ -1,4 +1,5 @@
 const fs = require('fs');
+const crypto = require('crypto');
 const path = require('path');
 const net = require('net');
 const os = require('os');
@@ -153,7 +154,10 @@ const operationalEndpoints = [
     "/api/alterations",
     "/api/parcels/transit",
     "/api/ratings",
-    { url: "/api/config/current", docName: "store_config" }
+    { url: "/api/config/current", docName: "store_config" },
+    { url: "/api/expenses/today", docName: "expenses_today" },
+    { url: "/api/financials/dynamic-breakeven", docName: "dynamic_breakeven", aliasDocs: ["financials_dynamic-breakeven"] },
+    { url: "/api/reports/eod-summary", docName: "reports_eod-summary" }
 ];
 
 // Tier 2: Standard Daily Operations (Every 15 minutes)
@@ -220,9 +224,10 @@ async function syncEndpointList(items, tierName = 'Sync') {
             }
 
             if (response && response.data) {
-                // Deduplicate: Don't write to Firestore if the content is identical to last sync
+                // Deduplicate: Fast MD5 hash check to avoid holding multi-MB strings in memory
                 const jsonStr = JSON.stringify(response.data);
-                if (lastPayloadHash.get(docName) === jsonStr) {
+                const hash = crypto.createHash('md5').update(jsonStr).digest('hex');
+                if (lastPayloadHash.get(docName) === hash) {
                     continue; // Skip write, saves Firestore quota & network!
                 }
 
@@ -243,12 +248,24 @@ async function syncEndpointList(items, tierName = 'Sync') {
                 }
 
                 await db.collection("stores").doc(STORE_ID).collection("data").doc(docName).set(payload, { merge: true });
-                lastPayloadHash.set(docName, jsonStr);
+                lastPayloadHash.set(docName, hash);
+
+                // If endpoint has alias docs (e.g. legacy/alternative doc naming), sync them without extra fetch
+                if (Array.isArray(item.aliasDocs)) {
+                    for (const alias of item.aliasDocs) {
+                        await db.collection("stores").doc(STORE_ID).collection("data").doc(alias).set(payload, { merge: true });
+                        lastPayloadHash.set(alias, hash);
+                    }
+                }
+
                 console.log(`[SYNC AGENT] ✅ [${tierName}] Synced ${docName}`);
             }
         } catch (err) {
             console.error(`[SYNC AGENT] ❌ [${tierName}] Failed to sync ${docName}: ${err.message}`);
         }
+
+        // Lightweight throttle between endpoints to prevent SQL pool starvation
+        await new Promise(resolve => setTimeout(resolve, 120));
     }
 }
 
@@ -720,7 +737,6 @@ async function checkAndDispatchCancelledBillAlerts() {
 let lastDispatchedEodDate = '';
 
 async function dispatchEodDigestAlert(isScheduled = false) {
-    return; // Disabled per user request
     if (!db) return;
     const todayStr = new Date().toISOString().split('T')[0];
     if (isScheduled && lastDispatchedEodDate === todayStr) {
@@ -772,6 +788,14 @@ async function dispatchEodDigestAlert(isScheduled = false) {
         await db.collection("stores").doc(STORE_ID).collection("checkout_notifications").doc(alertId).set(payload);
         console.log(`[SYNC AGENT] 📢 Automated EOD Digest written to Firestore: ${title}`);
         lastDispatchedEodDate = todayStr;
+
+        // 3. Dispatch automated WhatsApp to Store Owners directly
+        try {
+            await sendWhatsAppToOwners(report.text, 'EOD_CLOSING');
+            console.log(`[SYNC AGENT] 📲 WhatsApp EOD Closing Digest dispatched to all store owners.`);
+        } catch (waErr) {
+            console.warn(`[SYNC AGENT] WhatsApp EOD dispatch warning: ${waErr.message}`);
+        }
 
         // 3. Dispatch native FCM push notification to registered phones
         if (messaging) {
@@ -1203,6 +1227,24 @@ async function handleGracefulShutdown(signal) {
                         `🕒 POS Counter Computer shut down on ${dateStr} at ${timeStr} (${signal}).\n` +
                         `Store system is now closed.`;
                     await sendWhatsAppToOwners(waShutdownText, 'Shutdown');
+
+                    // If shutdown is near 7:30 PM+ (from 7:15 PM / 19:15 onwards) and EOD not yet sent today, dispatch it
+                    const hour = now.getHours();
+                    const minute = now.getMinutes();
+                    const isNear730OrLater = (hour > 19 || (hour === 19 && minute >= 15));
+                    const sentFilePath = path.join(__dirname, 'sent_eod_date.txt');
+                    let lastSentDate = '';
+                    if (fs.existsSync(sentFilePath)) {
+                        try { lastSentDate = fs.readFileSync(sentFilePath, 'utf8').trim(); } catch (e) {}
+                    }
+                    if (isNear730OrLater && lastSentDate !== dateStr) {
+                        console.log(`[SYNC AGENT] Shutdown near 7:30 PM+ detected (${timeStr}). Auto-dispatching EOD Closing Digest...`);
+                        try {
+                            await axios.post(`${LOCAL_API}/api/reports/eod-summary/send`, { date: dateStr }, { timeout: 6000 });
+                        } catch (eodErr) {
+                            console.warn('[SYNC AGENT] EOD shutdown dispatch note:', eodErr.message);
+                        }
+                    }
                 }
             })(),
             new Promise(resolve => setTimeout(resolve, 4000))
@@ -1352,16 +1394,25 @@ function startSyncAgent() {
         listenForStaffConfigChanges();
         setInterval(() => syncEndpointList(operationalEndpoints, 'Operational Tier'), OPERATIONAL_INTERVAL);
         setInterval(() => syncEndpointList(standardEndpoints, 'Standard Tier'), STANDARD_INTERVAL);
-        setInterval(() => syncEndpointList(deepAnalyticsEndpoints, 'Deep Analytics Tier'), DEEP_ANALYTICS_INTERVAL);
+        setInterval(() => {
+            const nowHour = new Date().getHours();
+            if (nowHour >= 22 || nowHour < 9) {
+                console.log(`[SYNC AGENT] 🌙 Store closed (${nowHour}:00). Skipping heavy catalog sync.`);
+                return;
+            }
+            syncEndpointList(deepAnalyticsEndpoints, 'Deep Analytics Tier');
+        }, DEEP_ANALYTICS_INTERVAL);
         setInterval(checkAndDispatchCheckoutAlerts, CHECKOUT_INTERVAL);
         setInterval(checkAndDispatchCancelledBillAlerts, CANCELLED_INTERVAL);
         setInterval(updateHeartbeat, HEARTBEAT_INTERVAL);
 
-        // 3. Nightly closing digest scheduled trigger (between 9:45 PM and 9:55 PM)
+        // 3. Nightly closing digest scheduled trigger (between 8:30 PM and 9:05 PM)
         setInterval(() => {
             const now = new Date();
-            if (now.getHours() === 21 && now.getMinutes() >= 45 && now.getMinutes() <= 55) {
-                // dispatchEodDigestAlert (DISABLED)(true);
+            const hour = now.getHours();
+            const min = now.getMinutes();
+            if ((hour === 20 && min >= 30) || (hour === 21 && min <= 5)) {
+                dispatchEodDigestAlert(true);
             }
         }, 60 * 1000);
     } else {

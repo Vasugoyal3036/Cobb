@@ -28,10 +28,12 @@ const StaffFloorRaceWidget = ({
   formatCurrency = (v) => `₹${Number(v || 0).toLocaleString('en-IN')}`,
   API_BASE = 'http://localhost:5000',
   activeStore = 'DEMO_STORE_001',
-  setActiveTab
+  setActiveTab,
+  compact = false
 }) => {
   const [period, setPeriod] = useState('this_month'); // 'today' | 'this_week' | 'this_month' | 'all_time'
   const [loading, setLoading] = useState(false);
+  const [showSimulatorDrawer, setShowSimulatorDrawer] = useState(false);
   const [rawBundle, setRawBundle] = useState(() => {
     try {
       const c = localStorage.getItem('cobb_staff_leaderboard_cache');
@@ -232,14 +234,18 @@ const StaffFloorRaceWidget = ({
   }, [gamifiedStaff, activeBadgeFilter]);
 
   return (
-    <div className={`p-5 sm:p-6 rounded-3xl border shadow-xl relative overflow-hidden transition-all duration-300 ${
+    <div className={`${compact ? 'p-3.5 sm:p-4 rounded-2xl' : 'p-5 sm:p-6 rounded-3xl'} border shadow-md relative overflow-hidden transition-all duration-300 ${
       darkMode
         ? 'glass-card-obsidian text-slate-100 shadow-blue-950/20'
         : 'bg-gradient-to-b from-white via-slate-50 to-amber-50/20 border-slate-200/90 text-slate-800 shadow-slate-200/50'
     }`}>
-      {/* Ambient Cyber Grid & Glow */}
-      <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
-      <div className="absolute bottom-0 left-0 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none -ml-20 -mb-20"></div>
+      {/* Ambient Cyber Grid & Glow (only in full mode) */}
+      {!compact && (
+        <>
+          <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
+          <div className="absolute bottom-0 left-0 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none -ml-20 -mb-20"></div>
+        </>
+      )}
 
       {/* CONFETTI BURST OVERLAY */}
       {confettiActive && (
@@ -254,43 +260,43 @@ const StaffFloorRaceWidget = ({
       )}
 
       {/* HEADER SECTION */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-slate-200 dark:border-slate-800/80 relative z-10">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/30">
-              <Trophy className="w-5 h-5 animate-pulse" />
+      <div className={`flex items-center justify-between gap-3 ${compact ? 'pb-3' : 'pb-5'} border-b border-slate-200 dark:border-slate-800/80 relative z-10 flex-wrap sm:flex-nowrap`}>
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className={`${compact ? 'p-1.5 rounded-xl' : 'p-2.5 rounded-2xl'} bg-gradient-to-tr from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/30 shrink-0`}>
+            <Trophy className={`${compact ? 'w-4 h-4' : 'w-5 h-5'} animate-pulse`} />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <h3 className={`${compact ? 'text-sm' : 'text-lg sm:text-xl'} font-black tracking-tight flex items-center gap-1.5 truncate`}>
+                <span>Sales Floor Grand Prix</span>
+                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-amber-500/15 text-amber-500 border border-amber-500/30 shrink-0">
+                  🏁 LIVE
+                </span>
+              </h3>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-lg sm:text-xl font-black tracking-tight flex items-center gap-2">
-                  <span>Sales Floor Grand Prix</span>
-                  <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-500 border border-amber-500/30">
-                    🏁 LIVE TRACK
-                  </span>
-                </h3>
-              </div>
+            {!compact && (
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 Gamified real-time race track, floor badges, and commission tier accelerator.
               </p>
-            </div>
+            )}
           </div>
         </div>
 
         {/* CONTROLS: TIMEFRAME & CELEBRATE */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
-          <div className="flex bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700/80 text-xs font-bold w-full sm:w-auto overflow-x-auto no-scrollbar">
+        <div className="flex items-center gap-1.5 shrink-0 ml-auto sm:ml-0">
+          <div className={`flex bg-slate-100 dark:bg-slate-800/80 ${compact ? 'p-0.5 rounded-lg text-[10px]' : 'p-1 rounded-xl text-xs'} border border-slate-200/80 dark:border-slate-700/80 font-bold overflow-x-auto no-scrollbar`}>
             {[
               { id: 'today', label: 'Today' },
               { id: 'this_week', label: 'Week' },
               { id: 'this_month', label: 'Month' },
-              { id: 'all_time', label: 'All Time' }
+              ...(!compact ? [{ id: 'all_time', label: 'All Time' }] : [])
             ].map(p => (
               <button
                 key={p.id}
                 onClick={() => setPeriod(p.id)}
-                className={`flex-1 sm:flex-initial text-center px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
+                className={`text-center ${compact ? 'px-2 py-0.5 rounded' : 'px-3 py-1.5 rounded-lg'} transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
                   period === p.id
-                    ? 'bg-amber-500 text-white shadow-md font-black'
+                    ? 'bg-amber-500 text-white shadow-xs font-black'
                     : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
@@ -299,36 +305,236 @@ const StaffFloorRaceWidget = ({
             ))}
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={handleTriggerCelebration}
-              className="flex-1 sm:flex-none justify-center px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-black shadow-md shadow-amber-500/25 flex items-center gap-1.5 cursor-pointer transition-transform active:scale-95"
-              title="Celebrate Top Performer"
-            >
-              <PartyPopper className="w-3.5 h-3.5" />
-              <span>Celebrate Leader</span>
-            </button>
+          <button
+            onClick={handleTriggerCelebration}
+            className={`${compact ? 'p-1.5 rounded-lg' : 'px-3.5 py-1.5 rounded-xl'} bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-black shadow-xs flex items-center gap-1 cursor-pointer transition-transform active:scale-95 shrink-0`}
+            title="Celebrate Top Performer"
+          >
+            <PartyPopper className="w-3.5 h-3.5" />
+            {!compact && <span>Celebrate Leader</span>}
+          </button>
 
-            {typeof setActiveTab === 'function' && (
-              <button
-                onClick={() => setActiveTab('staff')}
-                className={`p-2 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer active:scale-95 ${
-                  darkMode
-                    ? 'bg-slate-800/80 border-slate-700 text-slate-300 hover:text-white'
-                    : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-                }`}
-                title="Open Full Staff Leaderboard"
-              >
-                <span>Full</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
+          {typeof setActiveTab === 'function' && (
+            <button
+              onClick={() => setActiveTab('staff')}
+              className={`${compact ? 'p-1.5 rounded-lg text-[11px]' : 'p-2 rounded-xl text-xs'} border font-bold transition flex items-center justify-center gap-1 cursor-pointer active:scale-95 shrink-0 ${
+                darkMode
+                  ? 'bg-slate-800/80 border-slate-700 text-slate-300 hover:text-white'
+                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+              }`}
+              title="Open Full Staff Leaderboard"
+            >
+              <span>Full</span>
+              <ArrowRight className="w-3 h-3" />
+            </button>
+          )}
         </div>
       </div>
 
-      {/* MAIN GAMIFIED RACETRACK & STANDINGS */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 mt-5 sm:gap-6 sm:mt-6 items-start relative z-10">
+      {/* COMPACT DASHBOARD RACETRACK VIEW */}
+      {compact ? (
+        <div className="mt-3 space-y-2 relative z-10">
+          {/* Subheader: Racers Count + Badge Filter Chips */}
+          <div className="flex items-center justify-between gap-1 text-[10px]">
+            <span className="font-black uppercase tracking-wider text-slate-400 flex items-center gap-1">
+              <Zap className="w-3 h-3 text-amber-500" />
+              <span>Track ({filteredStaff.length} racers)</span>
+            </span>
+
+            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+              {[
+                { id: 'ALL', label: 'All' },
+                { id: 'TOP_GUN', label: '👑 Leader' },
+                { id: 'SPEED_DEMON', label: '⚡ Speed' },
+                { id: 'AOV_MASTER', label: '🎯 Basket' }
+              ].map(f => (
+                <button
+                  key={f.id}
+                  onClick={() => setActiveBadgeFilter(f.id)}
+                  className={`px-1.5 py-0.5 rounded text-[9.5px] transition cursor-pointer shrink-0 font-bold ${
+                    activeBadgeFilter === f.id
+                      ? 'bg-amber-500/20 text-amber-500 border border-amber-500/40 font-black'
+                      : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Compact Scrollable Lanes */}
+          <div className="space-y-1.5 max-h-[200px] overflow-y-auto custom-scrollbar pr-0.5">
+            {filteredStaff.length === 0 ? (
+              <div className="p-4 text-center text-slate-400 text-xs rounded-xl border border-dashed border-slate-300 dark:border-slate-800">
+                No staff sales recorded for selected period.
+              </div>
+            ) : (
+              filteredStaff.map((staff) => {
+                const isLeader = staff.rank === 1;
+                const progressWidth = Math.max(staff.raceProgress, 6);
+
+                return (
+                  <div
+                    key={staff.empCode}
+                    className={`p-2 rounded-xl border transition-all duration-200 relative group overflow-hidden ${
+                      isLeader
+                        ? darkMode
+                          ? 'bg-gradient-to-r from-amber-950/30 via-[#161f36] to-[#0e1424] border-amber-500/40 shadow-xs'
+                          : 'bg-gradient-to-r from-amber-500/10 via-amber-50/50 to-white border-amber-400/60 shadow-xs'
+                        : darkMode
+                          ? 'bg-[#121829]/70 border-slate-800/80 hover:border-slate-700'
+                          : 'bg-white border-slate-200/80 hover:border-slate-300 shadow-2xs'
+                    }`}
+                  >
+                    {/* Header: Rank, Name, Badges, Sales, Commission */}
+                    <div className="flex items-center justify-between gap-1.5 mb-1">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <div className={`w-5 h-5 rounded-md flex items-center justify-center font-black text-[10px] shrink-0 ${
+                          staff.rank === 1
+                            ? 'bg-gradient-to-tr from-amber-400 to-yellow-500 text-slate-950 shadow-xs ring-1 ring-amber-300'
+                            : staff.rank === 2
+                              ? 'bg-slate-300 text-slate-900'
+                              : staff.rank === 3
+                                ? 'bg-amber-700 text-amber-100'
+                                : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+                        }`}>
+                          {staff.rank === 1 ? '1' : staff.rank}
+                        </div>
+
+                        <span className="font-black text-xs text-slate-900 dark:text-white truncate">
+                          {staff.displayName}
+                        </span>
+
+                        {staff.badges.slice(0, 1).map(b => (
+                          <span
+                            key={b.id}
+                            className={`text-[8.5px] font-black px-1 rounded bg-gradient-to-r ${b.color} text-slate-950 hidden sm:inline`}
+                            title={b.desc}
+                          >
+                            {b.label}
+                          </span>
+                        ))}
+
+                        <span className="text-[10px] text-slate-400 font-mono hidden md:inline">
+                          • {staff.billsCount}b • AOV {formatCurrency(staff.aov)}
+                        </span>
+                      </div>
+
+                      <div className="text-right shrink-0 flex items-center gap-1.5">
+                        <span className="text-xs font-mono font-black text-slate-900 dark:text-white">
+                          {formatCurrency(staff.totalSales)}
+                        </span>
+                        <span className="text-[9.5px] font-bold text-emerald-600 dark:text-emerald-400">
+                          +{formatCurrency(Math.round((staff.totalSales * staff.currentRate) / 100))} ({staff.currentRate}%)
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Nitro Speed Bar */}
+                    <div className="relative pt-0.5 pb-0.5">
+                      <div className="h-2 w-full bg-slate-100 dark:bg-slate-950 rounded-full overflow-hidden border border-slate-200/80 dark:border-slate-800 relative">
+                        <div
+                          style={{ width: `${progressWidth}%` }}
+                          className={`h-full rounded-full transition-all duration-500 relative ${
+                            isLeader
+                              ? 'bg-gradient-to-r from-amber-500 via-orange-500 to-yellow-400'
+                              : staff.rank === 2
+                                ? 'bg-gradient-to-r from-cyan-500 to-blue-500'
+                                : staff.rank === 3
+                                  ? 'bg-gradient-to-r from-emerald-500 to-teal-400'
+                                  : 'bg-gradient-to-r from-slate-400 to-slate-500'
+                          }`}
+                        ></div>
+                      </div>
+                      <div
+                        style={{ left: `calc(${progressWidth}% - 10px)` }}
+                        className="absolute top-0 -translate-y-1 transition-all duration-500 pointer-events-none text-xs"
+                      >
+                        {staff.avatar}
+                      </div>
+                    </div>
+
+                    {/* Milestone & Slab distance */}
+                    <div className="flex items-center justify-between text-[9px] text-slate-400 mt-0.5">
+                      <span>{staff.achievementPct}% quota</span>
+                      {staff.neededForNextSlab > 0 ? (
+                        <span className="text-amber-500 font-bold truncate">
+                          {formatCurrency(staff.neededForNextSlab)} to {staff.nextSlabLabel}
+                        </span>
+                      ) : (
+                        <span className="text-emerald-500 font-bold">1.0% Max Active 💎</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Compact Footer: Commission Slabs Strip & Quick Sim Toggle */}
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-800/80 flex items-center justify-between text-[10px]">
+            <div className="flex items-center gap-1.5 text-slate-400 text-[9.5px] truncate">
+              <span className="font-bold text-amber-500">Slabs:</span>
+              <span>1.0% (≥₹4L)</span>
+              <span>•</span>
+              <span>0.75% (≥₹3L)</span>
+              <span>•</span>
+              <span>0.5% (≤₹2L)</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowSimulatorDrawer(prev => !prev)}
+              className="text-[10px] font-bold text-blue-500 hover:text-blue-400 flex items-center gap-1 cursor-pointer shrink-0 ml-1"
+            >
+              <Sliders className="w-3 h-3" />
+              <span>{showSimulatorDrawer ? 'Hide Sim' : 'Quick Sim'}</span>
+            </button>
+          </div>
+
+          {/* Quick Upsell Simulator Drawer */}
+          {showSimulatorDrawer && (
+            <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-800 space-y-1.5 mt-1.5 animate-in fade-in duration-200">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[10px] font-bold text-slate-400 uppercase">Simulate Upsell</span>
+                <select
+                  value={simulatedStaffId || ''}
+                  onChange={(e) => setSimulatedStaffId(e.target.value)}
+                  className="p-1 rounded text-[10px] font-bold bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white max-w-[150px] truncate"
+                >
+                  {gamifiedStaff.map(s => (
+                    <option key={s.empCode} value={s.empCode}>{s.displayName}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
+                {[5000, 10000, 25000, 50000].map(amt => (
+                  <button
+                    key={amt}
+                    type="button"
+                    onClick={() => setSimulatedBillAmount(amt)}
+                    className={`px-2 py-0.5 rounded text-[9.5px] font-bold border transition cursor-pointer shrink-0 ${
+                      simulatedBillAmount === amt
+                        ? 'bg-blue-500 text-white border-blue-400 shadow-2xs'
+                        : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700'
+                    }`}
+                  >
+                    +{formatCurrency(amt)}
+                  </button>
+                ))}
+              </div>
+              {simulatedResult && (
+                <div className="text-[10px] flex items-center justify-between text-slate-500 dark:text-slate-400 pt-0.5">
+                  <span>Projected: <strong className="text-slate-900 dark:text-white">{formatCurrency(simulatedResult.newSales)}</strong></span>
+                  <span className="text-emerald-500 font-bold">+{formatCurrency(simulatedResult.bump)} comm</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      ) : (
+        /* FULL RACETRACK & COMMISSION ACCELERATOR (STAGE VIEW) */
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 mt-5 sm:gap-6 sm:mt-6 items-start relative z-10">
 
         {/* LEFT 7 COLS: THE SPRINT RACETRACK */}
         <div className="lg:col-span-7 space-y-3.5 sm:space-y-4">
@@ -633,6 +839,7 @@ const StaffFloorRaceWidget = ({
         </div>
 
       </div>
+      )}
     </div>
   );
 };

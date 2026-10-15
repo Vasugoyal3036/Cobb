@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { Terminal, Barcode, Search, X, Calculator, AlarmClock, Wallet, ArrowRight, Scissors, Plus, Banknote, Zap } from 'lucide-react';
-import DenominationModal from '../DenominationModal';
+
+const DenominationModal = lazy(() => import('../DenominationModal'));
 
 const QuickToolsWidget = ({
   dashboardZone,
@@ -559,18 +560,23 @@ const QuickToolsWidget = ({
           </div>
 
           <div className="my-3 space-y-1.5 text-xs">
+            <div className="flex justify-between items-center">
+              <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                Net Earned Today:
+              </span>
+              <span className="font-black font-mono text-emerald-600 dark:text-emerald-400">
+                {formatCurrency((overviewStats?.today?.TotalSales || 0) - totalPettyCash)}
+              </span>
+            </div>
             <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
               <span>Expected in Drawer:</span>
-              <span className="font-bold font-mono text-emerald-600 dark:text-emerald-400">{formatCurrency(netExpectedDrawer)}</span>
+              <span className="font-bold font-mono text-slate-700 dark:text-slate-200">{formatCurrency(netExpectedDrawer)}</span>
             </div>
             <div className="flex justify-between items-center text-slate-500 dark:text-slate-400">
               <span>Recent Outflow:</span>
               <span className="font-semibold text-slate-700 dark:text-slate-200 truncate max-w-[130px]">
                 {latestExpense ? `${latestExpense.categoryIcon || '☕'} ${latestExpense.description || 'Expense'}` : 'No petty outflows'}
               </span>
-            </div>
-            <div className="text-xs text-slate-400">
-              Drawer net = Cash sales minus petty cash.
             </div>
           </div>
 
@@ -597,10 +603,14 @@ const QuickToolsWidget = ({
 
       </div>
 
-      <DenominationModal
-        isOpen={showDenominationModal}
-        onClose={() => setShowDenominationModal(false)}
-      />
+      {showDenominationModal && (
+        <Suspense fallback={null}>
+          <DenominationModal
+            isOpen={showDenominationModal}
+            onClose={() => setShowDenominationModal(false)}
+          />
+        </Suspense>
+      )}
     </div>
   );
 };

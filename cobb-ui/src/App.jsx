@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import DashboardBackground, { getThemeCardCSS } from './components/DashboardBackground';
 import { useToast } from './context/ToastContext';
-import DashboardTab from './components/tabs/DashboardTab';
+const DashboardTab = lazy(() => import('./components/tabs/DashboardTab'));
 
 // Lazy-loaded secondary tabs & heavy modals for instant startup & lightweight bundle
 const InventoryTab = lazy(() => import('./components/tabs/InventoryTab'));
@@ -28,8 +28,8 @@ const DepreciationClockTab = lazy(() => import('./components/tabs/DepreciationCl
 const WardrobePassportModal = lazy(() => import('./components/WardrobePassportModal'));
 const DenominationModal = lazy(() => import('./components/DenominationModal'));
 const SpeedBillingModal = lazy(() => import('./components/SpeedBillingModal'));
-import CelebrationModal from './components/CelebrationModal';
-import GodModeModal from './components/GodModeModal';
+const CelebrationModal = lazy(() => import('./components/CelebrationModal'));
+const GodModeModal = lazy(() => import('./components/GodModeModal'));
 
 import { fetchWithOfflineFallback, subscribeToData } from './utils/offlineDb';
 
@@ -1025,11 +1025,28 @@ export default function App() {
   useEffect(() => {
     const handleForceSync = () => forceSyncOverviewAndBills();
     const handleOpenSpeed = () => setActiveTab('speed_billing');
+    const handleOpenEod = () => handleGenerateEodReport();
+    const handleOpenAlteration = () => setActiveTab('alterations');
+    const handleOpenKhata = () => setActiveTab('pocket_khata');
+    const handleOpenDenomination = () => setActiveTab('denomination');
+    const handleOpenRecon = () => setShowReconModal(true);
+
     window.addEventListener('cobb_force_sync', handleForceSync);
     window.addEventListener('cobb_open_speed_billing', handleOpenSpeed);
+    window.addEventListener('cobb_open_eod', handleOpenEod);
+    window.addEventListener('cobb_open_alteration', handleOpenAlteration);
+    window.addEventListener('cobb_open_khata', handleOpenKhata);
+    window.addEventListener('cobb_open_denomination', handleOpenDenomination);
+    window.addEventListener('cobb_open_recon', handleOpenRecon);
+
     return () => {
       window.removeEventListener('cobb_force_sync', handleForceSync);
       window.removeEventListener('cobb_open_speed_billing', handleOpenSpeed);
+      window.removeEventListener('cobb_open_eod', handleOpenEod);
+      window.removeEventListener('cobb_open_alteration', handleOpenAlteration);
+      window.removeEventListener('cobb_open_khata', handleOpenKhata);
+      window.removeEventListener('cobb_open_denomination', handleOpenDenomination);
+      window.removeEventListener('cobb_open_recon', handleOpenRecon);
     };
   }, [API_BASE]);
 
@@ -1191,8 +1208,9 @@ export default function App() {
         .catch(console.error);
     };
 
-    // Auto-start Automation Engine & WhatsApp Gateway if stopped
+    // Auto-start Automation Engine & WhatsApp Gateway if stopped (Local POS server only)
     const autoStartServicesOnLoad = async () => {
+      if (!isLocalEnvironment) return; // Do not attempt to trigger local background daemons from remote phone browser
       try {
         const autoRes = await axios.get(`${API_BASE}/api/automation/status`);
         if (!autoRes.data.isRunning) {
@@ -1211,8 +1229,15 @@ export default function App() {
 
     autoStartServicesOnLoad();
     fetchAutomationStatus();
-    // Reduced from 3s to 10s — each call fires 4 parallel requests which was starving the SQL pool
-    const interval = setInterval(fetchAutomationStatus, 10000);
+
+    // Smart, lightweight polling:
+    // On remote phones (Firebase link), Firestore onSnapshot pushes checkout & watchdog events in real-time.
+    // We relax poll frequency to 30s and pause completely when the user minimizes or locks their phone screen.
+    const pollIntervalTime = isLocalEnvironment ? 10000 : 30000;
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return; // Save mobile battery and data
+      fetchAutomationStatus();
+    }, pollIntervalTime);
     return () => clearInterval(interval);
   }, []);
 
@@ -2031,7 +2056,9 @@ export default function App() {
         .dark-mode .kpi-card-revenue,
         .dark-mode .kpi-card-target,
         .dark-mode .kpi-card-aov,
-        .dark-mode .kpi-card-margin {
+        .dark-mode .kpi-card-margin,
+        .dark-mode .kpi-card-daily-bep,
+        .dark-mode .kpi-card-monthly-bep {
           background: rgba(30, 30, 32, 0.45) !important;
           border: 1px solid rgba(255, 255, 255, 0.1) !important;
           backdrop-filter: blur(40px) saturate(150%) !important;
@@ -2042,7 +2069,9 @@ export default function App() {
         .dark-mode .kpi-card-revenue:hover,
         .dark-mode .kpi-card-target:hover,
         .dark-mode .kpi-card-aov:hover,
-        .dark-mode .kpi-card-margin:hover {
+        .dark-mode .kpi-card-margin:hover,
+        .dark-mode .kpi-card-daily-bep:hover,
+        .dark-mode .kpi-card-monthly-bep:hover {
           background: rgba(45, 45, 48, 0.55) !important;
           border-color: rgba(255, 255, 255, 0.2) !important;
           box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5), inset 0 1px 0 0 rgba(255, 255, 255, 0.08) !important;
@@ -3048,7 +3077,7 @@ export default function App() {
             <span className={`text-[10px] font-bold transition-colors ${activeTab === 'pocket_khata'
                 ? darkMode ? 'text-emerald-400' : 'text-emerald-600'
                 : darkMode ? 'text-slate-500' : 'text-slate-400'
-              }`}>Khata</span>
+              }`}>Expenses</span>
           </button>
 
           {/* MORE / MENU */}
@@ -3095,21 +3124,25 @@ export default function App() {
         />
 
         {/* Real-time Target Milestone Celebration Engine (Canvas Confetti + Fanfare Chimes + Mobile Vibration) */}
-        <CelebrationModal
-          targetProgress={targetProgress}
-          DAILY_TARGET={DAILY_TARGET}
-          todaySales={overviewStats?.today?.TotalSales || 0}
-          formatCurrency={formatCurrency}
-          darkMode={darkMode}
-        />
+        <Suspense fallback={null}>
+          <CelebrationModal
+            targetProgress={targetProgress}
+            DAILY_TARGET={DAILY_TARGET}
+            todaySales={overviewStats?.today?.TotalSales || 0}
+            formatCurrency={formatCurrency}
+            darkMode={darkMode}
+          />
+        </Suspense>
 
         {/* Secret God Mode / Store Boss Easter Egg (Type 'cobb', Ctrl+Shift+C, or Konami Code) */}
-        <GodModeModal
-          overviewStats={overviewStats}
-          pnlData={pnlData}
-          formatCurrency={formatCurrency}
-          darkMode={darkMode}
-        />
+        <Suspense fallback={null}>
+          <GodModeModal
+            overviewStats={overviewStats}
+            pnlData={pnlData}
+            formatCurrency={formatCurrency}
+            darkMode={darkMode}
+          />
+        </Suspense>
       </Layout>
     </div>
   );

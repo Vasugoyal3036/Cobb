@@ -26,7 +26,8 @@ const ExecutiveVisualHeatmap = ({
   averageOrderValue = 0,
   formatCurrency = (v) => `₹${Number(v || 0).toLocaleString('en-IN')}`,
   darkMode = false,
-  setActiveTab
+  setActiveTab,
+  compact = false
 }) => {
   const [selectedHour, setSelectedHour] = useState(null);
   const [viewMetric, setViewMetric] = useState('revenue'); // 'revenue' | 'bills' | 'aov'
@@ -198,52 +199,56 @@ const ExecutiveVisualHeatmap = ({
   };
 
   return (
-    <div className={`p-5 sm:p-6 rounded-3xl border shadow-xl relative overflow-hidden transition-all duration-300 ${
+    <div className={`${compact ? 'p-3.5 sm:p-4 rounded-2xl' : 'p-5 sm:p-6 rounded-3xl'} border shadow-md relative overflow-hidden transition-all duration-300 ${
       darkMode
-        ? 'bg-gradient-to-b from-[#0e1322] via-[#0f172a] to-[#0a0f1d] border-[#1e293b] text-slate-100 shadow-blue-950/20'
+        ? 'glass-card-obsidian text-slate-100 shadow-blue-950/20'
         : 'bg-gradient-to-b from-white via-slate-50 to-indigo-50/20 border-slate-200/90 text-slate-800 shadow-slate-200/50'
     }`}>
-      {/* Ambient Radial Lights */}
-      <div className="absolute top-0 right-0 w-80 h-80 bg-red-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
-      <div className="absolute bottom-0 left-0 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none -ml-20 -mb-20"></div>
+      {/* Ambient Radial Lights (only in full mode) */}
+      {!compact && (
+        <>
+          <div className="absolute top-0 right-0 w-80 h-80 bg-red-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
+          <div className="absolute bottom-0 left-0 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none -ml-20 -mb-20"></div>
+        </>
+      )}
 
       {/* HEADER SECTION */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-slate-200 dark:border-slate-800/80 relative z-10">
-        <div>
-          <div className="flex items-center gap-2.5">
-            <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-rose-500 to-red-600 text-white shadow-lg shadow-rose-500/30">
-              <Flame className="w-5 h-5 animate-pulse" />
+      <div className={`flex items-center justify-between gap-3 ${compact ? 'pb-3' : 'pb-5'} border-b border-slate-200 dark:border-slate-800/80 relative z-10 flex-wrap sm:flex-nowrap`}>
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className={`${compact ? 'p-1.5 rounded-xl' : 'p-2.5 rounded-2xl'} bg-gradient-to-tr from-rose-500 to-red-600 text-white shadow-md shadow-rose-500/30 shrink-0`}>
+            <Flame className={`${compact ? 'w-4 h-4' : 'w-5 h-5'} animate-pulse`} />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <h3 className={`${compact ? 'text-sm' : 'text-lg sm:text-xl'} font-black tracking-tight flex items-center gap-1.5 truncate`}>
+                <span>Store Rush Radar</span>
+                <span className="text-[10px] font-mono px-1.5 py-0.2 rounded-full bg-rose-500/15 text-rose-500 border border-rose-500/30 shrink-0">
+                  🌌 THERMAL
+                </span>
+              </h3>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h3 className="text-lg sm:text-xl font-black tracking-tight flex items-center gap-2">
-                  <span>Store Rush Radar & Velocity Visualizer</span>
-                  <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-500 border border-rose-500/30">
-                    🌌 THERMAL MAP
-                  </span>
-                </h3>
-              </div>
+            {!compact && (
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 Executive hourly rush intensity, basket depth dials, and real-time pace-to-target gauges.
               </p>
-            </div>
+            )}
           </div>
         </div>
 
         {/* METRIC SELECTOR & ACTIONS */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
-          <div className="flex bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700/80 text-xs font-bold w-full sm:w-auto overflow-x-auto no-scrollbar">
+        <div className="flex items-center gap-1.5 shrink-0 ml-auto sm:ml-0">
+          <div className={`flex bg-slate-100 dark:bg-slate-800/80 ${compact ? 'p-0.5 rounded-lg text-[10px]' : 'p-1 rounded-xl text-xs'} border border-slate-200/80 dark:border-slate-700/80 font-bold overflow-x-auto no-scrollbar`}>
             {[
-              { id: 'revenue', label: 'Revenue Rush' },
-              { id: 'bills', label: 'Bill Footfall' },
-              { id: 'aov', label: 'AOV Power' }
+              { id: 'revenue', label: 'Revenue' },
+              { id: 'bills', label: 'Bills' },
+              { id: 'aov', label: 'AOV' }
             ].map(m => (
               <button
                 key={m.id}
                 onClick={() => setViewMetric(m.id)}
-                className={`flex-1 sm:flex-initial text-center px-3 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
+                className={`text-center ${compact ? 'px-2 py-0.5 rounded' : 'px-3 py-1.5 rounded-lg'} transition-all cursor-pointer whitespace-nowrap active:scale-95 ${
                   viewMetric === m.id
-                    ? 'bg-rose-500 text-white shadow-md font-black'
+                    ? 'bg-rose-500 text-white shadow-xs font-black'
                     : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                 }`}
               >
@@ -255,20 +260,200 @@ const ExecutiveVisualHeatmap = ({
           {typeof setActiveTab === 'function' && (
             <button
               onClick={() => setActiveTab('analytics')}
-              className={`p-2 rounded-xl border text-xs font-bold transition flex items-center justify-center gap-1 cursor-pointer shrink-0 active:scale-95 ${
+              className={`${compact ? 'p-1.5 rounded-lg text-[11px]' : 'p-2 rounded-xl text-xs'} border font-bold transition flex items-center justify-center gap-1 cursor-pointer active:scale-95 shrink-0 ${
                 darkMode
                   ? 'bg-slate-800/80 border-slate-700 text-slate-300 hover:text-white'
                   : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
               }`}
               title="Open Full Analytics"
             >
-              <span>Full Analytics</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              <span>Full</span>
+              <ArrowRight className="w-3 h-3" />
             </button>
           )}
         </div>
       </div>
 
+      {/* COMPACT DASHBOARD THERMAL VIEW */}
+      {compact ? (
+        <div className="mt-2.5 space-y-2.5 relative z-10">
+          {/* Mini Cockpit Gauges (UPT, Discount %, Target Pace) */}
+          <div className="grid grid-cols-3 gap-2">
+            <div className={`p-2 rounded-xl border flex items-center justify-between ${
+              darkMode ? 'bg-[#121829]/80 border-slate-800' : 'bg-white border-slate-200'
+            }`}>
+              <div className="min-w-0">
+                <div className="text-[9.5px] font-black uppercase text-slate-400 truncate">Basket Depth</div>
+                <div className="text-xs font-black text-slate-900 dark:text-white truncate">
+                  {basketMetrics.upt} <span className="text-[9px] font-normal text-slate-400">UPT</span>
+                </div>
+              </div>
+              <ShoppingBag className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+            </div>
+
+            <div className={`p-2 rounded-xl border flex items-center justify-between ${
+              darkMode ? 'bg-[#121829]/80 border-slate-800' : 'bg-white border-slate-200'
+            }`}>
+              <div className="min-w-0">
+                <div className="text-[9.5px] font-black uppercase text-slate-400 truncate">Discount</div>
+                <div className="text-xs font-black text-slate-900 dark:text-white truncate">
+                  {basketMetrics.discountPct}% <span className="text-[9px] font-normal text-slate-400">off MRP</span>
+                </div>
+              </div>
+              <Percent className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+            </div>
+
+            <div className={`p-2 rounded-xl border flex items-center justify-between ${
+              darkMode ? 'bg-[#121829]/80 border-slate-800' : 'bg-white border-slate-200'
+            }`}>
+              <div className="min-w-0">
+                <div className="text-[9.5px] font-black uppercase text-slate-400 truncate">Pace</div>
+                <div className="text-xs font-black truncate text-rose-500">
+                  {paceMetrics.paceStatus === 'ahead' ? '🚀 Ahead' : paceMetrics.paceStatus === 'on_track' ? '⚡ Track' : '⚠️ Catch up'}
+                </div>
+              </div>
+              <Zap className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+            </div>
+          </div>
+
+          {/* Compact Hourly Thermal Bars (10 AM — 10 PM) */}
+          <div>
+            <div className="flex items-center justify-between mb-1 text-[10px]">
+              <span className="font-black uppercase tracking-wider text-slate-400 flex items-center gap-1">
+                <Clock className="w-3 h-3 text-rose-500" />
+                <span>Hourly Velocity (10 AM — 10 PM)</span>
+              </span>
+              <span className="text-[9px] text-slate-400">Tap to inspect</span>
+            </div>
+
+            <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
+              {retailHours.map(hour => {
+                const data = hourlyDataMap[hour];
+                const isSelected = activeHourData?.hour === hour;
+                const isPeak = rankedHours[0] === hour;
+                const heightFactor = Math.max(Math.round(((data.revenue || 0) / maxRevenue) * 100), 12);
+
+                return (
+                  <button
+                    key={hour}
+                    type="button"
+                    onClick={() => setSelectedHour(hour)}
+                    className={`p-1.5 rounded-xl border transition-all duration-200 flex flex-col items-center justify-between min-h-[64px] w-[50px] shrink-0 cursor-pointer relative group active:scale-95 ${
+                      isSelected
+                        ? 'ring-2 ring-rose-500 scale-102 z-20 shadow-md'
+                        : 'hover:scale-101'
+                    } ${getThermalClass(data.revenue, data.bills)}`}
+                  >
+                    {isPeak && data.revenue > 0 && (
+                      <span className="absolute -top-1.5 px-1 rounded-full bg-yellow-400 text-slate-950 text-[7.5px] font-black uppercase">
+                        👑
+                      </span>
+                    )}
+
+                    <span className="text-[9px] font-mono font-black pt-0.5">
+                      {hour}h
+                    </span>
+
+                    <div className="w-full flex-1 flex items-end justify-center py-1">
+                      <div
+                        style={{ height: `${heightFactor}%` }}
+                        className={`w-3/4 rounded-t transition-all duration-300 ${
+                          data.revenue > 0 ? 'bg-white/40 group-hover:bg-white/60' : 'bg-transparent'
+                        }`}
+                      ></div>
+                    </div>
+
+                    <div className="text-center w-full">
+                      <div className="text-[8.5px] font-mono font-black truncate">
+                        {viewMetric === 'revenue'
+                          ? (data.revenue >= 1000 ? `₹${Math.round(data.revenue / 1000)}k` : `₹${data.revenue}`)
+                          : viewMetric === 'bills'
+                            ? `${data.bills}b`
+                            : (data.aov >= 1000 ? `₹${Math.round(data.aov / 1000)}k` : `₹${data.aov}`)}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Compact Active Hour Inspector Strip */}
+          <div className="p-2 rounded-xl border bg-slate-50/70 dark:bg-slate-900/60 border-slate-200/70 dark:border-slate-800 space-y-1.5">
+            <div className="flex items-center justify-between gap-1">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <div className="p-1 rounded-lg bg-rose-500/10 text-rose-500 shrink-0">
+                  <Activity className="w-3 h-3" />
+                </div>
+                <span className="font-black text-xs text-slate-900 dark:text-white truncate">
+                  {activeHourData ? `${activeHourData.hour}:00 — ${activeHourData.hour + 1}:00` : 'Select hour'}
+                </span>
+                {rankedHours.indexOf(activeHourData?.hour) !== -1 && (
+                  <span className="text-[9px] font-black px-1 rounded bg-rose-500/10 text-rose-500 border border-rose-500/20">
+                    Rank #{rankedHours.indexOf(activeHourData.hour) + 1}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const currIdx = retailHours.indexOf(activeHourData?.hour);
+                    if (currIdx > 0) setSelectedHour(retailHours[currIdx - 1]);
+                  }}
+                  disabled={retailHours.indexOf(activeHourData?.hour) <= 0}
+                  className="p-1 rounded border border-slate-200 dark:border-slate-800 text-slate-400 hover:text-white disabled:opacity-30 cursor-pointer"
+                  title="Previous Hour"
+                >
+                  <ChevronLeft className="w-3 h-3" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const currIdx = retailHours.indexOf(activeHourData?.hour);
+                    if (currIdx < retailHours.length - 1) setSelectedHour(retailHours[currIdx + 1]);
+                  }}
+                  disabled={retailHours.indexOf(activeHourData?.hour) >= retailHours.length - 1}
+                  className="p-1 rounded border border-slate-200 dark:border-slate-800 text-slate-400 hover:text-white disabled:opacity-30 cursor-pointer"
+                  title="Next Hour"
+                >
+                  <ChevronRight className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-4 gap-1.5 text-center">
+              <div className="p-1 rounded-lg bg-white dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60">
+                <div className="text-[8.5px] text-slate-400 uppercase">Rev</div>
+                <div className="text-[11px] font-mono font-black text-slate-900 dark:text-white truncate">
+                  {formatCurrency(activeHourData?.revenue || 0)}
+                </div>
+              </div>
+              <div className="p-1 rounded-lg bg-white dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60">
+                <div className="text-[8.5px] text-slate-400 uppercase">Bills</div>
+                <div className="text-[11px] font-mono font-black text-blue-500 truncate">
+                  {activeHourData?.bills || 0}
+                </div>
+              </div>
+              <div className="p-1 rounded-lg bg-white dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60">
+                <div className="text-[8.5px] text-slate-400 uppercase">AOV</div>
+                <div className="text-[11px] font-mono font-black text-emerald-500 truncate">
+                  {formatCurrency(activeHourData?.aov || 0)}
+                </div>
+              </div>
+              <div className="p-1 rounded-lg bg-white dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60">
+                <div className="text-[8.5px] text-slate-400 uppercase">Share</div>
+                <div className="text-[11px] font-mono font-black text-amber-500 truncate">
+                  {todayTotals.revenue > 0 ? Math.round(((activeHourData?.revenue || 0) / todayTotals.revenue) * 100) : 0}%
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* FULL THERMAL HEATMAP & ACTIVE HOUR INSPECTOR (STAGE VIEW) */
+        <>
       {/* TOP STRIP: 3 VELOCITY SPEEDOMETERS / COCKPIT GAUGES */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 sm:gap-4 mt-5 sm:mt-6 relative z-10">
 
@@ -617,6 +802,8 @@ const ExecutiveVisualHeatmap = ({
         </div>
 
       </div>
+        </>
+      )}
     </div>
   );
 };

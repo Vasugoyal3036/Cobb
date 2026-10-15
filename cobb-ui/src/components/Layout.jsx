@@ -1,14 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import RolePinModal from './RolePinModal';
 import axios from 'axios';
 import OrsLogo from './OrsLogo';
-import SetupWizardModal from './SetupWizardModal';
-import SystemHealthModal from './SystemHealthModal';
-import SystemPowerModal from './SystemPowerModal';
 import PwaInstallBanner from './PwaInstallBanner';
-import StoreExpensesModal from './StoreExpensesModal';
-import LoginAuditModal from './LoginAuditModal';
-import AccountApprovalsModal from './AccountApprovalsModal';
+
+// Lazy-loaded heavy administrative and DevOps modals to minimize bundle size
+const SetupWizardModal = lazy(() => import('./SetupWizardModal'));
+const SystemHealthModal = lazy(() => import('./SystemHealthModal'));
+const SystemPowerModal = lazy(() => import('./SystemPowerModal'));
+const StoreExpensesModal = lazy(() => import('./StoreExpensesModal'));
+const LoginAuditModal = lazy(() => import('./LoginAuditModal'));
+const AccountApprovalsModal = lazy(() => import('./AccountApprovalsModal'));
 import {
   User,
   MessageCircle,
@@ -84,9 +86,9 @@ import {
   Lock,
   Fingerprint
 } from 'lucide-react';
-import BiometricModal from './BiometricModal';
-import GlobalCommandBar from './GlobalCommandBar';
-import ActionCenterModal from './ActionCenterModal';
+const BiometricModal = lazy(() => import('./BiometricModal'));
+const GlobalCommandBar = lazy(() => import('./GlobalCommandBar'));
+const ActionCenterModal = lazy(() => import('./ActionCenterModal'));
 import MobileNav from './MobileNav';
 import { getEnrolledPasskey } from '../utils/webauthn';
 import { THEMES } from './DashboardBackground';
@@ -112,7 +114,7 @@ const navigationItems = [
       { id: "speed_billing", label: "⚡ Speed Billing (F1-POS)", icon: Zap, colorClass: "text-amber-500 hover:bg-slate-900 hover:text-white font-bold", activeColorClass: "bg-amber-500/15 text-amber-500 font-bold border-l-2 border-amber-500 shadow-sm shadow-amber-500/20" },
       { id: "live", label: "Transactions & Bills", icon: Receipt, colorClass: "text-blue-600 dark:text-blue-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-blue-500/15 text-blue-600 dark:text-blue-400 font-bold border-l-2 border-blue-500" },
       { id: "staff_leaderboard", label: "Staff Leaderboard & Incentives", icon: Trophy, colorClass: "text-amber-600 dark:text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold border-l-2 border-amber-500" },
-      { id: "pocket_khata", label: "Pocket Khata (Expenses)", icon: Wallet, colorClass: "text-amber-600 dark:text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold border-l-2 border-amber-500" },
+      { id: "pocket_khata", label: "Daily Expenses & Net Earned", icon: Wallet, colorClass: "text-amber-600 dark:text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold border-l-2 border-amber-500" },
       { id: "denomination", label: "Cash Drawer Denomination", icon: Banknote, colorClass: "text-emerald-600 dark:text-emerald-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold border-l-2 border-emerald-500" },
       { id: "hold_desk", label: "Hold & Reserve Desk", icon: AlarmClock, colorClass: "text-amber-600 dark:text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold border-l-2 border-amber-500" },
       { id: "returns", label: "Product Exchanges", icon: RotateCcw, colorClass: "text-amber-600 dark:text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold border-l-2 border-amber-500" },
@@ -509,7 +511,7 @@ const Layout = ({
       </div>
 
       {/* Main Content Area */}
-      <div className={`flex-1 overflow-auto relative min-w-0 pb-24 lg:pb-0 transition-colors duration-200 lg:my-4 lg:mx-2 lg:rounded-[2rem] border ${darkMode ? 'bg-[#0f1115] border-white/[0.05] shadow-[inset_0_0_40px_rgba(0,0,0,0.5)]' : 'bg-white border-slate-200/50 shadow-sm'}`}>
+      <div className={`flex-1 overflow-auto relative min-w-0 pb-28 lg:pb-0 transition-colors duration-200 lg:my-4 lg:mx-2 lg:rounded-[2rem] border ${darkMode ? 'bg-[#0f1115] border-white/[0.05] shadow-[inset_0_0_40px_rgba(0,0,0,0.5)]' : 'bg-white border-slate-200/50 shadow-sm'}`}>
 
         {/* Top App Bar (Mobile Only — Native Mobile App Bar with Clean Controls) */}
         <header className={`lg:hidden px-3.5 py-2.5 border-b sticky top-0 z-30 transition-colors backdrop-blur-2xl select-none pt-safe ${
@@ -1171,34 +1173,46 @@ const Layout = ({
       )}
 
       {/* Multi-Store & Database Setup Wizard */}
-      <SetupWizardModal
-        isOpen={showSetupModal}
-        onClose={() => setShowSetupModal(false)}
-        onConfigSaved={() => {
-          setShowSetupModal(false);
-          window.location.reload();
-        }}
-      />
+      {showSetupModal && (
+        <Suspense fallback={null}>
+          <SetupWizardModal
+            isOpen={showSetupModal}
+            onClose={() => setShowSetupModal(false)}
+            onConfigSaved={() => {
+              setShowSetupModal(false);
+              window.location.reload();
+            }}
+          />
+        </Suspense>
+      )}
 
       {/* System Health & DevOps Watchdog Modal */}
-      <SystemHealthModal
-        isOpen={showHealthModal}
-        onClose={() => setShowHealthModal(false)}
-        API_BASE={API_BASE}
-        darkMode={darkMode}
-      />
+      {showHealthModal && (
+        <Suspense fallback={null}>
+          <SystemHealthModal
+            isOpen={showHealthModal}
+            onClose={() => setShowHealthModal(false)}
+            API_BASE={API_BASE}
+            darkMode={darkMode}
+          />
+        </Suspense>
+      )}
 
       {/* Store Expenses & Financial Targets Configuration Modal */}
-      <StoreExpensesModal
-        isOpen={showExpensesModal}
-        onClose={() => setShowExpensesModal(false)}
-        API_BASE={API_BASE}
-        activeStore={activeStore}
-        darkMode={darkMode}
-        onConfigSaved={(savedExpenses) => {
-          window.dispatchEvent(new CustomEvent('cobb_store_config_updated', { detail: savedExpenses }));
-        }}
-      />
+      {showExpensesModal && (
+        <Suspense fallback={null}>
+          <StoreExpensesModal
+            isOpen={showExpensesModal}
+            onClose={() => setShowExpensesModal(false)}
+            API_BASE={API_BASE}
+            activeStore={activeStore}
+            darkMode={darkMode}
+            onConfigSaved={(savedExpenses) => {
+              window.dispatchEvent(new CustomEvent('cobb_store_config_updated', { detail: savedExpenses }));
+            }}
+          />
+        </Suspense>
+      )}
 
       {/* Checkout Push Notification Info & Controls Modal */}
       {showAlertModal && (
@@ -1368,56 +1382,78 @@ const Layout = ({
       )}
 
       {/* Store POS System & Power Modal */}
-      <SystemPowerModal
-        isOpen={showPowerModal}
-        onClose={() => setShowPowerModal(false)}
-        systemStatus={systemStatus}
-        onTriggerTestAlert={onTriggerSystemTest}
-        activeStore={activeStore}
-        darkMode={darkMode}
-      />
+      {showPowerModal && (
+        <Suspense fallback={null}>
+          <SystemPowerModal
+            isOpen={showPowerModal}
+            onClose={() => setShowPowerModal(false)}
+            systemStatus={systemStatus}
+            onTriggerTestAlert={onTriggerSystemTest}
+            activeStore={activeStore}
+            darkMode={darkMode}
+          />
+        </Suspense>
+      )}
 
       {/* Access & Login Audit Logs Modal */}
-      <LoginAuditModal
-        isOpen={showLoginAuditModal}
-        onClose={() => setShowLoginAuditModal(false)}
-      />
+      {showLoginAuditModal && (
+        <Suspense fallback={null}>
+          <LoginAuditModal
+            isOpen={showLoginAuditModal}
+            onClose={() => setShowLoginAuditModal(false)}
+          />
+        </Suspense>
+      )}
 
       {/* Account Approvals Modal */}
       {showApprovalsModal && (
-        <AccountApprovalsModal onClose={() => setShowApprovalsModal(false)} />
+        <Suspense fallback={null}>
+          <AccountApprovalsModal onClose={() => setShowApprovalsModal(false)} />
+        </Suspense>
       )}
 
       {/* Phone Biometrics / Passkey Modal */}
-      <BiometricModal
-        isOpen={showBiometricModal}
-        onClose={() => setShowBiometricModal(false)}
-      />
+      {showBiometricModal && (
+        <Suspense fallback={null}>
+          <BiometricModal
+            isOpen={showBiometricModal}
+            onClose={() => setShowBiometricModal(false)}
+          />
+        </Suspense>
+      )}
 
       {/* Universal Global Command Bar (Ctrl+K) */}
-      <GlobalCommandBar 
-        isOpen={showCommandBar} 
-        onClose={() => setShowCommandBar(false)} 
-        darkMode={darkMode}
-        globalCustomers={globalCustomers}
-        liveBills={liveBills}
-        inventory={deadStock || inventory}
-        vips={vips}
-        dormant={dormant}
-        setActiveTab={setActiveTab}
-        openCustomerCard={openCustomerCard}
-        toggleBillExpansion={toggleBillExpansion}
-        API_BASE={API_BASE}
-        initialQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-      />
+      {showCommandBar && (
+        <Suspense fallback={null}>
+          <GlobalCommandBar 
+            isOpen={showCommandBar} 
+            onClose={() => setShowCommandBar(false)} 
+            darkMode={darkMode}
+            globalCustomers={globalCustomers}
+            liveBills={liveBills}
+            inventory={deadStock || inventory}
+            vips={vips}
+            dormant={dormant}
+            setActiveTab={setActiveTab}
+            openCustomerCard={openCustomerCard}
+            toggleBillExpansion={toggleBillExpansion}
+            API_BASE={API_BASE}
+            initialQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+          />
+        </Suspense>
+      )}
 
       {/* Action Center Drawer */}
-      <ActionCenterModal 
-        isOpen={showActionCenter} 
-        onClose={() => setShowActionCenter(false)} 
-        darkMode={darkMode} 
-      />
+      {showActionCenter && (
+        <Suspense fallback={null}>
+          <ActionCenterModal 
+            isOpen={showActionCenter} 
+            onClose={() => setShowActionCenter(false)} 
+            darkMode={darkMode} 
+          />
+        </Suspense>
+      )}
 
       {/* Mobile Bottom Navigation */}
       <MobileNav 
@@ -1425,6 +1461,9 @@ const Layout = ({
         setActiveTab={setActiveTab} 
         setShowCommandBar={setShowCommandBar} 
         setShowActionCenter={setShowActionCenter} 
+        setIsMobileMenuOpen={setIsMobileMenuOpen}
+        handleGenerateEodReport={handleGenerateEodReport}
+        setShowReconModal={setShowReconModal}
         darkMode={darkMode} 
       />
 

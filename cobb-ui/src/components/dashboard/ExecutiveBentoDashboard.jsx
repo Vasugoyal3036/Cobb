@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, Suspense, lazy } from 'react';
 import {
   Activity,
   ArrowRight,
@@ -39,17 +39,20 @@ import {
   X,
   Wifi,
   WifiOff,
-  Tv
+  Tv,
+  Minimize2,
+  Maximize2
 } from 'lucide-react';
 import ExecutiveKpiStrip from './ExecutiveKpiStrip';
 import GoodsInTransitDesk from '../GoodsInTransitDesk';
 import StaffFloorRaceWidget from './StaffFloorRaceWidget';
 import ExecutiveVisualHeatmap from './ExecutiveVisualHeatmap';
 import QuickToolsWidget from './QuickToolsWidget';
-import AlterationSlipModal from '../AlterationSlipModal';
 import LivePulseFeed from './LivePulseFeed';
 import MultiStoreFleetMatrix from './MultiStoreFleetMatrix';
-import MissionControlModal from './MissionControlModal';
+
+const AlterationSlipModal = lazy(() => import('../AlterationSlipModal'));
+const MissionControlModal = lazy(() => import('./MissionControlModal'));
 
 /**
  * Unified Executive Bento Grid V2
@@ -107,6 +110,7 @@ const ExecutiveBentoDashboard = (props) => {
   // Primary Perspective Switcher: 'bento' (Unified Bento V2), 'racing' (Floor Race & Rush Radar), 'counter' (Counter Tools)
   const [activePerspective, setActivePerspective] = useState('bento');
   const [showMissionControl, setShowMissionControl] = useState(false);
+  const [racingTileSmall, setRacingTileSmall] = useState(true);
   // Global listener for TV Wall trigger & Ctrl+Shift+T
   useEffect(() => {
     const handleOpenTv = () => setShowMissionControl(true);
@@ -455,6 +459,7 @@ const ExecutiveBentoDashboard = (props) => {
           setActiveTab={setActiveTab}
           setShowReconModal={setShowReconModal}
           pnlData={pnlData}
+          dailySales={dailySales}
         />
       )}
 
@@ -933,14 +938,39 @@ const ExecutiveBentoDashboard = (props) => {
             </div>
 
             {activePerspective === 'bento' && (
-              <button
-                type="button"
-                onClick={() => setActivePerspective('racing')}
-                className="text-xs font-bold text-amber-500 hover:text-amber-400 flex items-center gap-1 cursor-pointer"
-              >
-                <span>Expand Full Screen</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRacingTileSmall(prev => !prev)}
+                  className={`px-2.5 py-1 rounded-xl text-xs font-bold border transition flex items-center gap-1.5 cursor-pointer active:scale-95 ${
+                    darkMode
+                      ? 'bg-slate-800/80 border-slate-700 text-slate-300 hover:text-white'
+                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                  }`}
+                  title={racingTileSmall ? "Expand to Full Size" : "Make Tile Small"}
+                >
+                  {racingTileSmall ? (
+                    <>
+                      <Maximize2 className="w-3.5 h-3.5 text-amber-500" />
+                      <span className="hidden sm:inline">Expand Size</span>
+                    </>
+                  ) : (
+                    <>
+                      <Minimize2 className="w-3.5 h-3.5 text-amber-500" />
+                      <span className="hidden sm:inline">Make Small</span>
+                    </>
+                  )}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActivePerspective('racing')}
+                  className="text-xs font-bold text-amber-500 hover:text-amber-400 flex items-center gap-1 cursor-pointer"
+                >
+                  <span>Stage Mode</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
             )}
           </div>
 
@@ -956,6 +986,7 @@ const ExecutiveBentoDashboard = (props) => {
               API_BASE={API_BASE}
               activeStore={activeStore}
               setActiveTab={setActiveTab}
+              compact={activePerspective === 'bento' && racingTileSmall}
             />
 
             {/* Executive Rush Heatmap & Velocity Radar */}
@@ -967,6 +998,7 @@ const ExecutiveBentoDashboard = (props) => {
               formatCurrency={formatCurrency}
               darkMode={darkMode}
               setActiveTab={setActiveTab}
+              compact={activePerspective === 'bento' && racingTileSmall}
             />
           </div>
         </div>
@@ -1041,26 +1073,32 @@ const ExecutiveBentoDashboard = (props) => {
 
       {/* Alteration Slip Modal Integration */}
       {showAlterationModal && (
-        <AlterationSlipModal
-          isOpen={showAlterationModal}
-          onClose={() => setShowAlterationModal(false)}
-          activeStore={activeStore}
-          API_BASE={API_BASE}
-          darkMode={darkMode}
-        />
+        <Suspense fallback={null}>
+          <AlterationSlipModal
+            isOpen={showAlterationModal}
+            onClose={() => setShowAlterationModal(false)}
+            activeStore={activeStore}
+            API_BASE={API_BASE}
+            darkMode={darkMode}
+          />
+        </Suspense>
       )}
 
       {/* Mission Control / TV Wall Fullscreen Experience */}
-      <MissionControlModal
-        isOpen={showMissionControl}
-        onClose={() => setShowMissionControl(false)}
-        overviewStats={overviewStats}
-        liveBills={liveBills}
-        DAILY_TARGET={DAILY_TARGET}
-        targetProgress={targetProgress}
-        formatCurrency={formatCurrency}
-        activeStore={activeStore}
-      />
+      {showMissionControl && (
+        <Suspense fallback={null}>
+          <MissionControlModal
+            isOpen={showMissionControl}
+            onClose={() => setShowMissionControl(false)}
+            overviewStats={overviewStats}
+            liveBills={liveBills}
+            DAILY_TARGET={DAILY_TARGET}
+            targetProgress={targetProgress}
+            formatCurrency={formatCurrency}
+            activeStore={activeStore}
+          />
+        </Suspense>
+      )}
 
     </div>
   );

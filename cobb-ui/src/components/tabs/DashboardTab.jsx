@@ -80,7 +80,7 @@ import ExecutiveKpiStrip from '../dashboard/ExecutiveKpiStrip';
 import LivePulseFeed from '../dashboard/LivePulseFeed';
 import WhatsAppAutomationWidget from '../dashboard/WhatsAppAutomationWidget';
 import QuickToolsWidget from '../dashboard/QuickToolsWidget';
-import AlterationSlipModal from '../AlterationSlipModal';
+const AlterationSlipModal = React.lazy(() => import('../AlterationSlipModal'));
 import PnlStatementView from '../dashboard/PnlStatementView';
 import StaffFloorRaceWidget from '../dashboard/StaffFloorRaceWidget';
 import ExecutiveVisualHeatmap from '../dashboard/ExecutiveVisualHeatmap';
@@ -1903,12 +1903,16 @@ const DashboardTab = (props) => {
         );
       })()}
 
-      <AlterationSlipModal
+      {showAlterationModal && (
+        <React.Suspense fallback={null}>
+          <AlterationSlipModal
         isOpen={showAlterationModal}
         onClose={() => setShowAlterationModal(false)}
         darkMode={darkMode}
         storeId={activeStore}
-      />
+          />
+        </React.Suspense>
+      )}
     </>
   );
 };
