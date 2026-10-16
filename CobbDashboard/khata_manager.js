@@ -3,203 +3,26 @@ const path = require('path');
 
 const KHATA_FILE = path.join(__dirname, 'khata.json');
 
-// Default initial seeded customers for Cobb Apparels, Pundri
-const DEFAULT_SEED_DATA = {
-    customers: [
-        {
-            id: 'khata_9812345678',
-            name: 'Sanjay Singhal',
-            phone: '9812345678',
-            city: 'Pundri',
-            address: 'Near Old Grain Market, Pundri',
-            creditLimit: 30000,
-            balance: 6500,
-            totalGave: 24500,
-            totalGot: 18000,
-            trustRating: 'TRUSTED', // TRUSTED | NORMAL | CAUTION
-            status: 'ACTIVE',
-            notes: 'Regular family shopper, clears balance every month end.',
-            storeId: 'DEMO_STORE_001',
-            lastTransactionDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-            createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
-            updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
-        },
-        {
-            id: 'khata_9416012345',
-            name: 'Vikas Sharma (Advocate)',
-            phone: '9416012345',
-            city: 'Kaithal Road, Pundri',
-            address: 'Opp. Court Complex, Pundri',
-            creditLimit: 25000,
-            balance: 4200,
-            totalGave: 15200,
-            totalGot: 11000,
-            trustRating: 'TRUSTED',
-            status: 'ACTIVE',
-            notes: 'Buys formal blazers & trousers. Usually pays via UPI upon reminder.',
-            storeId: 'DEMO_STORE_001',
-            lastTransactionDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-            createdAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString(),
-            updatedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString()
-        },
-        {
-            id: 'khata_9896588210',
-            name: 'Mohit Garg',
-            phone: '9896588210',
-            city: 'Dhand',
-            address: 'Main Bazar, Dhand',
-            creditLimit: 15000,
-            balance: 0,
-            totalGave: 9500,
-            totalGot: 9500,
-            trustRating: 'TRUSTED',
-            status: 'SETTLED',
-            notes: 'All dues cleared on 10th Oct via UPI.',
-            storeId: 'DEMO_STORE_001',
-            lastTransactionDate: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(),
-            createdAt: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString(),
-            updatedAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString()
-        },
-        {
-            id: 'khata_9255144321',
-            name: 'Rajesh Mittal (Cloth Merchant)',
-            phone: '9255144321',
-            city: 'Pundri',
-            address: 'Pundri Mandi',
-            creditLimit: 50000,
-            balance: 14800,
-            totalGave: 45000,
-            totalGot: 30200,
-            trustRating: 'TRUSTED',
-            status: 'ACTIVE',
-            notes: 'VIP local merchant. Takes seasonal wedding wardrobes on credit.',
-            storeId: 'DEMO_STORE_001',
-            lastTransactionDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-            createdAt: new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString(),
-            updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()
-        }
-    ],
-    transactions: [
-        {
-            id: 'txn_101',
-            customerId: 'khata_9812345678',
-            type: 'GAVE', // GAVE = Customer took goods (Udhar)
-            amount: 11500,
-            balanceAfter: 11500,
-            billNumber: 'CM-2026-0891',
-            itemsSummary: '1 Suit Set + 2 Cotton Shirts',
-            paymentMode: null,
-            dueDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            notes: 'Purchased for family function',
-            loggedBy: 'Cashier (Counter)',
-            date: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            time: '18:15:00',
-            timestamp: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).toISOString(),
-            storeId: 'DEMO_STORE_001'
-        },
-        {
-            id: 'txn_102',
-            customerId: 'khata_9812345678',
-            type: 'GOT', // GOT = Customer paid money (Jama)
-            amount: 5000,
-            balanceAfter: 6500,
-            billNumber: null,
-            itemsSummary: null,
-            paymentMode: 'UPI',
-            dueDate: null,
-            notes: 'Received via GPay on counter',
-            loggedBy: 'Cashier (Counter)',
-            date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            time: '14:20:00',
-            timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-            storeId: 'DEMO_STORE_001'
-        },
-        {
-            id: 'txn_201',
-            customerId: 'khata_9416012345',
-            type: 'GAVE',
-            amount: 4200,
-            balanceAfter: 4200,
-            billNumber: 'CM-2026-0945',
-            itemsSummary: '2 Formal Trousers (Black, Navy)',
-            paymentMode: null,
-            dueDate: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            notes: 'Court wear fittings',
-            loggedBy: 'Manager',
-            date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            time: '19:40:00',
-            timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-            storeId: 'DEMO_STORE_001'
-        },
-        {
-            id: 'txn_301',
-            customerId: 'khata_9896588210',
-            type: 'GAVE',
-            amount: 4500,
-            balanceAfter: 4500,
-            billNumber: 'CM-2026-0810',
-            itemsSummary: '1 Winter Jacket + 1 Sweater',
-            paymentMode: null,
-            dueDate: null,
-            notes: 'Winter wear trial',
-            loggedBy: 'Cashier',
-            date: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            time: '16:10:00',
-            timestamp: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000).toISOString(),
-            storeId: 'DEMO_STORE_001'
-        },
-        {
-            id: 'txn_302',
-            customerId: 'khata_9896588210',
-            type: 'GOT',
-            amount: 4500,
-            balanceAfter: 0,
-            billNumber: null,
-            itemsSummary: null,
-            paymentMode: 'UPI',
-            dueDate: null,
-            notes: 'Cleared full payment after WhatsApp reminder',
-            loggedBy: 'Cashier',
-            date: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            time: '12:05:00',
-            timestamp: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString(),
-            storeId: 'DEMO_STORE_001'
-        },
-        {
-            id: 'txn_401',
-            customerId: 'khata_9255144321',
-            type: 'GAVE',
-            amount: 14800,
-            balanceAfter: 14800,
-            billNumber: 'CM-2026-0988',
-            itemsSummary: '3 Cobb Party Blazers + 2 Shirts',
-            paymentMode: null,
-            dueDate: new Date(Date.now() + 20 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            notes: 'Diwali wedding banquet order',
-            loggedBy: 'Store Boss',
-            date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-            time: '20:10:00',
-            timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-            storeId: 'DEMO_STORE_001'
-        }
-    ]
+const EMPTY_KHATA_DATA = {
+    customers: [],
+    transactions: []
 };
 
 function loadKhataData() {
     try {
         if (!fs.existsSync(KHATA_FILE)) {
-            fs.writeFileSync(KHATA_FILE, JSON.stringify(DEFAULT_SEED_DATA, null, 2), 'utf-8');
-            return JSON.parse(JSON.stringify(DEFAULT_SEED_DATA));
+            fs.writeFileSync(KHATA_FILE, JSON.stringify(EMPTY_KHATA_DATA, null, 2), 'utf-8');
+            return JSON.parse(JSON.stringify(EMPTY_KHATA_DATA));
         }
         const content = fs.readFileSync(KHATA_FILE, 'utf-8');
         const parsed = JSON.parse(content || '{}');
         if (!Array.isArray(parsed.customers) || !Array.isArray(parsed.transactions)) {
-            return JSON.parse(JSON.stringify(DEFAULT_SEED_DATA));
+            return JSON.parse(JSON.stringify(EMPTY_KHATA_DATA));
         }
         return parsed;
     } catch (err) {
         console.error('[KhataManager] Error loading khata.json:', err.message);
-        return JSON.parse(JSON.stringify(DEFAULT_SEED_DATA));
+        return JSON.parse(JSON.stringify(EMPTY_KHATA_DATA));
     }
 }
 
