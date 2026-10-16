@@ -34,7 +34,8 @@ import {
   Zap,
   ArrowRight,
   Smartphone,
-  Scale
+  Scale,
+  BookOpen
 } from 'lucide-react';
 import axios from 'axios';
 import { db } from '../../utils/firebase';
@@ -45,6 +46,7 @@ const AlterationSlipModal = lazy(() => import('../AlterationSlipModal'));
 const DenominationModal = lazy(() => import('../DenominationModal'));
 import { calculateDynamicBreakeven } from '../../utils/dynamicBreakevenEngine';
 import DynamicBreakevenLedger from './DynamicBreakevenLedger';
+import CustomerKhataLedger from './CustomerKhataLedger';
 
 export default function PocketKhataTab(props) {
   const {
@@ -341,6 +343,20 @@ export default function PocketKhataTab(props) {
 
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           <button
+            onClick={() => setActiveSubView('customer_khata')}
+            className={`p-2 px-3 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold ${
+              activeSubView === 'customer_khata'
+                ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-sm'
+                : darkMode 
+                  ? 'bg-amber-500/15 border-amber-500/30 text-amber-400 hover:bg-amber-500/25' 
+                  : 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100 shadow-xs'
+            }`}
+            title="Customer Udhar Passbook & Credit Book"
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+            <span>Customer Udhar</span>
+          </button>
+          <button
             onClick={() => setShowDenominationModal(true)}
             className={`p-2 px-3 rounded-xl border transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold ${
               darkMode 
@@ -379,7 +395,7 @@ export default function PocketKhataTab(props) {
         </div>
       </div>
 
-      {/* View Switcher: Expense Journal vs Dynamic Breakeven */}
+      {/* View Switcher: Expense Journal vs Customer Udhar vs Dynamic Breakeven */}
       <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-900/60 border border-slate-800 w-full sm:w-fit overflow-x-auto">
         <button
           type="button"
@@ -392,6 +408,22 @@ export default function PocketKhataTab(props) {
         >
           <Wallet className="w-3.5 h-3.5" />
           <span>Daily Expense &amp; Take-Home</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveSubView('customer_khata')}
+          className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
+            activeSubView === 'customer_khata'
+              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <BookOpen className="w-3.5 h-3.5" />
+          <span>Customer Udhar &amp; Credit Ledger</span>
+          <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-md bg-rose-500/20 text-rose-300 border border-rose-500/30">
+            Passbook
+          </span>
         </button>
 
         <button
@@ -417,7 +449,14 @@ export default function PocketKhataTab(props) {
         </button>
       </div>
 
-      {activeSubView === 'breakeven' ? (
+      {activeSubView === 'customer_khata' ? (
+        <CustomerKhataLedger
+          API_BASE={API_BASE}
+          activeStore={activeStore}
+          darkMode={darkMode}
+          formatCurrency={formatCurrency}
+        />
+      ) : activeSubView === 'breakeven' ? (
         <DynamicBreakevenLedger
           dailySales={props.dailySales || []}
           expenses={summary.items || []}

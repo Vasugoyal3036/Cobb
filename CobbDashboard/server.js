@@ -30,6 +30,9 @@ app.use('/api/config', configRouter);
 const expensesRouter = require('./routes/expenses');
 app.use('/api/expenses', expensesRouter);
 
+const khataRouter = require('./routes/khata');
+app.use('/api/khata', khataRouter);
+
 const holdsRouter = require('./routes/holds');
 app.use('/api/holds', holdsRouter);
 

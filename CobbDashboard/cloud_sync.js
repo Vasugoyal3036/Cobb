@@ -157,7 +157,9 @@ const operationalEndpoints = [
     { url: "/api/config/current", docName: "store_config" },
     { url: "/api/expenses/today", docName: "expenses_today" },
     { url: "/api/financials/dynamic-breakeven", docName: "dynamic_breakeven", aliasDocs: ["financials_dynamic-breakeven"] },
-    { url: "/api/reports/eod-summary", docName: "reports_eod-summary" }
+    { url: "/api/reports/eod-summary", docName: "reports_eod-summary" },
+    { url: "/api/khata/customers", docName: "khata_customers" },
+    { url: "/api/khata/summary", docName: "khata_summary" }
 ];
 
 // Tier 2: Standard Daily Operations (Every 15 minutes)
