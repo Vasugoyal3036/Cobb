@@ -17,17 +17,17 @@ export default function ThermalReceiptModal({
   const activeAlt  = alterationData || {};
 
   const totalAmount    = Number(activeBill.Amount || activeBill.NET_AMOUNT || activeAlt.amount || 0);
-  const grossAmount    = Number(activeBill.GrossAmount || activeBill.GROSS_AMOUNT || totalAmount);
-  const discountAmount = Number(activeBill.DiscountAmount || activeBill.DISCOUNT_AMOUNT || 0);
-  const discountPct    = grossAmount > 0 ? ((discountAmount / grossAmount) * 100).toFixed(1) : 0;
+  const grossAmount    = Number(activeBill.TotalMrp || activeBill.GrossAmount || activeBill.GROSS_AMOUNT || totalAmount);
+  const discountAmount = Number(activeBill.TotalSavings || activeBill.DiscountAmount || activeBill.DISCOUNT_AMOUNT || (grossAmount > totalAmount ? grossAmount - totalAmount : 0));
+  const discountPct    = grossAmount > 0 && discountAmount > 0 ? ((discountAmount / grossAmount) * 100).toFixed(1) : (activeBill.DiscountPercent || 0);
 
-  const totalGst   = Number(activeBill.TotalGst || activeBill.TOTAL_GST_AMOUNT || 0);
+  const totalGst   = Number(activeBill.TaxAmount || activeBill.TotalGst || activeBill.TOTAL_GST_AMOUNT || 0);
   const cgst       = Number(activeBill.CGST || activeBill.Cgst || (totalGst > 0 ? totalGst / 2 : 0));
   const sgst       = Number(activeBill.SGST || activeBill.Sgst || (totalGst > 0 ? totalGst / 2 : 0));
   const igst       = Number(activeBill.IGST || activeBill.Igst || 0);
-  const taxableVal = totalAmount - totalGst;
+  const taxableVal = Number(activeBill.TaxableAmount || (totalAmount - totalGst));
 
-  const salesperson = activeBill.Salesperson || activeBill.SALESPERSON_NAME || '';
+  const salesperson = activeBill.Salesperson || activeBill.SALESPERSON_NAME || activeBill.CashierCode || '';
 
   if (!isOpen) return null;
 
@@ -197,7 +197,9 @@ export default function ThermalReceiptModal({
                         <td className="py-1">
                           <div className="font-bold leading-tight">{it.ArticleName || it.ARTICLE_NAME || it.ArticleNo || 'Apparel'}</div>
                           <div className="text-[9px] text-slate-600">
+                            {it.Barcode ? <span className="font-semibold text-slate-800">[{it.Barcode}] </span> : ''}
                             {it.Size || it.PARA2_NAME || ''}{it.Color ? ` • ${it.Color}` : ''}
+                            {it.HsnCode ? ` • HSN:${it.HsnCode}` : ''}
                             {itemDisc ? <span className="ml-1 text-green-700 font-semibold">({itemDisc}% off)</span> : null}
                           </div>
                         </td>

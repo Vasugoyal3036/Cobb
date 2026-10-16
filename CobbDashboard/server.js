@@ -1327,7 +1327,10 @@ const handleSalesLiveOrHistory = async (req, res) => {
                 ISNULL(c.CUSTOMER_FNAME, '') + ' ' + ISNULL(c.CUSTOMER_LNAME, '') as CustomerName,
                 c.CUSTOMER_FNAME as FirstName,
                 m.NET_AMOUNT as Amount,
-                ISNULL(m.DISCOUNT_AMOUNT, 0) as DiscountAmount,
+                ISNULL(m.DISCOUNT_AMOUNT, 0) as BillDiscountAmount,
+                ISNULL(m.TOTAL_GST_AMOUNT, 0) as TaxAmount,
+                ISNULL(m.ROUND_OFF, 0) as RoundOff,
+                ISNULL(m.USER_CODE, 'Cashier') as CashierCode,
                 ISNULL(m.CANCELLED, 0) as Cancelled,
                 CONVERT(varchar, m.CM_TIME, 126) as BillTime,
                 CONVERT(varchar, m.CM_TIME, 23) as BillDate
@@ -1350,15 +1353,10 @@ const handleSalesLiveOrHistory = async (req, res) => {
                 SELECT 
                     m.CM_ID as BillId,
                     ISNULL(MAX(p.CASH_AMOUNT), 0) as CashAmount,
-                    CASE 
-                        WHEN ISNULL(MAX(p.CC_AMOUNT), 0) - ISNULL(SUM(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0)), 0) > 0 
-                        THEN ISNULL(MAX(p.CC_AMOUNT), 0) - ISNULL(SUM(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0)), 0)
-                        ELSE 0 
-                    END as CardAmount,
-                    ISNULL(SUM(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0)), 0) as UpiAmount
+                    ISNULL(MAX(p.CC_AMOUNT), 0) as CardAmount,
+                    ISNULL(MAX(p.WALLET), 0) as UpiAmount
                 FROM CMM01106 m WITH (NOLOCK)
                 LEFT JOIN VW_BILL_PAYMODE p WITH (NOLOCK) ON m.CM_ID = p.MEMO_ID AND (p.XN_TYPE IS NULL OR p.XN_TYPE = 'SLS')
-                LEFT JOIN VW_WL_CASHMEMOLIST w WITH (NOLOCK) ON m.CM_ID = w.MEMO_ID
                 WHERE m.CM_ID IN (${idList})
                 GROUP BY m.CM_ID
             `).catch(err => {
@@ -1372,11 +1370,21 @@ const handleSalesLiveOrHistory = async (req, res) => {
                     LTRIM(RTRIM(A.PRODUCT_CODE)) as Barcode,
                     D.ARTICLE_NO as ArticleNo,
                     D.ARTICLE_NAME as ArticleName,
+                    ISNULL(E.SUB_SECTION_NAME, F.SECTION_NAME) as SubCategory,
+                    ISNULL(F.SECTION_NAME, 'Apparel') as Category,
                     A.QUANTITY as Quantity,
+                    ISNULL(A.MRP, A.NET) as MRP,
                     A.NET as NetPrice,
+                    ISNULL(A.discount_amount, 0) as DiscountAmount,
+                    ISNULL(A.discount_percentage, 0) as DiscountPercent,
+                    ISNULL(A.hsn_code, '') as HsnCode,
+                    ISNULL(A.tax_percentage, 0) as TaxPercent,
+                    ISNULL(A.cgst_amount, 0) as CgstAmount,
+                    ISNULL(A.sgst_amount, 0) as SgstAmount,
+                    ISNULL(A.igst_amount, 0) as IgstAmount,
+                    ISNULL(A.cgst_amount, 0) + ISNULL(A.sgst_amount, 0) + ISNULL(A.igst_amount, 0) as TotalTaxAmount,
                     ISNULL(P1.PARA1_NAME, 'Standard') as Color,
                     ISNULL(P2.PARA2_NAME, 'Standard') as Size,
-                    ISNULL(F.SECTION_NAME, 'Apparel') as Category,
                     ISNULL(NULLIF(RTRIM(EMP.emp_name), ''), 'Staff') as Salesperson
                 FROM CMD01106 A WITH (NOLOCK)
                 JOIN SKU C WITH (NOLOCK) ON A.PRODUCT_CODE = C.PRODUCT_CODE
@@ -1427,14 +1435,17 @@ const handleSalesLiveOrHistory = async (req, res) => {
 
             const billItems = itemsByBill[b.BillId] || [];
             const totalQty = billItems.reduce((sum, item) => sum + (Number(item.Quantity) || 1), 0);
-            const salesperson = billItems.find(it => it.Salesperson && it.Salesperson !== 'Staff')?.Salesperson || (billItems[0]?.Salesperson || 'Staff');
-
+            const totalMrp = billItems.reduce((sum, item) => sum + (Number(item.MRP || item.NetPrice) * (Number(item.Quantity) || 1)), 0);
             const netAmt = Math.round(Number(b.Amount || 0));
-            const discountAmt = Math.round(Number(b.DiscountAmount || 0));
-            const grossAmt = netAmt + discountAmt;
-            const discountPct = grossAmt > 0 ? Math.round((discountAmt / grossAmt) * 100) : 0;
-            const isHeavyDiscount = (discountPct >= 35 && discountAmt >= 1000) || discountAmt >= 2500;
+            const totalTax = Math.round(Number(b.TaxAmount || 0) || billItems.reduce((sum, item) => sum + Number(item.TotalTaxAmount || 0), 0));
+            const taxableAmount = Math.max(0, netAmt - totalTax);
+            const itemLevelDiscounts = billItems.reduce((sum, item) => sum + Number(item.DiscountAmount || 0), 0);
+            const totalDiscount = (totalMrp > netAmt) ? Math.round(totalMrp - netAmt) : Math.max(Math.round(itemLevelDiscounts), Math.round(Number(b.BillDiscountAmount || 0)));
+            const grossAmt = totalMrp > 0 ? Math.round(totalMrp) : (netAmt + totalDiscount);
+            const discountPct = grossAmt > 0 ? Math.round((totalDiscount / grossAmt) * 100) : 0;
+            const isHeavyDiscount = (discountPct >= 35 && totalDiscount >= 1000) || totalDiscount >= 2500;
             const isBigTicket = netAmt >= 10000;
+            const salesperson = billItems.find(it => it.Salesperson && it.Salesperson !== 'Staff')?.Salesperson || (billItems[0]?.Salesperson || 'Staff');
 
             return {
                 ...b,
@@ -1444,9 +1455,15 @@ const handleSalesLiveOrHistory = async (req, res) => {
                 PaymentMode: paymentMode,
                 TotalQty: totalQty,
                 Salesperson: salesperson,
-                DiscountAmount: discountAmt,
+                TotalMrp: grossAmt,
                 GrossAmount: grossAmt,
+                DiscountAmount: totalDiscount,
                 DiscountPercent: discountPct,
+                TotalSavings: totalDiscount,
+                TaxAmount: totalTax,
+                TaxableAmount: taxableAmount,
+                RoundOff: Number(b.RoundOff || 0),
+                CashierCode: b.CashierCode || 'Cashier',
                 IsHeavyDiscount: isHeavyDiscount,
                 IsBigTicket: isBigTicket,
                 Items: billItems
@@ -1499,16 +1516,35 @@ app.get('/api/sales/bill/:id/items', async (req, res) => {
         request.input('id', sql.VarChar, id);
         const result = await request.query(`
             SELECT 
-                d.ARTICLE_NO as ArticleNo,
-                d.ARTICLE_NAME as ArticleName,
-                d.QUANTITY as Quantity,
-                d.NET as NetPrice,
-                ISNULL(d.PARA1_NAME, 'Standard') as Color,
-                ISNULL(d.PARA2_NAME, 'Standard') as Size,
-                ISNULL(d.SECTION_NAME, 'Apparel') as Category
-            FROM VW_CASHMEMO_PRINT_DET d WITH (NOLOCK)
-            WHERE d.CM_ID = @id
-            ORDER BY d.NET DESC
+                LTRIM(RTRIM(A.PRODUCT_CODE)) as Barcode,
+                D.ARTICLE_NO as ArticleNo,
+                D.ARTICLE_NAME as ArticleName,
+                ISNULL(E.SUB_SECTION_NAME, F.SECTION_NAME) as SubCategory,
+                ISNULL(F.SECTION_NAME, 'Apparel') as Category,
+                A.QUANTITY as Quantity,
+                ISNULL(A.MRP, A.NET) as MRP,
+                A.NET as NetPrice,
+                ISNULL(A.discount_amount, 0) as DiscountAmount,
+                ISNULL(A.discount_percentage, 0) as DiscountPercent,
+                ISNULL(A.hsn_code, '') as HsnCode,
+                ISNULL(A.tax_percentage, 0) as TaxPercent,
+                ISNULL(A.cgst_amount, 0) as CgstAmount,
+                ISNULL(A.sgst_amount, 0) as SgstAmount,
+                ISNULL(A.igst_amount, 0) as IgstAmount,
+                ISNULL(A.cgst_amount, 0) + ISNULL(A.sgst_amount, 0) + ISNULL(A.igst_amount, 0) as TotalTaxAmount,
+                ISNULL(P1.PARA1_NAME, 'Standard') as Color,
+                ISNULL(P2.PARA2_NAME, 'Standard') as Size,
+                ISNULL(NULLIF(RTRIM(EMP.emp_name), ''), 'Staff') as Salesperson
+            FROM CMD01106 A WITH (NOLOCK)
+            JOIN SKU C WITH (NOLOCK) ON A.PRODUCT_CODE = C.PRODUCT_CODE
+            JOIN ARTICLE D WITH (NOLOCK) ON C.ARTICLE_CODE = D.ARTICLE_CODE
+            LEFT JOIN SECTIOND E WITH (NOLOCK) ON D.SUB_SECTION_CODE = E.SUB_SECTION_CODE
+            LEFT JOIN SECTIONM F WITH (NOLOCK) ON E.SECTION_CODE = F.SECTION_CODE
+            LEFT JOIN PARA1 P1 WITH (NOLOCK) ON C.PARA1_CODE = P1.PARA1_CODE
+            LEFT JOIN PARA2 P2 WITH (NOLOCK) ON C.PARA2_CODE = P2.PARA2_CODE
+            LEFT JOIN EMPLOYEE EMP WITH (NOLOCK) ON A.emp_code = EMP.emp_code
+            WHERE A.CM_ID = @id
+            ORDER BY A.NET DESC
         `);
         res.json(result.recordset);
     } catch (err) {
@@ -3588,7 +3624,7 @@ async function buildEodReport(targetDateStr) {
             ISNULL(SUM(m.TOTAL_GST_AMOUNT), 0) AS TaxCollected,
             ISNULL(SUM(m.NET_AMOUNT - m.TOTAL_GST_AMOUNT), 0) AS NetSales,
             ISNULL(SUM(p.CASH_AMOUNT), 0) AS CashAmount,
-            ISNULL(SUM(p.CC_AMOUNT), 0) AS CardAmount,
+            ISNULL(SUM(p.CC_AMOUNT), 0) - ISNULL(SUM(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0)), 0) AS CardAmount,
             ISNULL(SUM(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0)), 0) AS UpiAmount
         FROM CMM01106 m WITH (NOLOCK)
         LEFT JOIN VW_BILL_PAYMODE p WITH (NOLOCK) ON m.CM_ID = p.MEMO_ID
@@ -3613,7 +3649,7 @@ async function buildEodReport(targetDateStr) {
     const totalDiscount = Math.round(Number(s.TotalDiscount || 0));
     const taxCollected = Math.round(Number(s.TaxCollected || 0));
     const cash = Math.round(Number(s.CashAmount || 0));
-    const card = Math.round(Number(s.CardAmount || 0));
+    const card = Math.max(0, Math.round(Number(s.CardAmount || 0)));
     const upi = Math.round(Number(s.UpiAmount || 0));
     const aov = billCount > 0 ? Math.round(grossSales / billCount) : 0;
     const upt = billCount > 0 ? (totalUnits / billCount).toFixed(1) : '0.0';
@@ -3624,13 +3660,15 @@ async function buildEodReport(targetDateStr) {
     try {
         const catRes = await sql.query(`
             SELECT TOP 1 
-                ISNULL(i.SECTION_NAME, 'Apparel') as SectionName,
+                ISNULL(sec.sub_section_name, 'Apparel') as SectionName,
                 SUM(d.QUANTITY) as UnitsSold
             FROM CMD01106 d WITH (NOLOCK)
             JOIN CMM01106 m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
-            LEFT JOIN INM01106 i WITH (NOLOCK) ON d.ARTICLE_CODE = i.ARTICLE_CODE
+            LEFT JOIN SKU s WITH (NOLOCK) ON d.PRODUCT_CODE = s.PRODUCT_CODE
+            LEFT JOIN ARTICLE a WITH (NOLOCK) ON s.ARTICLE_CODE = a.ARTICLE_CODE
+            LEFT JOIN SECTIOND sec WITH (NOLOCK) ON a.SUB_SECTION_CODE = sec.SUB_SECTION_CODE
             WHERE CONVERT(varchar(10), m.CM_TIME, 120) = '${dateStr}' AND m.CANCELLED = 0
-            GROUP BY i.SECTION_NAME
+            GROUP BY sec.sub_section_name
             ORDER BY UnitsSold DESC
         `);
         if (catRes.recordset && catRes.recordset.length > 0) {
@@ -3646,10 +3684,10 @@ async function buildEodReport(targetDateStr) {
         const staffRes = await sql.query(`
             SELECT TOP 1
                 ISNULL(e.EMP_NAME, d.EMP_CODE) as StaffName,
-                SUM(d.NET_AMOUNT) as StaffSales
+                SUM(d.NET) as StaffSales
             FROM CMD01106 d WITH (NOLOCK)
             JOIN CMM01106 m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
-            LEFT JOIN VW_EMP_MASTER e WITH (NOLOCK) ON d.EMP_CODE = e.EMP_CODE
+            LEFT JOIN EMPLOYEE e WITH (NOLOCK) ON RTRIM(d.EMP_CODE) = RTRIM(e.EMP_CODE)
             WHERE CONVERT(varchar(10), m.CM_TIME, 120) = '${dateStr}' AND m.CANCELLED = 0 AND d.EMP_CODE IS NOT NULL AND d.EMP_CODE != ''
             GROUP BY ISNULL(e.EMP_NAME, d.EMP_CODE)
             ORDER BY StaffSales DESC
@@ -3777,21 +3815,24 @@ app.post('/api/reports/eod-summary/send', async (req, res) => {
                 ? process.env.OWNER_WHATSAPP_NUMBERS.split(',').map(s => s.trim()).filter(Boolean)
                 : ['9138122820', '8708788707', '9034522000', '9466422821']);
             
-        const results = [];
-        for (const rawPhone of recipients) {
+        const sendPromises = recipients.map(async (rawPhone) => {
             const phone = String(rawPhone).replace(/\D/g, '').slice(-10);
             if (phone.length === 10) {
                 try {
                     const waRes = await axios.post('http://localhost:3000/send', {
                         number: phone,
                         message: report.text
-                    }, { timeout: 8000 });
-                    results.push({ phone, status: 'sent', data: waRes.data });
+                    }, { timeout: 5000 });
+                    return { phone, status: 'sent', data: waRes.data };
                 } catch (waErr) {
-                    results.push({ phone, status: 'error', error: waErr.message });
+                    return { phone, status: 'error', error: waErr.message };
                 }
             }
-        }
+            return { phone: rawPhone, status: 'invalid' };
+        });
+
+        const settled = await Promise.allSettled(sendPromises);
+        const results = settled.map(s => s.status === 'fulfilled' ? s.value : { status: 'error', error: s.reason?.message });
 
         const todayStr = date || new Date().toISOString().split('T')[0];
         try {
@@ -3816,20 +3857,25 @@ async function dispatchEodReportToOwners(targetDateStr, labelSuffix = '') {
             ? process.env.OWNER_WHATSAPP_NUMBERS.split(',').map(s => s.trim()).filter(Boolean)
             : ['9138122820', '8708788707', '9034522000', '9466422821'];
 
-        for (const rawPhone of recipients) {
+        const sendPromises = recipients.map(async (rawPhone) => {
             const phone = String(rawPhone).replace(/\D/g, '').slice(-10);
             if (phone.length === 10) {
                 try {
                     await axios.post('http://localhost:3000/send', {
                         number: phone,
                         message: report.text + (labelSuffix ? `\n\n📌 *Tag:* ${labelSuffix}` : '')
-                    }, { timeout: 8000 });
+                    }, { timeout: 5000 });
                     console.log(`[AUTO EOD DISPATCH] Sent to ${phone}`);
+                    return true;
                 } catch (e) {
                     console.warn(`[AUTO EOD DISPATCH WARN] Could not send to ${phone}: ${e.message}`);
+                    return false;
                 }
             }
-        }
+            return false;
+        });
+
+        await Promise.allSettled(sendPromises);
         const todayStr = targetDateStr || new Date().toISOString().split('T')[0];
         try {
             fs.writeFileSync(path.join(__dirname, 'sent_eod_date.txt'), todayStr, 'utf8');
@@ -4199,20 +4245,33 @@ app.get('/api/loyalty/card/:phone', async (req, res) => {
 });
 
 let cloudSyncProcess = null;
+let lastCloudSyncSpawnAttempt = 0;
 function startCloudSyncHelper() {
     if (cloudSyncProcess) return true;
     const scriptPath = path.join(__dirname, 'cloud_sync.js');
     if (!fs.existsSync(scriptPath)) return false;
-    try {
-        cloudSyncProcess = spawn('node', ['cloud_sync.js'], { 
-            cwd: __dirname, 
-            shell: false, 
-            windowsHide: true,
-            stdio: 'ignore' 
-        });
-        cloudSyncProcess.on('close', () => { cloudSyncProcess = null; });
-        console.log("Auto-spawned Cloud Sync Agent silently.");
-    } catch (e) {}
+
+    const now = Date.now();
+    if (now - lastCloudSyncSpawnAttempt < 60000) return true;
+    lastCloudSyncSpawnAttempt = now;
+
+    const net = require('net');
+    const socket = net.createConnection({ port: 51234, host: '127.0.0.1' });
+    socket.once('connect', () => {
+        socket.destroy();
+    });
+    socket.once('error', () => {
+        try {
+            cloudSyncProcess = spawn('node', ['cloud_sync.js'], { 
+                cwd: __dirname, 
+                shell: false, 
+                windowsHide: true,
+                stdio: 'ignore' 
+            });
+            cloudSyncProcess.on('close', () => { cloudSyncProcess = null; });
+            console.log("Auto-spawned Cloud Sync Agent silently.");
+        } catch (e) {}
+    });
     return true;
 }
 
@@ -4679,49 +4738,55 @@ app.listen(PORT, () => {
                 } catch (e) {}
             }
 
-            // 1. Evening Closing Trigger:
-            // Scheduled Closing: 8:30 PM onwards (20:30)
-            const isEveningSchedule = (hour > 20 || (hour === 20 && minute >= 30));
+            // 1. Evening Closing Triggers:
+            // - Trigger A: Scheduled Closing: 8:00 PM onwards (20:00)
+            // - Trigger B: Evening Inactivity: 7:15 PM onwards (19:15), if >= 20 mins quiet since last bill
+            const isEveningSchedule = (hour >= 20);
+            const isEveningInactivity = (hour > 19 || (hour === 19 && minute >= 15));
 
-            if (lastSentDate !== todayStr && isEveningSchedule) {
+            if (lastSentDate !== todayStr && (isEveningSchedule || isEveningInactivity)) {
                 await connectDB();
                 const activityQuery = await sql.query(`
-                    SELECT COUNT(CM_ID) as billCount
+                    SELECT 
+                        COUNT(CM_ID) as billCount,
+                        DATEDIFF(minute, MAX(CM_TIME), GETDATE()) as minsSinceLastBill
                     FROM CMM01106 WITH (NOLOCK) 
                     WHERE CM_TIME >= CAST(GETDATE() AS DATE) AND CANCELLED = 0
                 `);
-                const { billCount } = activityQuery.recordset[0] || { billCount: 0 };
+                const { billCount, minsSinceLastBill } = activityQuery.recordset[0] || { billCount: 0, minsSinceLastBill: 999 };
 
                 if (billCount > 0) {
-                    console.log(`[AUTO EOD] 8:30 PM scheduled closing trigger (${hour}:${String(minute).padStart(2, '0')}) active for ${todayStr} (${billCount} bills). Auto-dispatching EOD digest to owners...`);
-                    await dispatchEodReportToOwners(todayStr, ' (Scheduled Store Closing at 8:30 PM)');
+                    let shouldDispatch = false;
+                    let triggerReason = '';
+
+                    if (isEveningSchedule) {
+                        shouldDispatch = true;
+                        triggerReason = `8:00 PM+ Scheduled Store Closing (${hour}:${String(minute).padStart(2, '0')})`;
+                    } else if (isEveningInactivity && (minsSinceLastBill === null || minsSinceLastBill >= 20)) {
+                        shouldDispatch = true;
+                        triggerReason = `Evening Inactivity (${minsSinceLastBill}m quiet since last bill at ${hour}:${String(minute).padStart(2, '0')})`;
+                    }
+
+                    if (shouldDispatch) {
+                        console.log(`[AUTO EOD] ${triggerReason} active for ${todayStr} (${billCount} bills). Auto-dispatching EOD digest to owners...`);
+                        await dispatchEodReportToOwners(todayStr, ` (${triggerReason})`);
+                    }
                 }
             }
 
-            // 2. Morning / Power-On Recovery: Between 9:00 AM and 1:00 PM
-            // If yesterday's digest was never delivered, recover it!
-            const isMorningRecovery = (hour >= 9 && hour <= 13);
+            // 2. Morning / Power-On Recovery: DO NOT DISPATCH YESTERDAY'S DIGEST!
+            // When turning on the PC in the morning, silently advance sent_eod_date.txt to yesterday if needed,
+            // but NEVER dispatch yesterday's digest to WhatsApp.
+            const isMorningRecovery = (hour >= 8 && hour <= 13);
             const yesterday = new Date(now);
             yesterday.setDate(yesterday.getDate() - 1);
             const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
 
             if (isMorningRecovery && lastSentDate !== yesterdayStr && lastSentDate !== todayStr) {
-                console.log(`[AUTO EOD RECOVERY] Yesterday's (${yesterdayStr}) digest was not recorded as sent. Checking if bills exist...`);
-                await connectDB();
-                const checkQuery = await sql.query(`
-                    SELECT COUNT(CM_ID) as billCount 
-                    FROM CMM01106 WITH (NOLOCK) 
-                    WHERE CM_TIME >= '${yesterdayStr}' AND CM_TIME < CAST(GETDATE() AS DATE) AND CANCELLED = 0
-                `);
-                const billCount = checkQuery.recordset[0]?.billCount || 0;
-                if (billCount > 0) {
-                    console.log(`[AUTO EOD RECOVERY] Found ${billCount} bills from yesterday. Sending recovered night closing digest...`);
-                    // await dispatchEodReport (DISABLED)(yesterdayStr, ' (Recovered Night Closing)');
-                } else {
-                    try {
-                        fs.writeFileSync(sentFilePath, yesterdayStr, 'utf8');
-                    } catch (e) {}
-                }
+                console.log(`[AUTO EOD] Morning boot detected (${hour}:${String(minute).padStart(2, '0')}). Silently marking yesterday (${yesterdayStr}) without sending to prevent morning digest spam.`);
+                try {
+                    fs.writeFileSync(sentFilePath, yesterdayStr, 'utf8');
+                } catch (e) {}
             }
         } catch (err) {
             console.error('[AUTO EOD CHECK ERROR]:', err.message);
@@ -4755,16 +4820,16 @@ async function handleProcessTermination(signal) {
         const day = String(now.getDate()).padStart(2, '0');
         const todayStr = `${year}-${month}-${day}`;
 
-        // Shutdown near 7:30 PM onwards (from 7:15 PM / 19:15 onwards)
-        const isNear730OrLater = (hour > 19 || (hour === 19 && minute >= 15));
-        if (isNear730OrLater) {
+        // Shutdown during store closing hours: 7:00 PM (19:00) onwards
+        const isClosingHours = (hour >= 19);
+        if (isClosingHours) {
             const sentFilePath = path.join(__dirname, 'sent_eod_date.txt');
             let lastSentDate = '';
             if (fs.existsSync(sentFilePath)) {
                 try { lastSentDate = fs.readFileSync(sentFilePath, 'utf8').trim(); } catch (e) {}
             }
             if (lastSentDate !== todayStr) {
-                console.log(`[PROCESS TERMINATION] Shutdown near 7:30 PM+ detected at ${hour}:${String(minute).padStart(2, '0')}. Auto-dispatching EOD digest for ${todayStr}...`);
+                console.log(`[PROCESS TERMINATION] Shutdown during store closing hours detected at ${hour}:${String(minute).padStart(2, '0')}. Auto-dispatching EOD digest for ${todayStr}...`);
                 await dispatchEodReportToOwners(todayStr, ` (Shutdown Closing at ${hour}:${String(minute).padStart(2, '0')})`);
             } else {
                 console.log(`[PROCESS TERMINATION] EOD digest for ${todayStr} was already dispatched earlier today. Skipping.`);

@@ -150,8 +150,8 @@ def send_daily_closing_digest(cursor, target_date=None, label_suffix=""):
         cursor.execute(f"""
             SELECT 
                 ISNULL(SUM(p.CASH_AMOUNT), 0) as Cash,
-                ISNULL(SUM(p.CC_AMOUNT), 0) as Card,
-                ISNULL(SUM(w.UPI + w.[Paytm QR] + w.Paytm + w.[PAYTM UPI] + w.RazorpayUPI), 0) as UPI
+                ISNULL(SUM(p.CC_AMOUNT), 0) - ISNULL(SUM(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0)), 0) as Card,
+                ISNULL(SUM(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0)), 0) as UPI
             FROM CMM01106 m WITH (NOLOCK)
             LEFT JOIN VW_BILL_PAYMODE p WITH (NOLOCK) ON m.CM_ID = p.MEMO_ID AND p.XN_TYPE = 'SLS'
             LEFT JOIN VW_WL_CASHMEMOLIST w WITH (NOLOCK) ON m.CM_ID = w.MEMO_ID
@@ -159,7 +159,7 @@ def send_daily_closing_digest(cursor, target_date=None, label_suffix=""):
         """)
         pay_row = cursor.fetchone()
         cash = int(round(float(pay_row[0] or 0)))
-        card = int(round(float(pay_row[1] or 0)))
+        card = max(0, int(round(float(pay_row[1] or 0))))
         upi = int(round(float(pay_row[2] or 0)))
 
         # 3. Exchanges
@@ -224,21 +224,25 @@ def send_daily_closing_digest(cursor, target_date=None, label_suffix=""):
             f"✨ Automated EOD Store Intelligence System"
         )
 
-        delivered_count = 0
-        for num in EOD_RECIPIENTS:
+        import concurrent.futures
+        def _send_eod_wa(num):
             clean_phone = normalize_phone_number(num)
             if not clean_phone:
-                continue
+                return False
             try:
-                r = requests.post(WHATSAPP_SERVER_URL, json={'number': clean_phone, 'message': msg}, headers={'Content-Type': 'application/json'}, timeout=15)
+                r = requests.post(WHATSAPP_SERVER_URL, json={'number': clean_phone, 'message': msg}, headers={'Content-Type': 'application/json'}, timeout=5)
                 if r.status_code == 200:
-                    delivered_count += 1
                     print(f"[{time.strftime('%X')}] [EOD DIGEST SENT] Delivered to {clean_phone}", flush=True)
+                    return True
                 else:
                     print(f"[{time.strftime('%X')}] [EOD SEND WARNING] Server returned status {r.status_code} for {clean_phone}", flush=True)
             except Exception as send_err:
                 print(f"[{time.strftime('%X')}] [EOD SEND ERROR] Failed for {clean_phone}: {send_err}", flush=True)
+            return False
 
+        with concurrent.futures.ThreadPoolExecutor(max_workers=len(EOD_RECIPIENTS)) as executor:
+            results = list(executor.map(_send_eod_wa, EOD_RECIPIENTS))
+        delivered_count = sum(1 for r in results if r)
         return delivered_count > 0
     except Exception as e:
         print(f"[{time.strftime('%X')}] [EOD REPORT GENERATION ERROR] {e}", flush=True)
@@ -379,26 +383,31 @@ def setup_windows_shutdown_watcher(cursor):
         WM_QUERYENDSESSION = 0x0011
         WM_ENDSESSION = 0x0016
 
-        def on_shutdown_event(hwnd):
+        def on_shutdown_event(hwnd=None):
             now = time.localtime()
             today_str = time.strftime('%Y-%m-%d', now)
-            # Store closing shutdown window: near 7:30 PM (19:15) onwards
-            is_near_closing_shutdown = (now.tm_hour > 19 or (now.tm_hour == 19 and now.tm_min >= 15))
+            # Store closing shutdown window: 7:00 PM (19:00) onwards
+            is_near_closing_shutdown = (now.tm_hour >= 19)
             if is_near_closing_shutdown:
                 if is_eod_already_sent(today_str):
                     log_engine(f"[SHUTDOWN HOOK] EOD digest for {today_str} was already sent today. Skipping shutdown dispatch.")
                     return
-                log_engine(f"[SHUTDOWN HOOK] Windows system shutdown detected near 7:30 PM+ ({now.tm_hour}:{now.tm_min:02d}). Holding shutdown to dispatch EOD digest...")
+                log_engine(f"[SHUTDOWN HOOK] Windows system shutdown detected near closing ({now.tm_hour}:{now.tm_min:02d}). Holding shutdown to dispatch EOD digest...")
+                if hwnd:
+                    try:
+                        user32.ShutdownBlockReasonCreate(hwnd, "Dispatching Cobb Store EOD Closing Digest via WhatsApp...")
+                    except Exception:
+                        pass
                 try:
-                    user32.ShutdownBlockReasonCreate(hwnd, "Dispatching Cobb Store EOD Closing Digest via WhatsApp...")
                     trigger_eod_closing_dispatch(cursor, label_suffix=f" (Shutdown at {now.tm_hour}:{now.tm_min:02d})")
                 except Exception as ex:
                     log_engine(f"[SHUTDOWN HOOK ERROR] {ex}")
                 finally:
-                    try:
-                        user32.ShutdownBlockReasonDestroy(hwnd)
-                    except Exception:
-                        pass
+                    if hwnd:
+                        try:
+                            user32.ShutdownBlockReasonDestroy(hwnd)
+                        except Exception:
+                            pass
                     log_engine(f"[SHUTDOWN HOOK] Shutdown block released. Allowing system shutdown.")
 
         def py_wnd_proc(hwnd, msg, wparam, lparam):
@@ -409,8 +418,23 @@ def setup_windows_shutdown_watcher(cursor):
                 return 0
             return user32.DefWindowProcW(hwnd, msg, wparam, lparam)
 
-        global _wnd_proc_ref
+        global _wnd_proc_ref, _ctrl_handler_ref
         _wnd_proc_ref = WNDPROC(py_wnd_proc)
+
+        # Register native console control handler for shutdown/logoff signals
+        try:
+            HandlerRoutine = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.DWORD)
+            def console_ctrl_handler(ctrl_type):
+                if ctrl_type in (5, 6): # 5 = CTRL_LOGOFF_EVENT, 6 = CTRL_SHUTDOWN_EVENT
+                    log_engine(f"[SHUTDOWN HOOK] Native console shutdown/logoff signal {ctrl_type} received.")
+                    on_shutdown_event(None)
+                    return True
+                return False
+            _ctrl_handler_ref = HandlerRoutine(console_ctrl_handler)
+            kernel32.SetConsoleCtrlHandler(_ctrl_handler_ref, True)
+            log_engine("[SHUTDOWN WATCHER] Native console control handler registered.")
+        except Exception as ctrl_err:
+            log_engine(f"[SHUTDOWN WATCHER] Console control registration note: {ctrl_err}")
 
         def message_pump_loop():
             try:
@@ -653,38 +677,30 @@ def run_listener():
         print(f"[{time.strftime('%X')}] [INITIAL CONNECTION ERROR] {e}", flush=True)
         return
 
-    # 1. Power-On Recovery: If yesterday's closing digest was never dispatched (e.g. PC turned off early)
+    # 1. Morning Startup: Silently advance sent_eod_date without dispatching
     yesterday_date = datetime.date.today() - datetime.timedelta(days=1)
     yesterday_str = yesterday_date.strftime('%Y-%m-%d')
     today_str = datetime.date.today().strftime('%Y-%m-%d')
 
     if last_eod_date != yesterday_str and last_eod_date != today_str:
-        print(f"[{time.strftime('%X')}] [POWER-ON RECOVERY] Verifying if yesterday ({yesterday_str}) closing digest was delivered...", flush=True)
+        print(f"[{time.strftime('%X')}] [POWER-ON] Booting up. Silently advancing EOD date to yesterday ({yesterday_str}). Morning digest dispatch is disabled.", flush=True)
+        last_eod_date = yesterday_str
         try:
-            cursor.execute(f"SELECT COUNT(CM_ID) FROM CMM01106 WITH (NOLOCK) WHERE CM_TIME >= '{yesterday_str}' AND CM_TIME < CAST(GETDATE() AS DATE) AND CANCELLED = 0")
-            y_count = cursor.fetchone()[0] or 0
-            if y_count > 0:
-                print(f"[{time.strftime('%X')}] [POWER-ON RECOVERY] Found {y_count} bills from yesterday without EOD dispatch. Sending recovered digest now...", flush=True)
-                if send_daily_closing_digest(cursor, target_date=yesterday_str, label_suffix=" (Recovered Night Closing)"):
-                    last_eod_date = yesterday_str
-                    try:
-                        with open(SENT_EOD_FILE, 'w') as f:
-                            f.write(yesterday_str)
-                    except Exception:
-                        pass
-        except Exception as rec_err:
-            print(f"[{time.strftime('%X')}] [RECOVERY ERROR] {rec_err}", flush=True)
+            with open(SENT_EOD_FILE, 'w', encoding='utf-8') as f:
+                f.write(yesterday_str)
+        except Exception:
+            pass
 
     # 2. Windows Shutdown / Logoff Hook (Native Win32 Message Loop + OS signals)
     setup_windows_shutdown_watcher(cursor)
 
     def on_exit(sig=None, frame=None):
         now = time.localtime()
-        # Only check/dispatch EOD during evening closing hours (8:30 PM / 20:30 onwards)
-        if (now.tm_hour > 20 or (now.tm_hour == 20 and now.tm_min >= 30)):
+        # Closing hours shutdown window: 7:00 PM (19:00) onwards
+        if now.tm_hour >= 19:
             log_engine(f"[PROCESS EXIT DETECTED] Process termination detected at {now.tm_hour}:{now.tm_min:02d}. Checking for unsent EOD digest...")
             try:
-                trigger_eod_closing_dispatch(cursor, label_suffix=" (Store Closing Digest)")
+                trigger_eod_closing_dispatch(cursor, label_suffix=f" (Shutdown at {now.tm_hour}:{now.tm_min:02d})")
             except Exception as e:
                 log_engine(f"[EXIT EOD ERROR] {e}")
         if sig is not None:
@@ -704,10 +720,10 @@ def run_listener():
             today_str = time.strftime('%Y-%m-%d', now)
 
             # Evening Closing Schedule:
-            # - Trigger A: 8:30 PM (20:30) Scheduled Closing
-            # - Trigger B: Inactivity from 8:00 PM (20:00) onward: If bills exist and no new bill for >= 25 mins
-            is_night_schedule = (now.tm_hour > 20 or (now.tm_hour == 20 and now.tm_min >= 30))
-            is_closing_inactivity = (now.tm_hour > 20 or (now.tm_hour == 20 and now.tm_min >= 0))
+            # - Trigger A: 8:00 PM (20:00) Scheduled Closing
+            # - Trigger B: Inactivity from 7:15 PM (19:15) onward: If bills exist and no new bill for >= 20 mins
+            is_night_schedule = (now.tm_hour >= 20)
+            is_closing_inactivity = (now.tm_hour > 19 or (now.tm_hour == 19 and now.tm_min >= 15))
 
             if (is_night_schedule or is_closing_inactivity) and not is_eod_already_sent(today_str):
                 try:
@@ -727,14 +743,14 @@ def run_listener():
                         reason = ""
                         if is_night_schedule:
                             should_send = True
-                            reason = f"8:30 PM night closing schedule ({now.tm_hour}:{now.tm_min:02d})"
-                        elif is_closing_inactivity and mins_since >= 25:
+                            reason = f"8:00 PM+ night closing schedule ({now.tm_hour}:{now.tm_min:02d})"
+                        elif is_closing_inactivity and mins_since >= 20:
                             should_send = True
                             reason = f"Evening inactivity ({mins_since}m quiet since last bill at {now.tm_hour}:{now.tm_min:02d})"
 
                         if should_send:
                             log_engine(f"[{reason.upper()}] Triggering automated EOD closing digest for {today_str} ({t_count} bills)...")
-                            if trigger_eod_closing_dispatch(cursor, label_suffix=" (Store Closing Digest)"):
+                            if trigger_eod_closing_dispatch(cursor, label_suffix=f" ({reason})"):
                                 last_eod_date = today_str
                 except Exception as sched_err:
                     log_engine(f"[SCHEDULED CLOSING CHECK ERROR] {sched_err}")

@@ -1226,25 +1226,28 @@ async function handleGracefulShutdown(signal) {
                         `──────────────────────\n` +
                         `🕒 POS Counter Computer shut down on ${dateStr} at ${timeStr} (${signal}).\n` +
                         `Store system is now closed.`;
-                    await sendWhatsAppToOwners(waShutdownText, 'Shutdown');
-
-                    // If shutdown is near 7:30 PM+ (from 7:15 PM / 19:15 onwards) and EOD not yet sent today, dispatch it
+                    // If shutdown is during closing hours (from 7:00 PM / 19:00 onwards) and EOD not yet sent today, dispatch it
                     const hour = now.getHours();
                     const minute = now.getMinutes();
-                    const isNear730OrLater = (hour > 19 || (hour === 19 && minute >= 15));
+                    const isClosingHours = (hour >= 19);
                     const sentFilePath = path.join(__dirname, 'sent_eod_date.txt');
                     let lastSentDate = '';
                     if (fs.existsSync(sentFilePath)) {
                         try { lastSentDate = fs.readFileSync(sentFilePath, 'utf8').trim(); } catch (e) {}
                     }
-                    if (isNear730OrLater && lastSentDate !== dateStr) {
-                        console.log(`[SYNC AGENT] Shutdown near 7:30 PM+ detected (${timeStr}). Auto-dispatching EOD Closing Digest...`);
-                        try {
-                            await axios.post(`${LOCAL_API}/api/reports/eod-summary/send`, { date: dateStr }, { timeout: 6000 });
-                        } catch (eodErr) {
-                            console.warn('[SYNC AGENT] EOD shutdown dispatch note:', eodErr.message);
-                        }
+
+                    const tasks = [
+                        sendWhatsAppToOwners(waShutdownText, 'Shutdown').catch(() => {})
+                    ];
+                    if (isClosingHours && lastSentDate !== dateStr) {
+                        console.log(`[SYNC AGENT] Shutdown during store closing hours detected (${timeStr}). Auto-dispatching EOD Closing Digest...`);
+                        tasks.push(
+                            axios.post(`${LOCAL_API}/api/reports/eod-summary/send`, { date: dateStr }, { timeout: 4000 })
+                                .then(() => console.log('[SYNC AGENT] EOD shutdown dispatch completed.'))
+                                .catch(eodErr => console.warn('[SYNC AGENT] EOD shutdown dispatch note:', eodErr.message))
+                        );
                     }
+                    await Promise.allSettled(tasks);
                 }
             })(),
             new Promise(resolve => setTimeout(resolve, 4000))
@@ -1406,12 +1409,11 @@ function startSyncAgent() {
         setInterval(checkAndDispatchCancelledBillAlerts, CANCELLED_INTERVAL);
         setInterval(updateHeartbeat, HEARTBEAT_INTERVAL);
 
-        // 3. Nightly closing digest scheduled trigger (between 8:30 PM and 9:05 PM)
+        // 3. Nightly closing digest scheduled trigger (8:00 PM onwards)
         setInterval(() => {
             const now = new Date();
             const hour = now.getHours();
-            const min = now.getMinutes();
-            if ((hour === 20 && min >= 30) || (hour === 21 && min <= 5)) {
+            if (hour >= 20 && hour <= 21) {
                 dispatchEodDigestAlert(true);
             }
         }, 60 * 1000);
