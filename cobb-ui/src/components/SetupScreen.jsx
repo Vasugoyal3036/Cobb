@@ -29,7 +29,8 @@ export default function SetupScreen({ onComplete }) {
     try {
       const configObj = {
         storeProfile: {
-          storeName: storeName || 'Cobb Apparels',
+          storeName: storeName || 'Goyal - House Of Fashion (Pundri Flagship)',
+          firmBrand: 'Goyal - House Of Fashion',
           storeId: storeId || 'DEMO_STORE_001'
         },
         operatingExpenses: {
@@ -63,10 +64,10 @@ export default function SetupScreen({ onComplete }) {
         )}
 
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400">
+          <h1 className="text-2xl sm:text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r from-amber-400 via-rose-400 to-indigo-400">
             Welcome to Cobb CRM
           </h1>
-          <p className="text-slate-400 mt-2">Let's get your store set up in a few simple steps.</p>
+          <p className="text-slate-400 mt-2 font-medium">Goyal - House Of Fashion • Setup your fashion store in a few simple steps.</p>
         </div>
 
         <div className="flex justify-between mb-8 relative">

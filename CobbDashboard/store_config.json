@@ -1,9 +1,15 @@
 {
   "configured": true,
-  "presetId": "cobb",
+  "presetId": "goyal",
+  "firmBrand": "Goyal - House Of Fashion",
   "storeProfile": {
-    "storeName": "Cobb Apparels",
-    "branch": "Pundri"
+    "firmBrand": "Goyal - House Of Fashion",
+    "storeName": "Goyal - House Of Fashion (Pundri Flagship)",
+    "storeId": "DEMO_STORE_001",
+    "code": "GHOF01",
+    "branch": "Pundri Flagship",
+    "city": "Pundri",
+    "location": "Fatehpur Road, Pundri"
   },
   "operatingExpenses": {
     "rent": 40000,

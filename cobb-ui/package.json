@@ -65,8 +65,8 @@
     ]
   },
   "build": {
-    "appId": "com.cobb.app",
-    "productName": "ORS",
+    "appId": "com.goyalhouseoffashion.pos",
+    "productName": "Goyal - House Of Fashion",
     "directories": {
       "output": "release"
     },

@@ -3,10 +3,36 @@ import { logAuthEvent } from '../utils/auditLogger';
 import { db } from '../utils/firebase';
 import { doc, getDoc, setDoc, updateDoc, collection, onSnapshot } from 'firebase/firestore';
 
+export const FIRM_NAME = 'Goyal - House Of Fashion';
+
 export const DEFAULT_STORES = [
-  { id: 'DEMO_STORE_001', name: 'Cobb Pundri (Main)', shortName: 'Pundri', code: 'PUNDRI', location: 'Fatehpur Road, Pundri', coordinates: { lat: 29.7562, lng: 76.5619 } },
-  { id: 'STORE_NIGDHU_002', name: 'Cobb Nigdhu', shortName: 'Nigdhu', code: 'NIGDHU', location: 'Main Market, Nigdhu', coordinates: { lat: 29.8500, lng: 76.9200 } },
-  { id: 'ALL', name: 'All Stores (Combined)', shortName: 'All Stores', code: 'ALL', location: 'Consolidated Multi-Store View', coordinates: null }
+  { 
+    id: 'DEMO_STORE_001', 
+    name: 'Goyal - House Of Fashion (Pundri Flagship)', 
+    shortName: 'Goyal Pundri', 
+    code: 'GHOF-01', 
+    brand: 'Goyal - House Of Fashion',
+    location: 'Fatehpur Road, Pundri', 
+    coordinates: { lat: 29.7562, lng: 76.5619 } 
+  },
+  { 
+    id: 'STORE_NIGDHU_002', 
+    name: 'Goyal - House Of Fashion (Nigdhu Branch)', 
+    shortName: 'Goyal Nigdhu', 
+    code: 'GHOF-02', 
+    brand: 'Goyal - House Of Fashion',
+    location: 'Main Market, Nigdhu', 
+    coordinates: { lat: 29.8500, lng: 76.9200 } 
+  },
+  { 
+    id: 'ALL', 
+    name: 'All Stores (Goyal Chain HQ)', 
+    shortName: 'All Goyal Outlets', 
+    code: 'GHOF-ALL', 
+    brand: 'Goyal - House Of Fashion',
+    location: 'Consolidated Chain Telemetry', 
+    coordinates: null 
+  }
 ];
 
 export const AVAILABLE_STORES = DEFAULT_STORES;
@@ -80,10 +106,20 @@ export const AuthProvider = ({ children }) => {
           const fetched = [];
           snapshot.forEach(docSnap => {
             const data = docSnap.data();
+            const rawName = data.name || (docSnap.id === 'DEMO_STORE_001' ? 'Goyal - House Of Fashion (Pundri Flagship)' : `Store ${docSnap.id}`);
+            let short = data.shortName;
+            if (!short) {
+              short = rawName
+                .replace(/^Goyal\s*-\s*House\s*Of\s*Fashion\s*(\((.*?)\))?/i, '$2')
+                .replace(/^Cobb\s*/i, '')
+                .trim();
+              if (!short) short = docSnap.id;
+            }
             fetched.push({
               id: docSnap.id,
-              name: data.name || (docSnap.id === 'DEMO_STORE_001' ? 'Cobb Pundri (Main)' : `Cobb ${docSnap.id}`),
-              shortName: data.name ? data.name.replace('Cobb ', '') : docSnap.id,
+              name: rawName,
+              shortName: short,
+              brand: data.brand || (rawName.toLowerCase().includes('cobb') ? 'Cobb' : FIRM_NAME),
               code: data.code || docSnap.id,
               location: data.location || 'Retail Outlet',
               coordinates: data.coordinates || null
@@ -94,10 +130,11 @@ export const AuthProvider = ({ children }) => {
           if (!fetched.find(s => s.id === 'ALL')) {
             fetched.push({
               id: 'ALL',
-              name: 'All Stores (Combined)',
-              shortName: 'All Stores',
-              code: 'ALL',
-              location: 'Consolidated Multi-Store View',
+              name: 'All Stores (Goyal Chain HQ)',
+              shortName: 'All Goyal Outlets',
+              code: 'GHOF-ALL',
+              brand: FIRM_NAME,
+              location: 'Consolidated Chain Telemetry',
               coordinates: null
             });
           }
@@ -352,6 +389,8 @@ export const AuthProvider = ({ children }) => {
       canAccessTab,
       rememberOwner,
       setRememberOwner,
+      firmName: FIRM_NAME,
+      activeStoreObj: storesList.find(s => s.id === activeStore) || storesList[0],
       requestAccount,
     }}>
       {children}

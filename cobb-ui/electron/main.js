@@ -86,7 +86,7 @@ function createWindow() {
   const iconFallback = path.join(process.env.VITE_PUBLIC, 'favicon.svg');
   const iconPath = fs.existsSync(iconCandidate) ? iconCandidate : iconFallback;
   win = new BrowserWindow({
-    title: 'ORS',
+    title: 'Goyal - House Of Fashion | Retail POS & Chain OS',
     width: 1280,
     height: 800,
     minWidth: 1024,

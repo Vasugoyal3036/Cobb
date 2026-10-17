@@ -4,11 +4,13 @@
  */
 
 export const DEFAULT_STORE_INFO = {
-  name: 'COBB APPARELS',
+  firmName: 'GOYAL - HOUSE OF FASHION',
+  name: 'GOYAL - HOUSE OF FASHION',
+  branch: 'Pundri Flagship',
   address: 'Fatehpur Road, Pundri, Haryana',
   phone: '+91 91381 22820',
   gstin: '06AABCC1234F1Z5',
-  tagline: 'Premium Menswear & Lifestyle'
+  tagline: 'Luxury Fashion & Complete Apparel Studio'
 };
 
 /**

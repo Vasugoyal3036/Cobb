@@ -210,14 +210,25 @@ const LoginScreen = ({ onSetup }) => {
           <OrsLogo size={58} />
         </div>
 
-        <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white flex items-center justify-center gap-2">
-          <span>COBB STORE</span>
-          <span className="px-2 py-0.5 text-[10px] font-black rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white tracking-widest uppercase">
-            CRM POS
-          </span>
-        </h1>
+        {(() => {
+          const isCobb = activeStoreObj?.brand === 'Cobb' || (activeStoreObj?.name && activeStoreObj.name.toLowerCase().includes('cobb'));
+          const brandTitle = isCobb ? 'COBB STORE' : (activeStoreObj?.brand || 'GOYAL - HOUSE OF FASHION');
+          const badgeTitle = isCobb ? 'CRM POS' : 'CHAIN OS';
+          return (
+            <h1 className="text-lg sm:text-xl font-black tracking-tight text-white flex items-center justify-center gap-2">
+              <span>{brandTitle}</span>
+              <span className={`px-2 py-0.5 text-[10px] font-black rounded-lg uppercase tracking-widest text-white ${
+                isCobb 
+                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600' 
+                  : 'bg-gradient-to-r from-amber-500 via-rose-500 to-indigo-600'
+              }`}>
+                {badgeTitle}
+              </span>
+            </h1>
+          );
+        })()}
         <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mt-0.5">
-          Secure Store Command & Telemetry
+          Multi-Store Retail &amp; Fashion Telemetry
         </p>
       </header>
 

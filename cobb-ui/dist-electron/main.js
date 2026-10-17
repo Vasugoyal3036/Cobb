@@ -59,7 +59,7 @@ function v() {
 function y() {
 	let t = o.join(process.env.VITE_PUBLIC, "ors-logo.png"), n = o.join(process.env.VITE_PUBLIC, "favicon.svg"), r = c.existsSync(t) ? t : n;
 	h = new e({
-		title: "ORS",
+		title: "Goyal - House Of Fashion | Retail POS & Chain OS",
 		width: 1280,
 		height: 800,
 		minWidth: 1024,

@@ -96,7 +96,7 @@ import { THEMES } from './DashboardBackground';
 const navigationItems = [
   {
     category: "AI & Intelligence", items: [
-      { id: "copilot", label: "✨ Cobb AI Copilot", icon: Sparkles, colorClass: "text-purple-600 dark:text-purple-400 hover:bg-purple-950/40 hover:text-white font-semibold", activeColorClass: "bg-gradient-to-r from-purple-600/30 via-indigo-600/20 to-transparent text-purple-700 dark:text-purple-200 font-bold border-l-3 border-purple-500 shadow-md shadow-purple-500/20" },
+      { id: "copilot", label: "✨ Fashion AI Copilot", icon: Sparkles, colorClass: "text-purple-600 dark:text-purple-400 hover:bg-purple-950/40 hover:text-white font-semibold", activeColorClass: "bg-gradient-to-r from-purple-600/30 via-indigo-600/20 to-transparent text-purple-700 dark:text-purple-200 font-bold border-l-3 border-purple-500 shadow-md shadow-purple-500/20" },
     ]
   },
   {
@@ -364,11 +364,11 @@ const Layout = ({
             <OrsLogo size={38} />
             <div className={`flex-1 min-w-0 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isLeftSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none blur-md -translate-y-4' : 'w-full opacity-100 blur-0 translate-y-0'}`}>
               <div className="flex items-center gap-1.5">
-                <span className={`text-base font-black tracking-wider leading-none ${darkMode ? 'text-white' : 'text-slate-900'}`}>ORS</span>
-                <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">CRM</span>
+                <span className={`text-base font-black tracking-wider leading-none uppercase ${darkMode ? 'text-white' : 'text-slate-900'}`}>GOYAL</span>
+                <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-500 dark:text-amber-400 border border-amber-500/25">FASHION</span>
               </div>
               <p className={`text-[9px] font-bold tracking-tight uppercase truncate mt-0.5 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                Complete CRM Solutions
+                House Of Fashion • Chain OS
               </p>
             </div>
           </div>
@@ -536,7 +536,7 @@ const Layout = ({
                 <div className="min-w-0 leading-tight">
                   <div className="flex items-center gap-1.5">
                     <span className={`font-black text-xs tracking-tight truncate ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-                      {AVAILABLE_STORES.find(s => s.id === activeStore)?.shortName || 'Cobb Pundri'}
+                      {AVAILABLE_STORES.find(s => s.id === activeStore)?.shortName || 'Goyal Pundri'}
                     </span>
                     <span className="relative flex h-2 w-2 shrink-0">
                       {(systemStatus?.isOnline ?? true) && (

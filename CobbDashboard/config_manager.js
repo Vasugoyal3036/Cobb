@@ -5,6 +5,18 @@ require('dotenv').config();
 const CONFIG_FILE = path.join(__dirname, 'store_config.json');
 
 const PRESETS = {
+    goyal: {
+        id: 'goyal',
+        name: 'Goyal - House Of Fashion POS',
+        engine: 'mssql',
+        server: 'localhost',
+        instanceName: 'SQLEXPRESS',
+        database: 'RPD_AVATAR01_NEW_ST_POS',
+        trustedConnection: true,
+        user: '',
+        password: '',
+        port: 1433
+    },
     cobb: {
         id: 'cobb',
         name: 'Cobb / WizApp Retail POS',
@@ -68,10 +80,14 @@ const PRESETS = {
 function getDefaultConfig() {
     return {
         configured: true,
-        presetId: 'cobb',
+        presetId: 'goyal',
+        firmBrand: process.env.FIRM_BRAND || 'Goyal - House Of Fashion',
         storeProfile: {
-            storeName: process.env.STORE_NAME || 'Cobb Apparels',
-            branch: process.env.STORE_BRANCH || 'Pundri',
+            firmBrand: process.env.FIRM_BRAND || 'Goyal - House Of Fashion',
+            storeName: process.env.STORE_NAME || 'Goyal - House Of Fashion (Pundri Flagship)',
+            storeId: process.env.STORE_ID || 'DEMO_STORE_001',
+            code: process.env.STORE_CODE || 'GHOF01',
+            branch: process.env.STORE_BRANCH || 'Pundri Flagship',
             city: process.env.STORE_CITY || 'Pundri',
             ownerPhones: ['9138122820', '8708788707', '9034522000', '9466422821'],
             currency: '₹'

@@ -111,10 +111,19 @@ if (serviceAccount) {
         console.error("[SYNC AGENT] Firebase init error:", err);
     }
 }
-const STORE_ID = process.env.STORE_ID || "DEMO_STORE_001";
-const STORE_NAME = process.env.STORE_NAME || "Cobb Pundri";
-const STORE_LOCATION = process.env.STORE_LOCATION || "Fatehpur Road, Pundri";
-const STORE_CODE = process.env.STORE_CODE || "PUNDRI";
+let localStoreConfig = {};
+try {
+    const cfgPath = path.join(__dirname, 'store_config.json');
+    if (fs.existsSync(cfgPath)) {
+        localStoreConfig = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+    }
+} catch (e) {}
+
+const STORE_ID = process.env.STORE_ID || localStoreConfig.storeProfile?.storeId || "DEMO_STORE_001";
+const STORE_NAME = process.env.STORE_NAME || localStoreConfig.storeProfile?.storeName || "Goyal - House Of Fashion (Pundri Flagship)";
+const STORE_LOCATION = process.env.STORE_LOCATION || localStoreConfig.storeProfile?.city || localStoreConfig.storeProfile?.location || "Fatehpur Road, Pundri";
+const STORE_CODE = process.env.STORE_CODE || localStoreConfig.storeProfile?.code || "GHOF01";
+const FIRM_BRAND = process.env.FIRM_BRAND || localStoreConfig.storeProfile?.firmBrand || "Goyal - House Of Fashion";
 const LOCAL_API = process.env.LOCAL_API || `http://localhost:${process.env.PORT || 5000}`;
 
 // --- STORE OWNER WHATSAPP NOTIFICATION CONFIGURATION ---
@@ -240,6 +249,7 @@ async function syncEndpointList(items, tierName = 'Sync') {
                 if (docName === 'sales_overview' && payload.today) {
                     await db.collection("stores").doc(STORE_ID).set({
                         name: STORE_NAME,
+                        brand: FIRM_BRAND,
                         location: STORE_LOCATION,
                         code: STORE_CODE,
                         currentRevenue: payload.today.TotalSales || 0,

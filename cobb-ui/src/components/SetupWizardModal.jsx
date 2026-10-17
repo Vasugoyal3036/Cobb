@@ -40,10 +40,11 @@ export default function SetupWizardModal({ isOpen, onClose, onConfigSaved }) {
   const [discoveredDatabases, setDiscoveredDatabases] = useState([]);
 
   // Configuration State
-  const [selectedPreset, setSelectedPreset] = useState('cobb');
+  const [selectedPreset, setSelectedPreset] = useState('goyal');
   const [storeProfile, setStoreProfile] = useState({
-    storeName: 'Cobb Apparels',
-    branch: 'Pundri',
+    firmBrand: 'Goyal - House Of Fashion',
+    storeName: 'Goyal - House Of Fashion (Pundri Flagship)',
+    branch: 'Pundri Flagship',
     city: 'Pundri',
     ownerPhones: ['9138122820', '8708788707', '9034522000', '9466422821'],
     currency: '₹'
@@ -363,7 +364,8 @@ export default function SetupWizardModal({ isOpen, onClose, onConfigSaved }) {
                 </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {[
-                    { id: 'cobb', title: 'Cobb / WizApp POS', desc: 'SQL Server Express, Trusted Windows Auth, RPD schema', badge: 'Default' },
+                    { id: 'goyal', title: 'Goyal - House Of Fashion POS', desc: 'SQL Server Express, Trusted Windows Auth, RPD schema', badge: 'Recommended' },
+                    { id: 'cobb', title: 'Cobb / WizApp POS', desc: 'SQL Server Express, Trusted Windows Auth, RPD schema', badge: 'Standard' },
                     { id: 'busy', title: 'Busy Accounting', desc: 'MS SQL Server, Busy Company DB structure', badge: 'Popular' },
                     { id: 'marg', title: 'Marg ERP 9+', desc: 'MS SQL / DBF bridge, retail inventory', badge: 'Standard' },
                     { id: 'custom_mssql', title: 'Custom SQL Server', desc: 'Custom Host, Port, SQL User/Pass authentication', badge: 'Manual' }
@@ -568,7 +570,7 @@ export default function SetupWizardModal({ isOpen, onClose, onConfigSaved }) {
                     type="text"
                     value={storeProfile.storeName}
                     onChange={(e) => setStoreProfile({ ...storeProfile, storeName: e.target.value })}
-                    placeholder="e.g. Cobb Apparels or Sharma Garments"
+                    placeholder="e.g. Goyal - House Of Fashion (Flagship)"
                     className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-blue-500"
                   />
                 </div>

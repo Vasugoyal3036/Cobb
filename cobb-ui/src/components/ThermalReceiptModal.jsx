@@ -85,9 +85,14 @@ export default function ThermalReceiptModal({
             className="bg-white text-black p-4 font-mono text-xs shadow-xl border border-slate-300 relative rounded-sm transition-all"
           >
             {/* Store Header */}
-            <div className="text-center font-black text-sm tracking-wide mb-0.5">
-              {storeInfo?.name || 'COBB APPARELS'}
+            <div className="text-center font-black text-sm tracking-wide mb-0.5 uppercase">
+              {storeInfo?.firmName || storeInfo?.name || 'GOYAL - HOUSE OF FASHION'}
             </div>
+            {storeInfo?.branch && (
+              <div className="text-center text-[10px] font-bold text-slate-800 tracking-wider uppercase mb-0.5">
+                [{storeInfo.branch}]
+              </div>
+            )}
             <div className="text-center text-[10px] text-slate-700 leading-tight">
               {storeInfo?.address || 'Fatehpur Road, Pundri, Haryana'}
             </div>
