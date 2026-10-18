@@ -13,6 +13,24 @@ export default function LoyaltyTab(props) {
 
   useEffect(() => {
     fetchLeaderboard();
+    let unsub;
+    import('firebase/firestore').then(({ doc, onSnapshot }) => {
+      import('../../utils/firebase.js').then(({ db }) => {
+        if (!db) return;
+        const targetStore = import.meta.env.VITE_DEFAULT_STORE_ID || "DEMO_STORE_001";
+        unsub = onSnapshot(doc(db, 'stores', targetStore, 'data', 'loyalty_leaderboard'), (snap) => {
+          if (snap.exists()) {
+            const d = snap.data();
+            const items = Array.isArray(d.items) ? d.items : (Array.isArray(d) ? d : []);
+            if (items.length > 0) {
+              setLeaderboard(items);
+              setSelectedCustomer(prev => prev ? items.find(it => it.phone === prev.phone) || items[0] : items[0]);
+            }
+          }
+        }, (err) => console.warn('[Loyalty Leaderboard] onSnapshot note:', err.message));
+      }).catch(() => {});
+    }).catch(() => {});
+    return () => { if (unsub) unsub(); };
   }, []);
 
   const fetchLeaderboard = async () => {

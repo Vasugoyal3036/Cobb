@@ -143,16 +143,15 @@ export default function ThermalReceiptModal({
                 </div>
               )}
               {(() => {
-                let mode = activeBill.PaymentMode;
                 const cash = Number(activeBill.CashAmount || 0);
                 const upi = Number(activeBill.UpiAmount || 0);
                 const card = Number(activeBill.CardAmount || 0);
-                if (!mode || mode === 'Cash') {
-                  if (upi > 0 && cash === 0 && card === 0) mode = 'UPI / Online';
-                  else if (card > 0 && cash === 0 && upi === 0) mode = 'Debit / Credit Card';
-                  else if ((cash > 0 && upi > 0) || (cash > 0 && card > 0) || (upi > 0 && card > 0)) mode = 'Split Payment';
-                  else mode = mode || 'Cash';
-                }
+                let mode = activeBill.PaymentMode;
+                if (upi > 0 && cash === 0 && card === 0) mode = 'UPI / Online';
+                else if (card > 0 && cash === 0 && upi === 0) mode = 'Debit / Credit Card';
+                else if ((cash > 0 && upi > 0) || (cash > 0 && card > 0) || (upi > 0 && card > 0)) mode = 'Split Payment';
+                else if (cash > 0) mode = 'Cash';
+                else mode = mode || 'Cash';
                 return mode ? (
                   <div className="flex justify-between">
                     <span>Payment:</span>

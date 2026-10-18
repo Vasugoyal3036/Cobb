@@ -183,7 +183,10 @@ const standardEndpoints = [
     { url: "/api/staff/leaderboard?period=bundle", docName: "staff_leaderboard" },
     { url: "/api/staff/daily", docName: "staff_daily_history" },
     "/api/staff/config",
-    { url: "/api/inventory/broken-sizes", docName: "inventory_broken-sizes" }
+    { url: "/api/inventory/broken-sizes", docName: "inventory_broken-sizes" },
+    "/api/customers/vip",
+    { url: "/api/loyalty/leaderboard", docName: "loyalty_leaderboard" },
+    { url: "/api/customers/vip-history", docName: "customers_vip_history" }
 ];
 
 // Tier 3: Deep Analytics & Heavy Catalog (Every 60 minutes)
@@ -196,7 +199,6 @@ const deepAnalyticsEndpoints = [
     "/api/financials/gst-summary",
     "/api/financials/pnl",
     "/api/analytics/monthly-products",
-    "/api/customers/vip",
     "/api/customers/dormant",
     "/api/analytics/retention-radar",
     "/api/analytics/wardrobe-profiles",
@@ -323,9 +325,11 @@ async function checkAndDispatchCheckoutAlerts() {
 
         if (newBills.length === 0) return;
 
-        // Invalidate backend sales cache so overview stats refresh immediately
+        // Invalidate backend sales & VIP cache so overview stats and VIP profiles refresh immediately
         try {
             await axios.post(`${LOCAL_API}/api/cache/invalidate-sales`, {}, { timeout: 3000 });
+            lastPayloadHash.delete('customers_vip');
+            lastPayloadHash.delete('loyalty_leaderboard');
         } catch (cacheErr) {}
 
         // Fetch registered FCM device tokens for this store
@@ -349,11 +353,16 @@ async function checkAndDispatchCheckoutAlerts() {
             const qty = Number(bill.TotalQty) || (Array.isArray(bill.Items) ? bill.Items.reduce((s, it) => s + (Number(it.Quantity) || 1), 0) : 1);
 
             // Payment Mode
-            let pay = bill.PaymentMode || 'Cash';
+            let pay = 'Cash';
             if (bill.UpiAmount > 0 && bill.CashAmount === 0 && bill.CardAmount === 0) pay = 'UPI';
             else if (bill.CardAmount > 0 && bill.CashAmount === 0 && bill.UpiAmount === 0) pay = 'Card';
-            else if (bill.CashAmount > 0 && (bill.UpiAmount > 0 || bill.CardAmount > 0)) pay = 'Split';
+            else if ((bill.CashAmount > 0 && (bill.UpiAmount > 0 || bill.CardAmount > 0)) || (bill.UpiAmount > 0 && bill.CardAmount > 0)) pay = 'Split';
+            else if (bill.UpiAmount > 0) pay = 'UPI';
+            else if (bill.CardAmount > 0) pay = 'Card';
             else if (bill.CashAmount > 0) pay = 'Cash';
+            else if (String(bill.PaymentMode || '').toUpperCase().includes('UPI')) pay = 'UPI';
+            else if (String(bill.PaymentMode || '').toUpperCase().includes('CARD')) pay = 'Card';
+            else pay = bill.PaymentMode || 'Cash';
 
             // Staff & Customer
             const staff = (bill.Salesperson && bill.Salesperson !== 'Staff')

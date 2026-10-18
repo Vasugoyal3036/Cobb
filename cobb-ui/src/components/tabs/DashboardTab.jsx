@@ -128,15 +128,14 @@ const DashboardTab = (props) => {
     const printWindow = window.open('', '_blank', 'width=400,height=600');
 
     const resolvedMode = (() => {
-      let mode = bill.PaymentMode;
       const cash = Number(bill.CashAmount || 0);
       const upi = Number(bill.UpiAmount || 0);
       const card = Number(bill.CardAmount || 0);
-      if (!mode || mode === 'Cash') {
-        if (upi > 0 && cash === 0 && card === 0) return 'UPI / Online';
-        if (card > 0 && cash === 0 && upi === 0) return 'Debit / Credit Card';
-        if ((cash > 0 && upi > 0) || (cash > 0 && card > 0) || (upi > 0 && card > 0)) return 'Split Payment';
-      }
+      let mode = bill.PaymentMode;
+      if (upi > 0 && cash === 0 && card === 0) return 'UPI / Online';
+      if (card > 0 && cash === 0 && upi === 0) return 'Debit / Credit Card';
+      if ((cash > 0 && upi > 0) || (cash > 0 && card > 0) || (upi > 0 && card > 0)) return 'Split Payment';
+      if (cash > 0) return 'Cash';
       return mode || 'Cash';
     })();
 

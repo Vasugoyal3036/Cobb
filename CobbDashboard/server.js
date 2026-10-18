@@ -120,7 +120,7 @@ app.use((req, res, next) => {
 function invalidateSalesCache() {
     const keys = globalApiCache.keys();
     keys.forEach(k => {
-        if (k.includes('/api/sales') || k.includes('/api/analytics/hourly') || k.includes('/api/reports/eod')) {
+        if (k.includes('/api/sales') || k.includes('/api/analytics/hourly') || k.includes('/api/reports/eod') || k.includes('/api/customers/vip') || k.includes('/api/loyalty')) {
             globalApiCache.del(k);
         }
     });
@@ -182,6 +182,7 @@ const mapLoyalty = (customers) => {
         let nextTier = 'Silver';
         let threshold = 10000;
         const spend = c.LifetimeSpend || 0;
+        const cleanPhone = (c.Phone || '').trim();
         
         if (spend >= 50000) {
             tier = 'Platinum';
@@ -199,6 +200,7 @@ const mapLoyalty = (customers) => {
 
         return {
             ...c,
+            Phone: cleanPhone,
             loyaltyTier: tier,
             nextTier: nextTier,
             spendToNextTier: threshold ? threshold - spend : 0
@@ -1017,7 +1019,7 @@ app.get('/api/customers/vip', async (req, res) => {
     try {
         const result = await sql.query(`
             SELECT TOP 50 
-                A.CUSTOMER_CODE as Phone, 
+                RTRIM(LTRIM(A.CUSTOMER_CODE)) as Phone, 
                 B.CUSTOMER_FNAME as FirstName, 
                 B.CUSTOMER_LNAME as LastName, 
                 SUM(A.NET_AMOUNT) as LifetimeSpend, 
@@ -1041,7 +1043,7 @@ app.get('/api/customers/search', async (req, res) => {
         if (!q) return res.json([]);
         const result = await sql.query`
             SELECT TOP 50 
-                A.CUSTOMER_CODE as Phone, 
+                RTRIM(LTRIM(A.CUSTOMER_CODE)) as Phone, 
                 B.CUSTOMER_FNAME as FirstName, 
                 B.CUSTOMER_LNAME as LastName, 
                 SUM(A.NET_AMOUNT) as LifetimeSpend, 
@@ -1071,7 +1073,7 @@ app.get('/api/customers/dormant', async (req, res) => {
     try {
         const result = await sql.query(`
             SELECT TOP 50 
-                A.CUSTOMER_CODE as Phone, 
+                RTRIM(LTRIM(A.CUSTOMER_CODE)) as Phone, 
                 B.CUSTOMER_FNAME as FirstName, 
                 B.CUSTOMER_LNAME as LastName, 
                 SUM(A.NET_AMOUNT) as LifetimeSpend, 
@@ -1111,6 +1113,48 @@ app.get('/api/customers/:phone/history', async (req, res) => {
         `);
         res.json(result.recordset);
     } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Bulk VIP Itemized Wardrobe History for cloud sync
+app.get('/api/customers/vip-history', async (req, res) => {
+    try {
+        const vipsRes = await sql.query(`
+            SELECT TOP 25 RTRIM(LTRIM(A.CUSTOMER_CODE)) as Phone
+            FROM CMM01106 A WITH (NOLOCK)
+            WHERE A.CANCELLED = 0 AND A.CUSTOMER_CODE IS NOT NULL AND LEN(A.CUSTOMER_CODE) >= 10
+            GROUP BY A.CUSTOMER_CODE
+            ORDER BY SUM(A.NET_AMOUNT) DESC
+        `);
+
+        const map = {};
+        for (const row of vipsRes.recordset) {
+            const cleanPhone = (row.Phone || '').replace(/[^0-9]/g, '');
+            if (!cleanPhone) continue;
+            try {
+                const histRes = await sql.query(`
+                    SELECT TOP 15
+                        d.ARTICLE_NO as ArticleNo,
+                        d.ARTICLE_NAME as ArticleName,
+                        d.QUANTITY as Quantity,
+                        d.NET as NetPrice,
+                        CONVERT(varchar, m.CM_TIME, 126) as BillDate,
+                        ISNULL(s.para1_name, 'Standard') as Color,
+                        ISNULL(s.para2_name, 'Standard') as Size,
+                        ISNULL(d.SECTION_NAME, 'Apparel') as Category
+                    FROM VW_CASHMEMO_PRINT_DET d WITH (NOLOCK)
+                    INNER JOIN VW_CASHMEMO_PRINT_MST m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
+                    LEFT JOIN SKU_NAMES s ON d.PRODUCT_CODE = s.product_Code
+                    WHERE m.CUSTOMER_CODE LIKE '%${cleanPhone}%' AND m.CANCELLED = 0
+                    ORDER BY m.CM_TIME DESC
+                `);
+                map[cleanPhone] = histRes.recordset;
+            } catch (err) {}
+        }
+        res.json(map);
+    } catch (err) {
+        console.error('VIP History Error:', err);
         res.status(500).json({ error: err.message });
     }
 });
@@ -1356,10 +1400,15 @@ const handleSalesLiveOrHistory = async (req, res) => {
                 SELECT 
                     m.CM_ID as BillId,
                     ISNULL(MAX(p.CASH_AMOUNT), 0) as CashAmount,
-                    ISNULL(MAX(p.CC_AMOUNT), 0) as CardAmount,
-                    ISNULL(MAX(p.WALLET), 0) as UpiAmount
+                    CASE 
+                        WHEN ISNULL(MAX(p.CC_AMOUNT), 0) - (ISNULL(MAX(w.UPI), 0) + ISNULL(MAX(w.[Paytm QR]), 0) + ISNULL(MAX(w.Paytm), 0) + ISNULL(MAX(w.[PAYTM UPI]), 0) + ISNULL(MAX(w.RazorpayUPI), 0) + ISNULL(MAX(w.[WorldLine(Qr)]), 0) + ISNULL(MAX(w.[Innoviti EDC(QRCODE)]), 0) + ISNULL(MAX(w.[Innoviti EDC(PhonePe)]), 0) + ISNULL(MAX(p.WALLET), 0)) > 0 
+                        THEN ISNULL(MAX(p.CC_AMOUNT), 0) - (ISNULL(MAX(w.UPI), 0) + ISNULL(MAX(w.[Paytm QR]), 0) + ISNULL(MAX(w.Paytm), 0) + ISNULL(MAX(w.[PAYTM UPI]), 0) + ISNULL(MAX(w.RazorpayUPI), 0) + ISNULL(MAX(w.[WorldLine(Qr)]), 0) + ISNULL(MAX(w.[Innoviti EDC(QRCODE)]), 0) + ISNULL(MAX(w.[Innoviti EDC(PhonePe)]), 0) + ISNULL(MAX(p.WALLET), 0))
+                        ELSE 0 
+                    END as CardAmount,
+                    (ISNULL(MAX(w.UPI), 0) + ISNULL(MAX(w.[Paytm QR]), 0) + ISNULL(MAX(w.Paytm), 0) + ISNULL(MAX(w.[PAYTM UPI]), 0) + ISNULL(MAX(w.RazorpayUPI), 0) + ISNULL(MAX(w.[WorldLine(Qr)]), 0) + ISNULL(MAX(w.[Innoviti EDC(QRCODE)]), 0) + ISNULL(MAX(w.[Innoviti EDC(PhonePe)]), 0) + ISNULL(MAX(p.WALLET), 0)) as UpiAmount
                 FROM CMM01106 m WITH (NOLOCK)
                 LEFT JOIN VW_BILL_PAYMODE p WITH (NOLOCK) ON m.CM_ID = p.MEMO_ID AND (p.XN_TYPE IS NULL OR p.XN_TYPE = 'SLS')
+                LEFT JOIN VW_WL_CASHMEMOLIST w WITH (NOLOCK) ON m.CM_ID = w.MEMO_ID
                 WHERE m.CM_ID IN (${idList})
                 GROUP BY m.CM_ID
             `).catch(err => {
@@ -3903,8 +3952,8 @@ app.get('/api/reconciliation/denomination-data', async (req, res) => {
                 ISNULL(SUM(m.TOTAL_GST_AMOUNT), 0) AS TaxCollected,
                 ISNULL(SUM(m.NET_AMOUNT - m.TOTAL_GST_AMOUNT), 0) AS NetSales,
                 ISNULL(SUM(p.CASH_AMOUNT), 0) AS CashAmount,
-                ISNULL(SUM(p.CC_AMOUNT), 0) AS CardAmount,
-                ISNULL(SUM(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0)), 0) AS UpiAmount
+                ISNULL(SUM(p.CC_AMOUNT), 0) - ISNULL(SUM(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0) + ISNULL(w.[WorldLine(Qr)], 0) + ISNULL(w.[Innoviti EDC(QRCODE)], 0) + ISNULL(w.[Innoviti EDC(PhonePe)], 0)), 0) AS CardAmount,
+                ISNULL(SUM(ISNULL(w.UPI, 0) + ISNULL(w.[Paytm QR], 0) + ISNULL(w.Paytm, 0) + ISNULL(w.[PAYTM UPI], 0) + ISNULL(w.RazorpayUPI, 0) + ISNULL(w.[WorldLine(Qr)], 0) + ISNULL(w.[Innoviti EDC(QRCODE)], 0) + ISNULL(w.[Innoviti EDC(PhonePe)], 0)), 0) AS UpiAmount
             FROM CMM01106 m WITH (NOLOCK)
             LEFT JOIN VW_BILL_PAYMODE p WITH (NOLOCK) ON m.CM_ID = p.MEMO_ID
             LEFT JOIN VW_WL_CASHMEMOLIST w WITH (NOLOCK) ON m.CM_ID = w.MEMO_ID
@@ -4104,7 +4153,7 @@ app.get('/api/loyalty/leaderboard', async (req, res) => {
     try {
         const result = await sql.query(`
             SELECT TOP 50
-                A.CUSTOMER_CODE AS Phone,
+                RTRIM(LTRIM(A.CUSTOMER_CODE)) AS Phone,
                 MAX(ISNULL(B.CUSTOMER_FNAME, '') + ' ' + ISNULL(B.CUSTOMER_LNAME, '')) AS CustomerName,
                 ISNULL(SUM(A.NET_AMOUNT), 0) AS LifetimeSpend,
                 COUNT(A.CM_ID) AS TotalVisits,
@@ -4122,7 +4171,7 @@ app.get('/api/loyalty/leaderboard', async (req, res) => {
         `);
 
         const leaderboard = result.recordset.map(cust => ({
-            phone: cust.Phone,
+            phone: (cust.Phone || '').trim(),
             customerName: (cust.CustomerName || '').trim(),
             lifetimeSpend: cust.LifetimeSpend,
             totalVisits: cust.TotalVisits,

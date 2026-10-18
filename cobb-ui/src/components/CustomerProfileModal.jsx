@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import {
   LineChart,
   MessageCircle,
@@ -78,7 +79,8 @@ const CustomerProfileModal = (props) => {
     setGeneratedMsg,
     isGenerating,
     handleGenerateAI,
-    formatCurrency
+    formatCurrency,
+    API_BASE = ''
   } = props;
 
   // Customer rating history — fetched from /api/ratings, filtered by phone
@@ -88,17 +90,18 @@ const CustomerProfileModal = (props) => {
   useEffect(() => {
     if (!selectedCustomer?.Phone) { setCustomerRatings([]); return; }
     setLoadingRatings(true);
-    fetch('http://localhost:5000/api/ratings')
-      .then(r => r.json())
-      .then(data => {
-        const allRatings = data?.ratings || [];
+    const targetUrl = API_BASE ? `${API_BASE}/api/ratings` : '/api/ratings';
+    axios.get(targetUrl)
+      .then(res => {
+        const data = res.data;
+        const allRatings = data?.ratings || (Array.isArray(data) ? data : []);
         const clean = (p) => String(p || '').replace(/[^0-9]/g, '').slice(-10);
         const custPhone = clean(selectedCustomer.Phone);
         setCustomerRatings(allRatings.filter(r => clean(r.phone) === custPhone));
       })
       .catch(() => setCustomerRatings([]))
       .finally(() => setLoadingRatings(false));
-  }, [selectedCustomer?.Phone]);
+  }, [selectedCustomer?.Phone, API_BASE]);
 
   if (!selectedCustomer) return null;
 

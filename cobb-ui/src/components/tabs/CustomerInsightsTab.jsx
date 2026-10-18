@@ -2,6 +2,7 @@ import React from 'react';
 import {
   Users, Search, RefreshCw, Sparkles, Award, Crown, ChevronLeft, ChevronRight, Target
 } from 'lucide-react';
+import axios from 'axios';
 import CustomerProfileModal from '../CustomerProfileModal';
 
 const CustomerInsightsTab = (props) => {
@@ -11,29 +12,60 @@ const CustomerInsightsTab = (props) => {
     setSearchQuery, 
     globalCustomers, 
     vips, 
+    setVips,
     dormant, 
+    setDormant,
     isSearchingCustomers, 
     openCustomerCard,
     selectedCustomer,
     formatCurrency,
-    darkMode
+    darkMode,
+    API_BASE = ''
   } = props;
 
   const [currentPage, setCurrentPage] = React.useState(1);
+  const [isRefreshing, setIsRefreshing] = React.useState(false);
   const pageSize = 25;
 
   React.useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, activeTab]);
 
-  const targetList = (searchQuery.trim() !== '' ? globalCustomers : (activeTab === 'vip' ? (vips || []) : (dormant || []))) || [];
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      if (activeTab === 'vip') {
+        const res = await axios.get(`${API_BASE}/api/customers/vip?refresh=true`);
+        if (res?.data && Array.isArray(res.data)) {
+          if (typeof setVips === 'function') setVips(res.data);
+          try { localStorage.setItem('cobb_cache_v4_vips', JSON.stringify(res.data)); } catch (e) {}
+        }
+      } else {
+        const res = await axios.get(`${API_BASE}/api/customers/dormant?refresh=true`);
+        if (res?.data && Array.isArray(res.data)) {
+          if (typeof setDormant === 'function') setDormant(res.data);
+          try { localStorage.setItem('cobb_cache_v4_dormant', JSON.stringify(res.data)); } catch (e) {}
+        }
+      }
+    } catch (err) {
+      console.warn('VIP Refresh notice:', err.message);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const baseList = (activeTab === 'vip' ? (vips || []) : (dormant || []));
+  const targetList = (searchQuery.trim() !== '' && Array.isArray(globalCustomers) && globalCustomers.length > 0)
+    ? globalCustomers
+    : baseList;
+
   const filteredCustomers = React.useMemo(() => {
     const sq = searchQuery.trim().toLowerCase();
     if (!sq) return targetList;
     return targetList.filter(c => 
       `${c.FirstName || ''} ${c.LastName || ''}`.trim().toLowerCase().includes(sq) || 
-      c.Phone?.includes(sq) || 
-      (!isNaN(parseFloat(sq)) && Math.round(c.LifetimeSpend) === Math.round(parseFloat(sq)))
+      (c.Phone && String(c.Phone).includes(sq)) || 
+      (!isNaN(parseFloat(sq)) && Math.round(c.LifetimeSpend || 0) === Math.round(parseFloat(sq)))
     );
   }, [targetList, searchQuery]);
 
@@ -51,16 +83,32 @@ const CustomerInsightsTab = (props) => {
         
         {/* Header */}
         <div className={`p-5 border-b ${darkMode ? 'border-[#232e47] bg-slate-900/50' : 'border-slate-100 bg-slate-50/50'}`}>
-          <div className="flex items-center gap-3 mb-4">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg ${activeTab === 'vip' ? 'bg-blue-600 shadow-blue-600/30' : 'bg-rose-500 shadow-rose-500/30'}`}>
-              <Users className="w-5 h-5" />
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-lg ${activeTab === 'vip' ? 'bg-blue-600 shadow-blue-600/30' : 'bg-rose-500 shadow-rose-500/30'}`}>
+                <Users className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className={`text-lg font-black tracking-tight leading-tight ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+                  {activeTab === 'vip' ? 'VIP Loyalty Clients' : 'Dormant Customers'}
+                </h2>
+                <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{filteredCustomers.length} total profiles</p>
+              </div>
             </div>
-            <div>
-              <h2 className={`text-lg font-black tracking-tight leading-tight ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-                {activeTab === 'vip' ? 'VIP Loyalty Clients' : 'Dormant Customers'}
-              </h2>
-              <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{filteredCustomers.length} total profiles</p>
-            </div>
+
+            <button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className={`px-3 py-1.5 rounded-xl border flex items-center gap-1.5 text-xs font-bold transition-all shadow-sm cursor-pointer ${
+                darkMode 
+                  ? 'bg-[#1a2333] border-[#232e47] text-slate-300 hover:text-white hover:bg-slate-800' 
+                  : 'bg-white border-slate-200 text-slate-700 hover:text-slate-900 hover:bg-slate-50'
+              }`}
+              title="Sync latest VIP profiles from database"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 text-blue-500 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <span>{isRefreshing ? 'Syncing...' : 'Sync'}</span>
+            </button>
           </div>
 
           <div className="relative w-full">

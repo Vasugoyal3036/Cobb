@@ -232,6 +232,21 @@ axios.get = async (url, config) => {
         }
         return { data, status: 200, statusText: 'OK' };
       } else {
+        // Fallback for VIP customer history: check combined customers_vip_history doc
+        if (docName.startsWith('customers_') && docName.endsWith('_history')) {
+          const phoneKey = docName.replace('customers_', '').replace('_history', '').replace(/[^0-9]/g, '');
+          try {
+            const vipHistRef = doc(db, 'stores', targetStore, 'data', 'customers_vip_history');
+            const vipHistSnap = await getDoc(vipHistRef);
+            if (vipHistSnap.exists()) {
+              const histData = vipHistSnap.data();
+              const customerItems = histData[phoneKey] || histData.items?.[phoneKey] || [];
+              return { data: customerItems, status: 200, statusText: 'OK' };
+            }
+          } catch (histLookupErr) {
+            console.warn('[SaaS Interceptor] customers_vip_history lookup note:', histLookupErr.message);
+          }
+        }
         console.warn(`[SaaS Interceptor] Missing Firestore document for ${targetStore}: ${docName}`);
         return { data: { error: 'Not synced to cloud yet', empty: true }, status: 404, statusText: 'Not Found' };
       }
@@ -800,6 +815,30 @@ export default function App() {
     }).catch(console.error);
   }, []);
 
+  // Real-time Cloud Sync for VIP profiles on remote/phone sessions
+  useEffect(() => {
+    if (isElectron || !db) return;
+    let unsubscribe;
+    import('firebase/firestore').then(({ doc, onSnapshot }) => {
+      const targetStore = getActiveStoreId();
+      const vipDocRef = doc(db, 'stores', targetStore, 'data', 'customers_vip');
+      unsubscribe = onSnapshot(vipDocRef, (snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          const items = Array.isArray(data.items) ? data.items : (Array.isArray(data) ? data : null);
+          if (items && items.length > 0) {
+            setVips(items);
+            setLocalCache('vips', items);
+          }
+        }
+      }, (err) => console.warn('[VIP Sync] Real-time onSnapshot notice:', err.message));
+    }).catch(console.error);
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, []);
+
   // Core dashboard metrics needed on mount for alerts and command center
   // Staggered fetching to prevent flooding the SQL connection pool
   useEffect(() => {
@@ -954,22 +993,20 @@ export default function App() {
       }).catch(console.error);
     }
     if (['vip', 'dormant', 'customerinsights'].includes(activeTab)) {
-      if (!vips || vips.length === 0) {
-        axios.get(`${API_BASE}/api/customers/vip`).then(res => {
-          if (!res?.data?.error) {
-            setVips(res.data);
-            setLocalCache('vips', res.data);
-          }
-        }).catch(console.error);
-      }
-      if (!dormant || dormant.length === 0) {
-        axios.get(`${API_BASE}/api/customers/dormant`).then(res => {
-          if (!res?.data?.error) {
-            setDormant(res.data);
-            setLocalCache('dormant', res.data);
-          }
-        }).catch(console.error);
-      }
+      // Stale-While-Revalidate: display cache immediately, but always fetch latest data in background
+      axios.get(`${API_BASE}/api/customers/vip`).then(res => {
+        if (!res?.data?.error && Array.isArray(res.data) && res.data.length > 0) {
+          setVips(res.data);
+          setLocalCache('vips', res.data);
+        }
+      }).catch(console.error);
+
+      axios.get(`${API_BASE}/api/customers/dormant`).then(res => {
+        if (!res?.data?.error && Array.isArray(res.data) && res.data.length > 0) {
+          setDormant(res.data);
+          setLocalCache('dormant', res.data);
+        }
+      }).catch(console.error);
     }
   }, [activeTab]);
 
@@ -1383,15 +1420,42 @@ export default function App() {
     setGeneratedMsg('');
     setCustomerPersona('');
 
-    axios.get(`${API_BASE}/api/customers/${customer.Phone}/history`)
+    const cleanPhone = (customer.Phone || '').replace(/[^0-9]/g, '');
+
+    // Pre-seed Persona from wardrobeProfiles if already classified
+    const matchedProfile = Array.isArray(wardrobeProfiles)
+      ? wardrobeProfiles.find(w => (w.Phone || '').replace(/[^0-9]/g, '') === cleanPhone)
+      : null;
+    if (matchedProfile?.Persona) {
+      setCustomerPersona(matchedProfile.Persona);
+    }
+
+    axios.get(`${API_BASE}/api/customers/${cleanPhone}/history`)
       .then(res => {
-        setCustomerHistory(res.data);
-        if (res.data.length > 0) {
+        const histData = Array.isArray(res.data) ? res.data : [];
+        setCustomerHistory(histData);
+        if (histData.length > 0) {
           setLoadingPersona(true);
-          const recentItems = res.data.slice(0, 5).map(i => i.ArticleName).join(", ");
+          const recentItems = histData.slice(0, 5).map(i => i.ArticleName).join(", ");
           axios.post(`${API_BASE}/api/ai/persona`, { purchases: recentItems })
-            .then(pRes => setCustomerPersona(pRes.data.persona))
-            .catch(console.error)
+            .then(pRes => {
+              if (pRes?.data?.persona) setCustomerPersona(pRes.data.persona);
+            })
+            .catch(() => {
+              // Local fallback classifier if AI post is unreachable (e.g. on remote phone link)
+              const p = recentItems.toLowerCase();
+              let fallback = matchedProfile?.Persona || "Essentials Buyer";
+              if (p.includes('suit') || p.includes('formal') || p.includes('blazer') || p.includes('trouser') || p.includes('shirt')) {
+                fallback = "Corporate Professional";
+              } else if (p.includes('jean') || p.includes('denim')) {
+                fallback = "Denim Enthusiast";
+              } else if (p.includes('cargo') || p.includes('tshirt') || p.includes('t-shirt') || p.includes('shorts') || p.includes('lower')) {
+                fallback = "Weekend Casual";
+              } else if (p.includes('shacket') || p.includes('jacket') || p.includes('oversized') || p.includes('hoodie')) {
+                fallback = "Trendsetter";
+              }
+              setCustomerPersona(fallback);
+            })
             .finally(() => setLoadingPersona(false));
         }
       })

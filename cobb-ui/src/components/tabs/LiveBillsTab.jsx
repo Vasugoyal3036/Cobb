@@ -38,16 +38,25 @@ import {
 import AlterationSlipModal from '../AlterationSlipModal';
 
 export const resolvePaymentMode = (bill) => {
-  let mode = bill?.PaymentMode;
   const cash = Number(bill?.CashAmount || 0);
   const upi = Number(bill?.UpiAmount || 0);
   const card = Number(bill?.CardAmount || 0);
-  if (!mode || mode === 'Cash') {
-    if (upi > 0 && cash === 0 && card === 0) return 'UPI / Online';
-    if (card > 0 && cash === 0 && upi === 0) return 'Debit / Credit Card';
-    if ((cash > 0 && upi > 0) || (cash > 0 && card > 0) || (upi > 0 && card > 0)) return 'Split (Cash + Digital)';
+
+  if (upi > 0 && cash === 0 && card === 0) return 'UPI / Online';
+  if (card > 0 && cash === 0 && upi === 0) return 'Debit / Credit Card';
+  if ((cash > 0 && upi > 0) || (cash > 0 && card > 0) || (upi > 0 && card > 0)) return 'Split (Cash + Digital)';
+  if (cash > 0 && upi === 0 && card === 0) return 'Cash';
+
+  let mode = bill?.PaymentMode || bill?.paymentMode;
+  if (mode) {
+    const mLower = String(mode).toLowerCase();
+    if (mLower.includes('upi') || mLower.includes('online')) return 'UPI / Online';
+    if (mLower.includes('card') || mLower.includes('debit') || mLower.includes('credit')) return 'Debit / Credit Card';
+    if (mLower.includes('split')) return 'Split (Cash + Digital)';
+    if (mLower.includes('cash')) return 'Cash';
+    return mode;
   }
-  return mode || 'Cash';
+  return 'Cash';
 };
 
 const LiveBillsTab = (props) => {

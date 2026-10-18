@@ -234,11 +234,19 @@ const ExecutiveBentoDashboard = (props) => {
         const upi = Number(bill.UpiAmount || 0);
         const card = Number(bill.CardAmount || 0);
 
-        if (pulseModeFilter === 'cash' && (mode.includes('cash') || (cash > 0 && upi === 0 && card === 0))) {
+        const resolvedMode = (upi > 0 && cash === 0 && card === 0)
+          ? 'upi'
+          : (card > 0 && cash === 0 && upi === 0)
+            ? 'card'
+            : (cash > 0 && upi === 0 && card === 0)
+              ? 'cash'
+              : mode;
+
+        if (pulseModeFilter === 'cash' && resolvedMode.includes('cash')) {
           // match
-        } else if (pulseModeFilter === 'upi' && (mode.includes('upi') || (upi > 0 && cash === 0 && card === 0))) {
+        } else if (pulseModeFilter === 'upi' && resolvedMode.includes('upi')) {
           // match
-        } else if (pulseModeFilter === 'card' && (mode.includes('card') || (card > 0 && cash === 0 && upi === 0))) {
+        } else if (pulseModeFilter === 'card' && resolvedMode.includes('card')) {
           // match
         } else {
           return false;
@@ -577,13 +585,12 @@ const ExecutiveBentoDashboard = (props) => {
                     const cash = Number(bill.CashAmount || 0);
                     const upi = Number(bill.UpiAmount || 0);
                     const card = Number(bill.CardAmount || 0);
-                    if (!mode || mode === 'Cash') {
-                      if (upi > 0 && cash === 0 && card === 0) mode = 'UPI / Online';
-                      else if (card > 0 && cash === 0 && upi === 0) mode = 'Debit / Credit Card';
-                      else if ((cash > 0 && upi > 0) || (cash > 0 && card > 0) || (upi > 0 && card > 0))
-                        mode = 'Split Payment';
-                      else mode = mode || 'Cash';
-                    }
+                    if (upi > 0 && cash === 0 && card === 0) mode = 'UPI / Online';
+                    else if (card > 0 && cash === 0 && upi === 0) mode = 'Debit / Credit Card';
+                    else if ((cash > 0 && upi > 0) || (cash > 0 && card > 0) || (upi > 0 && card > 0))
+                      mode = 'Split Payment';
+                    else if (cash > 0) mode = 'Cash';
+                    else mode = mode || 'Cash';
 
                     const isUPI = mode === 'UPI / Online' || mode?.toLowerCase().includes('upi');
                     const isCard = mode === 'Debit / Credit Card' || mode?.toLowerCase().includes('card');

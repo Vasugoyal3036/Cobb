@@ -1,5 +1,78 @@
 [
   {
+    "date": "2026-10-17",
+    "year": 2026,
+    "month": 10,
+    "day": 17,
+    "dayOfWeek": "Saturday",
+    "formattedDate": "17 Oct 2026",
+    "storeGrossSales": 62274,
+    "storeTotalBills": 7,
+    "storeTotalItems": 47,
+    "staffSales": 54127,
+    "totalCommission": 541,
+    "activeStaffCount": 2,
+    "staff": [
+      {
+        "empCode": "2800003",
+        "name": "Vikas",
+        "isUnassigned": false,
+        "isMissingName": false,
+        "hasCustomOverride": true,
+        "sales": 38931,
+        "items": 28,
+        "bills": 3,
+        "aov": 12977,
+        "upt": 9.3,
+        "commissionRate": 1,
+        "commission": 389,
+        "slabLabel": "≥ 4L (1.0%)",
+        "rank": 1
+      },
+      {
+        "empCode": "0001001",
+        "name": "Simran",
+        "isUnassigned": false,
+        "isMissingName": false,
+        "hasCustomOverride": true,
+        "sales": 15196,
+        "items": 12,
+        "bills": 2,
+        "aov": 7598,
+        "upt": 6,
+        "commissionRate": 1,
+        "commission": 152,
+        "slabLabel": "≥ 4L (1.0%)",
+        "rank": 2
+      },
+      {
+        "empCode": "0000000",
+        "name": "Simran",
+        "isUnassigned": true,
+        "isMissingName": false,
+        "hasCustomOverride": true,
+        "sales": 8147,
+        "items": 7,
+        "bills": 2,
+        "aov": 4074,
+        "upt": 3.5,
+        "commissionRate": 0,
+        "commission": 0,
+        "slabLabel": "POS Counter"
+      }
+    ],
+    "topStaff": {
+      "empCode": "2800003",
+      "name": "Vikas",
+      "sales": 38931,
+      "bills": 3,
+      "items": 28,
+      "commission": 389,
+      "commissionRate": 1,
+      "slabLabel": "≥ 4L (1.0%)"
+    }
+  },
+  {
     "date": "2026-10-16",
     "year": 2026,
     "month": 10,

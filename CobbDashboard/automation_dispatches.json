@@ -1930,5 +1930,89 @@
     "reason": "checkout",
     "status": "sent",
     "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-10-17T15:14:34.311373",
+    "date": "2026-10-17",
+    "time": "03:14 PM",
+    "billNo": "STST27-00817   ",
+    "cmId": "ST01127000STST27-00817",
+    "customerName": "Sourav",
+    "phone": "9068676127",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-10-17T16:10:21.183599",
+    "date": "2026-10-17",
+    "time": "04:10 PM",
+    "billNo": "STST27-00818   ",
+    "cmId": "ST01127000STST27-00818",
+    "customerName": "Navneet",
+    "phone": "7015606168",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-10-17T17:32:23.981121",
+    "date": "2026-10-17",
+    "time": "05:32 PM",
+    "billNo": "STST27-00819   ",
+    "cmId": "ST01127000STST27-00819",
+    "customerName": "Mahavir Gollen",
+    "phone": "9996169210",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-10-17T18:04:05.898675",
+    "date": "2026-10-17",
+    "time": "06:04 PM",
+    "billNo": "STST27-00820   ",
+    "cmId": "ST01127000STST27-00820",
+    "customerName": "Dr Ashok",
+    "phone": "9896410364",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-10-17T19:10:20.157904",
+    "date": "2026-10-17",
+    "time": "07:10 PM",
+    "billNo": "STST27-00821   ",
+    "cmId": "ST01127000STST27-00821",
+    "customerName": "Geeta",
+    "phone": "9034243022",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-10-17T19:39:12.590558",
+    "date": "2026-10-17",
+    "time": "07:39 PM",
+    "billNo": "STST27-00822   ",
+    "cmId": "ST01127000STST27-00822",
+    "customerName": "Gp",
+    "phone": "8529000203",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-10-17T19:48:53.391799",
+    "date": "2026-10-17",
+    "time": "07:48 PM",
+    "billNo": "STST27-00823   ",
+    "cmId": "ST01127000STST27-00823",
+    "customerName": "Balvinder Sangroli",
+    "phone": "9068858457",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
   }
 ]
