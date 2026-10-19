@@ -25,4 +25,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openExternal: (url) => ipcRenderer.invoke('open-external', url),
   kickCashDrawer: () => ipcRenderer.invoke('kick-cash-drawer'),
   printSilentThermal: (options) => ipcRenderer.invoke('print-silent-thermal', options),
+  showNotification: (payload) => ipcRenderer.invoke('show-desktop-notification', payload),
 });

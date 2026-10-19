@@ -309,6 +309,12 @@ const Layout = ({
         setActiveTab('speed_billing');
         return;
       }
+      // F3 to open Handheld Gun Barcode Scanner Modal
+      if (e.key === 'F3') {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('cobb_open_gun_scanner'));
+        return;
+      }
       // Ctrl + / to focus search
       if (e.ctrlKey && e.key === '/') {
         e.preventDefault();
@@ -554,6 +560,22 @@ const Layout = ({
 
             {/* Right: Clean Native App Actions (Spotlight Search, Alerts, Store Switcher) */}
             <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+              {/* Handheld Gun Scanner F3 Button */}
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent('cobb_open_gun_scanner'))}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl transition-all cursor-pointer active:scale-95 text-xs font-bold ${
+                  darkMode 
+                    ? 'bg-blue-500/15 text-blue-400 hover:bg-blue-500/25 border border-blue-500/30' 
+                    : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200'
+                }`}
+                title="Handheld Gun Scanner (Press F3)"
+              >
+                <Barcode className="w-4 h-4 text-blue-500" />
+                <span className="hidden sm:inline">Scanner</span>
+                <span className="px-1 py-0.2 rounded text-[10px] font-mono font-black bg-blue-500 text-white dark:bg-blue-400 dark:text-slate-950">F3</span>
+              </button>
+
               {/* Universal Spotlight Search Button */}
               <button
                 type="button"
@@ -1264,13 +1286,16 @@ const Layout = ({
                 <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">Notification Format Preview</p>
                 <div className="p-3.5 rounded-2xl bg-slate-800/60 border border-white/10 space-y-1">
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-black text-emerald-400 font-mono">🧾 New Sale: ₹4,599 | Bill #1042</span>
+                    <span className="text-xs font-black text-emerald-400 font-mono">🧾 ₹4,599 — Amit Sharma (98123-45678)</span>
                   </div>
                   <p className="text-xs text-slate-300">
-                    Items: 3 • Pay: UPI • Staff: Rahul • Cust: Amit Sharma
+                    👤 Customer: Amit Sharma (98123-45678) • Bill #1042
                   </p>
-                  <p className="text-[10px] text-slate-400 pt-1">
-                    👉 Tapping notification immediately expands the exact bill on this phone.
+                  <p className="text-[11px] text-slate-400">
+                    💳 Pay: UPI • Staff: Rahul • 🛍️ 3 Items: Casual Shirt, Chino
+                  </p>
+                  <p className="text-[10px] text-emerald-400/90 pt-1 font-medium">
+                    👉 Tapping notification in phone status bar immediately opens this bill.
                   </p>
                 </div>
               </div>

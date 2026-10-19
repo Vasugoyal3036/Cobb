@@ -44,7 +44,21 @@ export const showSystemNotification = async (title, options = {}) => {
     defaultOptions.icon = logoPng;
   }
 
-  // 1. Primary for Mobile Android / iOS PWA: Service Worker showNotification
+  // 1. Electron Desktop Native OS Notification (Windows Action Center)
+  if (typeof window !== 'undefined' && window.electronAPI?.showNotification) {
+    try {
+      const res = await window.electronAPI.showNotification({
+        title,
+        body: defaultOptions.body || '',
+        icon: defaultOptions.icon
+      });
+      if (res?.success) return true;
+    } catch (e) {
+      console.warn('[CheckoutAlert] Electron desktop notification note:', e.message);
+    }
+  }
+
+  // 2. Primary for Mobile Android / iOS PWA: Service Worker showNotification
   if ('serviceWorker' in navigator) {
     try {
       let reg = await Promise.race([
@@ -226,18 +240,38 @@ export const subscribeToCheckoutNotifications = (storeId = 'DEMO_STORE_001', onN
             } catch (e) {}
           }
 
-          // 3. Trigger Native Phone Notification Bar Alert
-          await showSystemNotification(data.title || '🧾 New Sale Recorded', {
-            body: data.body || 'A new checkout has been processed.',
+          // 3. Trigger Native Phone Notification Bar Alert (Status Bar)
+          // Prioritize Amount and Customer Name & Number at the very top
+          const rawAmount = data.amount || data.netAmount || data.Amount || 0;
+          const amtStr = rawAmount ? `₹${Number(rawAmount).toLocaleString('en-IN')}` : '';
+          const cust = data.customer || data.customerName || (data.customerPhone ? `Cust (${data.customerPhone})` : 'Walk-in');
+          const billNo = data.billNumber || notifId;
+
+          let finalTitle = data.title;
+          if (!finalTitle || finalTitle.includes('New Sale Recorded') || finalTitle.startsWith('🧾 New Sale:')) {
+            finalTitle = amtStr ? `🧾 ${amtStr} — ${cust}` : `🧾 New Sale — ${cust}`;
+          }
+
+          let finalBody = data.body;
+          if (!finalBody || finalBody.startsWith('🛍️') || finalBody.includes('New checkout')) {
+            finalBody = `👤 Customer: ${cust} • Bill #${billNo}\n💳 Pay: ${data.paymentMode || 'UPI'} • Staff: ${data.salesperson || 'Staff'}${data.qty ? ` • 🛍️ ${data.qty} Items` : ''}`;
+          }
+
+          await showSystemNotification(finalTitle, {
+            body: finalBody,
             icon: '/ors-logo.png',
             badge: '/ors-logo.png',
-            tag: `cobb-sale-${data.billNumber || notifId}`,
-            data: { url: `/?tab=livebills&bill=${encodeURIComponent(data.billNumber || '')}` }
+            tag: `cobb-sale-${billNo}`,
+            data: { url: `/?tab=livebills&bill=${encodeURIComponent(billNo)}` }
           });
 
           // 4. Send to in-app banner handler
           if (typeof onNewSaleCallback === 'function') {
-            onNewSaleCallback(data, false);
+            onNewSaleCallback({
+              ...data,
+              title: finalTitle,
+              body: finalBody
+            }, false);
           }
         }
       }
@@ -270,8 +304,10 @@ export const triggerTestCheckoutNotification = async (storeId = 'DEMO_STORE_001'
   const grossAmt = testAmount + discountAmt;
   const discountPct = Math.round((discountAmt / grossAmt) * 100);
 
-  const title = `🧾 New Sale: ₹${testAmount.toLocaleString('en-IN')} | Bill #${testBillNo}`;
-  const body = `🛍️ 2 Items: ${itemNames}\n💳 Pay: ${pay} | Gross: ₹${grossAmt.toLocaleString('en-IN')} | Disc: ₹${discountAmt.toLocaleString('en-IN')} (${discountPct}% OFF)\n👤 Customer: Parbhat Goyal (98123-45678) • Staff: ${staff}`;
+  const custDisplay = 'Parbhat Goyal (98123-45678)';
+  // Status bar priority: Amount front-and-center, Customer Name & Number next
+  const title = `🧾 ₹${testAmount.toLocaleString('en-IN')} — ${custDisplay}`;
+  const body = `👤 Customer: ${custDisplay} • Bill #${testBillNo}\n💳 Pay: ${pay} • Staff: ${staff} • 🛍️ 2 Items: ${itemNames}`;
 
   const payload = {
     billId: testBillNo,
@@ -395,8 +431,9 @@ export const triggerTestSystemStatusAlert = async (status = 'online', storeId = 
 export const triggerTestBigTicketAlert = async (storeId = 'DEMO_STORE_001') => {
   const testBillNo = `TEST-VIP-${Math.floor(1000 + Math.random() * 9000)}`;
   const amount = 18500;
-  const title = `💎 VIP MEGA SALE: ₹${amount.toLocaleString('en-IN')} | Bill #${testBillNo}`;
-  const body = `🛍️ 6 Items: Premium Suit, 2 Shirts, Blazer + 2 more\n💳 Pay: UPI | Gross: ₹22,000 | Disc: ₹3,500 (16% OFF)\n👤 Customer: Asham Sohi (98765-43210) • Staff: Rohit`;
+  const custDisplay = 'Asham Sohi (98765-43210)';
+  const title = `💎 ₹${amount.toLocaleString('en-IN')} VIP SALE — ${custDisplay}`;
+  const body = `👤 Customer: ${custDisplay} • Bill #${testBillNo}\n💳 Pay: UPI • Staff: Rohit • 🛍️ 6 Items: Premium Suit, 2 Shirts + 3 more • Disc: ₹3,500`;
 
   const payload = {
     billId: testBillNo,
@@ -409,7 +446,7 @@ export const triggerTestBigTicketAlert = async (storeId = 'DEMO_STORE_001') => {
     qty: 6,
     paymentMode: 'UPI',
     salesperson: 'Rohit',
-    customer: 'Asham Sohi (98765-43210)',
+    customer: custDisplay,
     title,
     body,
     url: '/?tab=livebills',
@@ -448,8 +485,9 @@ export const triggerTestHeavyDiscountAlert = async (storeId = 'DEMO_STORE_001') 
   const grossAmount = 8000;
   const discountAmount = 3600;
   const discountPct = 45;
-  const title = `⚠️ HEAVY DISCOUNT (${discountPct}% OFF) | Bill #${testBillNo}`;
-  const body = `🛍️ 3 Items: Denim Jeans, Linen Shirt, Trouser\n💳 Pay: Cash | Gross: ₹8,000 | Disc: ₹3,600 (45% OFF)\n👤 Customer: Walk-in • Staff: Sahil`;
+  const custDisplay = 'Walk-in Customer';
+  const title = `⚠️ ₹${netAmount.toLocaleString('en-IN')} (${discountPct}% OFF) — ${custDisplay}`;
+  const body = `👤 Customer: ${custDisplay} • Bill #${testBillNo}\n⚠️ Staff Sahil gave ₹${discountAmount.toLocaleString('en-IN')} (${discountPct}%) discount • Pay: Cash`;
 
   const payload = {
     billId: testBillNo,
@@ -462,7 +500,7 @@ export const triggerTestHeavyDiscountAlert = async (storeId = 'DEMO_STORE_001') 
     qty: 3,
     paymentMode: 'Cash',
     salesperson: 'Sahil',
-    customer: 'Walk-in',
+    customer: custDisplay,
     title,
     body,
     url: '/?tab=livebills',
@@ -498,8 +536,9 @@ export const triggerTestHeavyDiscountAlert = async (storeId = 'DEMO_STORE_001') 
 export const triggerTestCancelledBillAlert = async (storeId = 'DEMO_STORE_001') => {
   const testBillNo = `TEST-VOID-${Math.floor(1000 + Math.random() * 9000)}`;
   const amount = 4200;
-  const title = `🚫 BILL CANCELLED / VOIDED: ₹${amount.toLocaleString('en-IN')} | Bill #${testBillNo}`;
-  const body = `⚠️ Warning: Bill #${testBillNo} worth ₹${amount.toLocaleString('en-IN')} was cancelled at POS counter by Counter Staff!`;
+  const custDisplay = 'Walk-in Customer';
+  const title = `🚫 ₹${amount.toLocaleString('en-IN')} CANCELLED — ${custDisplay}`;
+  const body = `👤 Customer: ${custDisplay} • Bill #${testBillNo}\n⚠️ Warning: Bill #${testBillNo} worth ₹${amount.toLocaleString('en-IN')} was cancelled at POS counter by Counter Staff!`;
 
   const payload = {
     billId: `cancelled_${testBillNo}`,
@@ -507,7 +546,7 @@ export const triggerTestCancelledBillAlert = async (storeId = 'DEMO_STORE_001') 
     type: 'cancelled_bill',
     amount,
     salesperson: 'Counter Staff',
-    customer: 'Walk-in',
+    customer: custDisplay,
     title,
     body,
     url: '/?tab=livebills',

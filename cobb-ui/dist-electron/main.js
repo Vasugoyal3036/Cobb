@@ -1,14 +1,14 @@
-import { BrowserWindow as e, app as t, ipcMain as n, net as r, protocol as i, shell as a } from "electron";
-import o from "node:path";
-import { fileURLToPath as s } from "node:url";
-import c from "node:fs";
-import { spawn as l } from "node:child_process";
-import u from "node:http";
+import { BrowserWindow as e, Notification as t, app as n, ipcMain as r, net as i, protocol as a, shell as o } from "electron";
+import s from "node:path";
+import { fileURLToPath as c } from "node:url";
+import l from "node:fs";
+import { spawn as u } from "node:child_process";
+import d from "node:http";
 //#region electron/main.js
-var d = o.dirname(s(import.meta.url));
-process.env.APP_ROOT = o.join(d, "..");
-var f = process.env.VITE_DEV_SERVER_URL, p = o.join(process.env.APP_ROOT, "dist-electron"), m = o.join(process.env.APP_ROOT, "dist");
-process.env.VITE_PUBLIC = f ? o.join(process.env.APP_ROOT, "public") : m, i.registerSchemesAsPrivileged([{
+var f = s.dirname(c(import.meta.url));
+process.env.APP_ROOT = s.join(f, "..");
+var p = process.env.VITE_DEV_SERVER_URL, m = s.join(process.env.APP_ROOT, "dist-electron"), h = s.join(process.env.APP_ROOT, "dist");
+process.env.VITE_PUBLIC = p ? s.join(process.env.APP_ROOT, "public") : h, a.registerSchemesAsPrivileged([{
 	scheme: "app",
 	privileges: {
 		secure: !0,
@@ -18,85 +18,85 @@ process.env.VITE_PUBLIC = f ? o.join(process.env.APP_ROOT, "public") : m, i.regi
 		bypassCSP: !0
 	}
 }]);
-var h, g = null;
-function _() {
+var g, _ = null;
+function v() {
 	let e = [
-		o.join(process.env.APP_ROOT, "..", "CobbDashboard", "server.js"),
+		s.join(process.env.APP_ROOT, "..", "CobbDashboard", "server.js"),
 		"D:\\cobbbb\\CobbDashboard\\server.js",
-		o.join(process.cwd(), "..", "CobbDashboard", "server.js"),
-		o.join(process.cwd(), "CobbDashboard", "server.js")
-	].find((e) => c.existsSync(e));
+		s.join(process.cwd(), "..", "CobbDashboard", "server.js"),
+		s.join(process.cwd(), "CobbDashboard", "server.js")
+	].find((e) => l.existsSync(e));
 	if (!e) {
 		console.log("[Electron] Backend server.js not found at any candidate path");
 		return;
 	}
-	let t = o.dirname(e);
-	o.join(t, "cloud_sync.js");
+	let t = s.dirname(e);
+	s.join(t, "cloud_sync.js");
 	try {
-		u.get("http://127.0.0.1:5000/api/sales/overview", (e) => {
+		d.get("http://127.0.0.1:5000/api/sales/overview", (e) => {
 			console.log("[Electron] Backend server is already running on port 5000");
 		}).on("error", () => {
-			console.log("[Electron] Starting backend server from:", e), g = l("node", [e], {
+			console.log("[Electron] Starting backend server from:", e), _ = u("node", [e], {
 				cwd: t,
 				stdio: "pipe",
 				shell: !1,
 				windowsHide: !0
-			}), g.stdout.on("data", (e) => {
+			}), _.stdout.on("data", (e) => {
 				console.log(`[Backend] ${e.toString().trim()}`);
-			}), g.stderr.on("data", (e) => {
+			}), _.stderr.on("data", (e) => {
 				console.error(`[Backend ERR] ${e.toString().trim()}`);
-			}), g.on("close", (e) => {
-				console.log(`[Backend] Process exited with code ${e}`), g = null;
+			}), _.on("close", (e) => {
+				console.log(`[Backend] Process exited with code ${e}`), _ = null;
 			});
 		});
 	} catch (e) {
 		console.error("[Electron] Error checking backend status:", e);
 	}
 }
-function v() {
-	g &&= (console.log("[Electron] Stopping backend server..."), g.kill(), null);
-}
 function y() {
-	let t = o.join(process.env.VITE_PUBLIC, "ors-logo.png"), n = o.join(process.env.VITE_PUBLIC, "favicon.svg"), r = c.existsSync(t) ? t : n;
-	h = new e({
+	_ &&= (console.log("[Electron] Stopping backend server..."), _.kill(), null);
+}
+function b() {
+	let t = s.join(process.env.VITE_PUBLIC, "ors-logo.png"), n = s.join(process.env.VITE_PUBLIC, "favicon.svg"), r = l.existsSync(t) ? t : n;
+	g = new e({
 		title: "Goyal - House Of Fashion | Retail POS & Chain OS",
 		width: 1280,
 		height: 800,
 		minWidth: 1024,
 		minHeight: 768,
-		icon: c.existsSync(r) ? r : void 0,
+		icon: l.existsSync(r) ? r : void 0,
 		webPreferences: {
-			preload: o.join(d, "preload.js"),
+			preload: s.join(f, "preload.js"),
 			nodeIntegration: !0,
 			contextIsolation: !0,
 			webSecurity: !1
 		}
-	}), h.setMenuBarVisibility(!1), h.setAutoHideMenuBar(!0), h.webContents.on("console-message", (e, t, n, r, i) => {
+	}), g.setMenuBarVisibility(!1), g.setAutoHideMenuBar(!0), g.webContents.on("console-message", (e, t, n, r, i) => {
 		let a = typeof e == "object" && e?.message !== void 0 ? e.message : n;
 		console.log(`[Renderer Console] ${a}`);
-	}), h.webContents.on("before-input-event", (e, t) => {
-		t.key === "F11" && t.type === "keyDown" ? (h.setFullScreen(!h.isFullScreen()), e.preventDefault()) : t.key === "F5" && t.type === "keyDown" ? (h.reload(), e.preventDefault()) : t.control && t.shift && t.key.toLowerCase() === "i" && t.type === "keyDown" && (h.webContents.toggleDevTools(), e.preventDefault());
-	}), h.webContents.setWindowOpenHandler(({ url: e }) => ((e.startsWith("https://") || e.startsWith("http://wa") || e.startsWith("whatsapp://")) && a.openExternal(e), { action: "deny" })), f ? (console.log("[Electron] Loading dev server URL:", f), h.loadURL(f)) : (console.log("[Electron] Loading app://index.html"), h.loadURL("app://-/index.html")), h.webContents.on("did-fail-load", (e, t, n) => {
+	}), g.webContents.on("before-input-event", (e, t) => {
+		t.key === "F11" && t.type === "keyDown" ? (g.setFullScreen(!g.isFullScreen()), e.preventDefault()) : t.key === "F5" && t.type === "keyDown" ? (g.reload(), e.preventDefault()) : t.control && t.shift && t.key.toLowerCase() === "i" && t.type === "keyDown" && (g.webContents.toggleDevTools(), e.preventDefault());
+	}), g.webContents.setWindowOpenHandler(({ url: e }) => ((e.startsWith("https://") || e.startsWith("http://wa") || e.startsWith("whatsapp://")) && o.openExternal(e), { action: "deny" })), p ? (console.log("[Electron] Loading dev server URL:", p), g.loadURL(p)) : (console.log("[Electron] Loading app://index.html"), g.loadURL("app://-/index.html")), g.webContents.on("did-fail-load", (e, t, n) => {
 		console.error("[Electron] Failed to load:", t, n);
 	});
 }
-t.on("window-all-closed", () => {
-	v(), process.platform !== "darwin" && (t.quit(), h = null);
-}), t.on("activate", () => {
-	e.getAllWindows().length === 0 && y();
-}), t.on("before-quit", () => {
-	v();
-}), n.handle("open-external", async (e, t) => typeof t == "string" && (t.startsWith("https://") || t.startsWith("http://") || t.startsWith("whatsapp://")) ? (await a.openExternal(t), !0) : !1), n.handle("kick-cash-drawer", async () => (console.log("[Electron POS] Hardware Cash Drawer Kick Triggered (ESC p 0 25 250)"), {
+n.on("window-all-closed", () => {
+	y(), process.platform !== "darwin" && (n.quit(), g = null);
+}), n.on("activate", () => {
+	e.getAllWindows().length === 0 && b();
+}), n.on("before-quit", () => {
+	y();
+}), r.handle("open-external", async (e, t) => typeof t == "string" && (t.startsWith("https://") || t.startsWith("http://") || t.startsWith("whatsapp://")) ? (await o.openExternal(t), !0) : !1), r.handle("kick-cash-drawer", async () => (console.log("[Electron POS] Hardware Cash Drawer Kick Triggered (ESC p 0 25 250)"), {
 	success: !0,
 	timestamp: Date.now()
-})), n.handle("print-silent-thermal", async (e, t = {}) => {
-	if (!h) return {
+})), r.handle("print-silent-thermal", async (e, t = {}) => {
+	if (!g) return {
 		success: !1,
 		error: "No active window"
 	};
 	try {
-		let e = (await h.webContents.getPrintersAsync()).find((e) => e.name.toLowerCase().includes("pos") || e.name.toLowerCase().includes("thermal") || e.name.toLowerCase().includes("receipt") || e.isDefault);
-		return h.webContents.print({
+		let e = (await g.webContents.getPrintersAsync()).find((e) => e.name.toLowerCase().includes("pos") || e.name.toLowerCase().includes("thermal") || e.name.toLowerCase().includes("receipt") || e.isDefault);
+		return g.webContents.print({
 			silent: !0,
 			deviceName: e?.name || "",
 			margins: { marginType: "none" },
@@ -113,13 +113,29 @@ t.on("window-all-closed", () => {
 			error: e.message
 		};
 	}
-}), t.whenReady().then(() => {
-	_(), i.handle("app", (e) => {
+}), r.handle("show-desktop-notification", async (e, { title: n, body: r, icon: i } = {}) => {
+	try {
+		if (t.isSupported()) {
+			let e = s.join(process.env.VITE_PUBLIC, "ors-logo.png"), a = i && l.existsSync(i) ? i : l.existsSync(e) ? e : void 0, o = new t({
+				title: n || "Cobb POS Notification",
+				body: r || "",
+				icon: a
+			});
+			return o.on("click", () => {
+				g && (g.isMinimized() && g.restore(), g.focus());
+			}), o.show(), { success: !0 };
+		}
+	} catch (e) {
+		console.warn("[Electron Notification Warning]:", e.message);
+	}
+	return { success: !1 };
+}), n.whenReady().then(() => {
+	v(), a.handle("app", (e) => {
 		let t = e.url.substring(8);
 		t ||= "index.html", t = t.split("?")[0].split("#")[0];
-		let n = o.join(m, t);
-		return c.existsSync(n) || (n = o.join(m, "index.html")), r.fetch("file://" + n);
-	}), y();
+		let n = s.join(h, t);
+		return l.existsSync(n) || (n = s.join(h, "index.html")), i.fetch("file://" + n);
+	}), b();
 });
 //#endregion
-export { p as MAIN_DIST, m as RENDERER_DIST, f as VITE_DEV_SERVER_URL };
+export { m as MAIN_DIST, h as RENDERER_DIST, p as VITE_DEV_SERVER_URL };

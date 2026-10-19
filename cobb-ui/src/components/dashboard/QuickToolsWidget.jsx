@@ -144,7 +144,17 @@ const QuickToolsWidget = ({
             <div>
               <div className="flex items-center gap-1.5">
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Barcode &amp; Size Matrix</p>
-                <span className="text-[8.5px] px-1.5 py-0.2 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-mono font-bold">Ctrl+S</span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.dispatchEvent(new CustomEvent('cobb_open_gun_scanner'));
+                  }}
+                  className="text-[9px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30 font-mono font-black hover:bg-blue-500/30 transition cursor-pointer"
+                  title="Open Detailed Gun Scanner Pop-up Window (Press F3)"
+                >
+                  F3 Pop-up
+                </button>
               </div>
               <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white mt-1 flex items-center gap-1.5">
                 {quickScanResult ? (
@@ -156,13 +166,21 @@ const QuickToolsWidget = ({
                 )}
               </h3>
             </div>
-            <div className={`p-2.5 rounded-xl border transition-all ${
-              isScannerFocused 
-                ? 'bg-blue-500/20 text-blue-400 border-blue-500/40 animate-pulse' 
-                : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-            }`}>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                window.dispatchEvent(new CustomEvent('cobb_open_gun_scanner'));
+              }}
+              className={`p-2.5 rounded-xl border transition-all cursor-pointer ${
+                isScannerFocused 
+                  ? 'bg-blue-500/20 text-blue-400 border-blue-500/40 animate-pulse' 
+                  : 'bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20'
+              }`}
+              title="Open Detailed Gun Scanner Pop-up Window [F3]"
+            >
               <Barcode className="w-5 h-5" />
-            </div>
+            </button>
           </div>
 
           <div className="my-3 space-y-2 text-xs">

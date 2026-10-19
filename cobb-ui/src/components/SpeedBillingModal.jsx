@@ -36,7 +36,8 @@ import {
   Check,
   Split,
   ShieldCheck,
-  AlertCircle
+  AlertCircle,
+  Barcode
 } from 'lucide-react';
 import axios from 'axios';
 import { playBarcodeBeep, playScanErrorBeep, playCheckoutChime, speakCheckoutVoice } from '../utils/sound';
@@ -437,6 +438,17 @@ export default function SpeedBillingModal({
     barcodeInputRef.current?.focus();
   }, [staffList]);
 
+  // Handle external Add-to-Cart events (from Gun Scanner F3 Modal)
+  useEffect(() => {
+    const handleSpeedAddItem = (e) => {
+      if (e.detail?.item) {
+        addItemToCart(e.detail.item, true);
+      }
+    };
+    window.addEventListener('cobb_speed_add_item', handleSpeedAddItem);
+    return () => window.removeEventListener('cobb_speed_add_item', handleSpeedAddItem);
+  }, [addItemToCart]);
+
   // Add Item by Barcode or Code (Query Live DB or local Catalog)
   const handleAddItemByQuery = useCallback(async (query, isGun = false) => {
     const q = (query || searchInput).trim();
@@ -562,8 +574,15 @@ export default function SpeedBillingModal({
         return;
       }
 
-      // F3: Apply Discount
+      // F3: Handheld Gun Barcode Matrix Scanner
       if (e.key === 'F3') {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent('cobb_open_gun_scanner'));
+        return;
+      }
+
+      // Alt+D / Ctrl+D / Shift+F3: Apply Discount
+      if (((e.altKey || e.ctrlKey) && (e.key === 'd' || e.key === 'D')) || (e.shiftKey && e.key === 'F3')) {
         e.preventDefault();
         if (cart.length === 0) return;
         setActiveModal('discount');
@@ -958,6 +977,15 @@ _Thank you for choosing Cobb! For sizing alterations or exchanges, please quote 
             </button>
           )}
 
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('cobb_open_gun_scanner'))}
+            className="px-3 py-1.5 rounded-xl bg-blue-500/20 text-blue-300 border border-blue-500/40 text-xs font-bold flex items-center gap-1.5 hover:bg-blue-500/30 transition cursor-pointer"
+            title="Open Handheld Gun Matrix Scanner (F3)"
+          >
+            <Barcode className="w-4 h-4 text-blue-400" />
+            <span>Gun Scanner [F3]</span>
+          </button>
+
           <div className="hidden lg:flex items-center gap-1.5 text-xs text-slate-400 bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700">
             <Keyboard className="w-4 h-4 text-amber-400" />
             <span>F1-F12 Fast Keys Enabled</span>
@@ -1129,7 +1157,7 @@ _Thank you for choosing Cobb! For sizing alterations or exchanges, please quote 
                   <th className="py-2.5 px-2 w-14 text-center">Size</th>
                   <th className="py-2.5 px-3 w-16 text-right">MRP</th>
                   <th className="py-2.5 px-2 w-20 text-center">Qty (F2)</th>
-                  <th className="py-2.5 px-3 w-24 text-right">Disc (F3)</th>
+                  <th className="py-2.5 px-3 w-24 text-right">Disc (Alt+D)</th>
                   <th className="py-2.5 px-3 w-24 text-right">Net</th>
                   <th className="py-2.5 px-3 w-28 text-center">Staff (F4)</th>
                   <th className="py-2.5 px-2 w-10 text-center"></th>
@@ -1477,7 +1505,7 @@ _Thank you for choosing Cobb! For sizing alterations or exchanges, please quote 
             }}
             className="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 flex items-center gap-1.5 border border-slate-700 hover:border-amber-500 transition"
           >
-            <span className="px-1.5 py-0.5 rounded bg-amber-500 text-slate-950 font-black text-[10px]">F3</span>
+            <span className="px-1.5 py-0.5 rounded bg-amber-500 text-slate-950 font-black text-[10px]">Alt+D</span>
             <span>Discount</span>
           </button>
 
@@ -1703,7 +1731,7 @@ _Thank you for choosing Cobb! For sizing alterations or exchanges, please quote 
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150">
           <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl">
             <h3 className="text-base font-bold text-white mb-1 flex items-center gap-2">
-              <span className="px-2 py-0.5 rounded bg-amber-500 text-slate-950 font-mono text-xs font-bold">F3</span>
+              <span className="px-2 py-0.5 rounded bg-amber-500 text-slate-950 font-mono text-xs font-bold">Alt+D</span>
               Apply Retail Discount
             </h3>
             <p className="text-xs text-slate-400 mb-4">

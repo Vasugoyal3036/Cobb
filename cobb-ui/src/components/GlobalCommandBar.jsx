@@ -20,7 +20,8 @@ import {
   CheckCircle2,
   Tag,
   Crown,
-  Tv
+  Tv,
+  Barcode
 } from 'lucide-react';
 
 export default function GlobalCommandBar({
@@ -135,6 +136,7 @@ export default function GlobalCommandBar({
 
     // System Navigation Shortcuts
     const appActions = [
+      { id: 'gun_scanner', title: '🔫 Handheld Gun Matrix Scanner [F3]', sub: 'Instant barcode scan, size matrix, velocity & offer quote', icon: Barcode, keywords: ['gun', 'scanner', 'barcode', 'sku', 'matrix', 'size', 'f3', 'laser', 'stock', 'check'], customAction: () => window.dispatchEvent(new CustomEvent('cobb_open_gun_scanner')) },
       { id: 'speed_billing', title: '⚡ Speed Billing (F1-POS)', sub: 'Rapid barcode scan & thermal checkout', icon: Zap, tab: 'speed_billing', keywords: ['pos', 'bill', 'counter', 'checkout', 'sale', 'fast'] },
       { id: 'dashboard', title: '📊 Executive Command Center', sub: 'Floor race, sales pulse & operating KPIs', icon: Sparkles, tab: 'dashboard', keywords: ['home', 'race', 'heatmap', 'radar', 'overview'] },
       { id: 'live', title: '🧾 Live Transactions & Invoices', sub: 'Search bills, reprints & payment modes', icon: Receipt, tab: 'live', keywords: ['bills', 'receipt', 'invoice', 'payment', 'cash', 'upi'] },
@@ -160,7 +162,11 @@ export default function GlobalCommandBar({
           color: 'text-amber-500',
           bg: 'bg-amber-500/10',
           action: () => {
-            if (setActiveTab) setActiveTab(act.tab);
+            if (act.customAction) {
+              act.customAction();
+            } else if (setActiveTab && act.tab) {
+              setActiveTab(act.tab);
+            }
             onClose();
           }
         });

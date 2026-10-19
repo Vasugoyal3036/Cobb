@@ -19,11 +19,16 @@ test*.js
 CobbDashboard/billed_customer_group.json
 CobbDashboard/customer_numbers.txt
 CobbDashboard/sent_bills.txt
+CobbDashboard/sent_eod_date.txt
+CobbDashboard/automation_dispatches.json
+CobbDashboard/staff_daily_history.json
 CobbDashboard/firebase-admin.json
 CobbDashboard/Antigravity-x64.exe
 cloudflared.exe
 whatsapp_gateway/.wwebjs_auth/
 whatsapp_gateway/.wwebjs_cache/
+whatsapp_gateway/dispatch_ledger.json
+whatsapp_gateway/nps_queue.json
 
 find_b*.js
 reconciliations.json

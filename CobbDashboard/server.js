@@ -660,12 +660,28 @@ app.get('/api/inventory/quick-scan', async (req, res) => {
         findReq.input('q', sql.NVarChar, query);
         
         const matchRes = await findReq.query(`
-            SELECT TOP 1 s.article_no, ISNULL(s.article_name, s.section_name) as itemName, s.section_name as sectionName
+            SELECT TOP 1 
+                s.article_no, 
+                ISNULL(s.article_name, s.section_name) as itemName, 
+                s.section_name as sectionName,
+                ISNULL(s.sub_section_name, '') as subSectionName
             FROM SKU_NAMES s WITH (NOLOCK)
-            WHERE s.product_Code = @q 
+            WHERE LTRIM(RTRIM(s.product_Code)) = @q 
+               OR LTRIM(RTRIM(s.article_no)) = @q 
+               OR LTRIM(RTRIM(s.VENDOR_EAN_NO)) = @q
+               OR s.product_Code = @q 
                OR s.article_no = @q 
                OR s.VENDOR_EAN_NO = @q
                OR s.article_no LIKE @q + '%'
+               OR s.article_name LIKE '%' + @q + '%'
+            ORDER BY 
+               CASE 
+                 WHEN LTRIM(RTRIM(s.product_Code)) = @q THEN 1
+                 WHEN LTRIM(RTRIM(s.article_no)) = @q THEN 2
+                 WHEN LTRIM(RTRIM(s.VENDOR_EAN_NO)) = @q THEN 3
+                 WHEN s.article_no LIKE @q + '%' THEN 4
+                 ELSE 5 
+               END
         `);
 
         if (!matchRes.recordset || matchRes.recordset.length === 0) {
@@ -675,6 +691,7 @@ app.get('/api/inventory/quick-scan', async (req, res) => {
         const matchedArticle = matchRes.recordset[0].article_no;
         const matchedItemName = matchRes.recordset[0].itemName;
         const matchedSection = matchRes.recordset[0].sectionName;
+        const matchedSubSection = matchRes.recordset[0].subSectionName;
 
         const variantReq = new sql.Request();
         variantReq.input('art', sql.NVarChar, matchedArticle);
@@ -684,6 +701,8 @@ app.get('/api/inventory/quick-scan', async (req, res) => {
                 s.product_Code as barcode,
                 s.article_no as articleNo,
                 ISNULL(s.article_name, s.section_name) as itemName,
+                s.section_name as sectionName,
+                ISNULL(s.sub_section_name, '') as subSectionName,
                 ISNULL(s.para1_name, 'Standard') as color,
                 ISNULL(s.para2_name, 'Standard') as size,
                 ISNULL(s.para2_order, 99) as sizeOrder,
@@ -739,18 +758,46 @@ app.get('/api/inventory/quick-scan', async (req, res) => {
         const matchedVariant = rows.find(r => r.barcode === query) || rows[0];
         const scannedColor = matchedVariant ? matchedVariant.color : (colors[0]?.color || '');
 
+        // Query sales velocity
+        let salesStats = { soldToday: 0, soldLast7Days: 0, soldLast30Days: 0, lastSoldDate: null };
+        try {
+            const statsReq = new sql.Request();
+            statsReq.input('art', sql.NVarChar, matchedArticle);
+            const statsRes = await statsReq.query(`
+                SELECT 
+                    ISNULL(SUM(CASE WHEN CAST(c.CM_DT AS DATE) = CAST(GETDATE() AS DATE) THEN d.QUANTITY ELSE 0 END), 0) AS soldToday,
+                    ISNULL(SUM(CASE WHEN c.CM_DT >= DATEADD(day, -7, GETDATE()) THEN d.QUANTITY ELSE 0 END), 0) AS soldLast7Days,
+                    ISNULL(SUM(CASE WHEN c.CM_DT >= DATEADD(day, -30, GETDATE()) THEN d.QUANTITY ELSE 0 END), 0) AS soldLast30Days,
+                    MAX(c.CM_DT) AS lastSoldDate
+                FROM CMD01106 d WITH (NOLOCK)
+                JOIN CMM01106 c WITH (NOLOCK) ON d.CM_ID = c.CM_ID
+                JOIN SKU_NAMES s WITH (NOLOCK) ON d.PRODUCT_CODE = s.product_Code
+                WHERE s.article_no = @art AND c.CANCELLED = 0
+            `);
+            if (statsRes.recordset && statsRes.recordset[0]) {
+                salesStats = statsRes.recordset[0];
+            }
+        } catch (e) {
+            console.warn('[QuickScan salesStats non-fatal]', e.message);
+        }
+
         return res.json({
             success: true,
             articleNo: matchedArticle,
             itemName: matchedItemName,
             sectionName: matchedSection,
+            subSectionName: matchedSubSection,
             color: scannedColor,
             mrp,
             totalStock,
             sizes,
             colors,
             scannedBarcode: query,
-            variants: rows
+            variants: rows,
+            soldToday: salesStats.soldToday || 0,
+            soldLast7Days: salesStats.soldLast7Days || 0,
+            soldLast30Days: salesStats.soldLast30Days || 0,
+            lastSoldDate: salesStats.lastSoldDate
         });
     } catch (err) {
         console.error('[QuickScan API Error]', err);

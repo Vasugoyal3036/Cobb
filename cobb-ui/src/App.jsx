@@ -30,6 +30,7 @@ const DenominationModal = lazy(() => import('./components/DenominationModal'));
 const SpeedBillingModal = lazy(() => import('./components/SpeedBillingModal'));
 const CelebrationModal = lazy(() => import('./components/CelebrationModal'));
 const GodModeModal = lazy(() => import('./components/GodModeModal'));
+const GunScannerModal = lazy(() => import('./components/GunScannerModal'));
 
 import { fetchWithOfflineFallback, subscribeToData } from './utils/offlineDb';
 
@@ -215,6 +216,189 @@ axios.get = async (url, config) => {
 
   // 2. Fallback to Firestore Cloud Cache when running on remote phone without live tunnel
   if (!isLocalEnvironment && db && url.includes('/api/')) {
+    // Dynamic handler for /api/inventory/quick-scan on remote Phone Link / cloud sessions
+    if (url.includes('/api/inventory/quick-scan')) {
+      try {
+        if (authPromise) await authPromise;
+        const targetStore = getActiveStoreId();
+        const searchParams = new URLSearchParams(url.split('?')[1] || '');
+        const rawQ = (searchParams.get('q') || '').trim();
+        const qLower = rawQ.toLowerCase();
+
+        if (!rawQ) {
+          return { data: { success: false, message: 'Query is required' }, status: 200, statusText: 'OK' };
+        }
+
+        // Fetch inventory document from Firestore
+        const invDocRef = doc(db, 'stores', targetStore, 'data', 'inventory');
+        const invSnap = await getDoc(invDocRef);
+        let items = [];
+        if (invSnap.exists()) {
+          const invData = invSnap.data();
+          items = Array.isArray(invData) ? invData : (invData.items || []);
+        }
+
+        if (items.length === 0) {
+          try {
+            const masterSnap = await getDoc(doc(db, 'stores', targetStore, 'data', 'inventory_master'));
+            if (masterSnap.exists()) {
+              const mData = masterSnap.data();
+              items = Array.isArray(mData) ? mData : (mData.items || []);
+            }
+          } catch (e) {}
+        }
+
+        // 1. Match in inventory by exact SKU, barcode, or ArticleNo
+        let matched = items.filter(it => {
+          const sku = String(it.SKU || it.barcode || '').trim().toLowerCase();
+          const art = String(it.ArticleNo || it.articleNo || '').trim().toLowerCase();
+          return sku === qLower || art === qLower;
+        });
+
+        // 2. If no exact match, match by prefix or itemName
+        if (matched.length === 0) {
+          matched = items.filter(it => {
+            const art = String(it.ArticleNo || it.articleNo || '').trim().toLowerCase();
+            const name = String(it.ItemName || it.itemName || '').trim().toLowerCase();
+            const sku = String(it.SKU || it.barcode || '').trim().toLowerCase();
+            return (art && art.startsWith(qLower)) || (name && name.includes(qLower)) || (sku && sku.includes(qLower));
+          });
+        }
+
+        // 3. Match in sales_live if not found in catalog
+        let liveBillItems = [];
+        try {
+          const liveSnap = await getDoc(doc(db, 'stores', targetStore, 'data', 'sales_live'));
+          if (liveSnap.exists()) {
+            const lData = liveSnap.data();
+            const bills = Array.isArray(lData) ? lData : (lData.items || []);
+            bills.forEach(b => {
+              if (Array.isArray(b.Items)) {
+                b.Items.forEach(bi => liveBillItems.push(bi));
+              }
+            });
+          }
+        } catch (e) {}
+
+        if (matched.length === 0 && liveBillItems.length > 0) {
+          matched = liveBillItems.filter(bi => {
+            const bcode = String(bi.Barcode || '').trim().toLowerCase();
+            const artNo = String(bi.ArticleNo || '').trim().toLowerCase();
+            const artName = String(bi.ArticleName || '').trim().toLowerCase();
+            return bcode === qLower || artNo === qLower || artNo.startsWith(qLower) || artName.includes(qLower);
+          }).map(bi => ({
+            SKU: bi.Barcode,
+            ArticleNo: bi.ArticleNo,
+            ItemName: bi.ArticleName,
+            ProductType: bi.Category || 'Apparel',
+            subSectionName: bi.SubCategory || '',
+            Color: bi.Color || 'Standard',
+            Size: bi.Size || 'Standard',
+            CurrentStock: 1,
+            MRP: bi.MRP || bi.NetPrice || 1499
+          }));
+        }
+
+        if (matched.length > 0) {
+          const targetArticle = matched[0].ArticleNo || matched[0].articleNo;
+          const allVariants = items.filter(it => (it.ArticleNo || it.articleNo) === targetArticle);
+          const variantsList = allVariants.length > 0 ? allVariants : matched;
+          const first = variantsList[0];
+          const itemName = first.ItemName || first.itemName || first.ProductType || targetArticle;
+          const isBlazer = String(itemName).toUpperCase().includes('BLAZER') || String(first.ProductType || '').toUpperCase().includes('BLAZER') || String(targetArticle).toUpperCase().startsWith('BLZ');
+          const sectionName = first.ProductType || first.sectionName || (isBlazer ? 'BLAZERS & JACKETS' : 'Apparel');
+          const subSectionName = first.subSectionName || (isBlazer ? 'EXECUTIVE BLAZER' : '');
+          const totalStock = variantsList.reduce((sum, it) => sum + Math.max(0, Number(it.CurrentStock || it.stock || 0)), 0);
+
+          // Group by Color
+          const colorMap = {};
+          variantsList.forEach(v => {
+            const clr = (v.Color || v.color || 'Standard').trim();
+            if (!colorMap[clr]) colorMap[clr] = { color: clr, totalStock: 0, sizes: [] };
+            const stock = Math.max(0, Number(v.CurrentStock || v.stock || 0));
+            colorMap[clr].totalStock += stock;
+            colorMap[clr].sizes.push({
+              size: (v.Size || v.size || 'Standard').trim(),
+              stock: stock,
+              barcode: v.SKU || v.barcode || ''
+            });
+          });
+
+          // Group by Size
+          const sizeMap = {};
+          variantsList.forEach(v => {
+            const sz = (v.Size || v.size || 'Standard').trim();
+            if (!sizeMap[sz]) sizeMap[sz] = { size: sz, stock: 0, barcode: v.SKU || v.barcode || '' };
+            sizeMap[sz].stock += Math.max(0, Number(v.CurrentStock || v.stock || 0));
+          });
+
+          // Resolve MRP
+          let resolvedMrp = Number(first.MRP || first.mrp || 0);
+          if (!resolvedMrp) {
+            const billMatch = liveBillItems.find(bi => bi.ArticleNo === targetArticle || bi.Barcode === rawQ);
+            if (billMatch) resolvedMrp = Number(billMatch.MRP || billMatch.NetPrice || 0);
+          }
+          if (!resolvedMrp) {
+            resolvedMrp = isBlazer ? 4999 : 1499;
+          }
+
+          let soldToday = 0;
+          let sold7 = 0;
+          let sold30 = 0;
+          liveBillItems.filter(bi => bi.ArticleNo === targetArticle || bi.Barcode === rawQ).forEach(bi => {
+            const qty = Number(bi.Quantity || 1);
+            sold30 += qty;
+            sold7 += qty;
+            soldToday += qty;
+          });
+
+          const scannedVariant = variantsList.find(it => {
+            const s = String(it.SKU || it.barcode || '').trim().toLowerCase();
+            return s === qLower;
+          }) || variantsList[0];
+
+          return {
+            data: {
+              success: true,
+              articleNo: targetArticle,
+              itemName: itemName,
+              sectionName: sectionName,
+              subSectionName: subSectionName,
+              color: scannedVariant?.Color || scannedVariant?.color || Object.keys(colorMap)[0] || 'Standard',
+              mrp: resolvedMrp,
+              totalStock: totalStock,
+              soldToday: soldToday,
+              soldLast7Days: sold7,
+              soldLast30Days: sold30,
+              lastSoldDate: null,
+              scannedBarcode: rawQ,
+              sizes: Object.values(sizeMap),
+              colors: Object.values(colorMap),
+              variants: variantsList.map(v => ({
+                barcode: v.SKU || v.barcode || '',
+                articleNo: targetArticle,
+                itemName: itemName,
+                color: v.Color || v.color || 'Standard',
+                size: v.Size || v.size || 'Standard',
+                mrp: Number(v.MRP || v.mrp || resolvedMrp),
+                stock: Math.max(0, Number(v.CurrentStock || v.stock || 0))
+              }))
+            },
+            status: 200,
+            statusText: 'OK'
+          };
+        } else {
+          return {
+            data: { success: false, message: `No item found matching "${rawQ}"` },
+            status: 200,
+            statusText: 'OK'
+          };
+        }
+      } catch (quickErr) {
+        console.error('[SaaS Interceptor] quick-scan error:', quickErr);
+      }
+    }
+
     let docName = url.replace(API_BASE, '').replace('/api/', '').replace(/\//g, '_');
     docName = docName.split('?')[0];
     try {
@@ -386,7 +570,7 @@ export default function App() {
   let [liveBills, setLiveBills] = useState([]); if (!Array.isArray(liveBills)) liveBills = [];
   const { addToast } = useToast();
   const prevLiveBillsRef = useRef([]);
-  let [inventory, setInventory] = useState([]); if (!Array.isArray(inventory)) inventory = [];
+  let [inventory, setInventory] = useState(() => getLocalCache('inventory', [])); if (!Array.isArray(inventory)) inventory = [];
   let [deadStock, setDeadStock] = useState([]); if (!Array.isArray(deadStock)) deadStock = [];
   let [hourlySales, setHourlySales] = useState(() => getLocalCache('hourlySales', [])); if (!Array.isArray(hourlySales)) hourlySales = [];
   let [dailySales, setDailySales] = useState(() => getLocalCache('dailySales', [])); if (!Array.isArray(dailySales)) dailySales = [];
@@ -425,6 +609,7 @@ export default function App() {
   const [eodSendResult, setEodSendResult] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [matrixCategoryFilter, setMatrixCategoryFilter] = useState('ALL');
+  const [showGunScannerModal, setShowGunScannerModal] = useState(false);
 
   const [isListenerRunning, setIsListenerRunning] = useState(false);
   const [isTogglingListener, setIsTogglingListener] = useState(false);
@@ -774,7 +959,9 @@ export default function App() {
         processedBills.current.add(bill.VOUCHER_NO);
         if (bill.MOBILE1 && bill.MOBILE1.length >= 10) {
           const amount = bill.NET_AMOUNT || 0;
-          const message = `🎉 Thank you for shopping with us!\n\nYour bill (No: ${bill.VOUCHER_NO}) amount is Rs ${amount}.\n\nWe hope to see you again soon! ✨`;
+          const custName = bill.CUSTOMER_FNAME || bill.CustomerName || 'Valued Customer';
+          const mobile = bill.MOBILE1;
+          const message = `🛍️ *COBB ITALY (PUNDRI) — DIGITAL RECEIPT*\n━━━━━━━━━━━━━━━━━━━━━━━━\n💰 *Bill Amount:* *₹${Number(amount).toLocaleString('en-IN')}*\n👤 *Customer:* *${custName}* (📱 *${mobile}*)\n🔢 *Bill No:* *#${bill.VOUCHER_NO}*\n━━━━━━━━━━━━━━━━━━━━━━━━\n\nDear *${custName}*,\nThank you for shopping at *Cobb Pundri*! We hope you loved our collection and had a wonderful experience with us. ✨\n\nWarm Regards,\n*Parbhat Goyal*\nCobb Pundri`;
           import('./utils/firebase.js').then(({ queueWhatsAppMessage }) => {
             if (queueWhatsAppMessage) queueWhatsAppMessage(bill.MOBILE1, message);
           }).catch(console.error);
@@ -894,6 +1081,13 @@ export default function App() {
         if (!res?.data?.error && Array.isArray(res.data)) {
           setMonthlyProducts(res.data);
           setLocalCache('monthlyProducts', res.data);
+        }
+      }).catch(console.error);
+
+      axios.get(`${API_BASE}/api/inventory`).then(res => {
+        if (!res?.data?.error && Array.isArray(res.data) && res.data.length > 0) {
+          setInventory(res.data);
+          setLocalCache('inventory', res.data);
         }
       }).catch(console.error);
 
@@ -1067,6 +1261,7 @@ export default function App() {
     const handleOpenKhata = () => setActiveTab('pocket_khata');
     const handleOpenDenomination = () => setActiveTab('denomination');
     const handleOpenRecon = () => setShowReconModal(true);
+    const handleOpenGunScanner = () => setShowGunScannerModal(true);
 
     window.addEventListener('cobb_force_sync', handleForceSync);
     window.addEventListener('cobb_open_speed_billing', handleOpenSpeed);
@@ -1075,6 +1270,7 @@ export default function App() {
     window.addEventListener('cobb_open_khata', handleOpenKhata);
     window.addEventListener('cobb_open_denomination', handleOpenDenomination);
     window.addEventListener('cobb_open_recon', handleOpenRecon);
+    window.addEventListener('cobb_open_gun_scanner', handleOpenGunScanner);
 
     return () => {
       window.removeEventListener('cobb_force_sync', handleForceSync);
@@ -1084,6 +1280,7 @@ export default function App() {
       window.removeEventListener('cobb_open_khata', handleOpenKhata);
       window.removeEventListener('cobb_open_denomination', handleOpenDenomination);
       window.removeEventListener('cobb_open_recon', handleOpenRecon);
+      window.removeEventListener('cobb_open_gun_scanner', handleOpenGunScanner);
     };
   }, [API_BASE]);
 
@@ -1096,9 +1293,17 @@ export default function App() {
         return;
       }
 
-      // 2. Ctrl+S / Cmd+S: Gun Barcode Scanner Focus
+      // 2. F3: Handheld Gun Barcode Scanner Pop-up Modal
+      if (e.key === 'F3') {
+        e.preventDefault();
+        setShowGunScannerModal(prev => !prev);
+        return;
+      }
+
+      // 3. Ctrl+S / Cmd+S: Gun Barcode Scanner (Focus or Open Modal)
       if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
         e.preventDefault();
+        setShowGunScannerModal(true);
         window.dispatchEvent(new CustomEvent('cobb_focus_scanner'));
         return;
       }
@@ -3238,6 +3443,23 @@ export default function App() {
             darkMode={darkMode}
           />
         </Suspense>
+
+        {/* Handheld Gun Barcode Scanner Modal Window (F3) */}
+        {showGunScannerModal && (
+          <Suspense fallback={null}>
+            <GunScannerModal
+              isOpen={showGunScannerModal}
+              onClose={() => setShowGunScannerModal(false)}
+              API_BASE={API_BASE}
+              inventory={inventory}
+              liveBills={liveBills}
+              activeStore={activeStore}
+              formatCurrency={formatCurrency}
+              darkMode={darkMode}
+              setActiveTab={setActiveTab}
+            />
+          </Suspense>
+        )}
       </Layout>
     </div>
   );

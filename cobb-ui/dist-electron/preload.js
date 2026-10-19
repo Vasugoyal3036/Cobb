@@ -19,7 +19,8 @@ e.exposeInMainWorld("ipcRenderer", {
 }), e.exposeInMainWorld("electronAPI", {
 	openExternal: (e) => t.invoke("open-external", e),
 	kickCashDrawer: () => t.invoke("kick-cash-drawer"),
-	printSilentThermal: (e) => t.invoke("print-silent-thermal", e)
+	printSilentThermal: (e) => t.invoke("print-silent-thermal", e),
+	showNotification: (e) => t.invoke("show-desktop-notification", e)
 });
 //#endregion
 export {};

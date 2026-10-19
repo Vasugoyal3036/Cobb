@@ -22,10 +22,22 @@ messaging.onBackgroundMessage((payload) => {
   const notif = payload.notification || {};
   const data = payload.data || {};
 
-  const title = notif.title || data.title || '🧾 New Sale Recorded';
-  const body = notif.body || data.body || 'A new checkout was made at Cobb.';
   const billNumber = data.billNumber || '';
   const billId = data.billId || '';
+  const rawAmt = data.amount || data.netAmount || 0;
+  const amtStr = rawAmt ? `₹${Number(rawAmt).toLocaleString('en-IN')}` : '';
+  const cust = data.customer || data.customerName || (data.customerPhone ? `Cust (${data.customerPhone})` : 'Walk-in');
+
+  let title = notif.title || data.title;
+  if (!title || title.includes('New Sale Recorded') || title.includes('New Sale Alert') || title.startsWith('🧾 New Sale:')) {
+    title = amtStr ? `🧾 ${amtStr} — ${cust}` : `🧾 New Sale — ${cust}`;
+  }
+
+  let body = notif.body || data.body;
+  if (!body || body.startsWith('🛍️') || body.includes('A new checkout')) {
+    body = `👤 Customer: ${cust} • Bill #${billNumber || billId || 'N/A'}\n💳 Amount: ${amtStr || 'Processed'}`;
+  }
+
   const targetUrl = data.url || (billNumber ? `/?tab=livebills&bill=${encodeURIComponent(billNumber)}` : '/?tab=livebills');
 
   self.registration.showNotification(title, {

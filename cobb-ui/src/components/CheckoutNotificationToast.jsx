@@ -179,6 +179,21 @@ const CheckoutNotificationToast = ({ notification, onClose, onOpenBill, onOpenEo
               {notification.title || (isSystemStatus ? 'Store Hardware Event' : `🧾 Sale: ₹${Number(notification.amount || 0).toLocaleString('en-IN')}`)}
             </h4>
 
+            {!isSystemStatus && (notification.amount !== undefined || notification.customer) && (
+              <div className="flex items-center gap-2 mt-1.5 mb-1 flex-wrap">
+                {notification.amount !== undefined && (
+                  <span className="text-sm font-black text-emerald-400 font-mono tracking-tight bg-emerald-500/15 px-2 py-0.5 rounded-md border border-emerald-500/30">
+                    ₹{Number(notification.amount).toLocaleString('en-IN')}
+                  </span>
+                )}
+                {notification.customer && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/10 text-slate-200 text-xs font-semibold border border-white/10">
+                    👤 {notification.customer}
+                  </span>
+                )}
+              </div>
+            )}
+
             <p className="text-xs text-slate-300/90 mt-1 leading-relaxed line-clamp-2 font-medium">
               {notification.body || (isSystemStatus ? 'Store system state updated.' : 'New checkout processed on POS.')}
             </p>

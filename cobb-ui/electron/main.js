@@ -1,4 +1,4 @@
-import { app, BrowserWindow, protocol, net, shell, ipcMain } from 'electron';
+import { app, BrowserWindow, protocol, net, shell, ipcMain, Notification } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fs from 'node:fs';
@@ -200,6 +200,32 @@ ipcMain.handle('print-silent-thermal', async (_event, options = {}) => {
   } catch (err) {
     return { success: false, error: err.message };
   }
+});
+
+// IPC: Native Desktop Notification (Windows Action Center / Notification Tray)
+ipcMain.handle('show-desktop-notification', async (_event, { title, body, icon } = {}) => {
+  try {
+    if (Notification.isSupported()) {
+      const defaultIcon = path.join(process.env.VITE_PUBLIC, 'ors-logo.png');
+      const iconPath = icon && fs.existsSync(icon) ? icon : (fs.existsSync(defaultIcon) ? defaultIcon : undefined);
+      const n = new Notification({
+        title: title || 'Cobb POS Notification',
+        body: body || '',
+        icon: iconPath
+      });
+      n.on('click', () => {
+        if (win) {
+          if (win.isMinimized()) win.restore();
+          win.focus();
+        }
+      });
+      n.show();
+      return { success: true };
+    }
+  } catch (err) {
+    console.warn('[Electron Notification Warning]:', err.message);
+  }
+  return { success: false };
 });
 
 app.whenReady().then(() => {

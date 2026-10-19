@@ -485,18 +485,29 @@ def get_db_connection():
 
     return pyodbc.connect(conn_str)
 
-def send_whatsapp_message(phone_number, customer_name, dedupe_key=None):
-    """Sends standard post-purchase thank you message for regular sales bills."""
+def send_whatsapp_message(phone_number, customer_name, dedupe_key=None, amount=None, bill_no=None):
+    """Sends standard post-purchase digital receipt & thank you message for regular sales bills."""
     clean_phone = normalize_phone_number(phone_number)
     if not clean_phone or len(clean_phone) < 10:
         return {'status': 'no_phone', 'detail': 'Invalid phone number format'}
 
+    display_mobile = clean_phone[-10:] if len(clean_phone) >= 10 else clean_phone
+    cust_name = str(customer_name or 'Valued Customer').strip()
+    amt_line = f"💰 *BILL AMOUNT:* *₹{int(round(amount)):,}*\n" if amount is not None else ""
+    bill_line = f"🔢 *INVOICE NO:* *#{bill_no}*\n" if bill_no else ""
+
     message_text = (
-        f"Hello *{customer_name or 'Valued Customer'}*! 👋\n\n"
-        f"Thank you for shopping at *Cobb Pundri* today. We hope you loved our latest collection and had a wonderful experience with us! ✨\n\n"
+        f"🛍️ *COBB ITALY (PUNDRI) — DIGITAL RECEIPT*\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"{amt_line}"
+        f"👤 *Customer:* *{cust_name}* (📱 *{display_mobile}*)\n"
+        f"{bill_line}"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"Dear *{cust_name}*,\n"
+        f"Thank you for shopping at *Cobb Pundri* today! We hope you loved our latest collection and had a wonderful experience with us. ✨\n\n"
         f"-----------------------------------\n"
         f"📍 *Store Location:*\n{LOCATION_LINK}\n\n"
-        f"⭐ *Leave us a review:*\n{DIRECT_REVIEW_LINK}\n"
+        f"⭐ *Rate Your Experience & Leave Us a Google Review:*\n{DIRECT_REVIEW_LINK}\n"
         f"-----------------------------------\n\n"
         f"Stay connected with our latest drops:\n"
         f"📸 *Instagram:* {INSTAGRAM_LINK}\n"
@@ -589,6 +600,10 @@ def send_exchange_whatsapp_slip(phone_number, customer_name, bill_no, bill_time,
     message_text = (
         f"🛍️ *COBB ITALY (PUNDRI) — OFFICIAL EXCHANGE SLIP*\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"{settlement_line}\n"
+        f"👤 *Customer:* *{cust_name}* (📱 *{display_mobile}*)\n"
+        f"🔢 *Invoice No:* *#{bill_no}* • *Date:* {date_str}\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
         f"Dear *{cust_name}*,\n"
         f"Your product exchange has been processed successfully! ✨\n\n"
         f"📋 *EXCHANGE DETAILS:*\n"
@@ -598,8 +613,6 @@ def send_exchange_whatsapp_slip(phone_number, customer_name, bill_no, bill_time,
         f"{ret_text}\n\n"
         f"✨ *NEW REPLACEMENT ITEM:*\n"
         f"{rep_text}\n\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"{settlement_line}\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
         f"📍 *Store Address:*\n"
         f"{STORE_ADDRESS}\n"
@@ -836,7 +849,7 @@ def run_listener():
                         success = res['status'] in ('sent', 'not_on_whatsapp')
                     else:
                         log_engine(f"[NEW BILL DETECTED] Bill #{bill_no} | Rs.{amount} | Phone: {clean_phone}")
-                        res = send_whatsapp_message(clean_phone, name, cm_id_str)
+                        res = send_whatsapp_message(clean_phone, name, cm_id_str, amount=amount, bill_no=bill_no)
                         if res.get('status') == 'client_not_ready':
                             log_engine(f"[GATEWAY WAITING] WhatsApp Client is reconnecting. Will retry Bill #{bill_no} once gateway is ready.")
                             break

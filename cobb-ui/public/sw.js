@@ -111,10 +111,22 @@ self.addEventListener('push', (event) => {
   const notificationData = payload.notification || {};
   const customData = payload.data || {};
 
-  const title = notificationData.title || customData.title || '🧾 New Sale Recorded';
-  const body = notificationData.body || customData.body || 'A new checkout was made.';
   const billNumber = customData.billNumber || '';
   const billId = customData.billId || '';
+  const rawAmt = customData.amount || customData.netAmount || 0;
+  const amtStr = rawAmt ? `₹${Number(rawAmt).toLocaleString('en-IN')}` : '';
+  const cust = customData.customer || customData.customerName || (customData.customerPhone ? `Cust (${customData.customerPhone})` : 'Walk-in');
+
+  let title = notificationData.title || customData.title;
+  if (!title || title.includes('New Sale Recorded') || title.includes('New Sale Alert') || title.startsWith('🧾 New Sale:')) {
+    title = amtStr ? `🧾 ${amtStr} — ${cust}` : `🧾 New Sale — ${cust}`;
+  }
+
+  let body = notificationData.body || customData.body;
+  if (!body || body.startsWith('🛍️') || body.includes('A new checkout')) {
+    body = `👤 Customer: ${cust} • Bill #${billNumber || billId || 'N/A'}\n💳 Amount: ${amtStr || 'Processed'}`;
+  }
+
   const targetUrl = customData.url || (billNumber ? `/?tab=livebills&bill=${encodeURIComponent(billNumber)}` : '/?tab=livebills');
 
   const options = {

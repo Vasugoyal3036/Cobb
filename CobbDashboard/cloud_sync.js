@@ -373,7 +373,7 @@ async function checkAndDispatchCheckoutAlerts() {
             let custDisplay = 'Walk-in';
             if (custName && custPhone) custDisplay = `${custName} (${custPhone})`;
             else if (custName) custDisplay = custName;
-            else if (custPhone) custDisplay = `Cust (${custPhone})`;
+            else if (custPhone) custDisplay = custPhone;
 
             const discountAmt = Math.round(Number(bill.DiscountAmount || 0));
             const grossAmt = Math.round(Number(bill.GrossAmount || (amount + discountAmt)));
@@ -404,32 +404,33 @@ async function checkAndDispatchCheckoutAlerts() {
                 paySummary += ` (No Disc)`;
             }
 
-            // Categorize Alert:
-            // 1. Heavy Discount Warning (Fraud / Revenue Leakage Prevention)
-            // 2. VIP Mega Sale Alert (High Value Purchase)
-            // 3. Exchange
-            // 4. Regular New Sale
+            // Categorize Alert with Bill Amount and Customer on Priority:
+            // 1. Regular New Sale
+            // 2. Exchange
+            // 3. Heavy Discount Warning (Fraud / Revenue Leakage Prevention)
+            // 4. VIP Mega Sale Alert (High Value Purchase)
             const isExchange = Array.isArray(bill.Items) && bill.Items.some(it => (Number(it.Quantity) || 1) < 0);
 
             let alertType = 'sale';
-            let title = `🧾 New Sale: ₹${amount.toLocaleString('en-IN')} | Bill #${billNo}`;
-            let body = `🛍️ ${qty} Items: ${itemSummary}\n💳 ${paySummary}\n👤 Customer: ${custDisplay} • Staff: ${staff}`;
+            // Status bar priority: Amount front-and-center, followed by Customer Name & Number
+            let title = `🧾 ₹${amount.toLocaleString('en-IN')} — ${custDisplay}`;
+            let body = `👤 Customer: ${custDisplay} • Bill #${billNo}\n💳 Pay: ${pay} • Staff: ${staff} • 🛍️ ${qty} Items: ${itemSummary}`;
             let tag = `cobb-sale-${billNo}`;
 
             if (isExchange) {
                 alertType = 'exchange';
-                title = `🔄 Product Exchange: ₹${amount.toLocaleString('en-IN')} | Bill #${billNo}`;
-                body = `🔄 Exchange Processed\n💳 ${paySummary}\n👤 Customer: ${custDisplay} • Staff: ${staff}`;
+                title = `🔄 ₹${amount.toLocaleString('en-IN')} Exchange — ${custDisplay}`;
+                body = `👤 Customer: ${custDisplay} • Bill #${billNo}\n🔄 Diff Collected: ₹${amount.toLocaleString('en-IN')} • Pay: ${pay} • Staff: ${staff}`;
                 tag = `cobb-exchange-${billNo}`;
             } else if ((discountPct >= 35 && discountAmt >= 1000) || discountAmt >= 2500) {
                 alertType = 'heavy_discount';
-                title = `⚠️ HEAVY DISCOUNT (${discountPct}% OFF) | Bill #${billNo}`;
-                body = `⚠️ Staff: ${staff} gave ₹${discountAmt.toLocaleString('en-IN')} (${discountPct}%) discount!\n🛍️ ${qty} Items: ${itemSummary}\n💳 ${paySummary}\n👤 Customer: ${custDisplay}`;
+                title = `⚠️ ₹${amount.toLocaleString('en-IN')} (${discountPct}% OFF) — ${custDisplay}`;
+                body = `👤 Customer: ${custDisplay} • Bill #${billNo}\n⚠️ Staff ${staff} gave ₹${discountAmt.toLocaleString('en-IN')} (${discountPct}%) discount! • Pay: ${pay}`;
                 tag = `cobb-discount-${billNo}`;
             } else if (amount >= 10000) {
                 alertType = 'big_ticket_sale';
-                title = `💎 VIP MEGA SALE: ₹${amount.toLocaleString('en-IN')} | Bill #${billNo}`;
-                body = `🎉 VIP Purchase (${qty} Items: ${itemSummary})\n💳 ${paySummary}\n👤 Customer: ${custDisplay} • Staff: ${staff}`;
+                title = `💎 ₹${amount.toLocaleString('en-IN')} VIP SALE — ${custDisplay}`;
+                body = `👤 Customer: ${custDisplay} • Bill #${billNo} (VIP)\n💳 Pay: ${pay} • Staff: ${staff} • 🛍️ ${qty} Items: ${itemSummary} • Disc: ₹${discountAmt.toLocaleString('en-IN')}`;
                 tag = `cobb-vip-${billNo}`;
             }
 
@@ -447,6 +448,8 @@ async function checkAndDispatchCheckoutAlerts() {
                 paymentMode: pay,
                 salesperson: staff,
                 customer: custDisplay,
+                customerName: custName,
+                customerPhone: custPhone,
                 title,
                 body,
                 url: clickUrl,
@@ -475,6 +478,9 @@ async function checkAndDispatchCheckoutAlerts() {
                             billNumber: billNo,
                             billId: String(bill.BillId || ''),
                             amount: String(amount),
+                            customer: custDisplay,
+                            customerName: custName,
+                            customerPhone: custPhone,
                             discountAmount: String(discountAmt),
                             discountPercent: String(discountPct),
                             url: clickUrl
@@ -595,39 +601,43 @@ async function checkAndDispatchCheckoutAlerts() {
                 custDetailDisplay = `📱 ${custPhone}`;
             }
 
-            // Assemble the detailed WhatsApp checkout alert for owners
+            // Assemble WhatsApp checkout alert for owners — Amount and Customer Name & Number on Priority
             let waCheckoutText = '';
             if (isExchange) {
                 waCheckoutText = 
-                    `🔄 *PRODUCT EXCHANGE RECORDED* — *${STORE_NAME}*\n` +
+                    `🔄 *PRODUCT EXCHANGE: ₹${amount.toLocaleString('en-IN')}*\n` +
+                    `👤 *Customer:* *${custName || 'Walk-in'}* ${custPhone ? `(📱 *${custPhone}*)` : ''}\n` +
                     `──────────────────────\n` +
+                    `💰 *Settlement Amount:* *₹${amount.toLocaleString('en-IN')}*\n` +
+                    `👤 *Customer Name:* *${custName || 'Walk-in'}*\n` +
+                    `📱 *Customer Mobile:* *${custPhone || 'N/A'}*\n` +
                     `🔢 *Bill No:* #${billNo}\n` +
+                    `💳 *Payment Mode:* ${payDetail}\n` +
+                    `👔 *Salesperson:* ${staff}\n` +
                     `🕒 *Time:* ${timeStrFormatted}\n` +
-                    `👤 *Customer:* ${custDetailDisplay}\n` +
-                    `👔 *Salesperson:* ${staff}\n\n` +
+                    `──────────────────────\n` +
                     `📦 *EXCHANGE DETAILS (${qty} item${qty > 1 ? 's' : ''}):*\n` +
                     `${purchasedArticlesText}\n\n` +
-                    `──────────────────────\n` +
-                    `✅ *Difference Collected:* *₹${amount.toLocaleString('en-IN')}*\n` +
-                    `💳 *Payment Mode:* ${payDetail}\n` +
                     `──────────────────────\n` +
                     (todayTillLine ? `${todayTillLine}` : '') +
                     `👉 *View Live Bill:* https://cobb-store.web.app/?tab=livebills`;
             } else {
                 waCheckoutText = 
-                    `🧾 *NEW SALE RECORDED* — *${STORE_NAME}*\n` +
+                    `🧾 *NEW SALE: ₹${amount.toLocaleString('en-IN')}*\n` +
+                    `👤 *Customer:* *${custName || 'Walk-in'}* ${custPhone ? `(📱 *${custPhone}*)` : ''}\n` +
                     `──────────────────────\n` +
+                    `💰 *Bill Amount:* *₹${amount.toLocaleString('en-IN')}*\n` +
+                    `👤 *Customer Name:* *${custName || 'Walk-in'}*\n` +
+                    `📱 *Customer Mobile:* *${custPhone || 'N/A'}*\n` +
                     `🔢 *Bill No:* #${billNo}\n` +
+                    `💳 *Payment Mode:* ${payDetail}\n` +
+                    `👔 *Salesperson:* ${staff}\n` +
                     `🕒 *Time:* ${timeStrFormatted}\n` +
-                    `👤 *Customer:* ${custDetailDisplay}\n` +
-                    `👔 *Salesperson:* ${staff}\n\n` +
-                    `📦 *PURCHASED ARTICLES (${qty} item${qty > 1 ? 's' : ''}):*\n` +
-                    `${purchasedArticlesText}\n\n` +
                     `──────────────────────\n` +
                     `💰 *Gross MRP Total:* ₹${grossAmt.toLocaleString('en-IN')}\n` +
                     `${discountLine}\n` +
-                    `✅ *Net Collected:* *₹${amount.toLocaleString('en-IN')}*\n` +
-                    `💳 *Payment Mode:* ${payDetail}\n` +
+                    `📦 *PURCHASED ARTICLES (${qty} item${qty > 1 ? 's' : ''}):*\n` +
+                    `${purchasedArticlesText}\n\n` +
                     `──────────────────────\n` +
                     (todayTillLine ? `${todayTillLine}` : '') +
                     `👉 *View Live Bill:* https://cobb-store.web.app/?tab=livebills`;
@@ -688,8 +698,8 @@ async function checkAndDispatchCancelledBillAlerts() {
             const staff = bill.Salesperson || 'Counter Staff';
             const cust = bill.CustomerName && bill.CustomerName.trim() ? bill.CustomerName.trim() : (bill.Phone ? `Cust (${bill.Phone})` : 'Walk-in');
 
-            const title = `🚫 BILL CANCELLED / VOIDED: ₹${amount.toLocaleString('en-IN')} | Bill #${billNo}`;
-            const body = `⚠️ Warning: Bill #${billNo} worth ₹${amount.toLocaleString('en-IN')} was cancelled at POS counter!`;
+            const title = `🚫 ₹${amount.toLocaleString('en-IN')} CANCELLED — ${cust}`;
+            const body = `👤 Customer: ${cust} • Bill #${billNo}\n⚠️ Warning: Bill #${billNo} worth ₹${amount.toLocaleString('en-IN')} was cancelled at POS counter by ${staff}!`;
             const alertId = `cancelled_${bill.BillId || billNo}_${Date.now()}`;
 
             const payload = {
@@ -720,6 +730,7 @@ async function checkAndDispatchCancelledBillAlerts() {
                         body,
                         billNumber: billNo,
                         amount: String(amount),
+                        customer: cust,
                         url: '/?tab=livebills'
                     },
                     webpush: {
@@ -728,24 +739,25 @@ async function checkAndDispatchCancelledBillAlerts() {
                             title,
                             body,
                             icon: '/ors-logo.png',
-                            badge: '/favicon.svg',
+                            badge: '/ors-logo.png',
                             tag: `cobb-cancelled-${billNo}`
                         }
                     }
                 }).catch(e => console.warn('[SYNC AGENT] Cancelled bill FCM push notice:', e.message));
             }
 
-            // Dispatch WhatsApp cancelled bill alert to 4 store owners
+            // Dispatch WhatsApp cancelled bill alert to 4 store owners — Amount and Customer on Priority
             const waCancelledText = 
-                `⚠️ *CANCELLED BILL ALERT* — *${STORE_NAME}*\n` +
+                `🚫 *CANCELLED BILL: ₹${amount.toLocaleString('en-IN')}*\n` +
+                `👤 *Customer:* *${cust}*\n` +
                 `──────────────────────\n` +
+                `💰 *Cancelled Amount:* *₹${amount.toLocaleString('en-IN')}*\n` +
+                `👤 *Customer:* *${cust}*\n` +
                 `🔢 *Bill No:* #${billNo}\n` +
-                `💰 *Amount:* ₹${amount.toLocaleString('en-IN')}\n` +
-                `👤 *Customer:* ${cust}\n` +
                 `👔 *Salesperson:* ${staff}\n` +
                 `🕒 *Time:* ${formatTimeAMPM(new Date())}\n` +
                 `──────────────────────\n` +
-                `_Alert: This bill was cancelled at the counter._`;
+                `⚠️ _Alert: Bill #${billNo} worth ₹${amount.toLocaleString('en-IN')} was cancelled at POS counter._`;
 
             sendWhatsAppToOwners(waCancelledText, `Cancelled #${billNo}`).catch(() => {});
         }
