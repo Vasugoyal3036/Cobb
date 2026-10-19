@@ -42,7 +42,21 @@ function loadStaffConfig() {
             fs.writeFileSync(CONFIG_FILE, JSON.stringify(defaultConfig, null, 2), 'utf8');
             return defaultConfig;
         }
-        return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+        const parsed = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+        const STORE_CONFIG_FILE = path.join(__dirname, '..', 'store_config.json');
+        if (fs.existsSync(STORE_CONFIG_FILE)) {
+            try {
+                const sc = JSON.parse(fs.readFileSync(STORE_CONFIG_FILE, 'utf8'));
+                const op = sc?.operatingExpenses;
+                if (op?.monthlyTargetSales) {
+                    parsed.monthlyStoreTarget = op.monthlyTargetSales;
+                }
+                if (op?.staffSalariesBreakdown?.targetPerSalesman) {
+                    parsed.staffTarget = op.staffSalariesBreakdown.targetPerSalesman;
+                }
+            } catch (err) {}
+        }
+        return parsed;
     } catch (e) {
         console.error('[StaffRoute] Error loading config:', e.message);
         return {
@@ -97,34 +111,38 @@ const shortMonthNames = [
 ];
 
 /**
- * Calculates incentive rate and commission earned based on target and sales:
- * - Target = 400,000 (or period-scaled target)
- * - Sales >= 400,000 (or >= 100% of target) => 1.0%
- * - Sales >= 300,000 (or >= 75% of target)  => 0.75%
- * - Sales <= 200,000 (or < 75% of target)   => 0.5%
+ * Calculates incentive rate and commission earned based on target achievement:
+ * - Sales >= 95% of target => 1.0%
+ * - Sales >= 75% of target => 0.75%
+ * - Sales >= 50% of target (half) => 0.5%
+ * - Sales < 50% of target => 0.0%
  */
 function calculateIncentiveTier(salesAmount, baseTarget = DEFAULT_STAFF_TARGET) {
     const target = baseTarget || DEFAULT_STAFF_TARGET;
-    const tier1Threshold = target;                     // 400,000 (100%)
-    const tier2Threshold = Math.round(target * 0.75); // 300,000 (75%)
-    const tier3Threshold = Math.round(target * 0.50); // 200,000 (50%)
+    const tier1Threshold = Math.round(target * 0.95); // >= 95% of target (1.0%)
+    const tier2Threshold = Math.round(target * 0.75); // >= 75% of target (0.75%)
+    const tier3Threshold = Math.round(target * 0.50); // >= 50% of target (0.5%)
 
-    let rate = 0.5;
-    let slabLabel = '≤ 2L (0.5%)';
-    let tierCode = 'tier3';
+    let rate = 0.0;
+    let slabLabel = '< 50% Target (0%)';
+    let tierCode = 'tier4';
 
     if (salesAmount >= tier1Threshold) {
         rate = 1.0;
-        slabLabel = '≥ 4L (1.0%)';
+        slabLabel = '≥ 95% Target (1.0%)';
         tierCode = 'tier1';
     } else if (salesAmount >= tier2Threshold) {
         rate = 0.75;
-        slabLabel = '≥ 3L (0.75%)';
+        slabLabel = '≥ 75% Target (0.75%)';
         tierCode = 'tier2';
-    } else {
+    } else if (salesAmount >= tier3Threshold) {
         rate = 0.5;
-        slabLabel = '≤ 2L (0.5%)';
+        slabLabel = '≥ 50% Target (0.5%)';
         tierCode = 'tier3';
+    } else {
+        rate = 0.0;
+        slabLabel = '< 50% Target (0%)';
+        tierCode = 'tier4';
     }
 
     const commission = Math.round((salesAmount * rate) / 100);

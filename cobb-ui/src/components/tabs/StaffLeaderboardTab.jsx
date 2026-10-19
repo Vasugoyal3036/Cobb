@@ -53,14 +53,15 @@ export default function StaffLeaderboardTab({ API_BASE = 'http://localhost:5000'
   const [expandedDayKey, setExpandedDayKey] = useState(null);
 
   const [configForm, setConfigForm] = useState({
-    monthlyStoreTarget: 400000,
-    staffTarget: 400000,
-    dailyStoreTarget: 13333,
+    monthlyStoreTarget: 900000,
+    staffTarget: 450000,
+    dailyStoreTarget: 30000,
     defaultCommissionPct: 1.0,
     incentiveSlabs: {
-      tier1: { threshold: 400000, rate: 1.0, label: "≥ ₹4,00,000 (1.0%)" },
-      tier2: { threshold: 300000, rate: 0.75, label: "≥ ₹3,00,000 (0.75%)" },
-      tier3: { threshold: 200000, rate: 0.5, label: "≤ ₹2,00,000 (0.5%)" }
+      tier1: { threshold: 427500, rate: 1.0, label: "≥ 95% (1.0%)" },
+      tier2: { threshold: 337500, rate: 0.75, label: "≥ 75% (0.75%)" },
+      tier3: { threshold: 225000, rate: 0.5, label: "≥ 50% (0.5%)" },
+      tier4: { threshold: 0, rate: 0, label: "< 50% (0%)" }
     },
     staffOverrides: {}
   });
@@ -1949,20 +1950,24 @@ export default function StaffLeaderboardTab({ API_BASE = 'http://localhost:5000'
               {/* Slabs summary */}
               <div className="bg-slate-50 dark:bg-slate-800/50 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-700/60 space-y-2">
                 <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
-                  Active Incentive Slabs:
+                  Active Incentive Slabs (Target Achievement):
                 </span>
                 <div className="space-y-1 text-xs">
                   <div className="flex justify-between items-center">
-                    <span className="text-slate-600 dark:text-slate-400">≥ ₹4,00,000 (Target Met)</span>
-                    <span className="font-bold text-amber-600 dark:text-amber-400">1.0%</span>
+                    <span className="text-slate-600 dark:text-slate-400">≥ 95% of Target</span>
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400">1.0%</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-slate-600 dark:text-slate-400">≥ ₹3,00,000 (75% Target)</span>
+                    <span className="text-slate-600 dark:text-slate-400">≥ 75% of Target</span>
                     <span className="font-bold text-cyan-600 dark:text-cyan-400">0.75%</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-slate-600 dark:text-slate-400">≤ ₹2,00,000 (Base Tier)</span>
-                    <span className="font-bold text-slate-600 dark:text-slate-300">0.5%</span>
+                    <span className="text-slate-600 dark:text-slate-400">≥ 50% of Target (Half)</span>
+                    <span className="font-bold text-amber-600 dark:text-amber-400">0.50%</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-600 dark:text-slate-400">&lt; 50% of Target</span>
+                    <span className="font-bold text-slate-400">0.0%</span>
                   </div>
                 </div>
               </div>

@@ -785,9 +785,22 @@ export default function PocketKhataTab(props) {
               <p className="text-[10px] text-slate-500">Logged at counter</p>
             </div>
             <div className="p-3 rounded-xl border border-slate-200 dark:border-slate-800">
-              <span className="text-[10px] font-bold text-slate-400 uppercase">3. Store Daily OpEx</span>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-slate-400 uppercase">3. Store Daily OpEx</span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    window.dispatchEvent(new Event('cobb_open_store_expenses'));
+                  }}
+                  className="text-[10px] font-bold text-amber-500 hover:text-amber-400 hover:underline cursor-pointer flex items-center gap-0.5"
+                  title="Modify Daily Expense & Staff Salaries"
+                >
+                  <span>Edit OpEx</span>
+                </button>
+              </div>
               <p className="text-base font-black font-mono text-amber-400 mt-1">-{formatCurrency(fixedDailyOpEx)}</p>
-              <p className="text-[10px] text-slate-500">Rent, electricity, salaries</p>
+              <p className="text-[10px] text-slate-500">Rent, electricity, dynamic staff</p>
             </div>
             <div className="p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/5">
               <span className="text-[10px] font-bold text-emerald-500 uppercase">= Net Store Profit</span>

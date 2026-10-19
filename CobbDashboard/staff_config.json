@@ -1,26 +1,31 @@
 {
-  "monthlyStoreTarget": 400000,
-  "staffTarget": 400000,
-  "dailyStoreTarget": 13333,
+  "monthlyStoreTarget": 900000,
+  "staffTarget": 450000,
+  "dailyStoreTarget": 30000,
   "incentiveSlabs": {
     "tier1": {
-      "threshold": 400000,
+      "threshold": 427500,
       "rate": 1,
-      "label": "≥ ₹4,00,000 (1.0%)"
+      "label": "≥ 95% (1.0%)"
     },
     "tier2": {
-      "threshold": 300000,
+      "threshold": 337500,
       "rate": 0.75,
-      "label": "≥ ₹3,00,000 (0.75%)"
+      "label": "≥ 75% (0.75%)"
     },
     "tier3": {
-      "threshold": 200000,
+      "threshold": 225000,
       "rate": 0.5,
-      "label": "≤ ₹2,00,000 (0.5%)"
+      "label": "≥ 50% (0.5%)"
+    },
+    "tier4": {
+      "threshold": 0,
+      "rate": 0,
+      "label": "< 50% (0%)"
     }
   },
   "defaultCommissionPct": 1,
-  "bonusThreshold": 400000,
+  "bonusThreshold": 450000,
   "bonusCommissionPct": 0,
   "printerConfig": {
     "paperWidth": "80mm",
@@ -33,23 +38,25 @@
   "staffOverrides": {
     "2800003": {
       "name": "Vikas",
-      "target": 400000
+      "target": 450000,
+      "isInactive": false
     },
     "3200014": {
       "name": "Pawan",
-      "target": 400000
+      "target": 450000
     },
     "0001001": {
       "name": "Simran",
-      "target": 400000
+      "target": 450000,
+      "isInactive": false
     },
     "0000180": {
       "name": "Akhil",
-      "target": 400000
+      "target": 450000
     },
     "0000000": {
-      "name": "Simran",
-      "target": 400000
+      "name": "Store Direct Billing",
+      "target": 450000
     }
   }
 }

@@ -10,7 +10,7 @@
     "storeTotalBills": 5,
     "storeTotalItems": 19,
     "staffSales": 13489,
-    "totalCommission": 95,
+    "totalCommission": 68,
     "activeStaffCount": 2,
     "staff": [
       {
@@ -24,9 +24,9 @@
         "bills": 2,
         "aov": 5395,
         "upt": 5,
-        "commissionRate": 0.75,
-        "commission": 81,
-        "slabLabel": "≥ 3L (0.75%)",
+        "commissionRate": 0.5,
+        "commission": 54,
+        "slabLabel": "≤ 2L (0.5%)",
         "rank": 1
       },
       {
@@ -47,7 +47,7 @@
       },
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -67,9 +67,9 @@
       "sales": 10789,
       "bills": 2,
       "items": 10,
-      "commission": 81,
-      "commissionRate": 0.75,
-      "slabLabel": "≥ 3L (0.75%)"
+      "commission": 54,
+      "commissionRate": 0.5,
+      "slabLabel": "≤ 2L (0.5%)"
     }
   },
   {
@@ -104,7 +104,7 @@
       },
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -177,7 +177,7 @@
       },
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -234,7 +234,7 @@
       },
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -291,7 +291,7 @@
       },
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -348,7 +348,7 @@
       },
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -405,7 +405,7 @@
       },
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -446,7 +446,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -536,7 +536,7 @@
       },
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -625,7 +625,7 @@
       },
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -724,7 +724,7 @@
       },
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -781,7 +781,7 @@
       },
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -838,7 +838,7 @@
       },
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -911,7 +911,7 @@
       },
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -968,7 +968,7 @@
       },
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -1009,7 +1009,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -1057,7 +1057,7 @@
       },
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -1098,7 +1098,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -1130,7 +1130,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -1162,7 +1162,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -1194,7 +1194,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -1226,7 +1226,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -1258,7 +1258,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -1290,7 +1290,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -1322,7 +1322,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -1354,7 +1354,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -1386,7 +1386,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -1418,7 +1418,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -1450,7 +1450,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -1498,7 +1498,7 @@
       },
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -1539,7 +1539,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -1571,7 +1571,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -1603,7 +1603,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -1635,7 +1635,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -1667,7 +1667,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -1699,7 +1699,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -1731,7 +1731,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -1763,7 +1763,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -1795,7 +1795,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -1827,7 +1827,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -1859,7 +1859,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -1891,7 +1891,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -1923,7 +1923,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -1950,7 +1950,7 @@
     "storeTotalBills": 16,
     "storeTotalItems": 79,
     "staffSales": 10899,
-    "totalCommission": 82,
+    "totalCommission": 54,
     "activeStaffCount": 1,
     "staff": [
       {
@@ -1964,14 +1964,14 @@
         "bills": 1,
         "aov": 10899,
         "upt": 10,
-        "commissionRate": 0.75,
-        "commission": 82,
-        "slabLabel": "≥ 3L (0.75%)",
+        "commissionRate": 0.5,
+        "commission": 54,
+        "slabLabel": "≤ 2L (0.5%)",
         "rank": 1
       },
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -1991,9 +1991,9 @@
       "sales": 10899,
       "bills": 1,
       "items": 10,
-      "commission": 82,
-      "commissionRate": 0.75,
-      "slabLabel": "≥ 3L (0.75%)"
+      "commission": 54,
+      "commissionRate": 0.5,
+      "slabLabel": "≤ 2L (0.5%)"
     }
   },
   {
@@ -2012,7 +2012,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -2044,7 +2044,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -2076,7 +2076,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -2108,7 +2108,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -2140,7 +2140,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -2172,7 +2172,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -2204,7 +2204,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -2252,7 +2252,7 @@
       },
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -2309,7 +2309,7 @@
       },
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -2350,7 +2350,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -2382,7 +2382,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -2414,7 +2414,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -2446,7 +2446,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -2478,7 +2478,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -2510,7 +2510,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -2558,7 +2558,7 @@
       },
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -2615,7 +2615,7 @@
       },
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -2688,7 +2688,7 @@
       },
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -2729,7 +2729,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -2761,7 +2761,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -2793,7 +2793,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -2825,7 +2825,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -2857,7 +2857,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -2889,7 +2889,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -2921,7 +2921,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
@@ -2953,7 +2953,7 @@
     "staff": [
       {
         "empCode": "0000000",
-        "name": "Simran",
+        "name": "Store Direct Billing",
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,

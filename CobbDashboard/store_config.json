@@ -3,29 +3,66 @@
   "presetId": "goyal",
   "firmBrand": "Goyal - House Of Fashion",
   "storeProfile": {
-    "firmBrand": "Goyal - House Of Fashion",
     "storeName": "Goyal - House Of Fashion (Pundri Flagship)",
-    "storeId": "DEMO_STORE_001",
-    "code": "GHOF01",
-    "branch": "Pundri Flagship",
-    "city": "Pundri",
-    "location": "Fatehpur Road, Pundri"
+    "branch": "Pundri Flagship"
   },
   "operatingExpenses": {
     "rent": 40000,
-    "staffSalaries": 46000,
+    "staffSalaries": 34000,
     "electricity": 10000,
     "miscExpenses": 5000,
     "franchiseRoyalty": 0,
-    "totalExpenses": 101000,
-    "dailyExpense": 3367,
-    "dailyOpEx": 3367,
-    "dailyAmortizedExpense": 3367,
+    "totalExpenses": 89000,
+    "dailyExpense": 2967,
+    "dailyOpEx": 2967,
+    "dailyAmortizedExpense": 2967,
     "targetMarginPct": 25,
     "dailyTargetSales": 50000,
     "monthlyTargetSales": 900000,
-    "dailyBreakEvenSales": 13468,
-    "monthlyBreakEvenSales": 404000
+    "dailyBreakEvenSales": 11868,
+    "monthlyBreakEvenSales": 356000,
+    "salesmanSalaries": [
+      {
+        "id": "2800003",
+        "empCode": "2800003",
+        "name": "Vikas",
+        "salary": 15000,
+        "mtdSales": 0,
+        "isActive": true
+      },
+      {
+        "id": "3200014",
+        "empCode": "3200014",
+        "name": "Pawan",
+        "salary": "",
+        "mtdSales": 0,
+        "isActive": false
+      },
+      {
+        "id": "0001001",
+        "empCode": "0001001",
+        "name": "Simran",
+        "salary": 10000,
+        "mtdSales": 0,
+        "isActive": true
+      },
+      {
+        "id": "0000180",
+        "empCode": "0000180",
+        "name": "Akhil",
+        "salary": "",
+        "mtdSales": 0,
+        "isActive": false
+      }
+    ],
+    "staffSalariesBreakdown": {
+      "totalBaseSalaries": 25000,
+      "totalIncentives": 9000,
+      "dynamicStaffSalaries": 34000,
+      "activeSalesmenCount": 2,
+      "targetPerSalesman": 450000,
+      "incentiveMode": "target"
+    }
   },
   "database": {
     "engine": "mssql",
@@ -37,5 +74,5 @@
     "password": "",
     "port": 1433
   },
-  "lastUpdated": "2026-10-09T11:56:39.911Z"
+  "lastUpdated": "2026-10-19T13:16:49.799Z"
 }
