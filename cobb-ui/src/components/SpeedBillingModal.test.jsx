@@ -128,4 +128,44 @@ describe('SpeedBillingModal (Zero-Mouse F1-F12 POS)', () => {
       expect(screen.getByText(/POS Cart is Empty/i)).toBeDefined();
     });
   });
+
+  it('renders Customer Size Memory bar and alerts when customer mobile is entered', async () => {
+    axios.get.mockImplementation((url) => {
+      if (url.includes('/api/loyalty/customer/9812044810')) {
+        return Promise.resolve({
+          data: {
+            phone: '9812044810',
+            customerName: 'Vikramjit Singh',
+            points: 250,
+            tier: 'Gold',
+            fitProfile: {
+              summaryText: '👔 Shirt: 40 | 👖 Trouser: 32 | 🧥 Blazer: 40',
+              hasHistory: true,
+              totalGarmentsPurchased: 8,
+              categories: {
+                shirts: { label: 'Shirts', icon: '👔', primarySize: '40', confidence: 'High', totalPurchased: 4 },
+                trousers: { label: 'Trousers & Denims', icon: '👖', primarySize: '32', confidence: 'High', totalPurchased: 3 }
+              }
+            }
+          }
+        });
+      }
+      return Promise.resolve({ data: { success: true } });
+    });
+
+    await React.act(async () => {
+      render(<SpeedBillingModal isOpen={true} onClose={vi.fn()} />);
+    });
+
+    const phoneInput = screen.getByPlaceholderText(/Enter 10-digit mobile number/i);
+    await React.act(async () => {
+      fireEvent.change(phoneInput, { target: { value: '9812044810' } });
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Customer Size Memory/i)).toBeDefined();
+      expect(screen.getByText(/Wardrobe \(8\)/i)).toBeDefined();
+      expect(screen.getByText(/Fit ✓/i)).toBeDefined();
+    });
+  });
 });

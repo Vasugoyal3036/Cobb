@@ -37,11 +37,16 @@ import {
   Split,
   ShieldCheck,
   AlertCircle,
-  Barcode
+  Barcode,
+  Ruler,
+  AlertTriangle,
+  Eye
 } from 'lucide-react';
 import axios from 'axios';
 import { playBarcodeBeep, playScanErrorBeep, playCheckoutChime, speakCheckoutVoice } from '../utils/sound';
 import { triggerThermalPrint, DEFAULT_STORE_INFO } from '../utils/thermalReceipt';
+import { checkSizeMismatch, DEMO_FIT_PROFILES, CATEGORY_META } from '../utils/customerFit';
+import WardrobePassportModal from './WardrobePassportModal';
 
 // Common Cobb Apparel Demo Catalog for instant offline/speed scan
 const QUICK_CATALOG = [
@@ -102,6 +107,8 @@ export default function SpeedBillingModal({
   const [customerPhone, setCustomerPhone] = useState('');
   const [customerName, setCustomerName] = useState('Walk-in Guest');
   const [customerLoyalty, setCustomerLoyalty] = useState(null);
+  const [customerFitProfile, setCustomerFitProfile] = useState(null);
+  const [showWardrobePassport, setShowWardrobePassport] = useState(false);
   const [isLookingUpCustomer, setIsLookingUpCustomer] = useState(false);
   const [redeemedPoints, setRedeemedPoints] = useState(0);
 
@@ -166,7 +173,7 @@ export default function SpeedBillingModal({
     }
   }, [isOpen]);
 
-  // Auto-lookup customer and loyalty when phone number reaches 10 digits
+  // Auto-lookup customer, loyalty, and size memory profile when phone reaches 10 digits
   useEffect(() => {
     const cleanPhone = (customerPhone || '').replace(/\D/g, '');
     if (cleanPhone.length === 10) {
@@ -176,6 +183,13 @@ export default function SpeedBillingModal({
           if (res.data && res.data.customerName) {
             setCustomerName(res.data.customerName);
             setCustomerLoyalty(res.data);
+            if (res.data.fitProfile) {
+              setCustomerFitProfile(res.data.fitProfile);
+            } else if (DEMO_FIT_PROFILES[cleanPhone]) {
+              setCustomerFitProfile(DEMO_FIT_PROFILES[cleanPhone]);
+            } else {
+              setCustomerFitProfile(null);
+            }
           } else {
             setCustomerLoyalty({
               phone: cleanPhone,
@@ -188,6 +202,11 @@ export default function SpeedBillingModal({
               totalVisits: 1,
               isNew: true
             });
+            if (DEMO_FIT_PROFILES[cleanPhone]) {
+              setCustomerFitProfile(DEMO_FIT_PROFILES[cleanPhone]);
+            } else {
+              setCustomerFitProfile(null);
+            }
           }
         })
         .catch(() => {
@@ -202,10 +221,16 @@ export default function SpeedBillingModal({
             totalVisits: 1,
             isNew: true
           });
+          if (DEMO_FIT_PROFILES[cleanPhone]) {
+            setCustomerFitProfile(DEMO_FIT_PROFILES[cleanPhone]);
+          } else {
+            setCustomerFitProfile(null);
+          }
         })
         .finally(() => setIsLookingUpCustomer(false));
     } else if (cleanPhone.length < 10 && customerLoyalty) {
       setCustomerLoyalty(null);
+      setCustomerFitProfile(null);
       setRedeemedPoints(0);
     }
   }, [customerPhone, API_BASE]);
@@ -356,6 +381,24 @@ export default function SpeedBillingModal({
       itemCount: cart.reduce((sum, it) => sum + it.qty, 0)
     };
   }, [processedCart, redeemedPoints, cart]);
+
+  // Size Guardian Mismatches in Active Cart
+  const cartMismatches = useMemo(() => {
+    if (!customerFitProfile || !customerFitProfile.hasHistory || processedCart.length === 0) {
+      return [];
+    }
+    const mismatches = [];
+    processedCart.forEach(item => {
+      const check = checkSizeMismatch(item, customerFitProfile);
+      if (check.isMismatch) {
+        mismatches.push({
+          ...check,
+          item
+        });
+      }
+    });
+    return mismatches;
+  }, [processedCart, customerFitProfile]);
 
   // Generate UPI QR for Full Amount
   const generateUpiQr = useCallback(async (amount) => {
@@ -1206,9 +1249,30 @@ _Thank you for choosing Cobb! For sizing alterations or exchanges, please quote 
                           </div>
                         </td>
                         <td className="py-3 px-2 text-center">
-                          <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono font-bold text-[11px]">
-                            {item.size}
-                          </span>
+                          <div className="flex flex-col items-center gap-0.5">
+                            <span className="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono font-bold text-[11px]">
+                              {item.size}
+                            </span>
+                            {(() => {
+                              const fit = checkSizeMismatch(item, customerFitProfile);
+                              if (fit.isMatch) {
+                                return (
+                                  <span className="px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[9px] font-bold flex items-center gap-0.5 whitespace-nowrap" title="Customer's Verified Fit in this category">
+                                    <Check className="w-2.5 h-2.5" /> Fit ✓
+                                  </span>
+                                );
+                              }
+                              if (fit.isMismatch) {
+                                return (
+                                  <span className="px-1 py-0.2 rounded bg-amber-500/25 text-amber-200 border border-amber-500/40 text-[9px] font-black flex items-center gap-0.5 whitespace-nowrap animate-pulse" title={`Customer usually buys Size ${fit.expectedSize}`}>
+                                    <AlertTriangle className="w-2.5 h-2.5 text-amber-400 shrink-0" />
+                                    <span>Fit: {fit.expectedSize}</span>
+                                  </span>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </div>
                         </td>
                         <td className="py-3 px-3 text-right font-mono text-slate-300">
                           ₹{item.mrp.toLocaleString('en-IN')}
@@ -1339,7 +1403,78 @@ _Thank you for choosing Cobb! For sizing alterations or exchanges, please quote 
                   </button>
                 </div>
               )}
+              {/* Customer Size Memory Dock (Automatic Fit Recognition) */}
+              {customerPhone && customerPhone.replace(/\D/g, '').length === 10 && (
+                <div className="mt-2.5 p-2.5 rounded-xl bg-slate-950/80 border border-blue-500/30">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[11px] font-bold text-blue-300 flex items-center gap-1.5">
+                      <Ruler className="w-3.5 h-3.5 text-blue-400" />
+                      <span>Customer Size Memory</span>
+                    </span>
+                    {customerFitProfile && customerFitProfile.hasHistory ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowWardrobePassport(true)}
+                        className="text-[10px] text-amber-400 hover:text-amber-300 font-mono font-semibold flex items-center gap-1 cursor-pointer hover:underline"
+                        title="View Full Purchase History & Wardrobe"
+                      >
+                        <Eye className="w-3 h-3" />
+                        <span>Wardrobe ({customerFitProfile.totalGarmentsPurchased || 0})</span>
+                      </button>
+                    ) : (
+                      <span className="text-[10px] text-slate-500 font-mono">Learning Fit...</span>
+                    )}
+                  </div>
+
+                  {customerFitProfile && customerFitProfile.hasHistory ? (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 pt-0.5">
+                      {Object.entries(customerFitProfile.categories || {}).map(([cKey, cData]) => (
+                        <div
+                          key={cKey}
+                          className="px-2 py-1 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-between text-xs"
+                          title={`${cData.label} • Primary: ${cData.primarySize} (${cData.confidence} Confidence, ${cData.totalPurchased} bought)`}
+                        >
+                          <span className="text-[11px] text-slate-400 flex items-center gap-1 truncate">
+                            <span>{cData.icon}</span>
+                            <span className="truncate">{CATEGORY_META[cKey]?.shortLabel || cData.label}</span>
+                          </span>
+                          <span className="font-mono font-black text-amber-300 text-xs px-1.5 py-0.2 rounded bg-amber-500/10 border border-amber-500/20">
+                            {cData.primarySize}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-[10px] text-slate-500 italic py-0.5 px-1">
+                      First-time customer • Purchases will auto-build customer profile
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
+
+            {/* Fit Guardian Alert Banner if cart contains size mismatches */}
+            {cartMismatches.length > 0 && (
+              <div className="p-2.5 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-200 text-xs mb-3 flex items-start gap-2 shadow-sm animate-fade-in">
+                <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <div className="font-bold text-amber-300 text-[11px] uppercase tracking-wider flex items-center justify-between">
+                    <span>⚠️ Fit Guardian: Size Mismatch Notice</span>
+                    <span className="px-1.5 py-0.2 rounded bg-amber-500/30 text-amber-200 text-[10px] font-mono">{cartMismatches.length} Item{cartMismatches.length > 1 ? 's' : ''}</span>
+                  </div>
+                  <div className="text-[11px] text-amber-100/90 mt-0.5 leading-tight space-y-0.5">
+                    {cartMismatches.map((m, mIdx) => (
+                      <div key={mIdx}>
+                        • <strong>{m.item.name}</strong>: Customer usually wears <strong>{m.catLabel} Size {m.expectedSize}</strong> (Selected: Size {m.scannedSize})
+                      </div>
+                    ))}
+                  </div>
+                  <div className="text-[10px] text-amber-300/80 mt-1 italic">
+                    Tip: Confirm size with customer to prevent post-purchase exchange.
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Bill Summary Breakdown */}
             <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 space-y-2 text-xs shadow-inner">
@@ -2378,6 +2513,18 @@ _Thank you for choosing Cobb! For sizing alterations or exchanges, please quote 
             </div>
           </div>
         </div>
+      )}
+
+      {/* WARDROBE PASSPORT MODAL (Customer Purchase & Fit History) */}
+      {showWardrobePassport && (
+        <WardrobePassportModal
+          isOpen={showWardrobePassport}
+          onClose={() => setShowWardrobePassport(false)}
+          initialPhone={customerPhone}
+          initialCustomerName={customerName}
+          API_BASE={API_BASE}
+          darkMode={true}
+        />
       )}
 
       {/* HIDDEN PRINT CONTAINER FOR ESC/POS THERMAL SLIP */}

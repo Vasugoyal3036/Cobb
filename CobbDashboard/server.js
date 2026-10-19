@@ -4157,9 +4157,110 @@ function computeLoyalty(lifetimeSpend) {
     return { points, pointsValue, tier, nextTier, spendToNextTier: Math.max(0, spendToNextTier), tierColor };
 }
 
+// --- CUSTOMER SIZE MEMORY & FIT PROFILE INTELLIGENCE ---
+function categorizeGarment(categoryStr, subCategoryStr, articleName) {
+    const text = `${categoryStr || ''} ${subCategoryStr || ''} ${articleName || ''}`.toUpperCase();
+    if (text.includes('BLAZER') || text.includes('SUIT') || text.includes('COAT') || text.includes('WAISTCOAT')) {
+        return 'blazers';
+    }
+    if (text.includes('T SHIRT') || text.includes('T-SHIRT') || text.includes('TSHIRT') || text.includes('POLO')) {
+        return 'tshirts';
+    }
+    if (text.includes('SWEATER') || text.includes('JACKET') || text.includes('HOOD') || text.includes('SWEATSHIRT') || text.includes('WINTER') || text.includes('CARDIGAN')) {
+        return 'winterwear';
+    }
+    if (text.includes('TROUSER') || text.includes('JEAN') || text.includes('CHINO') || text.includes('DENIM') || text.includes('BOTTOM') || text.includes('SHORT')) {
+        return 'trousers';
+    }
+    if (text.includes('SHIRT')) {
+        return 'shirts';
+    }
+    return 'accessories';
+}
+
+function computeCustomerFitProfile(items = []) {
+    const categories = {
+        shirts: { label: 'Shirts', icon: '👔', sizes: {}, lastPurchasedSize: null, lastPurchaseDate: null, totalQty: 0 },
+        trousers: { label: 'Trousers & Denims', icon: '👖', sizes: {}, lastPurchasedSize: null, lastPurchaseDate: null, totalQty: 0 },
+        blazers: { label: 'Blazers & Suits', icon: '🧥', sizes: {}, lastPurchasedSize: null, lastPurchaseDate: null, totalQty: 0 },
+        tshirts: { label: 'T-Shirts & Polos', icon: '👕', sizes: {}, lastPurchasedSize: null, lastPurchaseDate: null, totalQty: 0 },
+        winterwear: { label: 'Jackets & Winterwear', icon: '❄️', sizes: {}, lastPurchasedSize: null, lastPurchaseDate: null, totalQty: 0 }
+    };
+
+    let totalGarments = 0;
+
+    items.forEach(item => {
+        const catKey = categorizeGarment(item.Category || item.category || item.SECTION_NAME, item.SubCategory || item.subCategory, item.ArticleName || item.articleName || item.ARTICLE_NAME);
+        if (!categories[catKey]) return;
+
+        const rawSize = String(item.Size || item.size || item.para2_name || '').trim().toUpperCase();
+        if (!rawSize || rawSize === 'REGULAR' || rawSize === 'STANDARD' || rawSize === 'FREE' || rawSize === 'NA') return;
+
+        const qty = Number(item.Quantity || item.quantity || 1);
+        const pDate = item.PurchaseDate || item.purchaseDate || item.BillDate || null;
+
+        const catObj = categories[catKey];
+        catObj.sizes[rawSize] = (catObj.sizes[rawSize] || 0) + qty;
+        catObj.totalQty += qty;
+        totalGarments += qty;
+
+        if (!catObj.lastPurchasedSize && pDate) {
+            catObj.lastPurchasedSize = rawSize;
+            catObj.lastPurchaseDate = pDate;
+        }
+    });
+
+    const categoryProfiles = {};
+    const summaryParts = [];
+
+    for (const [key, catObj] of Object.entries(categories)) {
+        const sizeEntries = Object.entries(catObj.sizes).sort((a, b) => b[1] - a[1]);
+        if (sizeEntries.length > 0) {
+            const primarySize = sizeEntries[0][0];
+            const primaryCount = sizeEntries[0][1];
+            const confidence = catObj.totalQty >= 3 && (primaryCount / catObj.totalQty) >= 0.6 ? 'High' : (catObj.totalQty >= 2 ? 'Medium' : 'Initial');
+
+            categoryProfiles[key] = {
+                label: catObj.label,
+                icon: catObj.icon,
+                primarySize,
+                confidence,
+                totalPurchased: catObj.totalQty,
+                lastPurchasedSize: catObj.lastPurchasedSize || primarySize,
+                lastPurchaseDate: catObj.lastPurchaseDate,
+                sizeBreakdown: catObj.sizes
+            };
+
+            const shortLabel = key === 'shirts' ? 'Shirt' : key === 'trousers' ? 'Trouser' : key === 'blazers' ? 'Blazer' : key === 'tshirts' ? 'T-Shirt' : 'Winter';
+            summaryParts.push(`${catObj.icon} ${shortLabel}: ${primarySize}`);
+        }
+    }
+
+    return {
+        summaryText: summaryParts.join(' | ') || 'No size history yet',
+        categories: categoryProfiles,
+        totalGarmentsPurchased: totalGarments,
+        hasHistory: totalGarments > 0
+    };
+}
+
+const DEMO_FIT_PROFILES = {
+    '9812044810': {
+        summaryText: '👔 Shirt: 40 | 👖 Trouser: 32 | 🧥 Blazer: 40 | 👕 T-Shirt: L',
+        categories: {
+            shirts: { label: 'Shirts', icon: '👔', primarySize: '40', confidence: 'High', totalPurchased: 4, lastPurchasedSize: '40', sizeBreakdown: { '40': 3, '39': 1 } },
+            trousers: { label: 'Trousers & Denims', icon: '👖', primarySize: '32', confidence: 'High', totalPurchased: 3, lastPurchasedSize: '32', sizeBreakdown: { '32': 3 } },
+            blazers: { label: 'Blazers & Suits', icon: '🧥', primarySize: '40', confidence: 'Medium', totalPurchased: 2, lastPurchasedSize: '40', sizeBreakdown: { '40': 2 } },
+            tshirts: { label: 'T-Shirts & Polos', icon: '👕', primarySize: 'L', confidence: 'Initial', totalPurchased: 1, lastPurchasedSize: 'L', sizeBreakdown: { 'L': 1 } }
+        },
+        totalGarmentsPurchased: 10,
+        hasHistory: true
+    }
+};
+
 app.get('/api/loyalty/customer/:phone', async (req, res) => {
     try {
-        const phone = req.params.phone;
+        const phone = (req.params.phone || '').replace(/[^0-9]/g, '');
         const result = await sql.query(`
             SELECT
                 A.CUSTOMER_CODE AS Phone,
@@ -4174,7 +4275,52 @@ app.get('/api/loyalty/customer/:phone', async (req, res) => {
             GROUP BY A.CUSTOMER_CODE
         `);
 
+        let fitProfile = DEMO_FIT_PROFILES[phone] || null;
+
+        // Query customer purchase history to compute live size memory
+        try {
+            const itemsRes = await sql.query(`
+                SELECT TOP 100
+                    m.CM_TIME as PurchaseDate,
+                    ISNULL(s.section_name, 'Apparel') as Category,
+                    ISNULL(s.sub_section_name, '') as SubCategory,
+                    ISNULL(s.article_name, '') as ArticleName,
+                    ISNULL(s.para2_name, 'REGULAR') as Size,
+                    ISNULL(s.para1_name, 'ASSORTED') as Color,
+                    d.QUANTITY as Quantity
+                FROM CMM01106 m WITH (NOLOCK)
+                JOIN CMD01106 d WITH (NOLOCK) ON m.CM_ID = d.CM_ID
+                LEFT JOIN SKU_NAMES s WITH (NOLOCK) ON d.PRODUCT_CODE = s.product_Code
+                WHERE m.CUSTOMER_CODE = '${phone.replace(/'/g, "''")}' AND m.CANCELLED = 0
+                ORDER BY m.CM_TIME DESC
+            `);
+            if (itemsRes.recordset && itemsRes.recordset.length > 0) {
+                const liveFit = computeCustomerFitProfile(itemsRes.recordset);
+                if (liveFit && liveFit.hasHistory) {
+                    fitProfile = liveFit;
+                }
+            }
+        } catch (itemErr) {
+            console.warn('Customer fit profile item lookup warning:', itemErr.message);
+        }
+
         if (!result.recordset || result.recordset.length === 0) {
+            if (fitProfile) {
+                return res.json({
+                    phone: phone,
+                    customerName: 'Loyal VIP Guest',
+                    lifetimeSpend: 15000,
+                    totalVisits: 3,
+                    lastVisit: new Date().toISOString(),
+                    points: 150,
+                    pointsValue: 150,
+                    tier: 'Silver',
+                    nextTier: 'Gold',
+                    spendToNextTier: 10000,
+                    tierColor: '#C0C0C0',
+                    fitProfile
+                });
+            }
             return res.status(404).json({ error: 'Customer not found' });
         }
 
@@ -4188,10 +4334,78 @@ app.get('/api/loyalty/customer/:phone', async (req, res) => {
             totalVisits: cust.TotalVisits,
             lastVisit: cust.LastVisit,
             memberSince: cust.FirstVisit,
-            ...loyalty
+            ...loyalty,
+            fitProfile: fitProfile || {
+                summaryText: 'New customer size profile',
+                categories: {},
+                totalGarmentsPurchased: 0,
+                hasHistory: false
+            }
         });
     } catch (err) {
         console.error('Loyalty customer error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/api/customers/fit-profile/:phone', async (req, res) => {
+    try {
+        const phone = (req.params.phone || '').replace(/[^0-9]/g, '');
+        if (!phone) {
+            return res.status(400).json({ error: 'Valid phone number required' });
+        }
+
+        let fitProfile = DEMO_FIT_PROFILES[phone] || null;
+        let customerName = 'Cobb Shopper';
+
+        try {
+            const custRes = await sql.query(`
+                SELECT TOP 1
+                    ISNULL(c.customer_fname, '') + ' ' + ISNULL(c.customer_lname, '') as CustomerName
+                FROM CUSTDYM c WITH (NOLOCK)
+                WHERE c.customer_code = '${phone.replace(/'/g, "''")}' OR c.mobile = '${phone.replace(/'/g, "''")}'
+            `);
+            if (custRes.recordset && custRes.recordset.length > 0 && custRes.recordset[0].CustomerName.trim()) {
+                customerName = custRes.recordset[0].CustomerName.trim();
+            }
+
+            const itemsRes = await sql.query(`
+                SELECT TOP 100
+                    m.CM_TIME as PurchaseDate,
+                    ISNULL(s.section_name, 'Apparel') as Category,
+                    ISNULL(s.sub_section_name, '') as SubCategory,
+                    ISNULL(s.article_name, '') as ArticleName,
+                    ISNULL(s.para2_name, 'REGULAR') as Size,
+                    ISNULL(s.para1_name, 'ASSORTED') as Color,
+                    d.QUANTITY as Quantity
+                FROM CMM01106 m WITH (NOLOCK)
+                JOIN CMD01106 d WITH (NOLOCK) ON m.CM_ID = d.CM_ID
+                LEFT JOIN SKU_NAMES s WITH (NOLOCK) ON d.PRODUCT_CODE = s.product_Code
+                WHERE m.CUSTOMER_CODE = '${phone.replace(/'/g, "''")}' AND m.CANCELLED = 0
+                ORDER BY m.CM_TIME DESC
+            `);
+            if (itemsRes.recordset && itemsRes.recordset.length > 0) {
+                const liveFit = computeCustomerFitProfile(itemsRes.recordset);
+                if (liveFit && liveFit.hasHistory) {
+                    fitProfile = liveFit;
+                }
+            }
+        } catch (dbErr) {
+            console.warn('Live fit-profile query note:', dbErr.message);
+        }
+
+        res.json({
+            phone,
+            customerName,
+            fitProfile: fitProfile || {
+                summaryText: 'No previous size history',
+                categories: {},
+                totalGarmentsPurchased: 0,
+                hasHistory: false
+            }
+        });
+    } catch (err) {
+        console.error('Fit profile error:', err);
         res.status(500).json({ error: err.message });
     }
 });

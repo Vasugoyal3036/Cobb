@@ -173,6 +173,7 @@ axios.defaults.headers.common['ngrok-skip-browser-warning'] = '69420';
 // to the Firebase Cloud Database instead of the local SQL API.
 import { db, authPromise } from './utils/firebase';
 import { doc, getDoc } from 'firebase/firestore';
+import { computeCustomerFitProfile, DEMO_FIT_PROFILES } from './utils/customerFit';
 
 const getActiveStoreId = () => {
   try {
@@ -396,6 +397,102 @@ axios.get = async (url, config) => {
         }
       } catch (quickErr) {
         console.error('[SaaS Interceptor] quick-scan error:', quickErr);
+      }
+    }
+
+    // Dynamic handler for /api/loyalty/customer/:phone and /api/customers/fit-profile/:phone on remote Phone Link
+    if (url.includes('/api/loyalty/customer/') || url.includes('/api/customers/fit-profile/')) {
+      try {
+        if (authPromise) await authPromise;
+        const targetStore = getActiveStoreId();
+        const cleanPhone = (url.split('?')[0].split('/').pop() || '').replace(/[^0-9]/g, '');
+
+        let fitProfile = DEMO_FIT_PROFILES[cleanPhone] || null;
+        let customerItems = [];
+
+        // Check customers_vip_history
+        try {
+          const vipHistRef = doc(db, 'stores', targetStore, 'data', 'customers_vip_history');
+          const vipHistSnap = await getDoc(vipHistRef);
+          if (vipHistSnap.exists()) {
+            const histData = vipHistSnap.data();
+            customerItems = histData[cleanPhone] || histData.items?.[cleanPhone] || [];
+            if (customerItems.length > 0) {
+              const liveFit = computeCustomerFitProfile(customerItems);
+              if (liveFit && liveFit.hasHistory) {
+                fitProfile = liveFit;
+              }
+            }
+          }
+        } catch (vipErr) {}
+
+        // Fallback: check sales_live for recent purchases by this customer
+        if (!fitProfile || !fitProfile.hasHistory) {
+          try {
+            const liveSnap = await getDoc(doc(db, 'stores', targetStore, 'data', 'sales_live'));
+            if (liveSnap.exists()) {
+              const lData = liveSnap.data();
+              const bills = Array.isArray(lData) ? lData : (lData.items || []);
+              const matchingBills = bills.filter(b => String(b.CustomerPhone || b.CustomerCode || '').replace(/[^0-9]/g, '') === cleanPhone);
+              const liveItems = [];
+              matchingBills.forEach(b => {
+                if (Array.isArray(b.Items)) b.Items.forEach(it => liveItems.push(it));
+              });
+              if (liveItems.length > 0) {
+                const liveFit = computeCustomerFitProfile(liveItems);
+                if (liveFit && liveFit.hasHistory) {
+                  fitProfile = liveFit;
+                }
+              }
+            }
+          } catch (liveErr) {}
+        }
+
+        if (!fitProfile && cleanPhone === '9812044810') {
+          fitProfile = DEMO_FIT_PROFILES['9812044810'];
+        }
+
+        if (url.includes('/api/customers/fit-profile/')) {
+          return {
+            data: {
+              phone: cleanPhone,
+              customerName: cleanPhone === '9812044810' ? 'Vikramjit Singh' : 'Valued Shopper',
+              fitProfile: fitProfile || {
+                summaryText: 'No previous size history',
+                categories: {},
+                totalGarmentsPurchased: 0,
+                hasHistory: false
+              }
+            },
+            status: 200,
+            statusText: 'OK'
+          };
+        } else {
+          return {
+            data: {
+              phone: cleanPhone,
+              customerName: cleanPhone === '9812044810' ? 'Vikramjit Singh' : 'Loyal VIP Guest',
+              lifetimeSpend: 28500,
+              totalVisits: 6,
+              points: 285,
+              pointsValue: 285,
+              tier: 'Gold',
+              nextTier: 'Platinum',
+              spendToNextTier: 21500,
+              tierColor: '#FFD700',
+              fitProfile: fitProfile || {
+                summaryText: 'New customer size profile',
+                categories: {},
+                totalGarmentsPurchased: 0,
+                hasHistory: false
+              }
+            },
+            status: 200,
+            statusText: 'OK'
+          };
+        }
+      } catch (custErr) {
+        console.error('[SaaS Interceptor] customer loyalty/fit-profile error:', custErr);
       }
     }
 

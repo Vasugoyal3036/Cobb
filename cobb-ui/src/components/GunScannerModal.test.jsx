@@ -243,4 +243,66 @@ describe('GunScannerModal [F3 Handheld Matrix Scanner]', () => {
     expect(screen.queryByText(/Fine Compact Cotton Trouser/i)).toBeNull();
     expect(screen.queryByText(/TROUSERS/i)).toBeNull();
   });
+
+  it('renders Customer Fit Context and highlights customer size in matrix grid', async () => {
+    axios.get.mockImplementation((url) => {
+      if (url.includes('/api/inventory/quick-scan')) {
+        return Promise.resolve({
+          data: {
+            success: true,
+            articleNo: 'TSBW',
+            itemName: 'Executive Oxford Shirt',
+            sectionName: 'SHIRTS',
+            subSectionName: 'FORMAL FULL SL',
+            color: 'WHITE',
+            mrp: 1999,
+            totalStock: 15,
+            soldToday: 1,
+            soldLast7Days: 5,
+            soldLast30Days: 18,
+            colors: [
+              {
+                color: 'WHITE',
+                totalStock: 15,
+                sizes: [
+                  { size: '38', stock: 4, barcode: 'TSBW-38' },
+                  { size: '40', stock: 6, barcode: 'TSBW-40' },
+                  { size: '42', stock: 5, barcode: 'TSBW-42' }
+                ]
+              }
+            ],
+            variants: [
+              { barcode: 'TSBW-40', articleNo: 'TSBW', itemName: 'Executive Oxford Shirt', color: 'WHITE', size: '40', mrp: 1999, stock: 6 }
+            ]
+          }
+        });
+      }
+      return Promise.resolve({ data: { success: true } });
+    });
+
+    render(
+      <GunScannerModal
+        isOpen={true}
+        onClose={vi.fn()}
+        customerPhone="9812044810"
+        customerFitProfile={{
+          summaryText: '👔 Shirt: 40 | 👖 Trouser: 32',
+          hasHistory: true,
+          categories: {
+            shirts: { label: 'Shirts', icon: '👔', primarySize: '40', confidence: 'High' }
+          }
+        }}
+        API_BASE="http://localhost:5000"
+      />
+    );
+
+    const input = screen.getByPlaceholderText(/Pull trigger to scan barcode/i);
+    fireEvent.change(input, { target: { value: 'TSBW' } });
+    fireEvent.keyDown(input, { key: 'Enter', code: 'Enter', target: { value: 'TSBW' } });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Customer Fit Target:/i)).toBeDefined();
+      expect(screen.getAllByText(/👑 Fit/i).length).toBeGreaterThan(0);
+    });
+  });
 });

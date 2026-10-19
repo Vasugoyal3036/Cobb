@@ -25,10 +25,14 @@ import {
   Tag,
   Package,
   Boxes,
-  HelpCircle
+  HelpCircle,
+  Ruler,
+  Crown,
+  Phone
 } from 'lucide-react';
 import axios from 'axios';
 import { playBarcodeBeep, playScanErrorBeep, getSoundSettings, saveSoundSettings } from '../utils/sound';
+import { categorizeGarment, DEMO_FIT_PROFILES, CATEGORY_META } from '../utils/customerFit';
 
 export const getColorDot = (colorName) => {
   const c = String(colorName || '').toLowerCase();
@@ -57,7 +61,9 @@ const GunScannerModal = ({
   activeStore = 'DEMO_STORE_001',
   formatCurrency = (n) => `₹${Number(n || 0).toLocaleString('en-IN')}`,
   darkMode = true,
-  setActiveTab
+  setActiveTab,
+  customerPhone: initialCustomerPhone = '',
+  customerFitProfile: initialFitProfile = null
 }) => {
   const [query, setQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -66,6 +72,8 @@ const GunScannerModal = ({
   const [selectedColor, setSelectedColor] = useState('ALL');
   const [selectedVariant, setSelectedVariant] = useState(null);
   const [copiedField, setCopiedField] = useState(null);
+  const [customerPhone, setCustomerPhone] = useState(initialCustomerPhone || '');
+  const [customerFitProfile, setCustomerFitProfile] = useState(initialFitProfile || null);
   const [recentScans, setRecentScans] = useState(() => {
     try {
       const saved = sessionStorage.getItem('cobb_gun_recent_scans');
@@ -79,6 +87,38 @@ const GunScannerModal = ({
   const [showCamera, setShowCamera] = useState(false);
   const [cameraError, setCameraError] = useState(null);
   const [isGunLaserFired, setIsGunLaserFired] = useState(false);
+
+  // Sync initial props if changed
+  useEffect(() => {
+    if (initialCustomerPhone) setCustomerPhone(initialCustomerPhone);
+    if (initialFitProfile) setCustomerFitProfile(initialFitProfile);
+  }, [initialCustomerPhone, initialFitProfile]);
+
+  // Auto-lookup customer size memory when phone reaches 10 digits
+  useEffect(() => {
+    const cleanPhone = (customerPhone || '').replace(/\D/g, '');
+    if (cleanPhone.length === 10) {
+      axios.get(`${API_BASE}/api/loyalty/customer/${cleanPhone}`)
+        .then(res => {
+          if (res.data?.fitProfile) {
+            setCustomerFitProfile(res.data.fitProfile);
+          } else if (DEMO_FIT_PROFILES[cleanPhone]) {
+            setCustomerFitProfile(DEMO_FIT_PROFILES[cleanPhone]);
+          } else {
+            setCustomerFitProfile(null);
+          }
+        })
+        .catch(() => {
+          if (DEMO_FIT_PROFILES[cleanPhone]) {
+            setCustomerFitProfile(DEMO_FIT_PROFILES[cleanPhone]);
+          } else {
+            setCustomerFitProfile(null);
+          }
+        });
+    } else if (cleanPhone.length < 10 && customerFitProfile && !initialFitProfile) {
+      setCustomerFitProfile(null);
+    }
+  }, [customerPhone, API_BASE, initialFitProfile]);
 
   const inputRef = useRef(null);
   const scannerBufferRef = useRef({ buffer: '', lastKeyTime: 0 });
@@ -568,6 +608,20 @@ const GunScannerModal = ({
   const sold7 = Number(scanResult?.soldLast7Days || 0);
   const isHighVelocity = sold7 >= 5 || Number(scanResult?.soldToday || 0) > 0;
 
+  // Expected Customer Fit for Scanned Garment Category
+  const customerExpectedFit = useMemo(() => {
+    if (!scanResult || !customerFitProfile || !customerFitProfile.hasHistory) return null;
+    const catKey = categorizeGarment(scanResult.sectionName, scanResult.subSectionName, scanResult.itemName);
+    const catProfile = customerFitProfile.categories?.[catKey];
+    if (!catProfile || !catProfile.primarySize) return null;
+    return {
+      category: catKey,
+      label: catProfile.label,
+      primarySize: catProfile.primarySize,
+      confidence: catProfile.confidence
+    };
+  }, [scanResult, customerFitProfile]);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-200">
       <div 
@@ -715,6 +769,32 @@ const GunScannerModal = ({
               <span><kbd className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-mono font-bold">Esc</kbd> to exit</span>
             </div>
           </div>
+
+          {/* Customer Fit Context (Auto-Syncs with Counter / Speed POS) */}
+          <div className="flex items-center justify-between flex-wrap gap-2 mt-2 pt-2 border-t border-slate-800/60 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-bold text-amber-300 flex items-center gap-1.5 shrink-0">
+                <Crown className="w-3.5 h-3.5 text-amber-400" />
+                <span>Customer Fit Context:</span>
+              </span>
+              <input
+                type="text"
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                placeholder="10-digit mobile for size memory..."
+                className="w-48 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-700 text-xs font-mono text-white placeholder-slate-500 focus:outline-none focus:border-amber-500 transition"
+              />
+            </div>
+            {customerFitProfile && customerFitProfile.hasHistory ? (
+              <div className="flex items-center gap-1.5 text-[11px] font-mono text-amber-300">
+                <span className="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 font-bold">
+                  {customerFitProfile.summaryText}
+                </span>
+              </div>
+            ) : customerPhone && customerPhone.replace(/\D/g, '').length === 10 ? (
+              <span className="text-[10px] text-slate-500 italic">No previous size record</span>
+            ) : null}
+          </div>
         </div>
 
         {/* 3. MODAL BODY (SCROLLABLE) */}
@@ -846,6 +926,29 @@ const GunScannerModal = ({
                     </button>
                   </div>
                 </div>
+
+                {/* Customer Fit Target Banner */}
+                {customerExpectedFit && (
+                  <div className="mt-3 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between flex-wrap gap-2 text-xs">
+                    <div className="flex items-center gap-2">
+                      <Crown className="w-4 h-4 text-amber-400 shrink-0" />
+                      <div>
+                        <span className="font-bold text-amber-200">Customer Fit Target:</span>{' '}
+                        <span className="text-amber-300 font-mono font-black">{customerExpectedFit.label} Size {customerExpectedFit.primarySize}</span>
+                        <span className="text-[10px] text-amber-400/80 ml-1.5 font-sans">({customerExpectedFit.confidence} Confidence)</span>
+                      </div>
+                    </div>
+                    {selectedVariant && selectedVariant.size && selectedVariant.size !== customerExpectedFit.primarySize ? (
+                      <span className="px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 text-[10px] font-bold animate-pulse">
+                        ⚠️ Size Notice: Selection is Size {selectedVariant.size}
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold">
+                        ✓ Target Fit Matches
+                      </span>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* SECTION B: MULTI-COLOUR & MULTI-SIZE MATRIX GRID */}
@@ -928,6 +1031,7 @@ const GunScannerModal = ({
                         {cGroup.sizes.map((s, sIdx) => {
                           const isMatched = scanResult.scannedBarcode && (s.barcode === scanResult.scannedBarcode);
                           const isSelected = selectedVariant?.barcode === s.barcode || (selectedVariant?.size === s.size && selectedVariant?.color === cGroup.color);
+                          const isCustomerFit = customerExpectedFit && String(s.size).toUpperCase() === String(customerExpectedFit.primarySize).toUpperCase();
 
                           return (
                             <div
@@ -948,18 +1052,27 @@ const GunScannerModal = ({
                                   ? 'ring-2 ring-blue-500 bg-blue-600/20 border-blue-500 shadow-md'
                                   : isMatched
                                     ? 'ring-2 ring-emerald-500 bg-emerald-500/15 border-emerald-500'
-                                    : s.stock > 0
-                                      ? 'bg-slate-800/50 hover:bg-slate-800 border-slate-700/70 text-slate-200'
-                                      : 'bg-slate-900/30 border-slate-800 text-slate-600 opacity-50'
+                                    : isCustomerFit
+                                      ? 'ring-2 ring-amber-500/80 bg-amber-500/15 border-amber-500/80 text-amber-100 shadow-md shadow-amber-500/10'
+                                      : s.stock > 0
+                                        ? 'bg-slate-800/50 hover:bg-slate-800 border-slate-700/70 text-slate-200'
+                                        : 'bg-slate-900/30 border-slate-800 text-slate-600 opacity-50'
                               }`}
                             >
                               <div className="flex items-center justify-between">
-                                <span className="font-black text-xs">{s.size}</span>
-                                {isMatched && (
-                                  <span className="text-[9px] font-black uppercase text-emerald-400 px-1 rounded bg-emerald-500/20">
-                                    Scanned
-                                  </span>
-                                )}
+                                <span className={`font-black text-xs ${isCustomerFit ? 'text-amber-300' : ''}`}>{s.size}</span>
+                                <div className="flex items-center gap-1">
+                                  {isCustomerFit && (
+                                    <span className="text-[9px] font-black uppercase text-amber-300 px-1 rounded bg-amber-500/25 border border-amber-500/40" title="Customer's Usual Fit">
+                                      👑 Fit
+                                    </span>
+                                  )}
+                                  {isMatched && (
+                                    <span className="text-[9px] font-black uppercase text-emerald-400 px-1 rounded bg-emerald-500/20">
+                                      Scanned
+                                    </span>
+                                  )}
+                                </div>
                               </div>
 
                               <div className="mt-1 flex items-baseline justify-between">
