@@ -1,16 +1,89 @@
 [
   {
+    "date": "2026-10-20",
+    "year": 2026,
+    "month": 10,
+    "day": 20,
+    "dayOfWeek": "Tuesday",
+    "formattedDate": "20 Oct 2026",
+    "storeGrossSales": 11898,
+    "storeTotalBills": 4,
+    "storeTotalItems": 10,
+    "staffSales": 10899,
+    "totalCommission": 0,
+    "activeStaffCount": 2,
+    "staff": [
+      {
+        "empCode": "2800003",
+        "name": "Vikas",
+        "isUnassigned": false,
+        "isMissingName": false,
+        "hasCustomOverride": true,
+        "sales": 7000,
+        "items": 6,
+        "bills": 2,
+        "aov": 3500,
+        "upt": 3,
+        "commissionRate": 0,
+        "commission": 0,
+        "slabLabel": "< 50% Target (0%)",
+        "rank": 1
+      },
+      {
+        "empCode": "0001001",
+        "name": "Simran",
+        "isUnassigned": false,
+        "isMissingName": false,
+        "hasCustomOverride": true,
+        "sales": 3899,
+        "items": 3,
+        "bills": 1,
+        "aov": 3899,
+        "upt": 3,
+        "commissionRate": 0,
+        "commission": 0,
+        "slabLabel": "< 50% Target (0%)",
+        "rank": 2
+      },
+      {
+        "empCode": "0000000",
+        "name": "Store Direct Billing",
+        "isUnassigned": true,
+        "isMissingName": false,
+        "hasCustomOverride": true,
+        "sales": 999,
+        "items": 1,
+        "bills": 1,
+        "aov": 999,
+        "upt": 1,
+        "commissionRate": 0,
+        "commission": 0,
+        "slabLabel": "POS Counter"
+      }
+    ],
+    "topStaff": {
+      "empCode": "2800003",
+      "name": "Vikas",
+      "sales": 7000,
+      "bills": 2,
+      "items": 6,
+      "commission": 0,
+      "commissionRate": 0,
+      "slabLabel": "< 50% Target (0%)"
+    }
+  },
+  {
     "date": "2026-10-19",
     "year": 2026,
     "month": 10,
     "day": 19,
     "dayOfWeek": "Monday",
     "formattedDate": "19 Oct 2026",
-    "storeGrossSales": 17028,
-    "storeTotalBills": 5,
-    "storeTotalItems": 19,
+    "storeGrossSales": 17118,
+    "storeTotalBills": 6,
+    "storeTotalItems": 20,
     "staffSales": 13489,
-    "totalCommission": 68,
+    "totalCommission": 54,
     "activeStaffCount": 2,
     "staff": [
       {
@@ -26,7 +99,7 @@
         "upt": 5,
         "commissionRate": 0.5,
         "commission": 54,
-        "slabLabel": "≤ 2L (0.5%)",
+        "slabLabel": "≥ 50% Target (0.5%)",
         "rank": 1
       },
       {
@@ -40,9 +113,9 @@
         "bills": 1,
         "aov": 2700,
         "upt": 3,
-        "commissionRate": 0.5,
-        "commission": 14,
-        "slabLabel": "≤ 2L (0.5%)",
+        "commissionRate": 0,
+        "commission": 0,
+        "slabLabel": "< 50% Target (0%)",
         "rank": 2
       },
       {
@@ -51,11 +124,11 @@
         "isUnassigned": true,
         "isMissingName": false,
         "hasCustomOverride": true,
-        "sales": 3539,
-        "items": 6,
-        "bills": 2,
-        "aov": 1770,
-        "upt": 3,
+        "sales": 3629,
+        "items": 7,
+        "bills": 3,
+        "aov": 1210,
+        "upt": 2.3,
         "commissionRate": 0,
         "commission": 0,
         "slabLabel": "POS Counter"
@@ -69,7 +142,7 @@
       "items": 10,
       "commission": 54,
       "commissionRate": 0.5,
-      "slabLabel": "≤ 2L (0.5%)"
+      "slabLabel": "≥ 50% Target (0.5%)"
     }
   },
   {
@@ -99,7 +172,7 @@
         "upt": 5,
         "commissionRate": 1,
         "commission": 185,
-        "slabLabel": "≥ 4L (1.0%)",
+        "slabLabel": "≥ 95% Target (1.0%)",
         "rank": 1
       },
       {
@@ -126,7 +199,7 @@
       "items": 10,
       "commission": 185,
       "commissionRate": 1,
-      "slabLabel": "≥ 4L (1.0%)"
+      "slabLabel": "≥ 95% Target (1.0%)"
     }
   },
   {
@@ -156,7 +229,7 @@
         "upt": 9.3,
         "commissionRate": 1,
         "commission": 389,
-        "slabLabel": "≥ 4L (1.0%)",
+        "slabLabel": "≥ 95% Target (1.0%)",
         "rank": 1
       },
       {
@@ -172,7 +245,7 @@
         "upt": 6,
         "commissionRate": 1,
         "commission": 152,
-        "slabLabel": "≥ 4L (1.0%)",
+        "slabLabel": "≥ 95% Target (1.0%)",
         "rank": 2
       },
       {
@@ -199,7 +272,7 @@
       "items": 28,
       "commission": 389,
       "commissionRate": 1,
-      "slabLabel": "≥ 4L (1.0%)"
+      "slabLabel": "≥ 95% Target (1.0%)"
     }
   },
   {
@@ -229,7 +302,7 @@
         "upt": 3.3,
         "commissionRate": 0.5,
         "commission": 40,
-        "slabLabel": "≤ 2L (0.5%)",
+        "slabLabel": "≥ 50% Target (0.5%)",
         "rank": 1
       },
       {
@@ -256,7 +329,7 @@
       "items": 10,
       "commission": 40,
       "commissionRate": 0.5,
-      "slabLabel": "≤ 2L (0.5%)"
+      "slabLabel": "≥ 50% Target (0.5%)"
     }
   },
   {
@@ -270,7 +343,7 @@
     "storeTotalBills": 4,
     "storeTotalItems": 14,
     "staffSales": 3999,
-    "totalCommission": 20,
+    "totalCommission": 0,
     "activeStaffCount": 1,
     "staff": [
       {
@@ -284,9 +357,9 @@
         "bills": 1,
         "aov": 3999,
         "upt": 3,
-        "commissionRate": 0.5,
-        "commission": 20,
-        "slabLabel": "≤ 2L (0.5%)",
+        "commissionRate": 0,
+        "commission": 0,
+        "slabLabel": "< 50% Target (0%)",
         "rank": 1
       },
       {
@@ -311,9 +384,9 @@
       "sales": 3999,
       "bills": 1,
       "items": 3,
-      "commission": 20,
-      "commissionRate": 0.5,
-      "slabLabel": "≤ 2L (0.5%)"
+      "commission": 0,
+      "commissionRate": 0,
+      "slabLabel": "< 50% Target (0%)"
     }
   },
   {
@@ -327,7 +400,7 @@
     "storeTotalBills": 3,
     "storeTotalItems": 6,
     "staffSales": 4299,
-    "totalCommission": 21,
+    "totalCommission": 0,
     "activeStaffCount": 1,
     "staff": [
       {
@@ -341,9 +414,9 @@
         "bills": 1,
         "aov": 4299,
         "upt": 3,
-        "commissionRate": 0.5,
-        "commission": 21,
-        "slabLabel": "≤ 2L (0.5%)",
+        "commissionRate": 0,
+        "commission": 0,
+        "slabLabel": "< 50% Target (0%)",
         "rank": 1
       },
       {
@@ -368,9 +441,9 @@
       "sales": 4299,
       "bills": 1,
       "items": 3,
-      "commission": 21,
-      "commissionRate": 0.5,
-      "slabLabel": "≤ 2L (0.5%)"
+      "commission": 0,
+      "commissionRate": 0,
+      "slabLabel": "< 50% Target (0%)"
     }
   },
   {
@@ -384,7 +457,7 @@
     "storeTotalBills": 8,
     "storeTotalItems": 21,
     "staffSales": 4000,
-    "totalCommission": 20,
+    "totalCommission": 0,
     "activeStaffCount": 1,
     "staff": [
       {
@@ -398,9 +471,9 @@
         "bills": 1,
         "aov": 4000,
         "upt": 3,
-        "commissionRate": 0.5,
-        "commission": 20,
-        "slabLabel": "≤ 2L (0.5%)",
+        "commissionRate": 0,
+        "commission": 0,
+        "slabLabel": "< 50% Target (0%)",
         "rank": 1
       },
       {
@@ -425,9 +498,9 @@
       "sales": 4000,
       "bills": 1,
       "items": 3,
-      "commission": 20,
-      "commissionRate": 0.5,
-      "slabLabel": "≤ 2L (0.5%)"
+      "commission": 0,
+      "commissionRate": 0,
+      "slabLabel": "< 50% Target (0%)"
     }
   },
   {
@@ -473,7 +546,7 @@
     "storeTotalBills": 1,
     "storeTotalItems": 3,
     "staffSales": 2700,
-    "totalCommission": 14,
+    "totalCommission": 0,
     "activeStaffCount": 1,
     "staff": [
       {
@@ -487,9 +560,9 @@
         "bills": 1,
         "aov": 2700,
         "upt": 3,
-        "commissionRate": 0.5,
-        "commission": 14,
-        "slabLabel": "≤ 2L (0.5%)",
+        "commissionRate": 0,
+        "commission": 0,
+        "slabLabel": "< 50% Target (0%)",
         "rank": 1
       }
     ],
@@ -499,9 +572,9 @@
       "sales": 2700,
       "bills": 1,
       "items": 3,
-      "commission": 14,
-      "commissionRate": 0.5,
-      "slabLabel": "≤ 2L (0.5%)"
+      "commission": 0,
+      "commissionRate": 0,
+      "slabLabel": "< 50% Target (0%)"
     }
   },
   {
@@ -515,7 +588,7 @@
     "storeTotalBills": 7,
     "storeTotalItems": 21,
     "staffSales": 3510,
-    "totalCommission": 18,
+    "totalCommission": 0,
     "activeStaffCount": 1,
     "staff": [
       {
@@ -529,9 +602,9 @@
         "bills": 1,
         "aov": 3510,
         "upt": 4,
-        "commissionRate": 0.5,
-        "commission": 18,
-        "slabLabel": "≤ 2L (0.5%)",
+        "commissionRate": 0,
+        "commission": 0,
+        "slabLabel": "< 50% Target (0%)",
         "rank": 1
       },
       {
@@ -556,9 +629,9 @@
       "sales": 3510,
       "bills": 1,
       "items": 4,
-      "commission": 18,
-      "commissionRate": 0.5,
-      "slabLabel": "≤ 2L (0.5%)"
+      "commission": 0,
+      "commissionRate": 0,
+      "slabLabel": "< 50% Target (0%)"
     }
   },
   {
@@ -572,7 +645,7 @@
     "storeTotalBills": 5,
     "storeTotalItems": 20,
     "staffSales": 13230,
-    "totalCommission": 66,
+    "totalCommission": 0,
     "activeStaffCount": 3,
     "staff": [
       {
@@ -586,9 +659,9 @@
         "bills": 2,
         "aov": 2625,
         "upt": 4,
-        "commissionRate": 0.5,
-        "commission": 26,
-        "slabLabel": "≤ 2L (0.5%)",
+        "commissionRate": 0,
+        "commission": 0,
+        "slabLabel": "< 50% Target (0%)",
         "rank": 1
       },
       {
@@ -602,9 +675,9 @@
         "bills": 1,
         "aov": 4230,
         "upt": 5,
-        "commissionRate": 0.5,
-        "commission": 21,
-        "slabLabel": "≤ 2L (0.5%)",
+        "commissionRate": 0,
+        "commission": 0,
+        "slabLabel": "< 50% Target (0%)",
         "rank": 2
       },
       {
@@ -618,9 +691,9 @@
         "bills": 1,
         "aov": 3750,
         "upt": 4,
-        "commissionRate": 0.5,
-        "commission": 19,
-        "slabLabel": "≤ 2L (0.5%)",
+        "commissionRate": 0,
+        "commission": 0,
+        "slabLabel": "< 50% Target (0%)",
         "rank": 3
       },
       {
@@ -645,9 +718,9 @@
       "sales": 5250,
       "bills": 2,
       "items": 8,
-      "commission": 26,
-      "commissionRate": 0.5,
-      "slabLabel": "≤ 2L (0.5%)"
+      "commission": 0,
+      "commissionRate": 0,
+      "slabLabel": "< 50% Target (0%)"
     }
   },
   {
@@ -661,7 +734,7 @@
     "storeTotalBills": 1,
     "storeTotalItems": 4,
     "staffSales": 4230,
-    "totalCommission": 21,
+    "totalCommission": 0,
     "activeStaffCount": 1,
     "staff": [
       {
@@ -675,9 +748,9 @@
         "bills": 1,
         "aov": 4230,
         "upt": 4,
-        "commissionRate": 0.5,
-        "commission": 21,
-        "slabLabel": "≤ 2L (0.5%)",
+        "commissionRate": 0,
+        "commission": 0,
+        "slabLabel": "< 50% Target (0%)",
         "rank": 1
       }
     ],
@@ -687,9 +760,9 @@
       "sales": 4230,
       "bills": 1,
       "items": 4,
-      "commission": 21,
-      "commissionRate": 0.5,
-      "slabLabel": "≤ 2L (0.5%)"
+      "commission": 0,
+      "commissionRate": 0,
+      "slabLabel": "< 50% Target (0%)"
     }
   },
   {
@@ -719,7 +792,7 @@
         "upt": 20,
         "commissionRate": 0.5,
         "commission": 49,
-        "slabLabel": "≤ 2L (0.5%)",
+        "slabLabel": "≥ 50% Target (0.5%)",
         "rank": 1
       },
       {
@@ -746,7 +819,7 @@
       "items": 20,
       "commission": 49,
       "commissionRate": 0.5,
-      "slabLabel": "≤ 2L (0.5%)"
+      "slabLabel": "≥ 50% Target (0.5%)"
     }
   },
   {
@@ -776,7 +849,7 @@
         "upt": 8,
         "commissionRate": 0.5,
         "commission": 39,
-        "slabLabel": "≤ 2L (0.5%)",
+        "slabLabel": "≥ 50% Target (0.5%)",
         "rank": 1
       },
       {
@@ -803,7 +876,7 @@
       "items": 8,
       "commission": 39,
       "commissionRate": 0.5,
-      "slabLabel": "≤ 2L (0.5%)"
+      "slabLabel": "≥ 50% Target (0.5%)"
     }
   },
   {
@@ -817,7 +890,7 @@
     "storeTotalBills": 3,
     "storeTotalItems": 14,
     "staffSales": 4170,
-    "totalCommission": 21,
+    "totalCommission": 0,
     "activeStaffCount": 1,
     "staff": [
       {
@@ -831,9 +904,9 @@
         "bills": 1,
         "aov": 4170,
         "upt": 5,
-        "commissionRate": 0.5,
-        "commission": 21,
-        "slabLabel": "≤ 2L (0.5%)",
+        "commissionRate": 0,
+        "commission": 0,
+        "slabLabel": "< 50% Target (0%)",
         "rank": 1
       },
       {
@@ -858,9 +931,9 @@
       "sales": 4170,
       "bills": 1,
       "items": 5,
-      "commission": 21,
-      "commissionRate": 0.5,
-      "slabLabel": "≤ 2L (0.5%)"
+      "commission": 0,
+      "commissionRate": 0,
+      "slabLabel": "< 50% Target (0%)"
     }
   },
   {
@@ -874,7 +947,7 @@
     "storeTotalBills": 3,
     "storeTotalItems": 9,
     "staffSales": 5218,
-    "totalCommission": 26,
+    "totalCommission": 0,
     "activeStaffCount": 2,
     "staff": [
       {
@@ -888,9 +961,9 @@
         "bills": 1,
         "aov": 2698,
         "upt": 3,
-        "commissionRate": 0.5,
-        "commission": 13,
-        "slabLabel": "≤ 2L (0.5%)",
+        "commissionRate": 0,
+        "commission": 0,
+        "slabLabel": "< 50% Target (0%)",
         "rank": 1
       },
       {
@@ -904,9 +977,9 @@
         "bills": 1,
         "aov": 2520,
         "upt": 3,
-        "commissionRate": 0.5,
-        "commission": 13,
-        "slabLabel": "≤ 2L (0.5%)",
+        "commissionRate": 0,
+        "commission": 0,
+        "slabLabel": "< 50% Target (0%)",
         "rank": 2
       },
       {
@@ -931,9 +1004,9 @@
       "sales": 2698,
       "bills": 1,
       "items": 3,
-      "commission": 13,
-      "commissionRate": 0.5,
-      "slabLabel": "≤ 2L (0.5%)"
+      "commission": 0,
+      "commissionRate": 0,
+      "slabLabel": "< 50% Target (0%)"
     }
   },
   {
@@ -947,7 +1020,7 @@
     "storeTotalBills": 2,
     "storeTotalItems": 4,
     "staffSales": 2100,
-    "totalCommission": 11,
+    "totalCommission": 0,
     "activeStaffCount": 1,
     "staff": [
       {
@@ -961,9 +1034,9 @@
         "bills": 1,
         "aov": 2100,
         "upt": 3,
-        "commissionRate": 0.5,
-        "commission": 11,
-        "slabLabel": "≤ 2L (0.5%)",
+        "commissionRate": 0,
+        "commission": 0,
+        "slabLabel": "< 50% Target (0%)",
         "rank": 1
       },
       {
@@ -988,9 +1061,9 @@
       "sales": 2100,
       "bills": 1,
       "items": 3,
-      "commission": 11,
-      "commissionRate": 0.5,
-      "slabLabel": "≤ 2L (0.5%)"
+      "commission": 0,
+      "commissionRate": 0,
+      "slabLabel": "< 50% Target (0%)"
     }
   },
   {
@@ -1036,7 +1109,7 @@
     "storeTotalBills": 6,
     "storeTotalItems": 27,
     "staffSales": 6810,
-    "totalCommission": 34,
+    "totalCommission": 0,
     "activeStaffCount": 1,
     "staff": [
       {
@@ -1050,9 +1123,9 @@
         "bills": 2,
         "aov": 3405,
         "upt": 3.5,
-        "commissionRate": 0.5,
-        "commission": 34,
-        "slabLabel": "≤ 2L (0.5%)",
+        "commissionRate": 0,
+        "commission": 0,
+        "slabLabel": "< 50% Target (0%)",
         "rank": 1
       },
       {
@@ -1077,9 +1150,9 @@
       "sales": 6810,
       "bills": 2,
       "items": 7,
-      "commission": 34,
-      "commissionRate": 0.5,
-      "slabLabel": "≤ 2L (0.5%)"
+      "commission": 0,
+      "commissionRate": 0,
+      "slabLabel": "< 50% Target (0%)"
     }
   },
   {
@@ -1477,7 +1550,7 @@
     "storeTotalBills": 9,
     "storeTotalItems": 51,
     "staffSales": 3810,
-    "totalCommission": 19,
+    "totalCommission": 0,
     "activeStaffCount": 1,
     "staff": [
       {
@@ -1491,9 +1564,9 @@
         "bills": 1,
         "aov": 3810,
         "upt": 4,
-        "commissionRate": 0.5,
-        "commission": 19,
-        "slabLabel": "≤ 2L (0.5%)",
+        "commissionRate": 0,
+        "commission": 0,
+        "slabLabel": "< 50% Target (0%)",
         "rank": 1
       },
       {
@@ -1518,9 +1591,9 @@
       "sales": 3810,
       "bills": 1,
       "items": 4,
-      "commission": 19,
-      "commissionRate": 0.5,
-      "slabLabel": "≤ 2L (0.5%)"
+      "commission": 0,
+      "commissionRate": 0,
+      "slabLabel": "< 50% Target (0%)"
     }
   },
   {
@@ -1966,7 +2039,7 @@
         "upt": 10,
         "commissionRate": 0.5,
         "commission": 54,
-        "slabLabel": "≤ 2L (0.5%)",
+        "slabLabel": "≥ 50% Target (0.5%)",
         "rank": 1
       },
       {
@@ -1993,7 +2066,7 @@
       "items": 10,
       "commission": 54,
       "commissionRate": 0.5,
-      "slabLabel": "≤ 2L (0.5%)"
+      "slabLabel": "≥ 50% Target (0.5%)"
     }
   },
   {
@@ -2231,7 +2304,7 @@
     "storeTotalBills": 16,
     "storeTotalItems": 44,
     "staffSales": 3309,
-    "totalCommission": 17,
+    "totalCommission": 0,
     "activeStaffCount": 1,
     "staff": [
       {
@@ -2245,9 +2318,9 @@
         "bills": 2,
         "aov": 1655,
         "upt": 2,
-        "commissionRate": 0.5,
-        "commission": 17,
-        "slabLabel": "≤ 2L (0.5%)",
+        "commissionRate": 0,
+        "commission": 0,
+        "slabLabel": "< 50% Target (0%)",
         "rank": 1
       },
       {
@@ -2272,9 +2345,9 @@
       "sales": 3309,
       "bills": 2,
       "items": 4,
-      "commission": 17,
-      "commissionRate": 0.5,
-      "slabLabel": "≤ 2L (0.5%)"
+      "commission": 0,
+      "commissionRate": 0,
+      "slabLabel": "< 50% Target (0%)"
     }
   },
   {
@@ -2288,7 +2361,7 @@
     "storeTotalBills": 22,
     "storeTotalItems": 66,
     "staffSales": 4935,
-    "totalCommission": 25,
+    "totalCommission": 0,
     "activeStaffCount": 1,
     "staff": [
       {
@@ -2302,9 +2375,9 @@
         "bills": 1,
         "aov": 4935,
         "upt": 4,
-        "commissionRate": 0.5,
-        "commission": 25,
-        "slabLabel": "≤ 2L (0.5%)",
+        "commissionRate": 0,
+        "commission": 0,
+        "slabLabel": "< 50% Target (0%)",
         "rank": 1
       },
       {
@@ -2329,9 +2402,9 @@
       "sales": 4935,
       "bills": 1,
       "items": 4,
-      "commission": 25,
-      "commissionRate": 0.5,
-      "slabLabel": "≤ 2L (0.5%)"
+      "commission": 0,
+      "commissionRate": 0,
+      "slabLabel": "< 50% Target (0%)"
     }
   },
   {
@@ -2537,7 +2610,7 @@
     "storeTotalBills": 20,
     "storeTotalItems": 77,
     "staffSales": 2188,
-    "totalCommission": 11,
+    "totalCommission": 0,
     "activeStaffCount": 1,
     "staff": [
       {
@@ -2551,9 +2624,9 @@
         "bills": 1,
         "aov": 2188,
         "upt": 2,
-        "commissionRate": 0.5,
-        "commission": 11,
-        "slabLabel": "≤ 2L (0.5%)",
+        "commissionRate": 0,
+        "commission": 0,
+        "slabLabel": "< 50% Target (0%)",
         "rank": 1
       },
       {
@@ -2578,9 +2651,9 @@
       "sales": 2188,
       "bills": 1,
       "items": 2,
-      "commission": 11,
-      "commissionRate": 0.5,
-      "slabLabel": "≤ 2L (0.5%)"
+      "commission": 0,
+      "commissionRate": 0,
+      "slabLabel": "< 50% Target (0%)"
     }
   },
   {
@@ -2594,7 +2667,7 @@
     "storeTotalBills": 13,
     "storeTotalItems": 34,
     "staffSales": 2070,
-    "totalCommission": 10,
+    "totalCommission": 0,
     "activeStaffCount": 1,
     "staff": [
       {
@@ -2608,9 +2681,9 @@
         "bills": 1,
         "aov": 2070,
         "upt": 3,
-        "commissionRate": 0.5,
-        "commission": 10,
-        "slabLabel": "≤ 2L (0.5%)",
+        "commissionRate": 0,
+        "commission": 0,
+        "slabLabel": "< 50% Target (0%)",
         "rank": 1
       },
       {
@@ -2635,9 +2708,9 @@
       "sales": 2070,
       "bills": 1,
       "items": 3,
-      "commission": 10,
-      "commissionRate": 0.5,
-      "slabLabel": "≤ 2L (0.5%)"
+      "commission": 0,
+      "commissionRate": 0,
+      "slabLabel": "< 50% Target (0%)"
     }
   },
   {
@@ -2651,7 +2724,7 @@
     "storeTotalBills": 26,
     "storeTotalItems": 87,
     "staffSales": 9840,
-    "totalCommission": 49,
+    "totalCommission": 0,
     "activeStaffCount": 2,
     "staff": [
       {
@@ -2665,9 +2738,9 @@
         "bills": 2,
         "aov": 3525,
         "upt": 4,
-        "commissionRate": 0.5,
-        "commission": 35,
-        "slabLabel": "≤ 2L (0.5%)",
+        "commissionRate": 0,
+        "commission": 0,
+        "slabLabel": "< 50% Target (0%)",
         "rank": 1
       },
       {
@@ -2681,9 +2754,9 @@
         "bills": 1,
         "aov": 2790,
         "upt": 3,
-        "commissionRate": 0.5,
-        "commission": 14,
-        "slabLabel": "≤ 2L (0.5%)",
+        "commissionRate": 0,
+        "commission": 0,
+        "slabLabel": "< 50% Target (0%)",
         "rank": 2
       },
       {
@@ -2708,9 +2781,9 @@
       "sales": 7050,
       "bills": 2,
       "items": 8,
-      "commission": 35,
-      "commissionRate": 0.5,
-      "slabLabel": "≤ 2L (0.5%)"
+      "commission": 0,
+      "commissionRate": 0,
+      "slabLabel": "< 50% Target (0%)"
     }
   },
   {

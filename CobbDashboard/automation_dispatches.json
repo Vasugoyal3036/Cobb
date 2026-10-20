@@ -2230,5 +2230,65 @@
     "reason": "exchange",
     "status": "sent",
     "detail": "Official Exchange Slip sent"
+  },
+  {
+    "timestamp": "2026-10-19T19:25:18.169495",
+    "date": "2026-10-19",
+    "time": "07:25 PM",
+    "billNo": "STST27-00842   ",
+    "cmId": "ST01127000STST27-00842",
+    "customerName": "Parbhat",
+    "phone": "9466422821",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-10-20T11:24:19.733025",
+    "date": "2026-10-20",
+    "time": "11:24 AM",
+    "billNo": "STST27-00843   ",
+    "cmId": "ST01127000STST27-00843",
+    "customerName": "Naresh Kumar",
+    "phone": "8950320866",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-10-20T12:43:01.007941",
+    "date": "2026-10-20",
+    "time": "12:43 PM",
+    "billNo": "STST27-00844   ",
+    "cmId": "ST01127000STST27-00844",
+    "customerName": "Dinkar Pathak",
+    "phone": "9410024612",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-10-20T13:06:36.434834",
+    "date": "2026-10-20",
+    "time": "01:06 PM",
+    "billNo": "STST27-00845   ",
+    "cmId": "ST01127000STST27-00845",
+    "customerName": "Mohinder Singh",
+    "phone": "9466563795",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
+  },
+  {
+    "timestamp": "2026-10-20T13:16:01.085718",
+    "date": "2026-10-20",
+    "time": "01:16 PM",
+    "billNo": "STST27-00846   ",
+    "cmId": "ST01127000STST27-00846",
+    "customerName": "Himanshu Garg",
+    "phone": "8929297283",
+    "reason": "checkout",
+    "status": "sent",
+    "detail": "Digital bill & review link sent"
   }
 ]

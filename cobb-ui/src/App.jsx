@@ -1055,10 +1055,9 @@ export default function App() {
       if (bill.VOUCHER_NO && !processedBills.current.has(bill.VOUCHER_NO)) {
         processedBills.current.add(bill.VOUCHER_NO);
         if (bill.MOBILE1 && bill.MOBILE1.length >= 10) {
-          const amount = bill.NET_AMOUNT || 0;
           const custName = bill.CUSTOMER_FNAME || bill.CustomerName || 'Valued Customer';
           const mobile = bill.MOBILE1;
-          const message = `🛍️ *COBB ITALY (PUNDRI) — DIGITAL RECEIPT*\n━━━━━━━━━━━━━━━━━━━━━━━━\n💰 *Bill Amount:* *₹${Number(amount).toLocaleString('en-IN')}*\n👤 *Customer:* *${custName}* (📱 *${mobile}*)\n🔢 *Bill No:* *#${bill.VOUCHER_NO}*\n━━━━━━━━━━━━━━━━━━━━━━━━\n\nDear *${custName}*,\nThank you for shopping at *Cobb Pundri*! We hope you loved our collection and had a wonderful experience with us. ✨\n\nWarm Regards,\n*Parbhat Goyal*\nCobb Pundri`;
+          const message = `🛍️ *COBB ITALY (PUNDRI) — DIGITAL RECEIPT*\n━━━━━━━━━━━━━━━━━━━━━━━━\n👤 *Customer:* *${custName}* (📱 *${mobile}*)\n━━━━━━━━━━━━━━━━━━━━━━━━\n\nDear *${custName}*,\nThank you for shopping at *Cobb Pundri*! We hope you loved our collection and had a wonderful experience with us. ✨\n\nWarm Regards,\n*Parbhat Goyal*\nCobb Pundri`;
           import('./utils/firebase.js').then(({ queueWhatsAppMessage }) => {
             if (queueWhatsAppMessage) queueWhatsAppMessage(bill.MOBILE1, message);
           }).catch(console.error);

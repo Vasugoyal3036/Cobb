@@ -493,15 +493,11 @@ def send_whatsapp_message(phone_number, customer_name, dedupe_key=None, amount=N
 
     display_mobile = clean_phone[-10:] if len(clean_phone) >= 10 else clean_phone
     cust_name = str(customer_name or 'Valued Customer').strip()
-    amt_line = f"💰 *BILL AMOUNT:* *₹{int(round(amount)):,}*\n" if amount is not None else ""
-    bill_line = f"🔢 *INVOICE NO:* *#{bill_no}*\n" if bill_no else ""
 
     message_text = (
         f"🛍️ *COBB ITALY (PUNDRI) — DIGITAL RECEIPT*\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
-        f"{amt_line}"
         f"👤 *Customer:* *{cust_name}* (📱 *{display_mobile}*)\n"
-        f"{bill_line}"
         f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
         f"Dear *{cust_name}*,\n"
         f"Thank you for shopping at *Cobb Pundri* today! We hope you loved our latest collection and had a wonderful experience with us. ✨\n\n"
@@ -521,6 +517,8 @@ def send_whatsapp_message(phone_number, customer_name, dedupe_key=None, amount=N
         'number': clean_phone,
         'message': message_text,
         'mediaPath': MEDIA_FILE,
+        'billNo': bill_no,
+        'customerName': cust_name,
         'dedupeKey': f'checkout:{dedupe_key}' if dedupe_key else None
     }
     headers = {'Content-Type': 'application/json'}
