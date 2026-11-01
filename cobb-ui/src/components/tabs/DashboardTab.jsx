@@ -586,10 +586,10 @@ const DashboardTab = (props) => {
               {/* Quick Preset Buttons with Spin-Tax */}
               <div className="flex flex-wrap gap-2">
                 <button
-                  onClick={() => setBroadcastMsg('{🪔 DIWALI DHAMAKA|✨ DIWALI SPECIAL OFFER} AT COBB! 🪔\n\n{Hello|Dear|Hi} *{name}*! 👋\n\nUpgrade your winter wardrobe this Diwali with our biggest festive deal:\n\n🔥 *BUY 1 GET 2 FREE* 🔥\n*On All Fresh Winterwear!* 🧥❄️\n(Jackets, Sweaters, Hoodies, Blazers & Suits)\n\n⏳ *Limited Festive Stock — Visit Today!*\n\n📍 *Store Location:*\nhttps://maps.app.goo.gl/HxgE1M25h32oWY2H9?g_st=ac\n\nHappy Diwali! ✨\n*Cobb Pundri (Goyal - House Of Fashion)*')}
+                  onClick={() => setBroadcastMsg('{🪔 DIWALI DHAMAKA|✨ DIWALI SPECIAL OFFER} AT COBB! 🪔\n\n{Hello|Dear|Hi} *{name}*! 👋\n\nUpgrade your winter wardrobe this Diwali with our biggest festive deal:\n\n🔥 *BUY 1 GET 2 FREE* 🔥\n*On All Fresh Winterwear!* 🧥❄️\n(Jackets, Sweaters, Hoodies, Blazers & Suits)\n\n🎁 *Assured Festive Gifts:*\n✨ Shop ₹10,000 ➔ Assured Free Gift 🎁\n💼 Shop ₹15,000 ➔ Free Premium Leather Bag\n🧳 Shop ₹20,000 ➔ Free VIP Travel Trolley Bag\n\n⏳ *Limited Festive Stock — Visit Today!*\n\n📍 *Store Location:*\nhttps://maps.app.goo.gl/HxgE1M25h32oWY2H9?g_st=ac\n\nHappy Diwali! ✨\n*Cobb Pundri (Goyal - House Of Fashion)*')}
                   className="px-3 py-1.5 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 hover:bg-amber-600 hover:text-white rounded-lg text-xs font-bold transition-all cursor-pointer border border-amber-200 dark:border-amber-800"
                 >
-                  🪔 Diwali Buy 1 Get 2 Free
+                  🪔 Diwali B1G2 + Free Gifts
                 </button>
                 <button
                   onClick={() => setBroadcastMsg('{🎉 SPECIAL OFFER|🏷️ EXCLUSIVE DEAL|✨ VIP INVITATION} FROM COBB PUNDRI!\n\n{Hello|Dear|Hi} *{name}*! 👋\n\nEnjoy *BUY 2 GET 1 FREE* on all Suits, Formals, & Denim Collections this week at Cobb Pundri! 🏷️✨\n\n-----------------------------------\n📍 *Store Location:*\nhttps://maps.app.goo.gl/HxgE1M25h32oWY2H9?g_st=ac\n-----------------------------------\n\nShow this WhatsApp message at counter to claim your deal!\n\nWarm Regards,\n*Parbhat Goyal*\nCobb Pundri')}
