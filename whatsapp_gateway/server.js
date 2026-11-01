@@ -553,7 +553,7 @@ async function initWhatsApp(isFresh = false) {
                 if (!rawBody) return;
                 const lower = rawBody.toLowerCase();
                 const phone = msg.from.replace('@c.us', '');
-                const cleanPhone = phone.startsWith('91') && phone.length === 12 ? phone.slice(2) : phone;
+                const cleanPhone = phone.replace(/[^0-9]/g, '').slice(-10);
 
                 // --- 2-STEP WHATSAPP REVIEW FUNNEL & GRIEVANCE INTERCEPTION ---
                 const activeSession = getActiveReviewSession(cleanPhone);
@@ -894,9 +894,15 @@ async function initWhatsApp(isFresh = false) {
         // --- WHATSAPP POLL VOTE INTERCEPTION (CHECKBOX / RADIO SELECTION) ---
         client.on('vote_update', async (vote) => {
             try {
-                if (!vote || !vote.voter) return;
-                const cleanPhone = String(vote.voter).replace(/[^0-9]/g, '').slice(-10);
-                if (!cleanPhone) return;
+                if (!vote) return;
+                const rawVoter = typeof vote.voter === 'string'
+                    ? vote.voter
+                    : (vote.voter?._serialized || vote.voter?.user || vote.senderUserJid || vote.parentMsgKey?.remote?._serialized || '');
+                const cleanPhone = String(rawVoter || '').replace(/[^0-9]/g, '').slice(-10);
+                if (!cleanPhone) {
+                    console.warn('[VOTE UPDATE] Could not extract voter phone:', vote.voter);
+                    return;
+                }
 
                 // Ignore if user unselected all options
                 if (!vote.selectedOptions || vote.selectedOptions.length === 0) return;
@@ -906,7 +912,8 @@ async function initWhatsApp(isFresh = false) {
                 if (inboundCooldown.has(cleanPhone) && (now - inboundCooldown.get(cleanPhone) < 2000)) return;
                 inboundCooldown.set(cleanPhone, now);
 
-                const chatId = `${String(vote.voter).replace(/[^0-9]/g, '')}@c.us`;
+                const chatId = rawVoter.includes('@c.us') ? rawVoter : `91${cleanPhone}@c.us`;
+                console.log(`[VOTE UPDATE] Processing poll vote from ${cleanPhone} (${chatId}):`, vote.selectedOptions);
                 const activeSession = getActiveReviewSession(cleanPhone);
 
                 const grievanceMap = {

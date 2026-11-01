@@ -30,7 +30,8 @@ import {
 export default function RatingsTab({
   API_BASE = 'http://localhost:5000',
   darkMode = true,
-  openCustomerCard
+  openCustomerCard,
+  activeStore
 }) {
   const [ratingsData, setRatingsData] = useState({
     ratings: [],
@@ -124,10 +125,11 @@ export default function RatingsTab({
   useEffect(() => {
     let unsubDoc = null;
     let unsubCol = null;
+    const targetStore = (!activeStore || activeStore === 'ALL' || activeStore === 'STORE_01') ? 'DEMO_STORE_001' : activeStore;
     if (db) {
       try {
-        // 1. Instant sync from aggregate document stores/DEMO_STORE_001/data/ratings
-        const docRef = doc(db, 'stores', 'DEMO_STORE_001', 'data', 'ratings');
+        // 1. Instant sync from aggregate document stores/{targetStore}/data/ratings
+        const docRef = doc(db, 'stores', targetStore, 'data', 'ratings');
         unsubDoc = onSnapshot(docRef, (snap) => {
           if (snap.exists()) {
             const data = snap.data();
@@ -168,9 +170,9 @@ export default function RatingsTab({
           console.warn('Firestore ratings doc listener warning:', err.message);
         });
 
-        // 2. Collection listener stores/DEMO_STORE_001/ratings
+        // 2. Collection listener stores/{targetStore}/ratings
         const q = query(
-          collection(db, 'stores/DEMO_STORE_001/ratings'),
+          collection(db, `stores/${targetStore}/ratings`),
           orderBy('timestamp', 'desc'),
           limit(50)
         );
@@ -220,7 +222,7 @@ export default function RatingsTab({
       if (unsubDoc) unsubDoc();
       if (unsubCol) unsubCol();
     };
-  }, []);
+  }, [activeStore]);
 
   const summary = ratingsData?.summary || { total: 0, average: 0, nps: 0,
     breakdown: { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 }
