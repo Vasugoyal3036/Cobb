@@ -124,7 +124,9 @@ function saveRatingToLedger(entry) {
             comment: entry.comment || (ratingNum >= 4 ? `${ratingNum}-Star Positive Rating` : `${ratingNum}-Star Grievance`),
             category: ratingNum >= 4 ? 'positive' : 'grievance',
             billNo: entry.billNo || '',
-            timestamp: entry.timestamp || new Date().toISOString()
+            timestamp: entry.timestamp || new Date().toISOString(),
+            date: (entry.timestamp || new Date().toISOString()).split('T')[0],
+            status: 'unread'
         };
 
         if (existingIdx >= 0) {
@@ -136,6 +138,23 @@ function saveRatingToLedger(entry) {
         if (list.length > 500) list.pop();
         fs.writeFileSync(ratingsFile, JSON.stringify(list, null, 2), 'utf8');
         console.log(`[RATING LEDGER] Saved rating ${ratingNum}★ for ${cleanPhone}. Total stored: ${list.length}`);
+
+        // Forward to backend API to guarantee in-memory cache and Firestore sync
+        try {
+            fetch('http://localhost:5000/api/whatsapp/inbound-alert', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    phone: cleanPhone,
+                    customerName: entry.customerName,
+                    message: entry.comment || `${ratingNum} Stars`,
+                    type: ratingNum >= 4 ? 'rating_positive' : 'grievance_low_nps',
+                    rating: ratingNum,
+                    billNo: entry.billNo || ''
+                })
+            }).catch(() => {});
+        } catch (e) { }
+
         return ratingItem;
     } catch (e) {
         console.error('[RATING LEDGER ERROR]:', e.message);
@@ -272,8 +291,8 @@ function saveNpsQueue(queue) {
 function queueNpsSurvey(phone, customerName = 'Valued Customer', billNo = '', delayMinutes = 30) {
     const cleanPhone = String(phone).replace(/[^0-9]/g, '').slice(-10);
     if (!cleanPhone || cleanPhone.length < 10) return;
-    if (isOwnerPhone(cleanPhone)) {
-        console.log(`[NPS QUEUE] Suppressing survey queue for owner phone ${cleanPhone}`);
+    if (isOwnerPhone(cleanPhone) && delayMinutes > 0) {
+        console.log(`[NPS QUEUE] Suppressing automated survey queue for owner phone ${cleanPhone}`);
         return;
     }
 
@@ -536,9 +555,18 @@ async function initWhatsApp(isFresh = false) {
                 const phone = msg.from.replace('@c.us', '');
                 const cleanPhone = phone.startsWith('91') && phone.length === 12 ? phone.slice(2) : phone;
 
-                // SUPPRESS ALL AUTOMATED REPLIES TO STORE OWNERS
-                if (isOwnerPhone(cleanPhone) || isOwnerPhone(phone)) {
-                    console.log(`[WHATSAPP INBOUND] Message from owner ${cleanPhone} ("${rawBody}") - suppressing automated reply.`);
+                // --- 2-STEP WHATSAPP REVIEW FUNNEL & GRIEVANCE INTERCEPTION ---
+                const activeSession = getActiveReviewSession(cleanPhone);
+
+                // SUPPRESS ALL AUTOMATED GENERAL REPLIES TO STORE OWNERS
+                // (Allow active rating/review sessions and explicit rating replies so owner testing works)
+                const isOwner = isOwnerPhone(cleanPhone) || isOwnerPhone(phone);
+                const isRatingMsg = Boolean(activeSession && activeSession.step) ||
+                    ['5', '4', '3', '2', '1', '⭐⭐⭐⭐⭐', '⭐⭐⭐⭐', '⭐⭐⭐', '⭐⭐', '⭐'].includes(lower) ||
+                    ['5 star', '5 stars', '4 star', '4 stars', '3 star', '2 star', '1 star', 'excellent', 'superb', 'great'].some(k => lower.includes(k));
+
+                if (isOwner && !isRatingMsg) {
+                    console.log(`[WHATSAPP INBOUND] Message from owner ${cleanPhone} ("${rawBody}") - suppressing automated general reply.`);
                     return;
                 }
 
@@ -550,9 +578,6 @@ async function initWhatsApp(isFresh = false) {
                     return;
                 }
                 inboundCooldown.set(phone, now);
-
-                // --- 2-STEP WHATSAPP REVIEW FUNNEL & GRIEVANCE INTERCEPTION ---
-                const activeSession = getActiveReviewSession(cleanPhone);
 
                 // STEP 2: Grievance Detail Collection (Customer previously gave a low rating and was asked why)
                 if (activeSession && activeSession.step === 'waiting_grievance_detail') {
@@ -871,7 +896,7 @@ async function initWhatsApp(isFresh = false) {
             try {
                 if (!vote || !vote.voter) return;
                 const cleanPhone = String(vote.voter).replace(/[^0-9]/g, '').slice(-10);
-                if (!cleanPhone || isOwnerPhone(cleanPhone)) return;
+                if (!cleanPhone) return;
 
                 // Ignore if user unselected all options
                 if (!vote.selectedOptions || vote.selectedOptions.length === 0) return;

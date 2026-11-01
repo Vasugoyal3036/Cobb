@@ -264,6 +264,27 @@ async function syncEndpointList(items, tierName = 'Sync') {
                 await db.collection("stores").doc(STORE_ID).collection("data").doc(docName).set(payload, { merge: true });
                 lastPayloadHash.set(docName, hash);
 
+                if (docName === 'ratings') {
+                    const ratingsList = payload.ratings || (Array.isArray(payload.items) ? payload.items : []);
+                    if (Array.isArray(ratingsList) && ratingsList.length > 0) {
+                        try {
+                            const batch = db.batch();
+                            const recent = ratingsList.slice(0, 50);
+                            for (const r of recent) {
+                                const rId = String(r.id || r.phone || Date.now());
+                                const rRef = db.collection("stores").doc(STORE_ID).collection("ratings").doc(rId);
+                                batch.set(rRef, {
+                                    ...r,
+                                    lastUpdated: FieldValue.serverTimestamp()
+                                }, { merge: true });
+                            }
+                            await batch.commit();
+                        } catch (batchErr) {
+                            console.warn('[SYNC AGENT] Batch rating mirror error:', batchErr.message);
+                        }
+                    }
+                }
+
                 // If endpoint has alias docs (e.g. legacy/alternative doc naming), sync them without extra fetch
                 if (Array.isArray(item.aliasDocs)) {
                     for (const alias of item.aliasDocs) {

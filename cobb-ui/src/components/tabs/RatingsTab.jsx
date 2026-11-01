@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import { db } from '../../utils/firebase';
-import { collection, onSnapshot, query, orderBy, limit } from 'firebase/firestore';
+import { collection, doc, onSnapshot, query, orderBy, limit } from 'firebase/firestore';
 import {
   Star,
   RefreshCw,
@@ -122,17 +122,61 @@ export default function RatingsTab({
 
   // Real-time Cloud Firestore listener for instant live rating synchronization
   useEffect(() => {
-    let unsub = null;
+    let unsubDoc = null;
+    let unsubCol = null;
     if (db) {
       try {
+        // 1. Instant sync from aggregate document stores/DEMO_STORE_001/data/ratings
+        const docRef = doc(db, 'stores', 'DEMO_STORE_001', 'data', 'ratings');
+        unsubDoc = onSnapshot(docRef, (snap) => {
+          if (snap.exists()) {
+            const data = snap.data();
+            if (data && Array.isArray(data.ratings)) {
+              setRatingsData(prev => {
+                const existing = prev.ratings || [];
+                const mergedMap = new Map();
+                existing.forEach(item => mergedMap.set(String(item.id || item.phone), item));
+                data.ratings.forEach(item => mergedMap.set(String(item.id || item.phone), item));
+                const merged = Array.from(mergedMap.values()).sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+
+                const total = merged.length;
+                const avg = total > 0 ? (merged.reduce((sum, r) => sum + (Number(r.rating) || 5), 0) / total).toFixed(1) : 0;
+                const promoters = merged.filter(r => (Number(r.rating) || 0) >= 4).length;
+                const detractors = merged.filter(r => (Number(r.rating) || 0) <= 2).length;
+                const nps = total > 0 ? Math.round(((promoters - detractors) / total) * 100) : 0;
+
+                return {
+                  ratings: merged,
+                  summary: data.summary || {
+                    total,
+                    average: parseFloat(avg),
+                    nps,
+                    breakdown: {
+                      5: merged.filter(r => Number(r.rating) === 5).length,
+                      4: merged.filter(r => Number(r.rating) === 4).length,
+                      3: merged.filter(r => Number(r.rating) === 3).length,
+                      2: merged.filter(r => Number(r.rating) === 2).length,
+                      1: merged.filter(r => Number(r.rating) === 1).length
+                    }
+                  }
+                };
+              });
+              setLoading(false);
+            }
+          }
+        }, (err) => {
+          console.warn('Firestore ratings doc listener warning:', err.message);
+        });
+
+        // 2. Collection listener stores/DEMO_STORE_001/ratings
         const q = query(
           collection(db, 'stores/DEMO_STORE_001/ratings'),
           orderBy('timestamp', 'desc'),
           limit(50)
         );
-        unsub = onSnapshot(q, (snapshot) => {
+        unsubCol = onSnapshot(q, (snapshot) => {
           const cloudItems = [];
-          snapshot.forEach(doc => cloudItems.push({ id: doc.id, ...doc.data() }));
+          snapshot.forEach(docSnap => cloudItems.push({ id: docSnap.id, ...docSnap.data() }));
           if (cloudItems.length > 0) {
             setRatingsData(prev => {
               const existing = prev.ratings || [];
@@ -163,14 +207,18 @@ export default function RatingsTab({
                 }
               };
             });
+            setLoading(false);
           }
+        }, (err) => {
+          console.warn('Firestore ratings collection listener warning:', err.message);
         });
       } catch (e) {
         console.warn('Firestore ratings sync fallback:', e.message);
       }
     }
     return () => {
-      if (unsub) unsub();
+      if (unsubDoc) unsubDoc();
+      if (unsubCol) unsubCol();
     };
   }, []);
 

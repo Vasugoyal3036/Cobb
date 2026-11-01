@@ -4784,16 +4784,75 @@ function loadCustomerRatings() {
     return [];
 }
 
+let ratingsFirestoreDb = null;
+try {
+    const serviceAccountPath = path.join(__dirname, 'firebase-admin.json');
+    if (fs.existsSync(serviceAccountPath)) {
+        const { initializeApp, getApps, cert } = require('firebase-admin/app');
+        const { getFirestore } = require('firebase-admin/firestore');
+        const serviceAccount = require(serviceAccountPath);
+        const fbApp = getApps().length ? getApps()[0] : initializeApp({ credential: cert(serviceAccount) });
+        ratingsFirestoreDb = getFirestore(fbApp);
+        console.log('[RATINGS] Firestore initialized for real-time rating sync.');
+    }
+} catch (e) {
+    console.warn('[RATINGS] Firestore init warning:', e.message);
+}
+
+async function syncRatingsToCloudFirestore(ratings) {
+    if (!ratingsFirestoreDb) return;
+    try {
+        const list = Array.isArray(ratings) ? ratings : [];
+        const total = list.length;
+        const avg = total > 0 ? (list.reduce((sum, r) => sum + (Number(r.rating) || 5), 0) / total).toFixed(1) : "0.0";
+        const promoters = list.filter(r => (Number(r.rating) || 0) >= 4).length;
+        const detractors = list.filter(r => (Number(r.rating) || 0) <= 2).length;
+        const nps = total > 0 ? Math.round(((promoters - detractors) / total) * 100) : 0;
+
+        const payload = {
+            ratings: list.slice(0, 500),
+            summary: {
+                total,
+                average: total > 0 ? parseFloat(avg) : 0,
+                nps,
+                breakdown: {
+                    5: list.filter(r => Number(r.rating) === 5).length,
+                    4: list.filter(r => Number(r.rating) === 4).length,
+                    3: list.filter(r => Number(r.rating) === 3).length,
+                    2: list.filter(r => Number(r.rating) === 2).length,
+                    1: list.filter(r => Number(r.rating) === 1).length
+                }
+            },
+            lastUpdated: new Date().toISOString()
+        };
+
+        // 1. Sync doc stores/DEMO_STORE_001/data/ratings (Phone Link onSnapshot)
+        await ratingsFirestoreDb.collection("stores").doc("DEMO_STORE_001").collection("data").doc("ratings").set(payload, { merge: true });
+
+        // 2. Mirror top 50 into collection stores/DEMO_STORE_001/ratings
+        const recent = list.slice(0, 50);
+        for (const item of recent) {
+            const docId = String(item.id || item.phone || Date.now());
+            await ratingsFirestoreDb.collection("stores").doc("DEMO_STORE_001").collection("ratings").doc(docId).set(item, { merge: true });
+        }
+        console.log(`[RATINGS] ✅ Real-time synced ${list.length} ratings to Cloud Firestore.`);
+    } catch (e) {
+        console.warn('[RATINGS] Firestore sync warning:', e.message);
+    }
+}
+
 function saveCustomerRatings(ratings) {
     try {
         fs.writeFileSync(CUSTOMER_RATINGS_FILE, JSON.stringify(ratings.slice(0, 500), null, 2), 'utf-8');
     } catch (e) {
         console.warn('[CUSTOMER RATINGS] Could not save ratings to file:', e.message);
     }
+    syncRatingsToCloudFirestore(ratings);
 }
 
 const inboundAlerts = loadInboundAlerts();
 const customerRatings = loadCustomerRatings();
+syncRatingsToCloudFirestore(customerRatings);
 
 app.post('/api/whatsapp/inbound-alert', async (req, res) => {
     const { phone, message, type, rating } = req.body || {};
