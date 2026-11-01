@@ -2289,7 +2289,7 @@ app.post('/api/broadcast/start', async (req, res) => {
         safetyMode = 'ultra', 
         batchSize = 20, 
         cooldownSeconds = 180, 
-        includeOptOut = true 
+        includeOptOut = false 
     } = req.body;
 
     if (!message) return res.status(400).json({ error: 'Broadcast message body is required.' });

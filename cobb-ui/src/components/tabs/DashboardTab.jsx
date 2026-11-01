@@ -91,7 +91,7 @@ const DashboardTab = (props) => {
   const [calendarDate, setCalendarDate] = React.useState(new Date());
   const [safetyMode, setSafetyMode] = React.useState('ultra');
   const [batchSize, setBatchSize] = React.useState(20);
-  const [includeOptOut, setIncludeOptOut] = React.useState(true);
+  const [includeOptOut, setIncludeOptOut] = React.useState(false);
   const [dashboardZone, setDashboardZone] = React.useState('all'); // 'all' | 'race' | 'heatmaps' | 'executive' | 'counter'
   const [activeInteractiveDeck, setActiveInteractiveDeck] = React.useState('all'); // 'all' | 'race' | 'heatmaps'
 
@@ -586,7 +586,7 @@ const DashboardTab = (props) => {
               {/* Quick Preset Buttons with Spin-Tax */}
               <div className="flex flex-wrap gap-2">
                 <button
-                  onClick={() => setBroadcastMsg('{🪔 DIWALI DHAMAKA|✨ DIWALI SPECIAL OFFER} AT COBB! 🪔\n\n{Hello|Dear|Hi} *{name}*! 👋\n\nUpgrade your winter wardrobe this Diwali with our biggest festive deal:\n\n🔥 *BUY 1 GET 2 FREE* 🔥\n*On All Fresh Winterwear!* 🧥❄️\n(Jackets, Sweaters, Hoodies, Blazers & Suits)\n\n🎁 *Assured Festive Gifts:*\n✨ Shop ₹10,000 ➔ Assured Free Gift 🎁\n💼 Shop ₹15,000 ➔ Free Premium Leather Bag\n🧳 Shop ₹20,000 ➔ Free VIP Travel Trolley Bag\n\n⏳ *Limited Festive Stock — Visit Today!*\n\n📍 *Store Address:*\nOpp DAV School Junior Wing, Pundri\n\nHappy Diwali! ✨\n*Cobb Pundri (Goyal - House Of Fashion)*')}
+                  onClick={() => setBroadcastMsg('{🪔 DIWALI DHAMAKA|✨ DIWALI SPECIAL OFFER} AT COBB! 🪔\n\n{Hello|Dear|Hi} *{name}*! 👋\n\nUpgrade your winter wardrobe this Diwali with our biggest festive deal:\n\n🔥 *BUY 1 GET 2 FREE* 🔥\n*On All Fresh Winterwear!* 🧥❄️\n(Jackets, Sweaters, Hoodies, Blazers & Suits)\n\n🎁 *Assured Festive Gifts:*\n✨ Shop ₹10,000 ➔ Assured Free Gift 🎁\n💼 Shop ₹15,000 ➔ Free Premium Leather Bag\n🧳 Shop ₹20,000 ➔ Free Trolley Bag\n\n⏳ *Limited Festive Stock — Visit Today!*\n\n📍 *Store Address:*\nOpp DAV School Junior Wing, Pundri\n\nHappy Diwali! ✨\n*Cobb Pundri (Goyal - House Of Fashion)*')}
                   className="px-3 py-1.5 bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 hover:bg-amber-600 hover:text-white rounded-lg text-xs font-bold transition-all cursor-pointer border border-amber-200 dark:border-amber-800"
                 >
                   🪔 Diwali B1G2 + Free Gifts
