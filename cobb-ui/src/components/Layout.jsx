@@ -7,10 +7,7 @@ import PwaInstallBanner from './PwaInstallBanner';
 // Lazy-loaded heavy administrative and DevOps modals to minimize bundle size
 const SetupWizardModal = lazy(() => import('./SetupWizardModal'));
 const SystemHealthModal = lazy(() => import('./SystemHealthModal'));
-const SystemPowerModal = lazy(() => import('./SystemPowerModal'));
 const StoreExpensesModal = lazy(() => import('./StoreExpensesModal'));
-const LoginAuditModal = lazy(() => import('./LoginAuditModal'));
-const AccountApprovalsModal = lazy(() => import('./AccountApprovalsModal'));
 import {
   User,
   MessageCircle,
@@ -95,11 +92,6 @@ import { THEMES } from './DashboardBackground';
 
 const navigationItems = [
   {
-    category: "AI & Intelligence", items: [
-      { id: "copilot", label: "✨ Fashion AI Copilot", icon: Sparkles, colorClass: "text-purple-600 dark:text-purple-400 hover:bg-purple-950/40 hover:text-white font-semibold", activeColorClass: "bg-gradient-to-r from-purple-600/30 via-indigo-600/20 to-transparent text-purple-700 dark:text-purple-200 font-bold border-l-3 border-purple-500 shadow-md shadow-purple-500/20" },
-    ]
-  },
-  {
     category: "Overview & P&L", items: [
       { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
       { id: "pnl", label: "Sales & P&L Statement", icon: DollarSign, colorClass: "text-green-600 dark:text-green-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-green-500/15 text-green-600 dark:text-green-400 font-bold border-l-2 border-green-500" },
@@ -124,9 +116,7 @@ const navigationItems = [
       { id: "transit", label: "Goods In Transit", icon: Truck, colorClass: "text-orange-600 dark:text-orange-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-orange-500/15 text-orange-600 dark:text-orange-400 font-bold border-l-2 border-orange-500" },
       { id: "ibt", label: "Inter-Branch Transfers", icon: Truck, colorClass: "text-indigo-600 dark:text-indigo-400 hover:bg-slate-900 hover:text-white font-bold", activeColorClass: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 font-bold border-l-2 border-indigo-500 shadow-sm shadow-indigo-500/20" },
       { id: "deadstock", label: "Inventory Explorer", icon: Package },
-      { id: "depreciation_clock", label: "⏳ Depreciation Clock", icon: Clock, colorClass: "text-rose-600 dark:text-rose-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-rose-500/15 text-rose-600 dark:text-rose-400 font-bold border-l-2 border-rose-500" },
       { id: "reorder", label: "Warehouse Reorder", icon: ClipboardList, colorClass: "text-blue-600 dark:text-blue-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-blue-500/15 text-blue-600 dark:text-blue-400 font-bold border-l-2 border-blue-500" },
-      { id: "smart_bundles", label: "Smart Bundling", icon: Percent, colorClass: "text-amber-600 dark:text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold border-l-2 border-amber-500" },
     ]
   },
   {
@@ -134,7 +124,6 @@ const navigationItems = [
       { id: "ratings", label: "⭐ Customer Ratings & NPS", icon: Star, colorClass: "text-amber-500 hover:bg-slate-900 hover:text-white font-bold", activeColorClass: "bg-amber-500/15 text-amber-500 font-bold border-l-2 border-amber-500 shadow-sm shadow-amber-500/20" },
       { id: "loyalty", label: "Loyalty & Points", icon: Crown, colorClass: "text-amber-600 dark:text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold border-l-2 border-amber-500" },
       { id: "broadcast", label: "Mass Offer Broadcast", icon: Send, colorClass: "text-emerald-600 dark:text-emerald-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold border-l-2 border-emerald-500" },
-      { id: "wardrobe", label: "Wardrobe Profiler", icon: Shirt, colorClass: "text-purple-600 dark:text-purple-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-purple-500/15 text-purple-600 dark:text-purple-400 font-bold border-l-2 border-purple-500" },
       { id: "retention", label: "Retention Radar", icon: Activity, colorClass: "text-rose-600 dark:text-rose-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-rose-500/15 text-rose-600 dark:text-rose-400 font-bold border-l-2 border-rose-500" },
       { id: "vip", label: "VIP Profiles", icon: Users },
       { id: "dormant", label: "Dormant Clients", icon: AlertCircle },
@@ -217,9 +206,6 @@ const Layout = ({
   const [showExpensesModal, setShowExpensesModal] = useState(false);
   const [showThemePicker, setShowThemePicker] = useState(false);
   const [healthStatus, setHealthStatus] = useState({ overall: 'healthy', inboundAlertsCount: 0 });
-  const [showPowerModal, setShowPowerModal] = useState(false);
-  const [showLoginAuditModal, setShowLoginAuditModal] = useState(false);
-  const [showApprovalsModal, setShowApprovalsModal] = useState(false);
   const [showBiometricModal, setShowBiometricModal] = useState(false);
   const [showCommandBar, setShowCommandBar] = useState(false);
   const [showActionCenter, setShowActionCenter] = useState(false);
@@ -933,7 +919,7 @@ const Layout = ({
               {/* POS Power & Online Status */}
               <button
                 type="button"
-                onClick={() => setShowPowerModal(true)}
+                onClick={() => setShowHealthModal(true)}
                 className={`w-full p-2 rounded-2xl border transition-all duration-300 flex items-center gap-2 overflow-hidden text-left cursor-pointer group relative ${isRightSidebarCollapsed ? 'justify-center' : 'justify-between'
                   } ${(systemStatus?.isOnline ?? true)
                     ? darkMode
@@ -1044,29 +1030,6 @@ const Layout = ({
                 } ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
                 Quick Actions
               </p>
-
-              {/* AI Copilot */}
-              <button
-                type="button"
-                onClick={() => setActiveTab('copilot')}
-                className={`w-full p-2 rounded-2xl font-bold text-xs flex items-center gap-2.5 transition-all duration-300 shadow-xs cursor-pointer border overflow-hidden group relative ${isRightSidebarCollapsed ? 'justify-center' : ''
-                  } ${activeTab === 'copilot'
-                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white border-purple-400 shadow-md shadow-purple-500/30 ring-1 ring-purple-400'
-                    : darkMode
-                      ? 'bg-purple-950/30 hover:bg-purple-900/50 text-purple-300 border-purple-800/50'
-                      : 'bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200'
-                  }`}
-                title="Cobb AI Copilot"
-              >
-                <div className="pointer-events-none absolute -inset-full bg-gradient-to-r from-transparent via-white/[0.12] to-transparent -translate-x-[150%] group-hover:translate-x-[150%] transition-transform duration-1000 transform -skew-x-25" />
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0">
-                  <Sparkles className="transition-transform duration-700 group-hover:rotate-[360deg] w-4 h-4 text-purple-400 animate-pulse" />
-                </div>
-                <span className={`truncate whitespace-nowrap transition-all duration-500 delay-[245ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none blur-md -translate-y-4' : 'w-full opacity-100 blur-0 translate-y-0'
-                  }`}>
-                  Cobb AI Copilot
-                </span>
-              </button>
 
               {/* EOD Cash Recon */}
               <button
@@ -1401,36 +1364,6 @@ const Layout = ({
       )}
 
       {/* Store POS System & Power Modal */}
-      {showPowerModal && (
-        <Suspense fallback={null}>
-          <SystemPowerModal
-            isOpen={showPowerModal}
-            onClose={() => setShowPowerModal(false)}
-            systemStatus={systemStatus}
-            onTriggerTestAlert={onTriggerSystemTest}
-            activeStore={activeStore}
-            darkMode={darkMode}
-          />
-        </Suspense>
-      )}
-
-      {/* Access & Login Audit Logs Modal */}
-      {showLoginAuditModal && (
-        <Suspense fallback={null}>
-          <LoginAuditModal
-            isOpen={showLoginAuditModal}
-            onClose={() => setShowLoginAuditModal(false)}
-          />
-        </Suspense>
-      )}
-
-      {/* Account Approvals Modal */}
-      {showApprovalsModal && (
-        <Suspense fallback={null}>
-          <AccountApprovalsModal onClose={() => setShowApprovalsModal(false)} />
-        </Suspense>
-      )}
-
       {/* Phone Biometrics / Passkey Modal */}
       {showBiometricModal && (
         <Suspense fallback={null}>

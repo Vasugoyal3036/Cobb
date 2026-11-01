@@ -7,7 +7,6 @@ import {
   Monitor, BellRing, Volume2, ShieldCheck, History
 } from 'lucide-react';
 import BiometricModal from '../BiometricModal';
-import LoginAuditModal from '../LoginAuditModal';
 
 const SectionHeader = ({ icon: Icon, title, description, darkMode }) => (
   <div className="mb-4">
@@ -33,7 +32,6 @@ export default function ProfileTab({
   const { user, role, logout, activeStore } = useAuth();
   
   const [showBiometricModal, setShowBiometricModal] = useState(false);
-  const [showAuditLog, setShowAuditLog] = useState(false);
 
 
   return (
@@ -154,24 +152,6 @@ export default function ProfileTab({
               </div>
               <ChevronRight className="w-5 h-5 opacity-50" />
             </button>
-
-            <button 
-              onClick={() => setShowAuditLog(true)}
-              className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all ${
-                darkMode ? 'bg-slate-800/50 border-white/5 hover:border-blue-500/30 hover:bg-blue-500/5' : 'bg-slate-50 border-slate-200 hover:border-blue-500/30'
-              }`}
-            >
-              <div className="flex items-center gap-3 text-left">
-                <div className="p-2 rounded-lg bg-blue-500/10">
-                  <History className="w-5 h-5 text-blue-500" />
-                </div>
-                <div>
-                  <p className="font-bold">Login Audit Log</p>
-                  <p className="text-xs opacity-70">View recent sign-ins and session details</p>
-                </div>
-              </div>
-              <ChevronRight className="w-5 h-5 opacity-50" />
-            </button>
             
             <button className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all opacity-60 cursor-not-allowed ${
               darkMode ? 'bg-slate-800/30 border-white/5' : 'bg-slate-50 border-slate-200'
@@ -241,7 +221,6 @@ export default function ProfileTab({
       </div>
 
       {showBiometricModal && <BiometricModal onClose={() => setShowBiometricModal(false)} darkMode={darkMode} />}
-      {showAuditLog && <LoginAuditModal onClose={() => setShowAuditLog(false)} darkMode={darkMode} />}
     </div>
   );
 }

@@ -46,7 +46,6 @@ import axios from 'axios';
 import { playBarcodeBeep, playScanErrorBeep, playCheckoutChime, speakCheckoutVoice } from '../utils/sound';
 import { triggerThermalPrint, DEFAULT_STORE_INFO } from '../utils/thermalReceipt';
 import { checkSizeMismatch, DEMO_FIT_PROFILES, CATEGORY_META } from '../utils/customerFit';
-import WardrobePassportModal from './WardrobePassportModal';
 
 // Common Cobb Apparel Demo Catalog for instant offline/speed scan
 const QUICK_CATALOG = [
@@ -108,7 +107,6 @@ export default function SpeedBillingModal({
   const [customerName, setCustomerName] = useState('Walk-in Guest');
   const [customerLoyalty, setCustomerLoyalty] = useState(null);
   const [customerFitProfile, setCustomerFitProfile] = useState(null);
-  const [showWardrobePassport, setShowWardrobePassport] = useState(false);
   const [isLookingUpCustomer, setIsLookingUpCustomer] = useState(false);
   const [redeemedPoints, setRedeemedPoints] = useState(0);
 
@@ -1405,15 +1403,10 @@ _Thank you for choosing Cobb! For sizing alterations or exchanges, please quote 
                       <span>Customer Size Memory</span>
                     </span>
                     {customerFitProfile && customerFitProfile.hasHistory ? (
-                      <button
-                        type="button"
-                        onClick={() => setShowWardrobePassport(true)}
-                        className="text-[10px] text-amber-400 hover:text-amber-300 font-mono font-semibold flex items-center gap-1 cursor-pointer hover:underline"
-                        title="View Full Purchase History & Wardrobe"
-                      >
+                      <span className="text-[10px] text-amber-400 font-mono font-semibold flex items-center gap-1">
                         <Eye className="w-3 h-3" />
                         <span>Wardrobe ({customerFitProfile.totalGarmentsPurchased || 0})</span>
-                      </button>
+                      </span>
                     ) : (
                       <span className="text-[10px] text-slate-500 font-mono">Learning Fit...</span>
                     )}
@@ -2506,18 +2499,6 @@ _Thank you for choosing Cobb! For sizing alterations or exchanges, please quote 
             </div>
           </div>
         </div>
-      )}
-
-      {/* WARDROBE PASSPORT MODAL (Customer Purchase & Fit History) */}
-      {showWardrobePassport && (
-        <WardrobePassportModal
-          isOpen={showWardrobePassport}
-          onClose={() => setShowWardrobePassport(false)}
-          initialPhone={customerPhone}
-          initialCustomerName={customerName}
-          API_BASE={API_BASE}
-          darkMode={true}
-        />
       )}
 
       {/* HIDDEN PRINT CONTAINER FOR ESC/POS THERMAL SLIP */}

@@ -66,9 +66,9 @@
   "9671902180": {
     "phone": "9671902180",
     "customerName": "Raj Bhai Ji Hotel",
-    "billNo": "STST27-00972   ",
+    "billNo": "",
     "step": "waiting_rating",
-    "updatedAt": 1793532636580,
+    "updatedAt": 1793540743495,
     "createdAt": 1793530816565
   },
   "9996071407": {
@@ -102,5 +102,277 @@
     "step": "waiting_rating",
     "updatedAt": 1793538474521,
     "createdAt": 1793536655723
+  },
+  "9896929677": {
+    "phone": "9896929677",
+    "customerName": "Valued Customer",
+    "billNo": "",
+    "step": "waiting_rating",
+    "updatedAt": 1793541215731,
+    "createdAt": 1793539412086
+  },
+  "9996336543": {
+    "phone": "9996336543",
+    "customerName": "Amit",
+    "billNo": "",
+    "step": "waiting_rating",
+    "updatedAt": 1793541265751,
+    "createdAt": 1793539445164
+  },
+  "9896000749": {
+    "phone": "9896000749",
+    "customerName": "Shanky Pundri",
+    "billNo": "",
+    "step": "waiting_rating",
+    "updatedAt": 1793541290751,
+    "createdAt": 1793539480241
+  },
+  "9813311667": {
+    "phone": "9813311667",
+    "customerName": "Valued Customer",
+    "billNo": "",
+    "step": "waiting_rating",
+    "updatedAt": 1793541340773,
+    "createdAt": 1793539518334
+  },
+  "9467077477": {
+    "phone": "9467077477",
+    "customerName": "Kasish",
+    "billNo": "",
+    "step": "waiting_rating",
+    "updatedAt": 1793541490813,
+    "createdAt": 1793539677572
+  },
+  "9053609555": {
+    "phone": "9053609555",
+    "customerName": "Nikhil Maama Krnl",
+    "billNo": "",
+    "step": "waiting_rating",
+    "updatedAt": 1793541515827,
+    "createdAt": 1793539699891
+  },
+  "9466294699": {
+    "phone": "9466294699",
+    "customerName": "Ishant",
+    "billNo": "",
+    "step": "waiting_rating",
+    "updatedAt": 1793541540827,
+    "createdAt": 1793539735828
+  },
+  "9996311786": {
+    "phone": "9996311786",
+    "customerName": "Valued Customer",
+    "billNo": "",
+    "step": "waiting_rating",
+    "updatedAt": 1793541565827,
+    "createdAt": 1793539760802
+  },
+  "7988140399": {
+    "phone": "7988140399",
+    "customerName": "Sushil Girdhar",
+    "billNo": "",
+    "step": "waiting_rating",
+    "updatedAt": 1793541590837,
+    "createdAt": 1793539785302
+  },
+  "9628240000": {
+    "phone": "9628240000",
+    "customerName": "Valued Customer",
+    "billNo": "",
+    "step": "waiting_rating",
+    "updatedAt": 1793541640842,
+    "createdAt": 1793539817239
+  },
+  "8295158582": {
+    "phone": "8295158582",
+    "customerName": "Sohan Lal",
+    "billNo": "",
+    "step": "waiting_rating",
+    "updatedAt": 1793541640960,
+    "createdAt": 1793539837766
+  },
+  "9896528856": {
+    "phone": "9896528856",
+    "customerName": "Valued Customer",
+    "billNo": "",
+    "step": "waiting_rating",
+    "updatedAt": 1793541690858,
+    "createdAt": 1793539875406
+  },
+  "9813642043": {
+    "phone": "9813642043",
+    "customerName": "Dinesh Kumar",
+    "billNo": "",
+    "step": "waiting_rating",
+    "updatedAt": 1793541715861,
+    "createdAt": 1793539898488
+  },
+  "7015955081": {
+    "phone": "7015955081",
+    "customerName": "Kawar Pal Keorak",
+    "billNo": "",
+    "step": "waiting_rating",
+    "updatedAt": 1793541740869,
+    "createdAt": 1793539922667
+  },
+  "7986610728": {
+    "phone": "7986610728",
+    "customerName": "Ajay Bansal",
+    "billNo": "",
+    "step": "waiting_rating",
+    "updatedAt": 1793541790882,
+    "createdAt": 1793539987246
+  },
+  "9813807000": {
+    "phone": "9813807000",
+    "customerName": "Virender Dahiya",
+    "billNo": "",
+    "step": "waiting_rating",
+    "updatedAt": 1793541840890,
+    "createdAt": 1793540024238
+  },
+  "9354009674": {
+    "phone": "9354009674",
+    "customerName": "Sagar",
+    "billNo": "",
+    "step": "waiting_rating",
+    "updatedAt": 1793541865903,
+    "createdAt": 1793540056954
+  },
+  "9896484805": {
+    "phone": "9896484805",
+    "customerName": "Valued Customer",
+    "billNo": "",
+    "step": "waiting_rating",
+    "updatedAt": 1793541890916,
+    "createdAt": 1793540088914
+  },
+  "7404939567": {
+    "phone": "7404939567",
+    "customerName": "Ashish Jangra",
+    "billNo": "",
+    "step": "waiting_rating",
+    "updatedAt": 1793540121129,
+    "createdAt": 1793540121129
+  },
+  "8221903266": {
+    "phone": "8221903266",
+    "customerName": "Gunjan Sharma",
+    "billNo": "",
+    "step": "waiting_rating",
+    "updatedAt": 1793540341837,
+    "createdAt": 1793540341837
+  },
+  "8295679435": {
+    "phone": "8295679435",
+    "customerName": "Valued Customer",
+    "billNo": "",
+    "step": "waiting_rating",
+    "updatedAt": 1793540370413,
+    "createdAt": 1793540370413
+  },
+  "9896253933": {
+    "phone": "9896253933",
+    "customerName": "Parv",
+    "billNo": "",
+    "step": "waiting_rating",
+    "updatedAt": 1793540401971,
+    "createdAt": 1793540401971
+  },
+  "9896018231": {
+    "phone": "9896018231",
+    "customerName": "Malkeet Singh",
+    "billNo": "",
+    "step": "waiting_rating",
+    "updatedAt": 1793540465009,
+    "createdAt": 1793540465009
+  },
+  "8950451000": {
+    "phone": "8950451000",
+    "customerName": "Dilbag",
+    "billNo": "",
+    "step": "waiting_rating",
+    "updatedAt": 1793540493031,
+    "createdAt": 1793540493031
+  },
+  "9306405660": {
+    "phone": "9306405660",
+    "customerName": "Harsh",
+    "billNo": "",
+    "step": "waiting_rating",
+    "updatedAt": 1793540558011,
+    "createdAt": 1793540558011
+  },
+  "9812388667": {
+    "phone": "9812388667",
+    "customerName": "Valued Customer",
+    "billNo": "",
+    "step": "waiting_rating",
+    "updatedAt": 1793540580572,
+    "createdAt": 1793540580572
+  },
+  "8199036379": {
+    "phone": "8199036379",
+    "customerName": "Davander Guniyana",
+    "billNo": "",
+    "step": "waiting_rating",
+    "updatedAt": 1793540601097,
+    "createdAt": 1793540601097
+  },
+  "9034881502": {
+    "phone": "9034881502",
+    "customerName": "Mukul",
+    "billNo": "",
+    "step": "waiting_rating",
+    "updatedAt": 1793540633428,
+    "createdAt": 1793540633428
+  },
+  "9467144353": {
+    "phone": "9467144353",
+    "customerName": "Valued Customer",
+    "billNo": "",
+    "step": "waiting_rating",
+    "updatedAt": 1793540669053,
+    "createdAt": 1793540669053
+  },
+  "9616434806": {
+    "phone": "9616434806",
+    "customerName": "Anuj",
+    "billNo": "",
+    "step": "waiting_rating",
+    "updatedAt": 1793540690655,
+    "createdAt": 1793540690655
+  },
+  "9671901260": {
+    "phone": "9671901260",
+    "customerName": "Robin",
+    "billNo": "",
+    "step": "waiting_rating",
+    "updatedAt": 1793540713243,
+    "createdAt": 1793540713243
+  },
+  "9996705091": {
+    "phone": "9996705091",
+    "customerName": "Hakam Singh",
+    "billNo": "",
+    "step": "waiting_rating",
+    "updatedAt": 1793540779237,
+    "createdAt": 1793540779237
+  },
+  "9255223930": {
+    "phone": "9255223930",
+    "customerName": "Vead Parkash",
+    "billNo": "",
+    "step": "waiting_rating",
+    "updatedAt": 1793540817595,
+    "createdAt": 1793540817595
+  },
+  "9996826141": {
+    "phone": "9996826141",
+    "customerName": "Baljinder Fatehpur",
+    "billNo": "",
+    "step": "waiting_rating",
+    "updatedAt": 1793540848230,
+    "createdAt": 1793540848230
   }
 }

@@ -54,3 +54,4 @@ syncLedger();
 
 // Sync every 20 seconds
 const interval = setInterval(syncLedger, 20000);
+

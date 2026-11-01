@@ -8,13 +8,11 @@ const InventoryTab = lazy(() => import('./components/tabs/InventoryTab'));
 const CustomerInsightsTab = lazy(() => import('./components/tabs/CustomerInsightsTab'));
 const LiveBillsTab = lazy(() => import('./components/tabs/LiveBillsTab'));
 const AutomationEngineTab = lazy(() => import('./components/tabs/AutomationEngineTab'));
-const CampaignBuilderTab = lazy(() => import('./components/tabs/CampaignBuilderTab'));
 const ReorderTab = lazy(() => import('./components/tabs/ReorderTab'));
 const LoyaltyTab = lazy(() => import('./components/tabs/LoyaltyTab'));
 const ExchangeTab = lazy(() => import('./components/tabs/ExchangeTab'));
 const PocketKhataTab = lazy(() => import('./components/tabs/PocketKhataTab'));
 const HoldDeskTab = lazy(() => import('./components/tabs/HoldDeskTab'));
-const ChatbotTab = lazy(() => import('./components/tabs/ChatbotTab'));
 const AlterationsTab = lazy(() => import('./components/tabs/AlterationsTab'));
 const GoodsInTransitTab = lazy(() => import('./components/tabs/GoodsInTransitTab'));
 const InterBranchTransferTab = lazy(() => import('./components/tabs/InterBranchTransferTab'));
@@ -24,11 +22,8 @@ const CustomerProfileModal = lazy(() => import('./components/CustomerProfileModa
 const RatingsTab = lazy(() => import('./components/tabs/RatingsTab'));
 const ProfileTab = lazy(() => import('./components/tabs/ProfileTab'));
 const SetupScreen = lazy(() => import('./components/SetupScreen'));
-const DepreciationClockTab = lazy(() => import('./components/tabs/DepreciationClockTab'));
-const WardrobePassportModal = lazy(() => import('./components/WardrobePassportModal'));
 const DenominationModal = lazy(() => import('./components/DenominationModal'));
 const SpeedBillingModal = lazy(() => import('./components/SpeedBillingModal'));
-const CelebrationModal = lazy(() => import('./components/CelebrationModal'));
 const GodModeModal = lazy(() => import('./components/GodModeModal'));
 const GunScannerModal = lazy(() => import('./components/GunScannerModal'));
 const CustomerFeedbackPage = lazy(() => import('./components/CustomerFeedbackPage'));
@@ -635,16 +630,8 @@ export default function App() {
     setThermalModalConfig(prev => ({ ...prev, isOpen: false }));
   };
 
-  // Digital Wardrobe Passport Modal State
-  const [showWardrobePassportModal, setShowWardrobePassportModal] = useState(false);
-  const [wardrobePassportPhone, setWardrobePassportPhone] = useState('');
-  const [wardrobePassportCustomerName, setWardrobePassportCustomerName] = useState('');
-
-  const openWardrobePassport = (phone = '', name = '') => {
-    setWardrobePassportPhone(phone || '');
-    setWardrobePassportCustomerName(name || '');
-    setShowWardrobePassportModal(true);
-  };
+  // Customer Profile History Handler (formerly wardrobe passport)
+  const openWardrobePassport = (phone = '', name = '') => {};
 
   // Smart Bundling State
   let [bundles, setBundles] = useState(() => getLocalCache('bundles', [])); if (!Array.isArray(bundles)) bundles = [];
@@ -2853,10 +2840,7 @@ export default function App() {
             )}
 
             {/* 6. AI CAMPAIGN BUILDER */}
-            {activeTab === 'smart_bundles' && (
-              <CampaignBuilderTab {...appState} />
-            )}
-
+            
             {/* 7. AUTOMATION ENGINE */}
             {['automationengine', 'automation'].includes(activeTab) && (
               <AutomationEngineTab {...appState} />
@@ -2913,10 +2897,7 @@ export default function App() {
 
 
             {/* 15. COBB RETAIL AI COPILOT / CHATBOT */}
-            {activeTab === 'copilot' && (
-              <ChatbotTab API_BASE={API_BASE} darkMode={darkMode} onNavigateTab={(tab) => setActiveTab(tab)} />
-            )}
-
+            
 
 
             {/* 18. ALTERATIONS DESK */}
@@ -2946,28 +2927,9 @@ export default function App() {
             )}
 
             {/* 21. DEAD-STOCK DEPRECIATION CLOCK & CLEARANCE MATRIX */}
-            {activeTab === 'depreciation_clock' && (
-              <DepreciationClockTab
-                API_BASE={API_BASE}
-                darkMode={darkMode}
-                formatCurrency={formatCurrency}
-                onOpenBundleModal={() => setActiveTab('smart_bundles')}
-                onOpenTransferModal={() => setActiveTab('transit')}
-              />
-            )}
+            
 
-
-            {/* DIGITAL WARDROBE PASSPORT MODAL (Available globally) */}
-            <WardrobePassportModal
-              isOpen={showWardrobePassportModal}
-              onClose={() => setShowWardrobePassportModal(false)}
-              initialPhone={wardrobePassportPhone}
-              initialCustomerName={wardrobePassportCustomerName}
-              API_BASE={API_BASE}
-              darkMode={darkMode}
-            />
-
-            {!['vip', 'dormant'].includes(activeTab) && <CustomerProfileModal {...appState} />}
+            {/* DIGITAL WARDROBE PASSPORT MODAL (Available globally) */}{!['vip', 'dormant'].includes(activeTab) && <CustomerProfileModal {...appState} />}
           </Suspense>
         </div>
 
@@ -3543,17 +3505,6 @@ export default function App() {
           onOpenBill={handleOpenBillFromNotification}
           onOpenEod={() => handleGenerateEodReport()}
         />
-
-        {/* Real-time Target Milestone Celebration Engine (Canvas Confetti + Fanfare Chimes + Mobile Vibration) */}
-        <Suspense fallback={null}>
-          <CelebrationModal
-            targetProgress={targetProgress}
-            DAILY_TARGET={DAILY_TARGET}
-            todaySales={overviewStats?.today?.TotalSales || 0}
-            formatCurrency={formatCurrency}
-            darkMode={darkMode}
-          />
-        </Suspense>
 
         {/* Secret God Mode / Store Boss Easter Egg (Type 'cobb', Ctrl+Shift+C, or Konami Code) */}
         <Suspense fallback={null}>
