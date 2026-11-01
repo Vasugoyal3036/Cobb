@@ -2171,6 +2171,26 @@ app.post('/api/automation/send-test', async (req, res) => {
 
 // --- BILLED CUSTOMER GROUP & MASS BROADCAST SYSTEM ---
 const GROUP_FILE_PATH = path.join(__dirname, 'billed_customer_group.json');
+const BROADCAST_SENT_LEDGER_PATH = path.join(__dirname, 'broadcast_sent_ledger.json');
+
+function loadBroadcastSentLedger() {
+    if (fs.existsSync(BROADCAST_SENT_LEDGER_PATH)) {
+        try {
+            return JSON.parse(fs.readFileSync(BROADCAST_SENT_LEDGER_PATH, 'utf8'));
+        } catch (e) {
+            console.error("Error reading broadcast_sent_ledger.json:", e);
+        }
+    }
+    return {};
+}
+
+function saveBroadcastSentLedger(ledger) {
+    try {
+        fs.writeFileSync(BROADCAST_SENT_LEDGER_PATH, JSON.stringify(ledger, null, 2), 'utf8');
+    } catch (e) {
+        console.error("Error saving broadcast_sent_ledger.json:", e);
+    }
+}
 
 let activeBroadcast = {
     isRunning: false,
@@ -2252,11 +2272,32 @@ app.get('/api/broadcast/group', async (req, res) => {
         groupMap = await syncBilledCustomerGroup();
         groupList = Object.values(groupMap);
     }
-    groupList.sort((a, b) => new Date(b.lastBilledAt || 0) - new Date(a.lastBilledAt || 0));
-    res.json({
-        totalCount: groupList.length,
-        contacts: groupList
+    const sentLedger = loadBroadcastSentLedger();
+    const previouslySentCount = Object.keys(sentLedger).length;
+    const remaining = groupList.filter(c => {
+        const clean = (c.phone || '').slice(-10);
+        const formatted = c.formattedPhone || '';
+        return !sentLedger[clean] && !sentLedger[formatted];
     });
+
+    remaining.sort((a, b) => new Date(b.lastBilledAt || 0) - new Date(a.lastBilledAt || 0));
+    res.json({
+        totalCount: remaining.length,
+        totalRawCustomers: groupList.length,
+        previouslySentCount,
+        contacts: remaining
+    });
+});
+
+app.post('/api/broadcast/reset-ledger', (req, res) => {
+    try {
+        if (fs.existsSync(BROADCAST_SENT_LEDGER_PATH)) {
+            fs.unlinkSync(BROADCAST_SENT_LEDGER_PATH);
+        }
+        res.json({ success: true, message: 'Broadcast history ledger reset successfully.' });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
 app.post('/api/broadcast/sync', async (req, res) => {
@@ -2302,6 +2343,19 @@ app.post('/api/broadcast/start', async (req, res) => {
         contacts = Object.values(groupMap);
     }
     if (contacts.length === 0) return res.status(400).json({ error: 'No billed customers found in group.' });
+
+    // Auto-Resume Filter: Skip contacts already sent in previous sessions
+    const sentLedger = loadBroadcastSentLedger();
+    const previouslySentCount = Object.keys(sentLedger).length;
+    contacts = contacts.filter(c => {
+        const clean = (c.phone || '').slice(-10);
+        const formatted = c.formattedPhone || '';
+        return !sentLedger[clean] && !sentLedger[formatted];
+    });
+
+    if (contacts.length === 0) {
+        return res.status(400).json({ error: `All ${previouslySentCount} billed customers have already received this broadcast!` });
+    }
 
     broadcastShouldStop = false;
     activeBroadcast = {
@@ -2390,6 +2444,17 @@ app.post('/api/broadcast/start', async (req, res) => {
                     activeBroadcast.logs.push(log);
                     gatewayLogs.push(log);
                     pythonLogs.push(log);
+
+                    // Persist to sent ledger
+                    const curLedger = loadBroadcastSentLedger();
+                    const cleanPhone = (contact.phone || '').slice(-10);
+                    curLedger[cleanPhone] = {
+                        name: contact.customerName,
+                        phone: cleanPhone,
+                        formattedPhone: targetPhone,
+                        sentAt: new Date().toISOString()
+                    };
+                    saveBroadcastSentLedger(curLedger);
                 } else {
                     activeBroadcast.failedCount++;
                     const log = `[ERROR ${new Date().toLocaleTimeString()}] [${i + 1}/${contacts.length}] ❌ Failed to send to ${contact.customerName} (${targetPhone}): ${data.error}`;
