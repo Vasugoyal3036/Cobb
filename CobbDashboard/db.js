@@ -96,13 +96,22 @@ async function connectDB(customDbConfig = null) {
 
 function isConnectionLossError(err) {
     const message = String(err?.message || err || '').toLowerCase();
+    const code = String(err?.code || '').toUpperCase();
+    // Do not reconnect on individual SQL execution / request timeouts (connection pool is still valid)
+    if (code === 'ETIMEOUT' || message.includes('request timeout') || message.includes('request timed out')) {
+        return false;
+    }
     return message.includes('no connection is specified') ||
         message.includes('connection is not open') ||
         message.includes('connection is closed') ||
+        message.includes('connection lost') ||
+        message.includes('connection timeout') ||
+        message.includes('connect timeout') ||
         message.includes('econnreset') ||
         message.includes('esocket') ||
         message.includes('socket hang up') ||
-        message.includes('timeout');
+        code === 'ECONNRESET' ||
+        code === 'ENOTOPEN';
 }
 
 async function reconnectOnce() {

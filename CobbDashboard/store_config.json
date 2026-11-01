@@ -8,19 +8,19 @@
   },
   "operatingExpenses": {
     "rent": 40000,
-    "staffSalaries": 34000,
+    "staffSalaries": 31000,
     "electricity": 10000,
     "miscExpenses": 5000,
     "franchiseRoyalty": 0,
-    "totalExpenses": 89000,
+    "totalExpenses": 86000,
     "dailyExpense": 2967,
     "dailyOpEx": 2967,
     "dailyAmortizedExpense": 2967,
     "targetMarginPct": 25,
     "dailyTargetSales": 50000,
-    "monthlyTargetSales": 900000,
+    "monthlyTargetSales": 600000,
     "dailyBreakEvenSales": 11868,
-    "monthlyBreakEvenSales": 356000,
+    "monthlyBreakEvenSales": 344000,
     "salesmanSalaries": [
       {
         "id": "2800003",
@@ -57,10 +57,10 @@
     ],
     "staffSalariesBreakdown": {
       "totalBaseSalaries": 25000,
-      "totalIncentives": 9000,
-      "dynamicStaffSalaries": 34000,
+      "totalIncentives": 6000,
+      "dynamicStaffSalaries": 31000,
       "activeSalesmenCount": 2,
-      "targetPerSalesman": 450000,
+      "targetPerSalesman": 300000,
       "incentiveMode": "target"
     }
   },
@@ -74,5 +74,5 @@
     "password": "",
     "port": 1433
   },
-  "lastUpdated": "2026-10-19T13:16:49.799Z"
+  "lastUpdated": "2026-10-24T12:46:59.383Z"
 }

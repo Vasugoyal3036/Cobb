@@ -31,6 +31,7 @@ const SpeedBillingModal = lazy(() => import('./components/SpeedBillingModal'));
 const CelebrationModal = lazy(() => import('./components/CelebrationModal'));
 const GodModeModal = lazy(() => import('./components/GodModeModal'));
 const GunScannerModal = lazy(() => import('./components/GunScannerModal'));
+const CustomerFeedbackPage = lazy(() => import('./components/CustomerFeedbackPage'));
 
 import { fetchWithOfflineFallback, subscribeToData } from './utils/offlineDb';
 
@@ -1358,6 +1359,8 @@ export default function App() {
     const handleOpenDenomination = () => setActiveTab('denomination');
     const handleOpenRecon = () => setShowReconModal(true);
     const handleOpenGunScanner = () => setShowGunScannerModal(true);
+    const handleCloseGunScanner = () => setShowGunScannerModal(false);
+    const handleToggleGunScanner = () => setShowGunScannerModal(prev => !prev);
 
     window.addEventListener('cobb_force_sync', handleForceSync);
     window.addEventListener('cobb_open_speed_billing', handleOpenSpeed);
@@ -1367,6 +1370,8 @@ export default function App() {
     window.addEventListener('cobb_open_denomination', handleOpenDenomination);
     window.addEventListener('cobb_open_recon', handleOpenRecon);
     window.addEventListener('cobb_open_gun_scanner', handleOpenGunScanner);
+    window.addEventListener('cobb_close_gun_scanner', handleCloseGunScanner);
+    window.addEventListener('cobb_toggle_gun_scanner', handleToggleGunScanner);
 
     return () => {
       window.removeEventListener('cobb_force_sync', handleForceSync);
@@ -1377,6 +1382,8 @@ export default function App() {
       window.removeEventListener('cobb_open_denomination', handleOpenDenomination);
       window.removeEventListener('cobb_open_recon', handleOpenRecon);
       window.removeEventListener('cobb_open_gun_scanner', handleOpenGunScanner);
+      window.removeEventListener('cobb_close_gun_scanner', handleCloseGunScanner);
+      window.removeEventListener('cobb_toggle_gun_scanner', handleToggleGunScanner);
     };
   }, [API_BASE]);
 
@@ -1389,8 +1396,8 @@ export default function App() {
         return;
       }
 
-      // 2. F3: Handheld Gun Barcode Scanner Pop-up Modal
-      if (e.key === 'F3') {
+      // 2. F3: Handheld Gun Barcode Scanner Pop-up Modal (Toggle)
+      if ((e.key === 'F3' || e.code === 'F3') && !e.shiftKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault();
         setShowGunScannerModal(prev => !prev);
         return;
@@ -2307,6 +2314,24 @@ export default function App() {
     return (
       <Suspense fallback={<TabFallback />}>
         <SetupScreen onComplete={() => setShowSetup(false)} />
+      </Suspense>
+    );
+  }
+
+  // Public Customer Feedback Page (Direct Link from WhatsApp / QR / SMS)
+  const isFeedbackPage = typeof window !== 'undefined' && (
+    window.location.pathname.includes('/feedback') ||
+    window.location.pathname.includes('/review') ||
+    window.location.search.includes('feedback') ||
+    window.location.search.includes('review') ||
+    window.location.hash.includes('feedback') ||
+    window.location.hash.includes('review')
+  );
+
+  if (isFeedbackPage) {
+    return (
+      <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center text-amber-400 font-bold">Loading Cobb Review Portal...</div>}>
+        <CustomerFeedbackPage onClose={() => { window.location.href = '/'; }} />
       </Suspense>
     );
   }

@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
+const { Client, LocalAuth, MessageMedia, Poll } = require('whatsapp-web.js');
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
@@ -42,6 +42,215 @@ function isOwnerPhone(phone) {
 // Set to false to disable all automated chatbot / concierge replies to incoming customer messages
 let enableInboundBot = false;
 
+// --- WHATSAPP REVIEW BOT & 2-STEP FUNNEL CONFIGURATION ---
+const GOOGLE_REVIEW_LINK = process.env.GOOGLE_REVIEW_LINK || 'https://search.google.com/local/writereview?placeid=ChIJHfCBR58ZDjkRpBbB9EV-Zew';
+const REVIEW_SESSIONS_FILE = path.join(__dirname, 'review_sessions.json');
+
+function loadReviewSessions() {
+    try {
+        if (!fs.existsSync(REVIEW_SESSIONS_FILE)) return {};
+        return JSON.parse(fs.readFileSync(REVIEW_SESSIONS_FILE, 'utf8'));
+    } catch (e) {
+        return {};
+    }
+}
+
+function saveReviewSessions(sessions) {
+    try {
+        fs.writeFileSync(REVIEW_SESSIONS_FILE, JSON.stringify(sessions, null, 2), 'utf8');
+    } catch (e) { }
+}
+
+function getActiveReviewSession(phone) {
+    if (!phone) return null;
+    const cleanPhone = String(phone).replace(/[^0-9]/g, '').slice(-10);
+    const sessions = loadReviewSessions();
+    const session = sessions[cleanPhone];
+    if (!session) return null;
+    // Expire session after 48 hours
+    const maxAge = 48 * 60 * 60 * 1000;
+    if (Date.now() - (session.updatedAt || session.createdAt || 0) > maxAge) {
+        delete sessions[cleanPhone];
+        saveReviewSessions(sessions);
+        return null;
+    }
+    return session;
+}
+
+function setReviewSession(phone, data) {
+    if (!phone) return;
+    const cleanPhone = String(phone).replace(/[^0-9]/g, '').slice(-10);
+    const sessions = loadReviewSessions();
+    const now = Date.now();
+    sessions[cleanPhone] = {
+        ...(sessions[cleanPhone] || {}),
+        phone: cleanPhone,
+        ...data,
+        updatedAt: now,
+        createdAt: sessions[cleanPhone]?.createdAt || now
+    };
+    saveReviewSessions(sessions);
+    return sessions[cleanPhone];
+}
+
+function clearReviewSession(phone) {
+    if (!phone) return;
+    const cleanPhone = String(phone).replace(/[^0-9]/g, '').slice(-10);
+    const sessions = loadReviewSessions();
+    if (sessions[cleanPhone]) {
+        delete sessions[cleanPhone];
+        saveReviewSessions(sessions);
+    }
+}
+
+function saveRatingToLedger(entry) {
+    try {
+        const ratingsFile = path.join(__dirname, '..', 'CobbDashboard', 'customer_ratings.json');
+        let list = [];
+        if (fs.existsSync(ratingsFile)) {
+            try { list = JSON.parse(fs.readFileSync(ratingsFile, 'utf8')); } catch (e) { list = []; }
+        }
+        if (!Array.isArray(list)) list = [];
+
+        const cleanPhone = String(entry.phone || '').replace(/[^0-9]/g, '').slice(-10);
+        const existingIdx = list.findIndex(r => r.phone === cleanPhone && (entry.billNo ? r.billNo === entry.billNo : true));
+        
+        const ratingNum = Math.min(5, Math.max(1, Number(entry.rating) || 5));
+        const ratingItem = {
+            id: entry.id || `RATE_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
+            phone: cleanPhone || 'Anonymous',
+            customerName: entry.customerName || 'Valued Shopper',
+            rating: ratingNum,
+            comment: entry.comment || (ratingNum >= 4 ? `${ratingNum}-Star Positive Rating` : `${ratingNum}-Star Grievance`),
+            category: ratingNum >= 4 ? 'positive' : 'grievance',
+            billNo: entry.billNo || '',
+            timestamp: entry.timestamp || new Date().toISOString()
+        };
+
+        if (existingIdx >= 0) {
+            list[existingIdx] = { ...list[existingIdx], ...ratingItem };
+        } else {
+            list.unshift(ratingItem);
+        }
+
+        if (list.length > 500) list.pop();
+        fs.writeFileSync(ratingsFile, JSON.stringify(list, null, 2), 'utf8');
+        console.log(`[RATING LEDGER] Saved rating ${ratingNum}★ for ${cleanPhone}. Total stored: ${list.length}`);
+        return ratingItem;
+    } catch (e) {
+        console.error('[RATING LEDGER ERROR]:', e.message);
+    }
+}
+
+function getLiveStoreRatingStats() {
+    try {
+        const ratingsFile = path.join(__dirname, '..', 'CobbDashboard', 'customer_ratings.json');
+        if (fs.existsSync(ratingsFile)) {
+            const list = JSON.parse(fs.readFileSync(ratingsFile, 'utf8'));
+            if (Array.isArray(list) && list.length > 0) {
+                const total = list.length;
+                const sum = list.reduce((acc, r) => acc + (Number(r.rating) || 5), 0);
+                const avg = (sum / total).toFixed(1);
+                const positives = list.filter(r => (Number(r.rating) || 0) >= 4).length;
+                const fiveStars = list.filter(r => (Number(r.rating) || 0) === 5).length;
+                const pct = Math.round((positives / total) * 100);
+                const fiveStarPct = Math.round((fiveStars / total) * 100);
+
+                return {
+                    hasData: true,
+                    total,
+                    avg,
+                    pct,          // Satisfaction percentage (e.g. 95%)
+                    fiveStarPct   // 5-Star % (e.g. 90%)
+                };
+            }
+        }
+    } catch (e) {}
+
+    return {
+        hasData: false,
+        total: 0,
+        avg: '0.0',
+        pct: 0,
+        fiveStarPct: 0
+    };
+}
+
+function getReviewPromptMessage(customerName = 'Valued Customer') {
+    return `✨ *How was your shopping experience at Cobb?* 🛍️\n\n` +
+        `Hello *${customerName}*! 👋\n` +
+        `Thank you for shopping at *Cobb Apparels (Pundri)* earlier today.\n\n` +
+        `Could you please take 5 seconds to rate your visit in the poll below? 🙏\n` +
+        `🔗 *View live ratings & feedback:* https://cobb-store.web.app/feedback\n\n` +
+        `_(Or tap an option in the poll below)_`;
+}
+
+function createRatingPoll() {
+    return new Poll(
+        'Rate your visit at Cobb Apparels (Pundri):',
+        [
+            '⭐⭐⭐⭐⭐ 5 - Excellent',
+            '⭐⭐⭐⭐ 4 - Good',
+            '⭐⭐⭐ 3 - Fair',
+            '⭐⭐ 2 - Needs Improvement',
+            '⭐ 1 - Poor'
+        ],
+        { allowMultipleAnswers: false }
+    );
+}
+
+function createGrievancePoll() {
+    return new Poll(
+        'What went wrong? (Select all that apply):',
+        [
+            'Fitting / Alteration issue',
+            'Staff behavior / Service delay',
+            'Pricing / Offer discrepancy',
+            'Fabric / Garment quality',
+            'Other feedback'
+        ],
+        { allowMultipleAnswers: true }
+    );
+}
+
+async function dispatchReviewSurvey(phone, customerName = 'Valued Customer', billNo = '') {
+    const cleanPhone = String(phone).replace(/[^0-9]/g, '').slice(-10);
+    if (!cleanPhone || cleanPhone.length < 10) return { success: false, error: 'Invalid phone number.' };
+    const chatId = `91${cleanPhone}@c.us`;
+
+    setReviewSession(cleanPhone, {
+        customerName,
+        billNo: billNo || '',
+        step: 'waiting_rating'
+    });
+
+    const promptMsg = getReviewPromptMessage(customerName);
+
+    // 1. Dispatch text greeting
+    let textSent = false;
+    try {
+        await dispatchMessage(cleanPhone, promptMsg);
+        textSent = true;
+    } catch (msgErr) {
+        console.warn(`[SURVEY] Text dispatch warning for ${cleanPhone}:`, msgErr.message);
+    }
+
+    // 2. Dispatch native interactive poll with clickable checkboxes
+    let pollSent = false;
+    if (isClientReady && client) {
+        try {
+            const ratingPoll = createRatingPoll();
+            await client.sendMessage(chatId, ratingPoll);
+            console.log(`[POLL] Checkbox rating poll dispatched to ${chatId}`);
+            pollSent = true;
+        } catch (pollErr) {
+            console.warn(`[POLL WARN] Rating poll send failed for ${chatId}:`, pollErr.message);
+        }
+    }
+
+    return { success: textSent || pollSent, textSent, pollSent };
+}
+
 // --- PERSISTENT NPS 30-MINUTE SURVEY QUEUE ---
 const NPS_QUEUE_FILE = path.join(__dirname, 'nps_queue.json');
 
@@ -61,7 +270,7 @@ function saveNpsQueue(queue) {
 }
 
 function queueNpsSurvey(phone, customerName = 'Valued Customer', billNo = '', delayMinutes = 30) {
-    const cleanPhone = String(phone).replace(/[^0-9]/g, '');
+    const cleanPhone = String(phone).replace(/[^0-9]/g, '').slice(-10);
     if (!cleanPhone || cleanPhone.length < 10) return;
     if (isOwnerPhone(cleanPhone)) {
         console.log(`[NPS QUEUE] Suppressing survey queue for owner phone ${cleanPhone}`);
@@ -73,7 +282,7 @@ function queueNpsSurvey(phone, customerName = 'Valued Customer', billNo = '', de
     const existing = queue.find(q => q.phone === cleanPhone && q.status === 'pending');
     if (existing) return;
 
-    const delayMs = Math.max(1, delayMinutes) * 60 * 1000;
+    const delayMs = Math.max(0, delayMinutes) * 60 * 1000;
     const scheduledAt = Date.now() + delayMs;
 
     queue.push({
@@ -88,6 +297,14 @@ function queueNpsSurvey(phone, customerName = 'Valued Customer', billNo = '', de
 
     if (queue.length > 500) queue.shift();
     saveNpsQueue(queue);
+
+    // Register active review session in 'waiting_rating' step
+    setReviewSession(cleanPhone, {
+        customerName: customerName || 'Valued Customer',
+        billNo: billNo || '',
+        step: 'waiting_rating'
+    });
+
     console.log(`[NPS QUEUE] Queued survey for ${cleanPhone} (${customerName}) in ${delayMinutes}m (at ${new Date(scheduledAt).toLocaleTimeString()})`);
 }
 
@@ -106,11 +323,17 @@ setInterval(async () => {
                 changed = true;
 
                 const name = item.customerName || 'Valued Customer';
-                const surveyMsg = `✨ *How was your shopping experience today?* 🛍️\n\nHello *${name}*! 👋\nThank you for shopping at *Cobb Apparels* earlier today.\n\nCould you please take 5 seconds to rate your visit?\n\n⭐⭐⭐⭐⭐ (Reply *5* for Excellent)\n⭐⭐⭐⭐ (Reply *4* for Good)\n⭐⭐⭐ (Reply *3* or below for Feedback)\n\n_Your feedback helps our team continuously improve!_ 🙏`;
+                const surveyMsg = getReviewPromptMessage(name);
+
+                setReviewSession(item.phone, {
+                    customerName: name,
+                    billNo: item.billNo || '',
+                    step: 'waiting_rating'
+                });
 
                 try {
-                    await dispatchMessage(item.phone, surveyMsg);
-                    console.log(`[NPS DISPATCH] Sent 30-min feedback survey to ${item.phone}`);
+                    await dispatchReviewSurvey(item.phone, name, item.billNo);
+                    console.log(`[NPS DISPATCH] Sent feedback review survey & poll to ${item.phone}`);
                 } catch (err) {
                     console.warn(`[NPS DISPATCH ERR] Failed for ${item.phone}:`, err.message);
                 }
@@ -321,18 +544,201 @@ async function initWhatsApp(isFresh = false) {
 
                 console.log(`[WHATSAPP INBOUND] From ${cleanPhone}: "${rawBody}"`);
 
-                // SUPPRESS ALL AUTOMATED CHATBOT / CONCIERGE REPLIES
-                if (!enableInboundBot) {
-                    console.log(`[WHATSAPP INBOUND] Two-way bot disabled - suppressing automated reply to ${cleanPhone}.`);
-                    return;
-                }
-
                 // Anti-spam cooldown: max 1 automated reply per 4 seconds to the same phone
                 const now = Date.now();
                 if (inboundCooldown.has(phone) && now - inboundCooldown.get(phone) < 4000) {
                     return;
                 }
                 inboundCooldown.set(phone, now);
+
+                // --- 2-STEP WHATSAPP REVIEW FUNNEL & GRIEVANCE INTERCEPTION ---
+                const activeSession = getActiveReviewSession(cleanPhone);
+
+                // STEP 2: Grievance Detail Collection (Customer previously gave a low rating and was asked why)
+                if (activeSession && activeSession.step === 'waiting_grievance_detail') {
+                    let category = 'Customer Grievance';
+                    let detail = rawBody;
+
+                    if (lower === '1' || lower.includes('fitting') || lower.includes('alteration') || lower.includes('size')) {
+                        category = 'Fitting / Alteration Issue';
+                    } else if (lower === '2' || lower.includes('staff') || lower.includes('delay') || lower.includes('service') || lower.includes('wait') || lower.includes('cashier')) {
+                        category = 'Staff Behavior / Service Delay';
+                    } else if (lower === '3' || lower.includes('price') || lower.includes('pricing') || lower.includes('offer') || lower.includes('discount') || lower.includes('bill')) {
+                        category = 'Pricing / Offer Discrepancy';
+                    } else if (lower === '4' || lower.includes('fabric') || lower.includes('quality') || lower.includes('cloth') || lower.includes('color') || lower.includes('shrink')) {
+                        category = 'Fabric / Garment Quality';
+                    }
+
+                    const reply = `🙏 *Thank you for your valuable feedback.*\n\n` +
+                        `We have recorded your concern:\n` +
+                        `📌 *Issue:* ${category}${detail && !['1', '2', '3', '4'].includes(detail) ? ` ("${detail}")` : ''}\n\n` +
+                        `Our Store Manager (*Parbhat Goyal*) has been alerted directly and will look into this personally to ensure it is resolved. We truly value your trust in Cobb! 👔`;
+                    await client.sendMessage(msg.from, reply);
+
+                    try {
+                        const grievancePoll = createGrievancePoll();
+                        await client.sendMessage(msg.from, grievancePoll);
+                    } catch (e) { }
+
+                    setReviewSession(cleanPhone, {
+                        step: 'completed',
+                        grievanceCategory: category,
+                        grievanceDetail: detail
+                    });
+
+                    // Forward detailed grievance to CRM backend
+                    try {
+                        await fetch('http://localhost:5000/api/whatsapp/inbound-alert', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                phone: cleanPhone,
+                                customerName: activeSession.customerName,
+                                message: `[${category}] ${detail}`,
+                                type: 'grievance_low_nps',
+                                rating: activeSession.rating || 2
+                            })
+                        });
+                    } catch (e) { }
+
+                    // Real-time WhatsApp Escalation to Store Owners
+                    if (isClientReady && client) {
+                        const starEmojis = '⭐'.repeat(activeSession.rating || 2) + '☆'.repeat(5 - (activeSession.rating || 2));
+                        const escalationMsg = `🚨 *Customer Grievance Escalation — Immediate Action Required*\n\n` +
+                            `👤 *Customer:* *${activeSession.customerName || 'Customer'}* (+91${cleanPhone})\n` +
+                            `⭐ *Rating:* ${activeSession.rating || 2}/5 stars ${starEmojis}\n` +
+                            `🏷️ *Category:* ${category}\n` +
+                            `💬 *Customer Note:* "${detail}"\n` +
+                            `${activeSession.billNo ? `🧾 *Bill No:* #${activeSession.billNo}\n` : ''}\n` +
+                            `👉 *Please follow up personally with the customer to resolve their concern.*`;
+                        for (const ownerPhone of OWNER_PHONES) {
+                            try {
+                                await client.sendMessage(`91${ownerPhone}@c.us`, escalationMsg);
+                            } catch (e) {
+                                console.warn(`[ESCALATION] Could not alert owner ${ownerPhone}:`, e.message);
+                            }
+                        }
+                    }
+                    return;
+                }
+
+                // STEP 1: Rating Evaluation (Either from an active review survey prompt or voluntary customer rating)
+                const isWaitingRating = activeSession && activeSession.step === 'waiting_rating';
+
+                const isPositiveRating = (isWaitingRating && (lower === '5' || lower === 'five' || lower === '4' || lower === 'four')) ||
+                    ['5 star', '5 stars', '5/5', '5⭐', '4 star', '4 stars', '4/5', '4⭐', 'excellent', 'superb'].some(k => lower === k || lower.startsWith(k + ' ') || lower.endsWith(' ' + k) || lower.includes(k)) ||
+                    lower.includes('⭐⭐⭐⭐⭐') || lower.includes('⭐⭐⭐⭐');
+
+                const isNegativeRating = (isWaitingRating && (lower === '1' || lower === 'one' || lower === '2' || lower === 'two' || lower === '3' || lower === 'three')) ||
+                    ['1 star', '1 stars', '1/5', '1⭐', '2 star', '2 stars', '2/5', '2⭐', '3 star', '3 stars', '3/5', '3⭐', 'bad', 'poor', 'worst', 'issue', 'complaint', 'terrible', 'pathetic', 'dissatisfied'].some(k => lower === k || lower.startsWith(k + ' ') || lower.endsWith(' ' + k) || lower.includes(k)) ||
+                    lower.includes('⭐⭐⭐') || lower.includes('⭐⭐') || lower.includes('⭐');
+
+                if (isPositiveRating) {
+                    const ratingScore = (lower.includes('4') && !lower.includes('5')) ? 4 : 5;
+                    saveRatingToLedger({
+                        phone: cleanPhone,
+                        customerName: activeSession?.customerName,
+                        rating: ratingScore,
+                        comment: rawBody,
+                        billNo: activeSession?.billNo
+                    });
+                    const reply = `🌟 *Thank you so much for the ${ratingScore}-Star rating!* 🙏\n\n` +
+                        `Your feedback means everything to our local team. Would you mind taking 15 seconds to share your review on our Google Maps page?\n\n` +
+                        `⭐ *Tap here to review:*\n${GOOGLE_REVIEW_LINK}\n\n` +
+                        `Thank you for being part of the Cobb family! 👔`;
+                    await client.sendMessage(msg.from, reply);
+
+                    setReviewSession(cleanPhone, {
+                        step: 'completed',
+                        rating: ratingScore
+                    });
+
+                    // Forward to CRM backend for permanent rating storage
+                    try {
+                        await fetch('http://localhost:5000/api/whatsapp/inbound-alert', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                phone: cleanPhone,
+                                customerName: activeSession?.customerName,
+                                message: rawBody,
+                                type: 'rating_positive',
+                                rating: ratingScore
+                            })
+                        });
+                    } catch (e) { }
+                    return;
+                }
+
+                if (isNegativeRating) {
+                    let grievanceScore = 1;
+                    if (lower.includes('3')) grievanceScore = 3;
+                    else if (lower.includes('2')) grievanceScore = 2;
+
+                    saveRatingToLedger({
+                        phone: cleanPhone,
+                        customerName: activeSession?.customerName,
+                        rating: grievanceScore,
+                        comment: rawBody,
+                        billNo: activeSession?.billNo
+                    });
+
+                    // PRIVATELY INTERCEPT! Do not send public Google review link.
+                    const reply = `🙏 *We sincerely apologize for falling short of your expectations.*\n\n` +
+                        `We strive for 5-star service and want to make this right. Could you please reply with what went wrong?\n\n` +
+                        `1️⃣ Fitting / Alteration issue\n` +
+                        `2️⃣ Staff behavior / Service delay\n` +
+                        `3️⃣ Pricing / Offer discrepancy\n` +
+                        `4️⃣ Fabric / Garment quality\n\n` +
+                        `_Or reply in your own words_ 💬`;
+                    await client.sendMessage(msg.from, reply);
+
+                    setReviewSession(cleanPhone, {
+                        customerName: activeSession?.customerName || 'Customer',
+                        billNo: activeSession?.billNo || '',
+                        step: 'waiting_grievance_detail',
+                        rating: grievanceScore
+                    });
+
+                    // Forward preliminary grievance to CRM backend
+                    try {
+                        await fetch('http://localhost:5000/api/whatsapp/inbound-alert', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                phone: cleanPhone,
+                                customerName: activeSession?.customerName,
+                                message: rawBody,
+                                type: 'grievance_low_nps',
+                                rating: grievanceScore
+                            })
+                        });
+                    } catch (e) { }
+
+                    // Preliminary Owner Escalation
+                    if (isClientReady && client) {
+                        const starEmojis = '⭐'.repeat(grievanceScore) + '☆'.repeat(5 - grievanceScore);
+                        const escalationMsg = `🚨 *Low Rating Alert — Customer Grievance (Step 1)*\n\n` +
+                            `A customer just rated us *${grievanceScore}/5 stars* ${starEmojis}\n\n` +
+                            `📱 *From:* +91${cleanPhone}\n` +
+                            `💬 *Initial reply:* "${rawBody}"\n\n` +
+                            `_Awaiting their detailed feedback reason..._`;
+                        for (const ownerPhone of OWNER_PHONES) {
+                            try {
+                                await client.sendMessage(`91${ownerPhone}@c.us`, escalationMsg);
+                            } catch (e) {
+                                console.warn(`[ESCALATION] Could not alert owner ${ownerPhone}:`, e.message);
+                            }
+                        }
+                    }
+                    return;
+                }
+
+                // SUPPRESS ALL AUTOMATED CHATBOT / CONCIERGE REPLIES IF BOT DISABLED
+                if (!enableInboundBot) {
+                    console.log(`[WHATSAPP INBOUND] Two-way bot disabled - suppressing automated reply to ${cleanPhone}.`);
+                    return;
+                }
 
                 // 1. Loyalty Points / Tier Balance
                 if (lower === '1' || lower.includes('point') || lower.includes('loyalty') || lower.includes('balance') || lower.includes('coin')) {
@@ -434,68 +840,7 @@ async function initWhatsApp(isFresh = false) {
                     return;
                 }
 
-                // Positive Google Review (4 or 5 Stars)
-                if (['5', '5 star', '5 stars', '4', '4 star', '4 stars', 'excellent', 'great', 'superb', 'best', '5/5', '4/5', '5⭐', '4⭐'].some(k => lower === k || lower.startsWith(k) || lower.includes(k)) || lower.includes('⭐⭐⭐⭐⭐') || lower.includes('⭐⭐⭐⭐')) {
-                    const reply = `🌟 *Thank you so much for the 5-Star rating!* 🙏\n\nYour feedback means everything to our local team. Would you mind taking 15 seconds to share your review on our Google Maps page?\n\n⭐ *Tap here to review:* https://search.google.com/local/writereview?placeid=ChIJHfCBR58ZDjkRpBbB9EV-Zew\n\nThank you for being part of the Cobb family! 👔`;
-                    await client.sendMessage(msg.from, reply);
 
-                    // Forward to CRM backend for permanent rating storage
-                    try {
-                        const ratingScore = (lower.includes('4') && !lower.includes('5')) ? 4 : 5;
-                        await fetch('http://localhost:5000/api/whatsapp/inbound-alert', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                phone: cleanPhone,
-                                message: rawBody,
-                                type: 'rating_positive',
-                                rating: ratingScore
-                            })
-                        });
-                    } catch (e) { }
-                    return;
-                }
-
-                // Customer Grievance / Low NPS (1 to 3 Stars)
-                if (['1', '1 star', '2', '2 star', '3', '3 star', 'bad', 'poor', 'worst', 'issue', 'complaint', '1/5', '2/5', '3/5', 'terrible', 'pathetic', 'dissatisfied', '1⭐', '2⭐', '3⭐'].some(k => lower === k || lower.startsWith(k) || lower.includes(k)) || lower.includes('⭐⭐⭐') || lower.includes('⭐⭐') || lower.includes('⭐')) {
-                    const reply = `🙏 *We sincerely apologize for falling short of your expectations.*\n\nYour feedback has been logged with highest priority for our Store Manager. We will look into this right away to resolve your concern.\n\nThank you for helping us improve our service.`;
-                    await client.sendMessage(msg.from, reply);
-
-                    // Forward to CRM backend for staff alert & permanent storage
-                    let grievanceScore = 1;
-                    if (lower.includes('3')) grievanceScore = 3;
-                    else if (lower.includes('2')) grievanceScore = 2;
-                    try {
-                        await fetch('http://localhost:5000/api/whatsapp/inbound-alert', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                phone: cleanPhone,
-                                message: rawBody,
-                                type: 'grievance_low_nps',
-                                rating: grievanceScore
-                            })
-                        });
-                    } catch (e) { }
-
-                    // ⚠️ REAL-TIME OWNER ESCALATION — Alert all owner phones instantly
-                    if (isClientReady && client) {
-                        const starEmojis = '⭐'.repeat(grievanceScore) + '☆'.repeat(5 - grievanceScore);
-                        const escalationMsg = `🚨 *Low Rating Alert — Immediate Action Required*\n\n` +
-                            `A customer just rated us *${grievanceScore}/5 stars* ${starEmojis}\n\n` +
-                            `📱 *From:* +91${cleanPhone}\n` +
-                            `💬 *Their message:* "${rawBody}"\n\n` +
-                            `_Please follow up personally to resolve the issue._`;
-                        for (const ownerPhone of OWNER_PHONES) {
-                            try {
-                                await client.sendMessage(`91${ownerPhone}@c.us`, escalationMsg);
-                            } catch (e) {
-                                console.warn(`[ESCALATION] Could not alert owner ${ownerPhone}:`, e.message);
-                            }
-                        }
-                    }
-                    return;
-                }
 
                 // 6. Help / Counter Support
                 if (lower === '6' || lower.includes('help') || lower.includes('support') || lower.includes('call') || lower.includes('manager')) {
@@ -518,6 +863,215 @@ async function initWhatsApp(isFresh = false) {
                 }
             } catch (inboundErr) {
                 console.error('[WHATSAPP INBOUND ERROR]:', inboundErr.message);
+            }
+        });
+
+        // --- WHATSAPP POLL VOTE INTERCEPTION (CHECKBOX / RADIO SELECTION) ---
+        client.on('vote_update', async (vote) => {
+            try {
+                if (!vote || !vote.voter) return;
+                const cleanPhone = String(vote.voter).replace(/[^0-9]/g, '').slice(-10);
+                if (!cleanPhone || isOwnerPhone(cleanPhone)) return;
+
+                // Ignore if user unselected all options
+                if (!vote.selectedOptions || vote.selectedOptions.length === 0) return;
+
+                // Anti-spam cooldown per phone (2 seconds)
+                const now = Date.now();
+                if (inboundCooldown.has(cleanPhone) && (now - inboundCooldown.get(cleanPhone) < 2000)) return;
+                inboundCooldown.set(cleanPhone, now);
+
+                const chatId = `${String(vote.voter).replace(/[^0-9]/g, '')}@c.us`;
+                const activeSession = getActiveReviewSession(cleanPhone);
+
+                const grievanceMap = {
+                    0: 'Fitting / Alteration Issue',
+                    1: 'Staff Behavior / Service Delay',
+                    2: 'Pricing / Offer Discrepancy',
+                    3: 'Fabric / Garment Quality',
+                    4: 'Other Feedback'
+                };
+
+                const isGrievanceStep = (activeSession && activeSession.step === 'waiting_grievance_detail') ||
+                    (vote.parentMessage && vote.parentMessage.pollName && vote.parentMessage.pollName.toLowerCase().includes('went wrong'));
+
+                // STEP 2: Customer voted on Grievance Checkboxes
+                if (isGrievanceStep) {
+                    const selectedCategories = vote.selectedOptions.map(o => {
+                        if (o.name && !o.name.startsWith('Option')) return o.name;
+                        if (typeof o.localId === 'number' && grievanceMap[o.localId]) return grievanceMap[o.localId];
+                        return o.name || `Issue #${o.localId}`;
+                    });
+
+                    const detail = selectedCategories.join(', ') || 'Customer Grievance';
+                    let category = 'Customer Grievance';
+                    const lowerDetail = detail.toLowerCase();
+                    if (lowerDetail.includes('fitting') || lowerDetail.includes('alteration') || lowerDetail.includes('size')) {
+                        category = 'Fitting / Alteration Issue';
+                    } else if (lowerDetail.includes('staff') || lowerDetail.includes('delay') || lowerDetail.includes('service')) {
+                        category = 'Staff Behavior / Service Delay';
+                    } else if (lowerDetail.includes('price') || lowerDetail.includes('pricing') || lowerDetail.includes('offer')) {
+                        category = 'Pricing / Offer Discrepancy';
+                    } else if (lowerDetail.includes('fabric') || lowerDetail.includes('quality') || lowerDetail.includes('cloth')) {
+                        category = 'Fabric / Garment Quality';
+                    }
+
+                    const reply = `🙏 *Thank you for your valuable feedback.*\n\n` +
+                        `We have recorded your concern:\n` +
+                        `📌 *Issue:* ${category} ("${detail}")\n\n` +
+                        `Our Store Manager (*Parbhat Goyal*) has been alerted directly and will look into this personally to ensure it is resolved. We truly value your trust in Cobb! 👔`;
+                    await client.sendMessage(chatId, reply);
+
+                    setReviewSession(cleanPhone, {
+                        step: 'completed',
+                        grievanceCategory: category,
+                        grievanceDetail: detail
+                    });
+
+                    // Forward to CRM
+                    try {
+                        await fetch('http://localhost:5000/api/whatsapp/inbound-alert', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                phone: cleanPhone,
+                                customerName: activeSession?.customerName,
+                                message: `[${category}] ${detail}`,
+                                type: 'grievance_low_nps',
+                                rating: activeSession?.rating || 2
+                            })
+                        });
+                    } catch (e) { }
+
+                    // Real-time WhatsApp Escalation to Store Owners
+                    if (isClientReady && client) {
+                        const starEmojis = '⭐'.repeat(activeSession?.rating || 2) + '☆'.repeat(5 - (activeSession?.rating || 2));
+                        const escalationMsg = `🚨 *Customer Grievance Escalation — Immediate Action Required*\n\n` +
+                            `👤 *Customer:* *${activeSession?.customerName || 'Customer'}* (+91${cleanPhone})\n` +
+                            `⭐ *Rating:* ${activeSession?.rating || 2}/5 stars ${starEmojis}\n` +
+                            `🏷️ *Category:* ${category}\n` +
+                            `💬 *Selected Items:* "${detail}"\n` +
+                            `${activeSession?.billNo ? `🧾 *Bill No:* #${activeSession.billNo}\n` : ''}\n` +
+                            `👉 *Please follow up personally with the customer to resolve their concern.*`;
+                        for (const ownerPhone of OWNER_PHONES) {
+                            try {
+                                await client.sendMessage(`91${ownerPhone}@c.us`, escalationMsg);
+                            } catch (e) {
+                                console.warn(`[ESCALATION] Could not alert owner ${ownerPhone}:`, e.message);
+                            }
+                        }
+                    }
+                    return;
+                }
+
+                // STEP 1: Customer voted on Rating Poll
+                const selected = vote.selectedOptions[0];
+                const optName = String(selected.name || '').toLowerCase();
+                const localId = typeof selected.localId === 'number' ? selected.localId : -1;
+
+                const is5 = localId === 0 || optName.includes('5') || optName.includes('excellent');
+                const is4 = localId === 1 || optName.includes('4') || optName.includes('good');
+                const isPositive = is5 || is4;
+
+                if (isPositive) {
+                    const ratingScore = is5 ? 5 : 4;
+                    saveRatingToLedger({
+                        phone: cleanPhone,
+                        customerName: activeSession?.customerName,
+                        rating: ratingScore,
+                        comment: selected.name || `${ratingScore} Stars`,
+                        billNo: activeSession?.billNo
+                    });
+                    const reply = `🌟 *Thank you so much for the ${ratingScore}-Star rating!* 🙏\n\n` +
+                        `Your feedback means everything to our local team. Would you mind taking 15 seconds to share your review on our Google Maps page?\n\n` +
+                        `⭐ *Tap here to review:*\n${GOOGLE_REVIEW_LINK}\n\n` +
+                        `Thank you for being part of the Cobb family! 👔`;
+                    await client.sendMessage(chatId, reply);
+
+                    setReviewSession(cleanPhone, {
+                        step: 'completed',
+                        rating: ratingScore
+                    });
+
+                    try {
+                        await fetch('http://localhost:5000/api/whatsapp/inbound-alert', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                phone: cleanPhone,
+                                customerName: activeSession?.customerName,
+                                message: selected.name || `${ratingScore} Stars`,
+                                type: 'rating_positive',
+                                rating: ratingScore
+                            })
+                        });
+                    } catch (e) { }
+                    return;
+                }
+
+                // Negative / Low Rating (1, 2, or 3) -> Intercept Privately!
+                let grievanceScore = 3;
+                if (localId === 4 || optName.includes('1') || optName.includes('poor')) grievanceScore = 1;
+                else if (localId === 3 || optName.includes('2')) grievanceScore = 2;
+
+                saveRatingToLedger({
+                    phone: cleanPhone,
+                    customerName: activeSession?.customerName,
+                    rating: grievanceScore,
+                    comment: selected.name || `${grievanceScore} Stars`,
+                    billNo: activeSession?.billNo
+                });
+
+                setReviewSession(cleanPhone, {
+                    customerName: activeSession?.customerName || 'Customer',
+                    billNo: activeSession?.billNo || '',
+                    step: 'waiting_grievance_detail',
+                    rating: grievanceScore
+                });
+
+                // Apology text + Multi-select grievance checkbox poll
+                const apologyReply = `🙏 *We sincerely apologize for falling short of your expectations.*\n\n` +
+                    `We strive for 5-star service and want to make this right. Could you please select what went wrong below?`;
+                await client.sendMessage(chatId, apologyReply);
+
+                try {
+                    const grievancePoll = createGrievancePoll();
+                    await client.sendMessage(chatId, grievancePoll);
+                } catch (pollErr) {
+                    console.warn(`[POLL ERR] Could not send grievance poll to ${cleanPhone}:`, pollErr.message);
+                }
+
+                // Alert CRM
+                try {
+                    await fetch('http://localhost:5000/api/whatsapp/inbound-alert', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            phone: cleanPhone,
+                            customerName: activeSession?.customerName,
+                            message: selected.name || `${grievanceScore} Stars`,
+                            type: 'grievance_low_nps',
+                            rating: grievanceScore
+                        })
+                    });
+                } catch (e) { }
+
+                // Alert Owners
+                if (isClientReady && client) {
+                    const starEmojis = '⭐'.repeat(grievanceScore) + '☆'.repeat(5 - grievanceScore);
+                    const alertMsg = `🚨 *Low Rating Alert — Customer Grievance (Poll Tap)*\n\n` +
+                        `A customer just rated us *${grievanceScore}/5 stars* ${starEmojis}\n\n` +
+                        `📱 *From:* +91${cleanPhone}\n` +
+                        `💬 *Selected:* "${selected.name || `${grievanceScore} Stars`}"\n\n` +
+                        `_Awaiting their detailed feedback reason..._`;
+                    for (const ownerPhone of OWNER_PHONES) {
+                        try {
+                            await client.sendMessage(`91${ownerPhone}@c.us`, alertMsg);
+                        } catch (e) { }
+                    }
+                }
+            } catch (voteErr) {
+                console.error('[WHATSAPP POLL VOTE ERROR]:', voteErr.message);
             }
         });
 
@@ -834,6 +1388,138 @@ app.post('/send', async (req, res) => {
             scheduleReconnect();
         }
         return res.status(500).json({ error: `WhatsApp gateway dispatch error: ${err.message || err}` });
+    }
+});
+
+// --- REVIEW BOT MANAGEMENT & DISPATCH ENDPOINTS ---
+app.get('/api/reviews/bot-status', (req, res) => {
+    const sessions = loadReviewSessions();
+    const sessionList = Object.values(sessions);
+    const activeSessions = sessionList.filter(s => {
+        const age = Date.now() - (s.updatedAt || s.createdAt || 0);
+        return age < 48 * 60 * 60 * 1000;
+    });
+    const waitingRating = activeSessions.filter(s => s.step === 'waiting_rating');
+    const waitingGrievance = activeSessions.filter(s => s.step === 'waiting_grievance_detail');
+    const completed = activeSessions.filter(s => s.step === 'completed');
+
+    res.json({
+        success: true,
+        botActive: isClientReady,
+        googleReviewUrl: GOOGLE_REVIEW_LINK,
+        totalSessions: activeSessions.length,
+        waitingRatingCount: waitingRating.length,
+        waitingGrievanceCount: waitingGrievance.length,
+        completedCount: completed.length,
+        recentSessions: activeSessions.slice(-25).reverse()
+    });
+});
+
+app.post('/api/reviews/send-prompt', async (req, res) => {
+    const { phone, customerName, billNo, delayMinutes = 0 } = req.body || {};
+    const cleanPhone = String(phone || '').replace(/[^0-9]/g, '').slice(-10);
+    if (!cleanPhone || cleanPhone.length < 10) {
+        return res.status(400).json({ success: false, error: 'Valid 10-digit phone number is required.' });
+    }
+
+    const name = (customerName || 'Valued Customer').trim();
+    const delay = Number(delayMinutes) || 0;
+
+    if (delay > 0) {
+        queueNpsSurvey(cleanPhone, name, billNo, delay);
+        return res.json({ success: true, message: `Review prompt scheduled in ${delay} minutes for ${cleanPhone}` });
+    }
+
+    const promptMsg = getReviewPromptMessage(name);
+    setReviewSession(cleanPhone, {
+        customerName: name,
+        billNo: billNo || '',
+        step: 'waiting_rating'
+    });
+
+    if (!isClientReady || !client) {
+        queueNpsSurvey(cleanPhone, name, billNo, 0);
+        return res.json({
+            success: true,
+            queued: true,
+            message: 'WhatsApp client connecting. Review prompt queued for immediate dispatch once online.'
+        });
+    }
+
+    try {
+        const result = await dispatchReviewSurvey(cleanPhone, name, billNo);
+        return res.json({
+            success: true,
+            message: `Review prompt & checkbox poll dispatched immediately to ${cleanPhone}`,
+            result
+        });
+    } catch (err) {
+        return res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+app.post('/api/reviews/reset-session', (req, res) => {
+    const { phone } = req.body || {};
+    if (phone) clearReviewSession(phone);
+    res.json({ success: true, message: `Review session cleared for ${phone || 'all'}` });
+});
+
+// --- EXPERIMENTAL: OPTION 3 (WHATSAPP BUTTONS & LIST PICKERS) ---
+app.post('/api/test-interactive', async (req, res) => {
+    const { phone, type = 'buttons' } = req.body || {};
+    const cleanPhone = String(phone || '').replace(/[^0-9]/g, '').slice(-10);
+    if (!cleanPhone || cleanPhone.length < 10) {
+        return res.status(400).json({ error: 'Valid 10-digit phone number is required.' });
+    }
+    if (!isClientReady || !client) {
+        return res.status(503).json({ error: 'WhatsApp client is not ready.' });
+    }
+    const chatId = `91${cleanPhone}@c.us`;
+
+    try {
+        if (type === 'list') {
+            const { List } = require('whatsapp-web.js');
+            const sections = [{
+                title: 'Rate Your Visit',
+                rows: [
+                    { id: 'rate_5', title: '⭐⭐⭐⭐⭐ 5 - Excellent', description: 'Everything was great' },
+                    { id: 'rate_4', title: '⭐⭐⭐⭐ 4 - Good', description: 'Good experience' },
+                    { id: 'rate_3', title: '⭐⭐⭐ 3 - Fair', description: 'Average visit' },
+                    { id: 'rate_2', title: '⭐⭐ 2 - Poor', description: 'Needs improvement' },
+                    { id: 'rate_1', title: '⭐ 1 - Very Bad', description: 'Unhappy with service' }
+                ]
+            }];
+            const list = new List(
+                'How was your shopping experience at Cobb Apparels (Pundri)?',
+                'Choose Rating',
+                sections,
+                'Cobb Apparels (Pundri)',
+                'Tap to open choices'
+            );
+            const sent = await client.sendMessage(chatId, list);
+            return res.json({ success: true, type: 'list', messageId: sent.id?._serialized });
+        } else {
+            const { Buttons } = require('whatsapp-web.js');
+            const buttons = new Buttons(
+                'How was your shopping experience at Cobb Apparels (Pundri)?',
+                [
+                    { body: '⭐⭐⭐⭐⭐ 5 Stars' },
+                    { body: '⭐⭐⭐⭐ 4 Stars' },
+                    { body: '💬 1-3 Stars / Feedback' }
+                ],
+                'Cobb Apparels (Pundri)',
+                'Tap a button below'
+            );
+            const sent = await client.sendMessage(chatId, buttons);
+            return res.json({ success: true, type: 'buttons', messageId: sent.id?._serialized });
+        }
+    } catch (err) {
+        return res.status(500).json({
+            success: false,
+            error: err.message,
+            stack: err.stack,
+            note: 'Meta WhatsApp Web server-side protocol restriction: Buttons and List menus are blocked on unofficial WhatsApp Web protocol by Meta. They require the Official Meta WhatsApp Cloud API.'
+        });
     }
 });
 

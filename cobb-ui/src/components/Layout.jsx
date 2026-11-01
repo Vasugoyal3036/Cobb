@@ -309,12 +309,6 @@ const Layout = ({
         setActiveTab('speed_billing');
         return;
       }
-      // F3 to open Handheld Gun Barcode Scanner Modal
-      if (e.key === 'F3') {
-        e.preventDefault();
-        window.dispatchEvent(new CustomEvent('cobb_open_gun_scanner'));
-        return;
-      }
       // Ctrl + / to focus search
       if (e.ctrlKey && e.key === '/') {
         e.preventDefault();

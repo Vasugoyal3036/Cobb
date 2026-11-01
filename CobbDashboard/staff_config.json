@@ -1,20 +1,20 @@
 {
-  "monthlyStoreTarget": 900000,
-  "staffTarget": 450000,
+  "monthlyStoreTarget": 600000,
+  "staffTarget": 300000,
   "dailyStoreTarget": 30000,
   "incentiveSlabs": {
     "tier1": {
-      "threshold": 427500,
+      "threshold": 285000,
       "rate": 1,
       "label": "≥ 95% (1.0%)"
     },
     "tier2": {
-      "threshold": 337500,
+      "threshold": 225000,
       "rate": 0.75,
       "label": "≥ 75% (0.75%)"
     },
     "tier3": {
-      "threshold": 225000,
+      "threshold": 150000,
       "rate": 0.5,
       "label": "≥ 50% (0.5%)"
     },
@@ -38,8 +38,7 @@
   "staffOverrides": {
     "2800003": {
       "name": "Vikas",
-      "target": 450000,
-      "isInactive": false
+      "target": 450000
     },
     "3200014": {
       "name": "Pawan",
@@ -47,8 +46,7 @@
     },
     "0001001": {
       "name": "Simran",
-      "target": 450000,
-      "isInactive": false
+      "target": 450000
     },
     "0000180": {
       "name": "Akhil",

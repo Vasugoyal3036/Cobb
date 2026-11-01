@@ -617,13 +617,6 @@ export default function SpeedBillingModal({
         return;
       }
 
-      // F3: Handheld Gun Barcode Matrix Scanner
-      if (e.key === 'F3') {
-        e.preventDefault();
-        window.dispatchEvent(new CustomEvent('cobb_open_gun_scanner'));
-        return;
-      }
-
       // Alt+D / Ctrl+D / Shift+F3: Apply Discount
       if (((e.altKey || e.ctrlKey) && (e.key === 'd' || e.key === 'D')) || (e.shiftKey && e.key === 'F3')) {
         e.preventDefault();

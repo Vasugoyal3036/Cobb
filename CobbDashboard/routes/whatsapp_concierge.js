@@ -238,15 +238,70 @@ router.get('/nps/status', async (req, res) => {
     res.json({ success: true, pendingCount: 0, sentCount: 0, queue: [] });
 });
 
-router.post('/nps/schedule', async (req, res) => {
+// 5. Review Bot Status & Prompt Dispatch
+router.get('/reviews/status', async (req, res) => {
     try {
-        const waRes = await fetch('http://localhost:3000/nps-schedule', {
+        const waRes = await fetch('http://localhost:3000/api/reviews/bot-status', { signal: AbortSignal.timeout(3000) });
+        if (waRes.ok) {
+            const data = await waRes.json();
+            return res.json(data);
+        }
+    } catch (e) { }
+
+    // Fallback: read directly from review_sessions.json if gateway http is unreachable
+    try {
+        const sessionsFile = path.join(__dirname, '..', '..', 'whatsapp_gateway', 'review_sessions.json');
+        if (fs.existsSync(sessionsFile)) {
+            const sessions = JSON.parse(fs.readFileSync(sessionsFile, 'utf8'));
+            const list = Object.values(sessions);
+            return res.json({
+                success: true,
+                botActive: false,
+                googleReviewUrl: 'https://search.google.com/local/writereview?placeid=ChIJHfCBR58ZDjkRpBbB9EV-Zew',
+                totalSessions: list.length,
+                waitingRatingCount: list.filter(s => s.step === 'waiting_rating').length,
+                waitingGrievanceCount: list.filter(s => s.step === 'waiting_grievance_detail').length,
+                completedCount: list.filter(s => s.step === 'completed').length,
+                recentSessions: list.slice(-25).reverse()
+            });
+        }
+    } catch (e) { }
+
+    res.json({
+        success: true,
+        botActive: false,
+        googleReviewUrl: 'https://search.google.com/local/writereview?placeid=ChIJHfCBR58ZDjkRpBbB9EV-Zew',
+        totalSessions: 0,
+        waitingRatingCount: 0,
+        waitingGrievanceCount: 0,
+        completedCount: 0,
+        recentSessions: []
+    });
+});
+
+router.post('/reviews/send-prompt', async (req, res) => {
+    try {
+        const waRes = await fetch('http://localhost:3000/api/reviews/send-prompt', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(req.body)
         });
         const data = await waRes.json();
-        res.json(data);
+        res.status(waRes.status).json(data);
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
+router.post('/reviews/reset-session', async (req, res) => {
+    try {
+        const waRes = await fetch('http://localhost:3000/api/reviews/reset-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(req.body)
+        });
+        const data = await waRes.json();
+        res.status(waRes.status).json(data);
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }

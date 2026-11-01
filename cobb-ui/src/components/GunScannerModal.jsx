@@ -471,8 +471,12 @@ const GunScannerModal = ({
 
     const handleKeyDown = (e) => {
       // Close on Escape or F3 toggle
-      if (e.key === 'Escape' || e.key === 'F3') {
+      if (e.key === 'Escape' || e.key === 'F3' || e.code === 'F3') {
         e.preventDefault();
+        e.stopPropagation();
+        if (typeof e.stopImmediatePropagation === 'function') {
+          e.stopImmediatePropagation();
+        }
         onClose();
         return;
       }
@@ -510,9 +514,21 @@ const GunScannerModal = ({
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, [isOpen, onClose, handlePerformScan]);
+
+  // Focus scanner event listener
+  useEffect(() => {
+    const handleFocus = () => {
+      setTimeout(() => {
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      }, 50);
+    };
+    window.addEventListener('cobb_focus_scanner', handleFocus);
+    return () => window.removeEventListener('cobb_focus_scanner', handleFocus);
+  }, []);
 
   // Copy helper
   const handleCopy = (text, fieldName) => {

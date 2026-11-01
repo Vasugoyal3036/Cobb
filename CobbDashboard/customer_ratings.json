@@ -1,0 +1,22 @@
+[
+  {
+    "id": "RATE_1793537147300",
+    "phone": "9896410364",
+    "customerName": "Dr Ashok",
+    "rating": 4,
+    "comment": "⭐⭐⭐⭐ 4 - Good showroom and fitting",
+    "category": "positive",
+    "timestamp": "2026-11-01T12:45:47.300Z"
+  },
+  {
+    "id": 1793537132606,
+    "phone": "8708788707",
+    "customerName": "Valued Shopper",
+    "rating": 5,
+    "comment": "Exceptional shopping visit at Cobb!",
+    "category": "positive",
+    "timestamp": "2026-11-01T12:45:32.606Z",
+    "date": "2026-11-01",
+    "status": "unread"
+  }
+]

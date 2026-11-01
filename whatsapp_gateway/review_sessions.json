@@ -1,0 +1,106 @@
+{
+  "9896410364": {
+    "phone": "9896410364",
+    "customerName": "Dr Ashok",
+    "billNo": "No",
+    "step": "waiting_rating",
+    "updatedAt": 1793516805448,
+    "createdAt": 1793516805448
+  },
+  "8708788707": {
+    "phone": "8708788707",
+    "customerName": "Valued Shopper",
+    "billNo": "",
+    "step": "waiting_rating",
+    "updatedAt": 1793537211964,
+    "createdAt": 1793516954631
+  },
+  "8708188707": {
+    "phone": "8708188707",
+    "customerName": "Vaasupriye",
+    "billNo": "STST27-00961   ",
+    "step": "waiting_rating",
+    "updatedAt": 1793518915108,
+    "createdAt": 1793517087454
+  },
+  "9896098429": {
+    "phone": "9896098429",
+    "customerName": "Rohan Walia",
+    "billNo": "STST27-00963   ",
+    "step": "waiting_rating",
+    "updatedAt": 1793526694216,
+    "createdAt": 1793524882332
+  },
+  "7015954644": {
+    "phone": "7015954644",
+    "customerName": "Ram Ji Rasina Chd",
+    "billNo": "STST27-00964   ",
+    "step": "waiting_rating",
+    "updatedAt": 1793530110842,
+    "createdAt": 1793528295061
+  },
+  "9643669438": {
+    "phone": "9643669438",
+    "customerName": "Raman Ji Fatehpur",
+    "billNo": "STST27-00967   ",
+    "step": "waiting_rating",
+    "updatedAt": 1793530460927,
+    "createdAt": 1793528656557
+  },
+  "7500064464": {
+    "phone": "7500064464",
+    "customerName": "Pawan Ji Saanch",
+    "billNo": "STST27-00969   ",
+    "step": "waiting_rating",
+    "updatedAt": 1793530685991,
+    "createdAt": 1793528872402
+  },
+  "9068788471": {
+    "phone": "9068788471",
+    "customerName": "Mohit",
+    "billNo": "STST27-00971   ",
+    "step": "waiting_rating",
+    "updatedAt": 1793531461239,
+    "createdAt": 1793529644352
+  },
+  "9671902180": {
+    "phone": "9671902180",
+    "customerName": "Raj Bhai Ji Hotel",
+    "billNo": "STST27-00972   ",
+    "step": "waiting_rating",
+    "updatedAt": 1793532636580,
+    "createdAt": 1793530816565
+  },
+  "9996071407": {
+    "phone": "9996071407",
+    "customerName": "Ankit",
+    "billNo": "STST27-00973   ",
+    "step": "waiting_rating",
+    "updatedAt": 1793533936989,
+    "createdAt": 1793532130506
+  },
+  "9034055842": {
+    "phone": "9034055842",
+    "customerName": "Balwan Singh",
+    "billNo": "STST27-00974   ",
+    "step": "waiting_rating",
+    "updatedAt": 1793535287357,
+    "createdAt": 1793533473816
+  },
+  "7988818564": {
+    "phone": "7988818564",
+    "customerName": "Amit",
+    "billNo": "STST27-00976   ",
+    "step": "waiting_rating",
+    "updatedAt": 1793536280489,
+    "createdAt": 1793536280489
+  },
+  "7015451264": {
+    "phone": "7015451264",
+    "customerName": "Parbhat",
+    "billNo": "STST27-00977   ",
+    "step": "waiting_rating",
+    "updatedAt": 1793536655723,
+    "createdAt": 1793536655723
+  }
+}

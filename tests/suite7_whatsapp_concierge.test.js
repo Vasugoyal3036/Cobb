@@ -14,7 +14,7 @@ describe('Suite 7: Inbound WhatsApp Concierge Bot, Intent Matching & NPS Bifurca
     }
 
     // Router simulating the message handler in whatsapp_gateway/server.js
-    function routeInboundMessage({ body, fromPhone, enableInboundBot = true, cooldownMap = new Map() }) {
+    function routeInboundMessage({ body, fromPhone, enableInboundBot = true, cooldownMap = new Map(), sessionsMap = new Map() }) {
         const rawBody = (body || '').trim();
         if (!rawBody) return { handled: false, reason: 'EMPTY_BODY' };
 
@@ -26,34 +26,110 @@ describe('Suite 7: Inbound WhatsApp Concierge Bot, Intent Matching & NPS Bifurca
             return { handled: false, reason: 'SUPPRESSED_FOR_OWNER' };
         }
 
-        // 2. Bot toggle
-        if (!enableInboundBot) {
-            return { handled: false, reason: 'BOT_DISABLED' };
-        }
-
-        // 3. Inbound anti-spam cooldown (4 seconds)
+        // 2. Inbound anti-spam cooldown (4 seconds)
         const now = Date.now();
         if (cooldownMap.has(cleanPhone) && (now - cooldownMap.get(cleanPhone) < 4000)) {
             return { handled: false, reason: 'COOLDOWN_ACTIVE' };
         }
         cooldownMap.set(cleanPhone, now);
 
-        // 4. Loyalty points (Option 1)
+        // 3. Stateful Two-Step WhatsApp Review Funnel Check (Runs first, independent of enableInboundBot)
+        const activeSession = sessionsMap.get(cleanPhone);
+
+        // STEP 2: Grievance Detail Collection
+        if (activeSession && activeSession.step === 'waiting_grievance_detail') {
+            let category = 'Customer Grievance';
+            if (lower === '1' || lower.includes('fitting') || lower.includes('alteration') || lower.includes('size')) {
+                category = 'Fitting / Alteration Issue';
+            } else if (lower === '2' || lower.includes('staff') || lower.includes('delay') || lower.includes('service')) {
+                category = 'Staff Behavior / Service Delay';
+            } else if (lower === '3' || lower.includes('price') || lower.includes('pricing') || lower.includes('offer')) {
+                category = 'Pricing / Offer Discrepancy';
+            } else if (lower === '4' || lower.includes('fabric') || lower.includes('quality') || lower.includes('cloth')) {
+                category = 'Fabric / Garment Quality';
+            }
+
+            sessionsMap.set(cleanPhone, { ...activeSession, step: 'completed', grievanceCategory: category, grievanceDetail: rawBody });
+
+            return {
+                handled: true,
+                intent: 'GRIEVANCE_DETAIL_SUBMITTED',
+                category,
+                detail: rawBody,
+                rating: activeSession.rating || 2,
+                escalateToManager: true,
+                replySnippet: 'Thank you for your valuable feedback'
+            };
+        }
+
+        // STEP 1: Rating Evaluation (Active Survey Session OR explicit rating keywords)
+        const isWaitingRating = activeSession && activeSession.step === 'waiting_rating';
+
+        const isPositiveRating = (isWaitingRating && (lower === '5' || lower === 'five' || lower === '4' || lower === 'four')) ||
+            ['5 star', '5 stars', '5/5', '5⭐', '4 star', '4 stars', '4/5', '4⭐', 'excellent', 'great', 'superb'].some(k => lower === k || lower.startsWith(k + ' ') || lower.endsWith(' ' + k) || lower.includes(k)) ||
+            lower.includes('⭐⭐⭐⭐⭐') || lower.includes('⭐⭐⭐⭐');
+
+        const isNegativeRating = (isWaitingRating && (lower === '1' || lower === 'one' || lower === '2' || lower === 'two' || lower === '3' || lower === 'three')) ||
+            ['1 star', '1 stars', '1/5', '1⭐', '2 star', '2 stars', '2/5', '2⭐', '3 star', '3 stars', '3/5', '3⭐', 'bad', 'poor', 'worst', 'issue', 'complaint'].some(k => lower === k || lower.startsWith(k + ' ') || lower.endsWith(' ' + k) || lower.includes(k)) ||
+            lower.includes('⭐⭐⭐') || lower.includes('⭐⭐') || lower.includes('⭐');
+
+        if (isPositiveRating) {
+            const score = (lower.includes('4') && !lower.includes('5')) ? 4 : 5;
+            if (activeSession) sessionsMap.set(cleanPhone, { ...activeSession, step: 'completed', rating: score });
+            return {
+                handled: true,
+                intent: 'POSITIVE_NPS_REVIEW',
+                rating: score,
+                reviewUrl: GOOGLE_REVIEW_URL,
+                replySnippet: 'Thank you so much for the 5-Star rating'
+            };
+        }
+
+        if (isNegativeRating) {
+            let score = 1;
+            if (lower.includes('3')) score = 3;
+            else if (lower.includes('2')) score = 2;
+
+            // Transition to Step 2: request grievance reason privately
+            sessionsMap.set(cleanPhone, {
+                phone: cleanPhone,
+                customerName: activeSession?.customerName || 'Customer',
+                step: 'waiting_grievance_detail',
+                rating: score
+            });
+
+            return {
+                handled: true,
+                intent: 'GRIEVANCE_ESCALATION',
+                rating: score,
+                reviewUrl: undefined, // Public link NEVER exposed
+                nextStep: 'waiting_grievance_detail',
+                escalateToManager: true,
+                replySnippet: 'We sincerely apologize for falling short'
+            };
+        }
+
+        // 4. Bot toggle for general concierge menu
+        if (!enableInboundBot) {
+            return { handled: false, reason: 'BOT_DISABLED' };
+        }
+
+        // 5. Loyalty points (Option 1)
         if (lower === '1' || lower.includes('point') || lower.includes('loyalty') || lower.includes('balance')) {
             return { handled: true, intent: 'LOYALTY_CHECK', replySnippet: 'Cobb VIP Loyalty' };
         }
 
-        // 5. Alterations Desk (Option 2)
+        // 6. Alterations Desk (Option 2)
         if (lower === '2' || lower.includes('alteration') || lower.includes('tailor') || lower.includes('fitting')) {
             return { handled: true, intent: 'ALTERATIONS_CHECK', replySnippet: 'Cobb Alterations Desk' };
         }
 
-        // 6. Dynamic Catalog (Option 3)
+        // 7. Dynamic Catalog (Option 3)
         if (lower === '3' || lower.includes('catalog') || lower.includes('new arrival') || lower.includes('collection')) {
             return { handled: true, intent: 'CATALOG_VIEW', replySnippet: 'Cobb Trending Arrivals' };
         }
 
-        // 7. Click & Collect Reservation (RESERVE <Code>)
+        // 8. Click & Collect Reservation (RESERVE <Code>)
         if (lower.startsWith('reserve') || lower.startsWith('hold')) {
             const parts = rawBody.split(/\s+/);
             const code = parts[1] || '';
@@ -69,37 +145,115 @@ describe('Suite 7: Inbound WhatsApp Concierge Bot, Intent Matching & NPS Bifurca
             return { handled: true, intent: 'RESERVE_HELP', replySnippet: 'Please reply in the format: RESERVE <ArticleCode>' };
         }
 
-        // 8. In-store Offers (Option 4)
+        // 9. In-store Offers (Option 4)
         if (lower === '4' || lower.includes('offer') || lower.includes('deal') || lower.includes('discount')) {
             return { handled: true, intent: 'OFFERS_VIEW', replySnippet: "Today's In-Store Cobb Specials" };
         }
 
-        // 9. Store Hours & Map (Option 5)
+        // 10. Store Hours & Map (Option 5)
         if (lower === '5' || lower.includes('timing') || lower.includes('location') || lower.includes('address') || lower.includes('map')) {
             return { handled: true, intent: 'TIMINGS_MAP', replySnippet: 'Cobb Apparels Flagship Store' };
         }
 
-        // 10. Positive Review (4 or 5 stars) -> Google Maps link
-        if (['5', '5 star', '5 stars', '4', '4 star', '4 stars', 'excellent', 'great', 'superb'].some(k => lower === k || lower.startsWith(k))) {
-            return {
-                handled: true,
-                intent: 'POSITIVE_NPS_REVIEW',
-                reviewUrl: GOOGLE_REVIEW_URL,
-                replySnippet: 'Thank you so much for the 5-Star rating'
-            };
-        }
-
-        // 11. Low NPS Grievance (1 to 3 stars) -> Manager Escalation
-        if (['1', '1 star', '2', '2 star', '3', '3 star', 'bad', 'poor', 'worst', 'issue', 'complaint'].some(k => lower === k || lower.startsWith(k))) {
-            return {
-                handled: true,
-                intent: 'GRIEVANCE_ESCALATION',
-                escalateToManager: true,
-                replySnippet: 'We sincerely apologize for falling short'
-            };
-        }
-
         return { handled: false, reason: 'UNRECOGNIZED_INTENT' };
+    }
+
+    function routePollVote({ voter, selectedOptions, sessionsMap = new Map(), cooldownMap = new Map(), pollName = '' }) {
+        if (!voter || !selectedOptions || selectedOptions.length === 0) {
+            return { handled: false, reason: 'EMPTY_VOTE' };
+        }
+        const cleanPhone = String(voter).replace(/[^0-9]/g, '').slice(-10);
+        if (isOwnerPhone(cleanPhone)) return { handled: false, reason: 'SUPPRESSED_FOR_OWNER' };
+
+        const now = Date.now();
+        if (cooldownMap.has(cleanPhone) && (now - cooldownMap.get(cleanPhone) < 2000)) {
+            return { handled: false, reason: 'COOLDOWN_ACTIVE' };
+        }
+        cooldownMap.set(cleanPhone, now);
+
+        const activeSession = sessionsMap.get(cleanPhone);
+        const grievanceMap = {
+            0: 'Fitting / Alteration Issue',
+            1: 'Staff Behavior / Service Delay',
+            2: 'Pricing / Offer Discrepancy',
+            3: 'Fabric / Garment Quality',
+            4: 'Other Feedback'
+        };
+
+        const isGrievanceStep = (activeSession && activeSession.step === 'waiting_grievance_detail') ||
+            (pollName && pollName.toLowerCase().includes('went wrong'));
+
+        if (isGrievanceStep) {
+            const selectedCategories = selectedOptions.map(o => {
+                if (o.name && !o.name.startsWith('Option')) return o.name;
+                if (typeof o.localId === 'number' && grievanceMap[o.localId]) return grievanceMap[o.localId];
+                return o.name || `Issue #${o.localId}`;
+            });
+            const detail = selectedCategories.join(', ') || 'Customer Grievance';
+            let category = 'Customer Grievance';
+            const lowerDetail = detail.toLowerCase();
+            if (lowerDetail.includes('fitting') || lowerDetail.includes('alteration') || lowerDetail.includes('size')) {
+                category = 'Fitting / Alteration Issue';
+            } else if (lowerDetail.includes('staff') || lowerDetail.includes('delay') || lowerDetail.includes('service')) {
+                category = 'Staff Behavior / Service Delay';
+            } else if (lowerDetail.includes('price') || lowerDetail.includes('pricing') || lowerDetail.includes('offer')) {
+                category = 'Pricing / Offer Discrepancy';
+            } else if (lowerDetail.includes('fabric') || lowerDetail.includes('quality') || lowerDetail.includes('cloth')) {
+                category = 'Fabric / Garment Quality';
+            }
+
+            sessionsMap.set(cleanPhone, { ...activeSession, step: 'completed', grievanceCategory: category, grievanceDetail: detail });
+            return {
+                handled: true,
+                intent: 'POLL_GRIEVANCE_SUBMITTED',
+                category,
+                detail,
+                selectedOptions: selectedCategories,
+                rating: activeSession?.rating || 2,
+                escalateToManager: true,
+                replySnippet: 'Thank you for your valuable feedback'
+            };
+        }
+
+        const selected = selectedOptions[0];
+        const optName = String(selected.name || '').toLowerCase();
+        const localId = typeof selected.localId === 'number' ? selected.localId : -1;
+
+        const is5 = localId === 0 || optName.includes('5') || optName.includes('excellent');
+        const is4 = localId === 1 || optName.includes('4') || optName.includes('good');
+        const isPositive = is5 || is4;
+
+        if (isPositive) {
+            const ratingScore = is5 ? 5 : 4;
+            sessionsMap.set(cleanPhone, { ...activeSession, step: 'completed', rating: ratingScore });
+            return {
+                handled: true,
+                intent: 'POLL_POSITIVE_RATING',
+                rating: ratingScore,
+                reviewUrl: GOOGLE_REVIEW_URL,
+                replySnippet: `Thank you so much for the ${ratingScore}-Star rating`
+            };
+        }
+
+        let grievanceScore = 3;
+        if (localId === 4 || optName.includes('1') || optName.includes('poor')) grievanceScore = 1;
+        else if (localId === 3 || optName.includes('2')) grievanceScore = 2;
+
+        sessionsMap.set(cleanPhone, {
+            phone: cleanPhone,
+            customerName: activeSession?.customerName || 'Customer',
+            step: 'waiting_grievance_detail',
+            rating: grievanceScore
+        });
+
+        return {
+            handled: true,
+            intent: 'POLL_GRIEVANCE_ESCALATION',
+            rating: grievanceScore,
+            reviewUrl: undefined,
+            sendGrievancePoll: true,
+            replySnippet: 'We sincerely apologize for falling short'
+        };
     }
 
     describe('1. Inbound Menu & Intent Classification', () => {
@@ -227,4 +381,207 @@ describe('Suite 7: Inbound WhatsApp Concierge Bot, Intent Matching & NPS Bifurca
             assert.equal(parseRating('1 star worst billing queue'), 1);
         });
     });
+
+    describe('6. Stateful Two-Step WhatsApp Review Funnel', () => {
+        it('Step 1: Positive rating (5★ or 4★) directs to Google Maps review link and completes session', () => {
+            const sessionsMap = new Map();
+            const phone = '9876543210';
+            sessionsMap.set(phone, { phone, customerName: 'Rohan Sharma', step: 'waiting_rating' });
+
+            const res = routeInboundMessage({ body: '5', fromPhone: phone, sessionsMap });
+            assert.equal(res.handled, true);
+            assert.equal(res.intent, 'POSITIVE_NPS_REVIEW');
+            assert.equal(res.rating, 5);
+            assert.equal(res.reviewUrl, GOOGLE_REVIEW_URL);
+            assert.ok(res.replySnippet.includes('5-Star rating'));
+
+            // Session marked as completed
+            const sessionAfter = sessionsMap.get(phone);
+            assert.equal(sessionAfter.step, 'completed');
+            assert.equal(sessionAfter.rating, 5);
+        });
+
+        it('Step 1: Low rating (1★, 2★, or 3★) intercepts negative feedback privately without public Google link', () => {
+            const sessionsMap = new Map();
+            const phone = '9876543210';
+            sessionsMap.set(phone, { phone, customerName: 'Vikas Gupta', step: 'waiting_rating' });
+
+            const res = routeInboundMessage({ body: '1', fromPhone: phone, sessionsMap });
+            assert.equal(res.handled, true);
+            assert.equal(res.intent, 'GRIEVANCE_ESCALATION');
+            assert.equal(res.rating, 1);
+            assert.equal(res.reviewUrl, undefined); // NEVER expose Google Review URL
+            assert.equal(res.nextStep, 'waiting_grievance_detail');
+            assert.ok(res.replySnippet.includes('sincerely apologize'));
+
+            // Session transitioned to Step 2
+            const sessionAfter = sessionsMap.get(phone);
+            assert.equal(sessionAfter.step, 'waiting_grievance_detail');
+            assert.equal(sessionAfter.rating, 1);
+        });
+
+        it('Step 2: Dissatisfied customer selects Option 1 -> records Fitting / Alteration issue (not Loyalty)', () => {
+            const sessionsMap = new Map();
+            const phone = '9876543210';
+            sessionsMap.set(phone, { phone, customerName: 'Amit Verma', step: 'waiting_grievance_detail', rating: 2 });
+
+            const res = routeInboundMessage({ body: '1', fromPhone: phone, sessionsMap });
+            assert.equal(res.handled, true);
+            assert.equal(res.intent, 'GRIEVANCE_DETAIL_SUBMITTED');
+            assert.equal(res.category, 'Fitting / Alteration Issue');
+            assert.equal(res.rating, 2);
+            assert.equal(res.escalateToManager, true);
+            assert.ok(res.replySnippet.includes('valuable feedback'));
+
+            const sessionAfter = sessionsMap.get(phone);
+            assert.equal(sessionAfter.step, 'completed');
+            assert.equal(sessionAfter.grievanceCategory, 'Fitting / Alteration Issue');
+        });
+
+        it('Step 2: Dissatisfied customer selects Option 2 -> records Staff Behavior / Service Delay', () => {
+            const sessionsMap = new Map();
+            const phone = '9876543210';
+            sessionsMap.set(phone, { phone, customerName: 'Pooja', step: 'waiting_grievance_detail', rating: 1 });
+
+            const res = routeInboundMessage({ body: '2', fromPhone: phone, sessionsMap });
+            assert.equal(res.handled, true);
+            assert.equal(res.intent, 'GRIEVANCE_DETAIL_SUBMITTED');
+            assert.equal(res.category, 'Staff Behavior / Service Delay');
+            assert.equal(res.escalateToManager, true);
+        });
+
+        it('Step 2: Customer types free-text grievance note -> records exact feedback and escalates to owner', () => {
+            const sessionsMap = new Map();
+            const phone = '9876543210';
+            sessionsMap.set(phone, { phone, customerName: 'Sunil Kumar', step: 'waiting_grievance_detail', rating: 2 });
+
+            const grievanceText = 'The shirt buttons came loose on first trial and cashier took 15 mins';
+            const res = routeInboundMessage({ body: grievanceText, fromPhone: phone, sessionsMap });
+            assert.equal(res.handled, true);
+            assert.equal(res.intent, 'GRIEVANCE_DETAIL_SUBMITTED');
+            assert.equal(res.detail, grievanceText);
+            assert.equal(res.escalateToManager, true);
+
+            const sessionAfter = sessionsMap.get(phone);
+            assert.equal(sessionAfter.grievanceDetail, grievanceText);
+            assert.equal(sessionAfter.step, 'completed');
+        });
+
+        it('Without an active review session, Option 1 routes to Loyalty inquiry (no collision)', () => {
+            const sessionsMap = new Map();
+            const phone = '9876543210';
+
+            const res = routeInboundMessage({ body: '1', fromPhone: phone, sessionsMap });
+            assert.equal(res.handled, true);
+            assert.equal(res.intent, 'LOYALTY_CHECK');
+            assert.ok(res.replySnippet.includes('Loyalty'));
+        });
+    });
+
+    describe('7. Interactive WhatsApp Poll & Checkbox Voting Funnel', () => {
+        it('Step 1: Tapping 5-Star checkbox option directs customer to Google Maps review', () => {
+            const sessionsMap = new Map();
+            const phone = '9876543210';
+            sessionsMap.set(phone, { phone, customerName: 'Rajesh', step: 'waiting_rating' });
+
+            const res = routePollVote({
+                voter: `91${phone}@c.us`,
+                selectedOptions: [{ name: '⭐⭐⭐⭐⭐ 5 - Excellent', localId: 0 }],
+                sessionsMap
+            });
+
+            assert.equal(res.handled, true);
+            assert.equal(res.intent, 'POLL_POSITIVE_RATING');
+            assert.equal(res.rating, 5);
+            assert.equal(res.reviewUrl, GOOGLE_REVIEW_URL);
+            assert.ok(res.replySnippet.includes('5-Star rating'));
+
+            const session = sessionsMap.get(phone);
+            assert.equal(session.step, 'completed');
+            assert.equal(session.rating, 5);
+        });
+
+        it('Step 1: Tapping 4-Star checkbox option also routes to Google Maps review', () => {
+            const sessionsMap = new Map();
+            const phone = '9876543210';
+            sessionsMap.set(phone, { phone, customerName: 'Ravi', step: 'waiting_rating' });
+
+            const res = routePollVote({
+                voter: `91${phone}@c.us`,
+                selectedOptions: [{ name: '⭐⭐⭐⭐ 4 - Good', localId: 1 }],
+                sessionsMap
+            });
+
+            assert.equal(res.handled, true);
+            assert.equal(res.intent, 'POLL_POSITIVE_RATING');
+            assert.equal(res.rating, 4);
+            assert.equal(res.reviewUrl, GOOGLE_REVIEW_URL);
+            assert.equal(sessionsMap.get(phone).rating, 4);
+        });
+
+        it('Step 1: Tapping 2-Star option privately shields Google link and transitions to Grievance Poll', () => {
+            const sessionsMap = new Map();
+            const phone = '9876543210';
+            sessionsMap.set(phone, { phone, customerName: 'Deepak', step: 'waiting_rating' });
+
+            const res = routePollVote({
+                voter: `91${phone}@c.us`,
+                selectedOptions: [{ name: '⭐⭐ 2 - Needs Improvement', localId: 3 }],
+                sessionsMap
+            });
+
+            assert.equal(res.handled, true);
+            assert.equal(res.intent, 'POLL_GRIEVANCE_ESCALATION');
+            assert.equal(res.rating, 2);
+            assert.equal(res.reviewUrl, undefined);
+            assert.equal(res.sendGrievancePoll, true);
+
+            const session = sessionsMap.get(phone);
+            assert.equal(session.step, 'waiting_grievance_detail');
+            assert.equal(session.rating, 2);
+        });
+
+        it('Step 2: Grievance checkbox selection records category and notifies manager', () => {
+            const sessionsMap = new Map();
+            const phone = '9876543210';
+            sessionsMap.set(phone, { phone, customerName: 'Deepak', step: 'waiting_grievance_detail', rating: 2 });
+
+            const res = routePollVote({
+                voter: `91${phone}@c.us`,
+                selectedOptions: [{ name: 'Fitting / Alteration issue', localId: 0 }],
+                sessionsMap
+            });
+
+            assert.equal(res.handled, true);
+            assert.equal(res.intent, 'POLL_GRIEVANCE_SUBMITTED');
+            assert.equal(res.category, 'Fitting / Alteration Issue');
+            assert.equal(res.escalateToManager, true);
+
+            const session = sessionsMap.get(phone);
+            assert.equal(session.step, 'completed');
+            assert.equal(session.grievanceCategory, 'Fitting / Alteration Issue');
+        });
+
+        it('Step 2: Multi-select checkbox picks multiple issues simultaneously', () => {
+            const sessionsMap = new Map();
+            const phone = '9876543210';
+            sessionsMap.set(phone, { phone, customerName: 'Kunal', step: 'waiting_grievance_detail', rating: 1 });
+
+            const res = routePollVote({
+                voter: `91${phone}@c.us`,
+                selectedOptions: [
+                    { name: 'Staff behavior / Service delay', localId: 1 },
+                    { name: 'Pricing / Offer discrepancy', localId: 2 }
+                ],
+                sessionsMap
+            });
+
+            assert.equal(res.handled, true);
+            assert.equal(res.selectedOptions.length, 2);
+            assert.ok(res.detail.includes('Staff behavior'));
+            assert.ok(res.detail.includes('Pricing'));
+            assert.equal(sessionsMap.get(phone).step, 'completed');
+        });
+    });
 });
+

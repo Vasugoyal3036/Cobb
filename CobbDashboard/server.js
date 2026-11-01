@@ -5,6 +5,7 @@ const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { spawn, execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const net = require('net');
 const { checkPort } = require('./scanner');
 const compression = require('compression');
 const axios = require('axios');
@@ -47,6 +48,7 @@ app.use('/api/staff', staffRouter);
 
 const whatsappConciergeRouter = require('./routes/whatsapp_concierge');
 app.use('/api/whatsapp/concierge', whatsappConciergeRouter);
+app.use('/api/reviews', whatsappConciergeRouter);
 
 const alterationsRouter = require('./routes/alterations');
 app.use('/api/alterations', alterationsRouter);
@@ -1766,8 +1768,105 @@ async function startGatewayHelper(forceRestart = false) {
     return true;
 }
 
-function startAutomationHelper() {
+function isPosListenerRunning() {
+    if (pythonProcess && pythonProcess.exitCode === null) return Promise.resolve(true);
+    return new Promise((resolve) => {
+        let settled = false;
+        const server = net.createServer();
+        const timer = setTimeout(() => {
+            if (!settled) {
+                settled = true;
+                try { server.close(); } catch (e) {}
+                resolve(false);
+            }
+        }, 1200);
+
+        server.once('error', (err) => {
+            if (!settled) {
+                settled = true;
+                clearTimeout(timer);
+                resolve(err.code === 'EADDRINUSE');
+            }
+        });
+        server.listen(47200, '127.0.0.1', () => {
+            if (!settled) {
+                settled = true;
+                clearTimeout(timer);
+                server.close(() => resolve(false));
+            }
+        });
+    });
+}
+
+function isCloudSyncRunning() {
+    if (cloudSyncProcess && !cloudSyncProcess.killed) return Promise.resolve(true);
+    return new Promise((resolve) => {
+        let settled = false;
+        const socket = net.createConnection({ port: 51234, host: '127.0.0.1' });
+        const timer = setTimeout(() => {
+            if (!settled) {
+                settled = true;
+                try { socket.destroy(); } catch (e) {}
+                resolve(false);
+            }
+        }, 1200);
+
+        socket.once('connect', () => {
+            if (!settled) {
+                settled = true;
+                clearTimeout(timer);
+                socket.destroy();
+                resolve(true);
+            }
+        });
+        socket.once('error', () => {
+            if (!settled) {
+                settled = true;
+                clearTimeout(timer);
+                resolve(false);
+            }
+        });
+    });
+}
+
+async function restartPosListenerHelper() {
+    if (pythonProcess) {
+        try { spawn('taskkill', ['/PID', pythonProcess.pid.toString(), '/F', '/T'], { windowsHide: true }); } catch (e) {}
+        pythonProcess = null;
+    }
+    try {
+        execSync('powershell -WindowStyle Hidden -Command "Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -match \'cobb_pos_listener\' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"', { windowsHide: true, timeout: 5000 });
+    } catch (e) {}
+    await new Promise(r => setTimeout(r, 600));
+    await startAutomationHelper();
+    return true;
+}
+
+async function restartCloudSyncHelper() {
+    let pm2Restarted = false;
+    try {
+        execSync('npx pm2 restart cobb-sync', { windowsHide: true, timeout: 5000 });
+        pm2Restarted = true;
+    } catch (e) {}
+
+    if (!pm2Restarted) {
+        if (cloudSyncProcess) {
+            try { cloudSyncProcess.kill(); } catch (err) {}
+            cloudSyncProcess = null;
+        }
+        try {
+            execSync('powershell -WindowStyle Hidden -Command "Get-NetTCPConnection -LocalPort 51234 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }"', { windowsHide: true, timeout: 5000 });
+        } catch (err) {}
+        await new Promise(r => setTimeout(r, 600));
+        await startCloudSyncHelper();
+    }
+    return true;
+}
+
+async function startAutomationHelper() {
     if (pythonProcess && pythonProcess.exitCode === null) return true;
+    const isRunning = await isPosListenerRunning();
+    if (isRunning) return true;
 
     const { scriptPath, cwd } = getListenerScriptPath();
     pythonLogs.push(`[${new Date().toLocaleTimeString()}] Auto-spawning Automation Engine Listener silently...`);
@@ -4559,32 +4658,28 @@ app.get('/api/loyalty/card/:phone', async (req, res) => {
 
 let cloudSyncProcess = null;
 let lastCloudSyncSpawnAttempt = 0;
-function startCloudSyncHelper() {
-    if (cloudSyncProcess) return true;
+async function startCloudSyncHelper() {
+    if (cloudSyncProcess && !cloudSyncProcess.killed) return true;
+    const isRunning = await isCloudSyncRunning();
+    if (isRunning) return true;
+
     const scriptPath = path.join(__dirname, 'cloud_sync.js');
     if (!fs.existsSync(scriptPath)) return false;
 
     const now = Date.now();
-    if (now - lastCloudSyncSpawnAttempt < 60000) return true;
+    if (now - lastCloudSyncSpawnAttempt < 30000) return true;
     lastCloudSyncSpawnAttempt = now;
 
-    const net = require('net');
-    const socket = net.createConnection({ port: 51234, host: '127.0.0.1' });
-    socket.once('connect', () => {
-        socket.destroy();
-    });
-    socket.once('error', () => {
-        try {
-            cloudSyncProcess = spawn('node', ['cloud_sync.js'], { 
-                cwd: __dirname, 
-                shell: false, 
-                windowsHide: true,
-                stdio: 'ignore' 
-            });
-            cloudSyncProcess.on('close', () => { cloudSyncProcess = null; });
-            console.log("Auto-spawned Cloud Sync Agent silently.");
-        } catch (e) {}
-    });
+    try {
+        cloudSyncProcess = spawn('node', ['cloud_sync.js'], { 
+            cwd: __dirname, 
+            shell: false, 
+            windowsHide: true,
+            stdio: 'ignore' 
+        });
+        cloudSyncProcess.on('close', () => { cloudSyncProcess = null; });
+        console.log("Auto-spawned Cloud Sync Agent silently.");
+    } catch (e) {}
     return true;
 }
 
@@ -4671,19 +4766,30 @@ app.post('/api/whatsapp/inbound-alert', async (req, res) => {
     saveInboundAlerts(inboundAlerts);
 
     // If this is a rating or grievance, store in customerRatings ledger
-    if (ratingNum !== undefined || type === 'rating_positive' || type === 'grievance_low_nps') {
+    if (ratingNum !== undefined || type === 'rating_positive' || type === 'grievance_low_nps' || type === 'review_rating') {
+        const cleanP = cleanPhone || phone || 'Unknown';
+        const bill = req.body.billNo || '';
+        const existingIdx = customerRatings.findIndex(r => 
+            (r.phone || '').replace(/[^0-9]/g, '').slice(-10) === cleanP && 
+            (bill ? r.billNo === bill : true)
+        );
         const ratingEntry = {
             id: alert.id,
-            phone: cleanPhone || phone || 'Unknown',
+            phone: cleanP,
             customerName: customerName || 'Valued Customer',
             rating: ratingNum || 5,
             comment: message || '',
             category: (ratingNum && ratingNum >= 4) || type === 'rating_positive' ? 'positive' : 'grievance',
+            billNo: bill,
             timestamp: alert.timestamp,
             date: alert.timestamp.split('T')[0],
             status: 'unread'
         };
-        customerRatings.unshift(ratingEntry);
+        if (existingIdx >= 0) {
+            customerRatings[existingIdx] = { ...customerRatings[existingIdx], ...ratingEntry };
+        } else {
+            customerRatings.unshift(ratingEntry);
+        }
         if (customerRatings.length > 500) customerRatings.pop();
         saveCustomerRatings(customerRatings);
     }
@@ -4712,24 +4818,25 @@ app.post('/api/whatsapp/inbound-alerts/mark-read', (req, res) => {
 });
 
 app.get('/api/ratings', (req, res) => {
-    const total = customerRatings.length;
-    const avg = total > 0 ? (customerRatings.reduce((sum, r) => sum + (r.rating || 5), 0) / total).toFixed(1) : "5.0";
-    const promoters = customerRatings.filter(r => (r.rating || 0) >= 4).length;
-    const detractors = customerRatings.filter(r => (r.rating || 0) <= 2).length;
-    const nps = total > 0 ? Math.round(((promoters - detractors) / total) * 100) : 100;
+    const list = loadCustomerRatings();
+    const total = list.length;
+    const avg = total > 0 ? (list.reduce((sum, r) => sum + (Number(r.rating) || 5), 0) / total).toFixed(1) : "0.0";
+    const promoters = list.filter(r => (Number(r.rating) || 0) >= 4).length;
+    const detractors = list.filter(r => (Number(r.rating) || 0) <= 2).length;
+    const nps = total > 0 ? Math.round(((promoters - detractors) / total) * 100) : 0;
 
     res.json({
-        ratings: customerRatings,
+        ratings: list,
         summary: {
             total,
-            average: parseFloat(avg),
+            average: total > 0 ? parseFloat(avg) : 0,
             nps,
             breakdown: {
-                5: customerRatings.filter(r => r.rating === 5).length,
-                4: customerRatings.filter(r => r.rating === 4).length,
-                3: customerRatings.filter(r => r.rating === 3).length,
-                2: customerRatings.filter(r => r.rating === 2).length,
-                1: customerRatings.filter(r => r.rating === 1).length
+                5: list.filter(r => Number(r.rating) === 5).length,
+                4: list.filter(r => Number(r.rating) === 4).length,
+                3: list.filter(r => Number(r.rating) === 3).length,
+                2: list.filter(r => Number(r.rating) === 2).length,
+                1: list.filter(r => Number(r.rating) === 1).length
             }
         }
     });
@@ -4850,10 +4957,13 @@ app.get('/api/system/health', async (req, res) => {
         waStatus = 'offline';
     }
 
-    const listenerStatus = (pythonProcess && pythonProcess.exitCode === null) ? 'healthy' : 'offline';
-    const syncStatus = (cloudSyncProcess && !cloudSyncProcess.killed) ? 'healthy' : 'idle';
+    const isListenerAlive = await isPosListenerRunning();
+    const listenerStatus = isListenerAlive ? 'healthy' : 'offline';
 
-    const overallHealthy = dbStatus === 'healthy' && waStatus === 'healthy' && listenerStatus === 'healthy';
+    const isSyncAlive = await isCloudSyncRunning();
+    const syncStatus = isSyncAlive ? 'healthy' : 'offline';
+
+    const overallHealthy = dbStatus === 'healthy' && waStatus === 'healthy' && listenerStatus === 'healthy' && syncStatus === 'healthy';
 
     res.json({
         overall: overallHealthy ? 'healthy' : (waStatus === 'awaiting_qr' ? 'needs_qr_scan' : 'attention_required'),
@@ -4881,19 +4991,11 @@ app.post('/api/system/restart-service', async (req, res) => {
             return res.json({ success: true, message: 'WhatsApp Gateway restarted.' });
         }
         if (service === 'posListener') {
-            if (pythonProcess) {
-                try { spawn('taskkill', ['/PID', pythonProcess.pid.toString(), '/F', '/T'], { windowsHide: true }); } catch (e) {}
-                pythonProcess = null;
-            }
-            startAutomationHelper();
+            await restartPosListenerHelper();
             return res.json({ success: true, message: 'POS Listener restarted.' });
         }
         if (service === 'cloudSync') {
-            if (cloudSyncProcess) {
-                try { cloudSyncProcess.kill(); } catch (e) {}
-                cloudSyncProcess = null;
-            }
-            startCloudSyncHelper();
+            await restartCloudSyncHelper();
             return res.json({ success: true, message: 'Cloud Sync restarted.' });
         }
         res.status(400).json({ error: 'Unknown service: ' + service });
@@ -4992,11 +5094,12 @@ app.listen(PORT, () => {
 
         // 2. POS Listener Automation Supervisor
         try {
-            if (!pythonProcess || pythonProcess.exitCode !== null) {
+            const isPosAlive = await isPosListenerRunning();
+            if (!isPosAlive) {
                 console.log('[SUPERVISOR] cobb_pos_listener is offline. Auto-reviving listener silently...');
                 pythonLogs.push(`[${new Date().toLocaleTimeString()}] [SUPERVISOR] Listener down — auto-respawning silently...`);
                 pythonProcess = null;
-                startAutomationHelper();
+                await startAutomationHelper();
             }
         } catch (listenerErr) {
             /* ignore */
@@ -5004,9 +5107,11 @@ app.listen(PORT, () => {
 
         // 3. Cloud Sync Agent Supervisor
         try {
-            if (!cloudSyncProcess || cloudSyncProcess.killed) {
+            const isSyncAlive = await isCloudSyncRunning();
+            if (!isSyncAlive) {
+                console.log('[SUPERVISOR] Cloud Sync Agent is offline. Auto-reviving sync agent silently...');
                 cloudSyncProcess = null;
-                startCloudSyncHelper();
+                await startCloudSyncHelper();
             }
         } catch (syncErr) {
             /* ignore */

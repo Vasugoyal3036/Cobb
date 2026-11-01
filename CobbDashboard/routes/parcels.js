@@ -9,7 +9,7 @@ router.get('/transit', async (req, res) => {
         let mirrorParcels = [];
         try {
             const mirrorResult = await sql.query(`
-                SELECT 
+                SELECT TOP 50
                     m.parcel_memo_no,
                     m.parcel_memo_id,
                     m.parcel_memo_dt,

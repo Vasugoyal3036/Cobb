@@ -161,7 +161,7 @@ export default function SystemHealthModal({ isOpen, onClose, API_BASE = 'http://
   const services = healthData?.services || {};
 
   const getStatusBadge = (status) => {
-    if (status === 'healthy') {
+    if (status === 'healthy' || status === 'online') {
       return (
         <span className="flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
           <CheckCircle2 className="w-3 h-3" /> Online
@@ -172,6 +172,13 @@ export default function SystemHealthModal({ isOpen, onClose, API_BASE = 'http://
       return (
         <span className="flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">
           <QrCode className="w-3 h-3" /> Scan QR
+        </span>
+      );
+    }
+    if (status === 'connecting' || status === 'starting') {
+      return (
+        <span className="flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/30">
+          <RefreshCw className="w-3 h-3 animate-spin" /> Connecting
         </span>
       );
     }
@@ -372,7 +379,9 @@ export default function SystemHealthModal({ isOpen, onClose, API_BASE = 'http://
                     {getStatusBadge(services.posListener?.status)}
                   </div>
                   <div className="mt-3 pt-2 border-t border-slate-700/30 flex items-center justify-between">
-                    <span className="text-[11px] text-slate-400">Auto-Spawning Enabled</span>
+                    <span className="text-[11px] text-slate-400">
+                      {services.posListener?.status === 'healthy' ? 'Active & Listening' : 'Auto-Spawning Enabled'}
+                    </span>
                     <button
                       onClick={() => handleRestartService('posListener')}
                       disabled={restarting.posListener}
@@ -401,7 +410,9 @@ export default function SystemHealthModal({ isOpen, onClose, API_BASE = 'http://
                     {getStatusBadge(services.cloudSync?.status)}
                   </div>
                   <div className="mt-3 pt-2 border-t border-slate-700/30 flex items-center justify-between">
-                    <span className="text-[11px] text-slate-400">Phone Link Bridge</span>
+                    <span className="text-[11px] text-slate-400">
+                      {services.cloudSync?.status === 'healthy' ? 'Active Cloud Bridge' : 'Phone Link Bridge'}
+                    </span>
                     <button
                       onClick={() => handleRestartService('cloudSync')}
                       disabled={restarting.cloudSync}
