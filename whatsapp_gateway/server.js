@@ -29,13 +29,36 @@ let watchdogTimer = null;
 let consecutiveWatchdogFailures = 0;
 
 // --- OWNER PHONES DEFINITION ---
-const OWNER_PHONES = ['9138122820', '8708788707', '9034522000', '9466422821'];
+const DEFAULT_OWNER_PHONES = ['9138122820', '8708788707', '9034522000', '9466422821'];
+
+function getOwnerPhones() {
+    const phones = new Set(DEFAULT_OWNER_PHONES);
+    if (process.env.OWNER_WHATSAPP_NUMBERS) {
+        process.env.OWNER_WHATSAPP_NUMBERS.split(',').forEach(p => {
+            const clean = String(p).replace(/\D/g, '').slice(-10);
+            if (clean.length === 10) phones.add(clean);
+        });
+    }
+    try {
+        const configPath = path.join(__dirname, '..', 'CobbDashboard', 'store_config.json');
+        if (fs.existsSync(configPath)) {
+            const cfg = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            if (Array.isArray(cfg?.storeProfile?.ownerPhones)) {
+                cfg.storeProfile.ownerPhones.forEach(p => {
+                    const clean = String(p).replace(/\D/g, '').slice(-10);
+                    if (clean.length === 10) phones.add(clean);
+                });
+            }
+        }
+    } catch (e) { }
+    return Array.from(phones);
+}
 
 function isOwnerPhone(phone) {
     if (!phone) return false;
     const clean = String(phone).replace(/[^0-9]/g, '');
     const tenDigit = clean.slice(-10);
-    return OWNER_PHONES.includes(tenDigit);
+    return getOwnerPhones().includes(tenDigit);
 }
 
 // --- TWO-WAY CONCIERGE BOT CONFIGURATION ---
@@ -80,6 +103,8 @@ function getActiveReviewSession(phone) {
 function setReviewSession(phone, data) {
     if (!phone) return;
     const cleanPhone = String(phone).replace(/[^0-9]/g, '').slice(-10);
+    // Never store or track review sessions for store owners
+    if (isOwnerPhone(cleanPhone)) return;
     const sessions = loadReviewSessions();
     const now = Date.now();
     sessions[cleanPhone] = {
@@ -314,6 +339,14 @@ function createGrievancePoll() {
 async function dispatchReviewSurvey(phone, customerName = 'Valued Customer', billNo = '') {
     const cleanPhone = String(phone).replace(/[^0-9]/g, '').slice(-10);
     if (!cleanPhone || cleanPhone.length < 10) return { success: false, error: 'Invalid phone number.' };
+
+    // EXCLUDE STORE OWNERS: Never send rating poll or review survey to owner mobile numbers
+    if (isOwnerPhone(cleanPhone)) {
+        console.log(`[REVIEW SURVEY SUPPRESSED] Owner mobile number detected (${cleanPhone}). Skipping rating poll.`);
+        clearReviewSession(cleanPhone);
+        return { success: true, skipped: true, reason: 'owner_number' };
+    }
+
     const chatId = `91${cleanPhone}@c.us`;
 
     setReviewSession(cleanPhone, {
@@ -374,8 +407,9 @@ function saveNpsQueue(queue) {
 function queueNpsSurvey(phone, customerName = 'Valued Customer', billNo = '', delayMinutes = 30) {
     const cleanPhone = String(phone).replace(/[^0-9]/g, '').slice(-10);
     if (!cleanPhone || cleanPhone.length < 10) return;
-    if (isOwnerPhone(cleanPhone) && delayMinutes > 0) {
-        console.log(`[NPS QUEUE] Suppressing automated survey queue for owner phone ${cleanPhone}`);
+    if (isOwnerPhone(cleanPhone)) {
+        console.log(`[NPS QUEUE SUPPRESSED] Suppressing automated survey queue for owner phone ${cleanPhone}`);
+        clearReviewSession(cleanPhone);
         return;
     }
 
@@ -421,6 +455,13 @@ setInterval(async () => {
 
         for (const item of queue) {
             if (item.status === 'pending' && now >= item.scheduledAt) {
+                if (isOwnerPhone(item.phone)) {
+                    item.status = 'skipped_owner';
+                    changed = true;
+                    console.log(`[NPS WORKER SUPPRESSED] Skipping NPS survey for owner phone: ${item.phone}`);
+                    clearReviewSession(item.phone);
+                    continue;
+                }
                 item.status = 'sent';
                 item.sentAt = now;
                 changed = true;
@@ -647,15 +688,10 @@ async function initWhatsApp(isFresh = false) {
                 // --- 2-STEP WHATSAPP REVIEW FUNNEL & GRIEVANCE INTERCEPTION ---
                 const activeSession = getActiveReviewSession(cleanPhone);
 
-                // SUPPRESS ALL AUTOMATED GENERAL REPLIES TO STORE OWNERS
-                // (Allow active rating/review sessions and explicit rating replies so owner testing works)
+                // SUPPRESS ALL AUTOMATED REPLIES & POLLS TO STORE OWNERS
                 const isOwner = isOwnerPhone(cleanPhone) || isOwnerPhone(phone);
-                const isRatingMsg = Boolean(activeSession && activeSession.step) ||
-                    ['5', '4', '3', '2', '1', '⭐⭐⭐⭐⭐', '⭐⭐⭐⭐', '⭐⭐⭐', '⭐⭐', '⭐'].includes(lower) ||
-                    ['5 star', '5 stars', '4 star', '4 stars', '3 star', '2 star', '1 star', 'excellent', 'superb', 'great'].some(k => lower.includes(k));
-
-                if (isOwner && !isRatingMsg) {
-                    console.log(`[WHATSAPP INBOUND] Message from owner ${cleanPhone} ("${rawBody}") - suppressing automated general reply.`);
+                if (isOwner) {
+                    console.log(`[WHATSAPP INBOUND] Message from owner ${cleanPhone} ("${rawBody}") - suppressing automated reply/poll.`);
                     return;
                 }
 
@@ -1505,34 +1541,40 @@ app.post('/send', async (req, res) => {
 
         // On checkout: dispatch interactive rating poll immediately with the thank-you message
         // NEVER dispatch rating poll for broadcast messages - only for real checkout receipts
+        // NEVER dispatch rating poll to owner's mobile numbers
         const lowerMsg = (message || '').toLowerCase();
         const isBillDispatch = !isBroadcast && (lowerMsg.includes('bill') || lowerMsg.includes('receipt') || lowerMsg.includes('cobb') || lowerMsg.includes('shopping') || lowerMsg.includes('total') || lowerMsg.includes('digital receipt'));
         if (isBillDispatch && result.success) {
             const cleanPhone = String(number).replace(/[^0-9]/g, '').slice(-10);
-            const customerNameMatch = message.match(/(?:Hello|Dear)\s+\*?([A-Za-z\s]+?)\*?(?:!|,)/i);
-            const parsedName = customerNameMatch ? customerNameMatch[1].trim() : (req.body.customerName || 'Valued Customer');
-            const billNoMatch = message.match(/(?:Bill|Inv(?:oice)?)\s*(?:No\.?|#)?\s*:?\s*\*?([A-Za-z0-9\/-]+)\*?/i);
-            const parsedBillNo = billNoMatch ? billNoMatch[1].trim() : (req.body.billNo || '');
+            if (isOwnerPhone(cleanPhone)) {
+                console.log(`[CHECKOUT POLL SUPPRESSED] Owner mobile number detected (${cleanPhone}). Skipping rating poll on bill dispatch.`);
+                clearReviewSession(cleanPhone);
+            } else {
+                const customerNameMatch = message.match(/(?:Hello|Dear)\s+\*?([A-Za-z\s]+?)\*?(?:!|,)/i);
+                const parsedName = customerNameMatch ? customerNameMatch[1].trim() : (req.body.customerName || 'Valued Customer');
+                const billNoMatch = message.match(/(?:Bill|Inv(?:oice)?)\s*(?:No\.?|#)?\s*:?\s*\*?([A-Za-z0-9\/-]+)\*?/i);
+                const parsedBillNo = billNoMatch ? billNoMatch[1].trim() : (req.body.billNo || '');
 
-            setReviewSession(cleanPhone, {
-                customerName: parsedName,
-                billNo: parsedBillNo,
-                step: 'waiting_rating'
-            });
+                setReviewSession(cleanPhone, {
+                    customerName: parsedName,
+                    billNo: parsedBillNo,
+                    step: 'waiting_rating'
+                });
 
-            // Dispatch interactive rating poll immediately with the thank-you message
-            if (isClientReady && client) {
-                try {
-                    const chatId = `91${cleanPhone}@c.us`;
-                    const ratingPoll = createRatingPoll();
-                    const sentPoll = await client.sendMessage(chatId, ratingPoll);
-                    if (sentPoll?.to?._serialized?.includes('@lid')) {
-                        lidToPhoneCache.set(sentPoll.to._serialized, cleanPhone);
-                        setReviewSession(cleanPhone, { lid: sentPoll.to._serialized });
+                // Dispatch interactive rating poll immediately with the thank-you message
+                if (isClientReady && client) {
+                    try {
+                        const chatId = `91${cleanPhone}@c.us`;
+                        const ratingPoll = createRatingPoll();
+                        const sentPoll = await client.sendMessage(chatId, ratingPoll);
+                        if (sentPoll?.to?._serialized?.includes('@lid')) {
+                            lidToPhoneCache.set(sentPoll.to._serialized, cleanPhone);
+                            setReviewSession(cleanPhone, { lid: sentPoll.to._serialized });
+                        }
+                        console.log(`[CHECKOUT POLL] Rating poll dispatched immediately with thank-you bill to ${cleanPhone}`);
+                    } catch (pollErr) {
+                        console.warn(`[CHECKOUT POLL ERR] Failed to dispatch rating poll to ${cleanPhone}:`, pollErr.message);
                     }
-                    console.log(`[CHECKOUT POLL] Rating poll dispatched immediately with thank-you bill to ${cleanPhone}`);
-                } catch (pollErr) {
-                    console.warn(`[CHECKOUT POLL ERR] Failed to dispatch rating poll to ${cleanPhone}:`, pollErr.message);
                 }
             }
         }
@@ -1582,6 +1624,13 @@ app.post('/api/reviews/send-prompt', async (req, res) => {
         return res.status(400).json({ success: false, error: 'Valid 10-digit phone number is required.' });
     }
 
+    // EXCLUDE STORE OWNERS: Never send rating poll or review prompt to owner mobile numbers
+    if (isOwnerPhone(cleanPhone)) {
+        console.log(`[REVIEW PROMPT SUPPRESSED] Owner mobile number detected (${cleanPhone}). Skipping rating poll.`);
+        clearReviewSession(cleanPhone);
+        return res.json({ success: true, skipped: true, reason: 'owner_number', message: `Skipping rating poll for owner number ${cleanPhone}` });
+    }
+
     const name = (customerName || 'Valued Customer').trim();
     const delay = Number(delayMinutes) || 0;
 
@@ -1621,7 +1670,7 @@ app.post('/api/reviews/send-prompt', async (req, res) => {
 app.post('/api/reviews/remind-pending', async (req, res) => {
     try {
         const sessions = loadReviewSessions();
-        const pending = Object.entries(sessions).filter(([_, s]) => s.step === 'waiting_rating');
+        const pending = Object.entries(sessions).filter(([phone, s]) => s.step === 'waiting_rating' && !isOwnerPhone(phone));
 
         if (pending.length === 0) {
             return res.json({ success: true, count: 0, message: 'No pending review sessions found.' });
@@ -1740,6 +1789,22 @@ app.post('/nps-schedule', (req, res) => {
 const PORT = 3000;
 const server = app.listen(PORT, () => {
     console.log(`WhatsApp Gateway Server running on http://localhost:${PORT}`);
+    // Purge any residual owner numbers from active review sessions
+    try {
+        const ownerList = getOwnerPhones();
+        const existingSessions = loadReviewSessions();
+        let cleaned = false;
+        ownerList.forEach(op => {
+            if (existingSessions[op]) {
+                delete existingSessions[op];
+                cleaned = true;
+            }
+        });
+        if (cleaned) {
+            saveReviewSessions(existingSessions);
+            console.log('[REVIEW SESSIONS] Cleaned owner phone numbers from active review sessions.');
+        }
+    } catch (e) { }
     initWhatsApp(false);
 });
 

@@ -279,8 +279,24 @@ router.get('/reviews/status', async (req, res) => {
     });
 });
 
-router.post('/reviews/send-prompt', async (req, res) => {
+const OWNER_PHONES = ['9138122820', '8708788707', '9034522000', '9466422821'];
+
+function isOwnerPhone(phone) {
+    if (!phone) return false;
+    const clean = String(phone).replace(/[^0-9]/g, '');
+    const tenDigit = clean.slice(-10);
+    const envPhones = process.env.OWNER_WHATSAPP_NUMBERS
+        ? process.env.OWNER_WHATSAPP_NUMBERS.split(',').map(s => s.replace(/\D/g, '').slice(-10)).filter(Boolean)
+        : [];
+    return OWNER_PHONES.includes(tenDigit) || envPhones.includes(tenDigit);
+}
+
+router.post(['/reviews/send-prompt', '/send-prompt'], async (req, res) => {
     try {
+        const { phone } = req.body || {};
+        if (isOwnerPhone(phone)) {
+            return res.json({ success: true, skipped: true, reason: 'owner_number', message: 'Skipped rating poll for owner number' });
+        }
         const waRes = await fetch('http://localhost:3000/api/reviews/send-prompt', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -293,7 +309,7 @@ router.post('/reviews/send-prompt', async (req, res) => {
     }
 });
 
-router.post('/reviews/reset-session', async (req, res) => {
+router.post(['/reviews/reset-session', '/reset-session'], async (req, res) => {
     try {
         const waRes = await fetch('http://localhost:3000/api/reviews/reset-session', {
             method: 'POST',
@@ -307,7 +323,7 @@ router.post('/reviews/reset-session', async (req, res) => {
     }
 });
 
-router.post('/reviews/remind-pending', async (req, res) => {
+router.post(['/reviews/remind-pending', '/remind-pending'], async (req, res) => {
     try {
         const waRes = await fetch('http://localhost:3000/api/reviews/remind-pending', {
             method: 'POST',

@@ -7,14 +7,6 @@
     "updatedAt": 1793516805448,
     "createdAt": 1793516805448
   },
-  "8708788707": {
-    "phone": "8708788707",
-    "customerName": "Vasu",
-    "billNo": "No",
-    "step": "waiting_rating",
-    "updatedAt": 1793596626052,
-    "createdAt": 1793516954631
-  },
   "8708188707": {
     "phone": "8708188707",
     "customerName": "Vaasupriye",
@@ -390,5 +382,13 @@
     "step": "waiting_rating",
     "updatedAt": 1793545417059,
     "createdAt": 1793543608462
+  },
+  "9813181410": {
+    "phone": "9813181410",
+    "customerName": "Sher Singh",
+    "billNo": "STST27-00980   ",
+    "step": "waiting_rating",
+    "updatedAt": 1793613646312,
+    "createdAt": 1793613646312
   }
 }
