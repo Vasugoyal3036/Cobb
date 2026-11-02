@@ -893,7 +893,7 @@ app.get('/api/staff/stock-check', async (req, res) => {
         const totalStock = rows.reduce((sum, r) => sum + Math.max(0, r.stock || 0), 0);
         const mrp = rows[0]?.mrp || 0;
 
-        // Group variants by color
+        // Group variants by color and combine sizes (filter out sold items)
         const colorMap = {};
         rows.forEach(r => {
             const clr = (r.color || 'Standard').trim();
@@ -901,23 +901,40 @@ app.get('/api/staff/stock-check', async (req, res) => {
                 colorMap[clr] = {
                     color: clr,
                     totalStock: 0,
-                    sizes: []
+                    sizeMap: {}
                 };
             }
             const stockQty = Math.max(0, r.stock || 0);
             colorMap[clr].totalStock += stockQty;
-            colorMap[clr].sizes.push({
-                size: (r.size || 'Standard').trim(),
-                stock: stockQty,
-                barcode: r.barcode,
-                vendorEan: r.vendorEan,
-                sizeOrder: r.sizeOrder || 99
-            });
+
+            // Only combine and include available items (do NOT show sold articles)
+            if (stockQty > 0) {
+                const sz = (r.size || 'Standard').trim();
+                if (!colorMap[clr].sizeMap[sz]) {
+                    colorMap[clr].sizeMap[sz] = {
+                        size: sz,
+                        stock: 0,
+                        barcode: r.barcode,
+                        barcodes: [],
+                        vendorEan: r.vendorEan,
+                        sizeOrder: r.sizeOrder || 99
+                    };
+                }
+                colorMap[clr].sizeMap[sz].stock += stockQty;
+                if (r.barcode && !colorMap[clr].sizeMap[sz].barcodes.includes(r.barcode)) {
+                    colorMap[clr].sizeMap[sz].barcodes.push(r.barcode);
+                }
+            }
         });
 
         const colors = Object.values(colorMap).map(c => {
-            c.sizes.sort((a, b) => a.sizeOrder - b.sizeOrder);
-            return c;
+            const sizeList = Object.values(c.sizeMap);
+            sizeList.sort((a, b) => a.sizeOrder - b.sizeOrder);
+            return {
+                color: c.color,
+                totalStock: c.totalStock,
+                sizes: sizeList
+            };
         });
 
         // Aggregated unique sizes across all colors

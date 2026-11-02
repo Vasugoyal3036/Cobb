@@ -190,4 +190,47 @@ describe('StaffStockCheckerPage [Floor Mobile Stock Checker]', () => {
     expect(screen.getByText(/https:\/\/cobb-store.web.app\/#stock/i)).toBeDefined();
     expect(screen.getByText(/Google Chrome \(Android\)/i)).toBeDefined();
   });
+
+  it('combines duplicate sizes and filters out sold items (stock 0)', async () => {
+    const mockData = {
+      success: true,
+      articleNo: 'JEANS-01',
+      itemName: 'DENIM JEANS',
+      mrp: 2999,
+      totalStock: 3,
+      matchedColor: 'BEIGE',
+      colors: [
+        {
+          color: 'BEIGE',
+          totalStock: 3,
+          sizes: [
+            { size: '32', stock: 0, barcode: 'BC-001' },
+            { size: '32', stock: 0, barcode: 'BC-002' },
+            { size: '32', stock: 1, barcode: 'BC-003' },
+            { size: '32', stock: 1, barcode: 'BC-004' },
+            { size: '32', stock: 1, barcode: 'BC-005' },
+            { size: '34', stock: 0, barcode: 'BC-006' }
+          ]
+        }
+      ]
+    };
+
+    axios.get.mockResolvedValueOnce({ data: mockData });
+
+    render(<StaffStockCheckerPage onClose={vi.fn()} />);
+
+    const input = screen.getByPlaceholderText(/Enter barcode or article no/i);
+    fireEvent.change(input, { target: { value: 'JEANS-01' } });
+    fireEvent.click(screen.getByRole('button', { name: /find/i }));
+
+    await waitFor(() => {
+      // 32 size should appear only ONCE in the list, combined with 3 available!
+      expect(screen.getAllByText(/32 size/i).length).toBe(1);
+      expect(screen.getAllByText(/3 available/i).length).toBeGreaterThan(0);
+      // Sold size 34 should be completely filtered out!
+      expect(screen.queryByText(/34 size/i)).toBeNull();
+      // 0 available should not be shown!
+      expect(screen.queryByText(/0 available/i)).toBeNull();
+    });
+  });
 });

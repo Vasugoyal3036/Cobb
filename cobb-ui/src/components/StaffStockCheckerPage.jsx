@@ -586,11 +586,44 @@ export default function StaffStockCheckerPage({
     };
   }, []);
 
-  // Filtered color list based on selectedColorFilter
+  // Filtered color list based on selectedColorFilter, with COMBINED sizes and SOLD articles filtered out
   const displayedColors = useMemo(() => {
     if (!stockData?.colors) return [];
-    if (selectedColorFilter === 'ALL') return stockData.colors;
-    return stockData.colors.filter(c => c.color === selectedColorFilter);
+    const sourceColors = selectedColorFilter === 'ALL'
+      ? stockData.colors
+      : stockData.colors.filter(c => c.color === selectedColorFilter);
+
+    return sourceColors.map(colorGroup => {
+      // Combine identical sizes and sum their stock
+      const sizeMap = {};
+      (colorGroup.sizes || []).forEach(item => {
+        const stockQty = Math.max(0, Number(item.stock || 0));
+        // Filter out sold articles (stock <= 0)
+        if (stockQty <= 0) return;
+
+        const sz = String(item.size || 'Standard').trim();
+        if (!sizeMap[sz]) {
+          sizeMap[sz] = {
+            size: sz,
+            stock: 0,
+            barcode: item.barcode || '',
+            barcodes: item.barcodes ? [...item.barcodes] : (item.barcode ? [item.barcode] : []),
+            vendorEan: item.vendorEan || '',
+            sizeOrder: item.sizeOrder || 99
+          };
+        }
+        sizeMap[sz].stock += stockQty;
+        if (item.barcode && !sizeMap[sz].barcodes.includes(item.barcode)) {
+          sizeMap[sz].barcodes.push(item.barcode);
+        }
+      });
+
+      const combinedSizes = sortSizesNaturally(Object.values(sizeMap));
+      return {
+        ...colorGroup,
+        sizes: combinedSizes
+      };
+    });
   }, [stockData, selectedColorFilter]);
 
   return (
@@ -899,11 +932,11 @@ export default function StaffStockCheckerPage({
               </div>
             )}
 
-            {/* --- SIZES GROUPED BY EACH COLOUR (Clean Vertical List Format) --- */}
+            {/* --- SIZES GROUPED BY EACH COLOUR (Clean Combined List Format) --- */}
             <div className="space-y-3">
               {displayedColors.map((colorGroup) => {
-                const sortedSizes = sortSizesNaturally(colorGroup.sizes || []);
-                const isOutOfStock = colorGroup.totalStock <= 0;
+                const sortedSizes = colorGroup.sizes || [];
+                const isOutOfStock = colorGroup.totalStock <= 0 || sortedSizes.length === 0;
                 const dotColor = getColorDot(colorGroup.color);
 
                 return (
@@ -941,70 +974,78 @@ export default function StaffStockCheckerPage({
                       </span>
                     </div>
 
-                    {/* Sizes in this Colour (Compact List: "38 size  2 available") */}
-                    <div className="divide-y divide-slate-800/60">
-                      {sortedSizes.map((sz) => {
-                        const isSizeOut = sz.stock <= 0;
-                        const isExactScannedPiece = stockData.scannedBarcode && (sz.barcode === stockData.scannedBarcode || sz.vendorEan === stockData.scannedBarcode);
+                    {/* Sizes in this Colour (Combined Rows: "38 size  2 available") */}
+                    {sortedSizes.length === 0 ? (
+                      <div className="px-4 py-3 text-xs text-slate-500 italic">
+                        No pieces currently available in this colour (Sold out)
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-slate-800/60">
+                        {sortedSizes.map((sz) => {
+                          const isExactScannedPiece = stockData.scannedBarcode && (
+                            sz.barcode === stockData.scannedBarcode ||
+                            sz.vendorEan === stockData.scannedBarcode ||
+                            sz.barcodes?.includes(stockData.scannedBarcode)
+                          );
 
-                        return (
-                          <div
-                            key={sz.size}
-                            className={`px-4 py-2.5 flex items-center justify-between transition-colors ${
-                              isExactScannedPiece
-                                ? 'bg-amber-500/15 border-l-4 border-amber-500'
-                                : isSizeOut
-                                ? 'bg-slate-950/40'
-                                : 'hover:bg-slate-800/40'
-                            }`}
-                          >
-                            {/* Left: Size & Barcode */}
-                            <div className="flex items-center gap-2.5">
-                              <span className={`text-sm font-black tracking-tight ${
-                                isSizeOut ? 'text-slate-500 line-through' : 'text-white'
-                              }`}>
-                                {sz.size} size
-                              </span>
-
-                              {isExactScannedPiece && (
-                                <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-amber-500 text-slate-950 uppercase tracking-wider">
-                                  Scanned Tag
+                          return (
+                            <div
+                              key={sz.size}
+                              className={`px-4 py-2.5 flex items-center justify-between transition-colors ${
+                                isExactScannedPiece
+                                  ? 'bg-amber-500/15 border-l-4 border-amber-500'
+                                  : 'hover:bg-slate-800/40'
+                              }`}
+                            >
+                              {/* Left: Size & Scanned Tag Badge */}
+                              <div className="flex items-center gap-2.5">
+                                <span className="text-sm font-black tracking-tight text-white">
+                                  {sz.size} size
                                 </span>
-                              )}
 
-                              {sz.barcode && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleCopyBarcode(sz.barcode)}
-                                  className="text-[10px] text-slate-500 hover:text-slate-300 font-mono flex items-center gap-0.5 ml-1"
-                                  title="Tap to copy barcode"
-                                >
-                                  <span>#{sz.barcode}</span>
-                                  {copiedBarcode === sz.barcode ? (
-                                    <Check className="w-2.5 h-2.5 text-emerald-400" />
-                                  ) : (
-                                    <Copy className="w-2.5 h-2.5" />
-                                  )}
-                                </button>
-                              )}
-                            </div>
+                                {isExactScannedPiece && (
+                                  <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-amber-500 text-slate-950 uppercase tracking-wider">
+                                    Scanned Tag
+                                  </span>
+                                )}
 
-                            {/* Right: Availability */}
-                            <div className="flex items-center gap-2">
-                              <span className={`text-xs font-black ${
-                                isSizeOut
-                                  ? 'text-slate-500'
-                                  : sz.stock <= 2
-                                  ? 'text-amber-400'
-                                  : 'text-emerald-400'
-                              }`}>
-                                {isSizeOut ? '0 available' : `${sz.stock} available`}
-                              </span>
+                                {sz.barcode && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCopyBarcode(sz.barcode)}
+                                    className="text-[10px] text-slate-500 hover:text-slate-300 font-mono flex items-center gap-0.5 ml-1"
+                                    title={sz.barcodes?.length > 1 ? `Barcodes: ${sz.barcodes.join(', ')}` : 'Tap to copy barcode'}
+                                  >
+                                    <span>#{sz.barcode}</span>
+                                    {sz.barcodes?.length > 1 && (
+                                      <span className="text-[9px] text-amber-400/80 font-sans">
+                                        (+{sz.barcodes.length - 1})
+                                      </span>
+                                    )}
+                                    {copiedBarcode === sz.barcode ? (
+                                      <Check className="w-2.5 h-2.5 text-emerald-400" />
+                                    ) : (
+                                      <Copy className="w-2.5 h-2.5" />
+                                    )}
+                                  </button>
+                                )}
+                              </div>
+
+                              {/* Right: Availability */}
+                              <div className="flex items-center gap-2">
+                                <span className={`text-xs font-black ${
+                                  sz.stock <= 2
+                                    ? 'text-amber-400'
+                                    : 'text-emerald-400'
+                                }`}>
+                                  {sz.stock} available
+                                </span>
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
-                    </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 );
               })}

@@ -309,19 +309,38 @@ axios.get = async (url, config) => {
           const subSectionName = first.subSectionName || (isBlazer ? 'EXECUTIVE BLAZER' : '');
           const totalStock = variantsList.reduce((sum, it) => sum + Math.max(0, Number(it.CurrentStock || it.stock || 0)), 0);
 
-          // Group by Color
+          // Group by Color and combine sizes (filter out sold items)
           const colorMap = {};
           variantsList.forEach(v => {
             const clr = (v.Color || v.color || 'Standard').trim();
-            if (!colorMap[clr]) colorMap[clr] = { color: clr, totalStock: 0, sizes: [] };
+            if (!colorMap[clr]) colorMap[clr] = { color: clr, totalStock: 0, sizeMap: {} };
             const stock = Math.max(0, Number(v.CurrentStock || v.stock || 0));
             colorMap[clr].totalStock += stock;
-            colorMap[clr].sizes.push({
-              size: (v.Size || v.size || 'Standard').trim(),
-              stock: stock,
-              barcode: v.SKU || v.barcode || ''
-            });
+
+            // Only combine available stock (do NOT show sold articles)
+            if (stock > 0) {
+              const sz = (v.Size || v.size || 'Standard').trim();
+              if (!colorMap[clr].sizeMap[sz]) {
+                colorMap[clr].sizeMap[sz] = {
+                  size: sz,
+                  stock: 0,
+                  barcode: v.SKU || v.barcode || '',
+                  barcodes: []
+                };
+              }
+              colorMap[clr].sizeMap[sz].stock += stock;
+              const bc = v.SKU || v.barcode;
+              if (bc && !colorMap[clr].sizeMap[sz].barcodes.includes(bc)) {
+                colorMap[clr].sizeMap[sz].barcodes.push(bc);
+              }
+            }
           });
+
+          const colors = Object.values(colorMap).map(c => ({
+            color: c.color,
+            totalStock: c.totalStock,
+            sizes: Object.values(c.sizeMap)
+          }));
 
           // Group by Size
           const sizeMap = {};
