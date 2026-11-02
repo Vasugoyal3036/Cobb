@@ -47,11 +47,11 @@ export const ROLE_PERMISSIONS = {
   owner: null, // null = all tabs allowed
   manager: [
     'copilot','dashboard','speed_billing','analytics','monthly','live',
-    'staff_leaderboard','pocket_khata','denomination','hold_desk','returns',
+    'staff_leaderboard','pocket_khata','denomination','pending_tags','hold_desk','returns',
     'alterations','topmovers','sizematrix','transit','ibt','deadstock','reorder',
     'smart_bundles','loyalty','ratings','vip','dormant','wardrobe','retention'
   ],
-  cashier: ['speed_billing','live','denomination','returns','alterations','hold_desk','deadstock'],
+  cashier: ['speed_billing','live','denomination','pending_tags','returns','alterations','hold_desk','deadstock'],
 };
 
 export const ROLE_LABELS = {

@@ -13,6 +13,7 @@ const LoyaltyTab = lazy(() => import('./components/tabs/LoyaltyTab'));
 const ExchangeTab = lazy(() => import('./components/tabs/ExchangeTab'));
 const PocketKhataTab = lazy(() => import('./components/tabs/PocketKhataTab'));
 const HoldDeskTab = lazy(() => import('./components/tabs/HoldDeskTab'));
+const PendingTagsTab = lazy(() => import('./components/tabs/PendingTagsTab'));
 const AlterationsTab = lazy(() => import('./components/tabs/AlterationsTab'));
 const GoodsInTransitTab = lazy(() => import('./components/tabs/GoodsInTransitTab'));
 const InterBranchTransferTab = lazy(() => import('./components/tabs/InterBranchTransferTab'));
@@ -2891,6 +2892,11 @@ export default function App() {
             {/* 12. HOLD & RESERVE DESK */}
             {activeTab === 'hold_desk' && (
               <HoldDeskTab darkMode={darkMode} />
+            )}
+
+            {/* 12b. PENDING TAGS DESK (B1G2 SINGLE-PIECE MANAGER) */}
+            {activeTab === 'pending_tags' && (
+              <PendingTagsTab darkMode={darkMode} activeStore={activeStore} />
             )}
 
 

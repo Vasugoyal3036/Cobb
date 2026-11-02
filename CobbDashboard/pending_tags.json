@@ -1,0 +1,26 @@
+[
+  {
+    "id": "ptag_1793601305489_byphvc",
+    "barcode": "0079734971",
+    "articleNo": "CFS-TEST",
+    "articleName": "Test Shirt",
+    "size": "40",
+    "color": "Blue",
+    "section": "General",
+    "mrp": 2999,
+    "discountPercent": 60,
+    "soldPrice": 1200,
+    "savings": 1799,
+    "customerName": "",
+    "customerPhone": "",
+    "salesperson": "Parbhat",
+    "notes": "",
+    "status": "void",
+    "createdAt": "2026-11-02T06:35:05.489Z",
+    "date": "2026-11-02",
+    "billedInBillNo": null,
+    "billedAt": null,
+    "autoResolved": false,
+    "voidedAt": "2026-11-02T06:35:15.431Z"
+  }
+]

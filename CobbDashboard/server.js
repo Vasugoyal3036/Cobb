@@ -53,6 +53,9 @@ app.use('/api/reviews', whatsappConciergeRouter);
 const alterationsRouter = require('./routes/alterations');
 app.use('/api/alterations', alterationsRouter);
 
+const pendingTagsRouter = require('./routes/pending_tags');
+app.use('/api/pending-tags', pendingTagsRouter);
+
 const GlobalNodeCache = require('node-cache');
 const globalApiCache = new GlobalNodeCache({ stdTTL: 180 }); // Default fallback
 app.locals.globalApiCache = globalApiCache;
