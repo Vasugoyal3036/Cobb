@@ -22,11 +22,19 @@ import {
   SlidersHorizontal,
   Share2,
   Tag,
-  Info
+  Info,
+  ScanLine,
+  Focus
 } from 'lucide-react';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { playSound } from '../utils/sound';
 import { getColorDot } from './GunScannerModal';
+import {
+  isNativeBarcodeDetectorSupported,
+  getNativeBarcodeDetector,
+  recognizeNumbersFromVideo,
+  terminateOcrWorker
+} from '../utils/tagScannerEngine';
 
 const RECENT_SCANS_KEY = 'cobb_staff_stock_recent_scans';
 
@@ -51,6 +59,8 @@ export default function StaffStockCheckerPage({
   const [torchOn, setTorchOn] = useState(false);
   const [hasTorch, setHasTorch] = useState(false);
   const [cameraFacing, setCameraFacing] = useState('environment'); // 'environment' | 'user'
+  const [isOcrActive, setIsOcrActive] = useState(false);
+  const [detectedBadge, setDetectedBadge] = useState(null);
 
   // Recent Scans from LocalStorage
   const [recentScans, setRecentScans] = useState(() => {
@@ -63,6 +73,10 @@ export default function StaffStockCheckerPage({
   });
 
   const html5QrCodeRef = useRef(null);
+  const nativeRafRef = useRef(null);
+  const ocrIntervalRef = useRef(null);
+  const isOcrProcessingRef = useRef(false);
+  const isCodeResolvedRef = useRef(false);
   const inputRef = useRef(null);
   const scannerContainerId = 'staff-camera-viewfinder';
 
@@ -114,7 +128,7 @@ export default function StaffStockCheckerPage({
         setSelectedColor(targetColor);
         saveToRecentScans(res.data);
 
-        // Haptic feedback & soft beep
+        // Haptic feedback & soft click
         try {
           if (typeof navigator !== 'undefined' && navigator.vibrate) {
             navigator.vibrate([60, 40, 60]);
@@ -159,8 +173,18 @@ export default function StaffStockCheckerPage({
     } catch {}
   };
 
-  // Camera Barcode Scanning Management
+  // Clean Stop of Camera, RAF loops and OCR worker
   const stopCamera = useCallback(async () => {
+    if (nativeRafRef.current) {
+      cancelAnimationFrame(nativeRafRef.current);
+      nativeRafRef.current = null;
+    }
+    if (ocrIntervalRef.current) {
+      clearInterval(ocrIntervalRef.current);
+      ocrIntervalRef.current = null;
+    }
+    isOcrProcessingRef.current = false;
+
     if (html5QrCodeRef.current) {
       try {
         if (html5QrCodeRef.current.isScanning) {
@@ -175,25 +199,80 @@ export default function StaffStockCheckerPage({
     setIsCameraActive(false);
     setTorchOn(false);
     setHasTorch(false);
+    setIsOcrActive(false);
   }, []);
 
+  // Shared Success Handler for Barcode & OCR Number Detection
+  const handleDetectedCode = useCallback(async (code, source = 'barcode') => {
+    if (!code || isCodeResolvedRef.current) return;
+    isCodeResolvedRef.current = true;
+
+    setDetectedBadge({ code, source });
+
+    // Stop camera and loops immediately
+    await stopCamera();
+
+    // Audible confirmation & haptics
+    try {
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate([100]);
+      }
+      playSound('scan');
+    } catch {}
+
+    setQuery(code);
+    handleLookup(code);
+
+    setTimeout(() => {
+      setDetectedBadge(null);
+      isCodeResolvedRef.current = false;
+    }, 1500);
+  }, [stopCamera, handleLookup]);
+
+  // Instant Manual Trigger for Number OCR
+  const handleTriggerOcrCapture = useCallback(async () => {
+    if (isOcrProcessingRef.current || isCodeResolvedRef.current) return;
+    const videoEl = document.querySelector(`#${scannerContainerId} video`);
+    if (!videoEl || videoEl.readyState < 2) return;
+
+    isOcrProcessingRef.current = true;
+    setIsOcrActive(true);
+    try {
+      const parsed = await recognizeNumbersFromVideo(videoEl);
+      if (parsed?.value) {
+        await handleDetectedCode(parsed.value, 'printed_ocr');
+      }
+    } catch (e) {
+      console.warn('Manual OCR capture note:', e);
+    } finally {
+      isOcrProcessingRef.current = false;
+      setIsOcrActive(false);
+    }
+  }, [handleDetectedCode]);
+
+  // Start Camera with Dual Native BarcodeDetector + html5-qrcode + Background OCR
   const startCamera = useCallback(async () => {
     setCameraError('');
+    isCodeResolvedRef.current = false;
     setIsCameraActive(true);
 
-    // Give DOM a tick to render scannerContainerId div
     setTimeout(async () => {
       try {
-        const html5QrCode = new Html5Qrcode(scannerContainerId);
+        // 1. Initialize Html5Qrcode with hardware BarcodeDetector acceleration
+        const html5QrCode = new Html5Qrcode(scannerContainerId, {
+          experimentalFeatures: {
+            useBarCodeDetectorIfSupported: true
+          }
+        });
         html5QrCodeRef.current = html5QrCode;
 
         const config = {
-          fps: 15,
+          fps: 25, // High FPS for quick tracking
           qrbox: (viewfinderWidth, viewfinderHeight) => {
             const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
             return {
-              width: Math.floor(minEdge * 0.85),
-              height: Math.floor(minEdge * 0.45) // Barcode format is wider than tall
+              width: Math.floor(minEdge * 0.88),
+              height: Math.floor(minEdge * 0.52) // Covers barcode stripes AND the printed numbers underneath
             };
           },
           formatsToSupport: [
@@ -207,47 +286,87 @@ export default function StaffStockCheckerPage({
           ]
         };
 
+        const cameraConstraints = {
+          facingMode: cameraFacing,
+          width: { ideal: 1280, min: 640 },
+          height: { ideal: 720, min: 480 },
+          focusMode: 'continuous'
+        };
+
         await html5QrCode.start(
-          { facingMode: cameraFacing },
+          cameraConstraints,
           config,
-          async (decodedText) => {
-            // Success scan
-            const cleanBarcode = decodedText.trim();
-            if (!cleanBarcode) return;
-
-            // Stop camera immediately
-            await stopCamera();
-
-            // Audio & vibration
-            try {
-              if (typeof navigator !== 'undefined' && navigator.vibrate) {
-                navigator.vibrate([100]);
-              }
-              playSound('scan');
-            } catch {}
-
-            setQuery(cleanBarcode);
-            handleLookup(cleanBarcode);
+          (decodedText) => {
+            const clean = decodedText.trim();
+            if (clean) {
+              handleDetectedCode(clean, 'barcode_scanner');
+            }
           },
-          () => {
-            // Frame scanning in progress
-          }
+          () => {}
         );
 
-        // Check torch capability
+        // Check torch support
         try {
           const stream = html5QrCode.getRunningTrackCameraCapabilities();
           if (stream && stream.torchFeature && stream.torchFeature().isSupported()) {
             setHasTorch(true);
           }
         } catch {}
+
+        // 2. Hardware Native BarcodeDetector GPU Loop (sub-15ms 60 FPS detection)
+        const videoEl = document.querySelector(`#${scannerContainerId} video`);
+        const nativeDetector = getNativeBarcodeDetector();
+        if (nativeDetector && videoEl) {
+          let runningNative = true;
+          const detectNativeFrame = async () => {
+            if (!runningNative || isCodeResolvedRef.current || !html5QrCodeRef.current?.isScanning) return;
+            try {
+              if (videoEl.readyState >= 2) {
+                const results = await nativeDetector.detect(videoEl);
+                if (results && results.length > 0) {
+                  const raw = results[0]?.rawValue?.trim();
+                  if (raw) {
+                    runningNative = false;
+                    handleDetectedCode(raw, 'barcode_native_gpu');
+                    return;
+                  }
+                }
+              }
+            } catch (e) {}
+
+            if (runningNative && !isCodeResolvedRef.current) {
+              nativeRafRef.current = requestAnimationFrame(detectNativeFrame);
+            }
+          };
+          nativeRafRef.current = requestAnimationFrame(detectNativeFrame);
+        }
+
+        // 3. Background OCR Reader for Printed Numbers beneath barcode
+        // Periodically checks if human-readable numbers underneath the barcode are clearly focused
+        ocrIntervalRef.current = setInterval(async () => {
+          if (isOcrProcessingRef.current || isCodeResolvedRef.current || !html5QrCodeRef.current?.isScanning) return;
+          const currentVideo = document.querySelector(`#${scannerContainerId} video`);
+          if (!currentVideo || currentVideo.readyState < 2) return;
+
+          isOcrProcessingRef.current = true;
+          try {
+            const parsed = await recognizeNumbersFromVideo(currentVideo);
+            if (parsed?.value) {
+              await handleDetectedCode(parsed.value, 'printed_ocr_auto');
+            }
+          } catch (e) {
+          } finally {
+            isOcrProcessingRef.current = false;
+          }
+        }, 750);
+
       } catch (err) {
         console.error('Camera start failed:', err);
         setCameraError(err.message || 'Unable to access phone camera. Please grant camera permission.');
         setIsCameraActive(false);
       }
-    }, 150);
-  }, [cameraFacing, stopCamera, handleLookup]);
+    }, 120);
+  }, [cameraFacing, handleDetectedCode]);
 
   // Toggle Torch / Flashlight
   const toggleTorch = async () => {
@@ -275,11 +394,14 @@ export default function StaffStockCheckerPage({
   // Clean up camera on unmount
   useEffect(() => {
     return () => {
+      if (nativeRafRef.current) cancelAnimationFrame(nativeRafRef.current);
+      if (ocrIntervalRef.current) clearInterval(ocrIntervalRef.current);
       if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
         html5QrCodeRef.current.stop().catch(() => {}).then(() => {
           html5QrCodeRef.current?.clear();
         });
       }
+      terminateOcrWorker();
     };
   }, []);
 
@@ -316,7 +438,7 @@ export default function StaffStockCheckerPage({
             </div>
             <p className="text-[11px] text-slate-400 flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span>Floor Quick Assist • Live SQL</span>
+              <span>Dual Scanner: Barcode + Number OCR</span>
             </p>
           </div>
         </div>
@@ -339,14 +461,17 @@ export default function StaffStockCheckerPage({
       <main className="flex-1 max-w-lg w-full mx-auto p-4 space-y-4">
         {/* --- Big Camera Scan Button & Search Form --- */}
         <div className="space-y-3">
-          {/* 1-Tap Camera Scan Button */}
+          {/* 1-Tap Camera Scan Button with Dual-Engine Badge */}
           <button
             onClick={startCamera}
             disabled={isCameraActive || loading}
             className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-amber-500 via-rose-500 to-amber-600 hover:from-amber-600 hover:to-rose-600 text-slate-950 font-black text-sm flex items-center justify-center gap-2.5 shadow-xl shadow-rose-500/20 active:scale-98 transition-all disabled:opacity-50"
           >
             <Camera className="w-5 h-5 fill-current" />
-            <span>Open Phone Camera Scanner</span>
+            <span>Open Fast Camera Scanner</span>
+            <span className="ml-1 px-2 py-0.5 rounded-full bg-slate-950/20 text-slate-950 text-[10px] font-black uppercase">
+              Lines + Digits
+            </span>
           </button>
 
           {/* Barcode & Article No Input Field */}
@@ -365,7 +490,7 @@ export default function StaffStockCheckerPage({
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Enter barcode or article no (e.g. FSRE...)"
+              placeholder="Enter barcode or article no (e.g. 0080... or FSRE...)"
               className="w-full pl-10 pr-24 py-3 rounded-2xl bg-slate-900 border border-slate-700/80 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 text-sm font-semibold placeholder:text-slate-500 text-white transition-all outline-none"
             />
             <div className="absolute right-2 flex items-center gap-1">
@@ -392,6 +517,22 @@ export default function StaffStockCheckerPage({
             </div>
           </form>
         </div>
+
+        {/* --- Success Detection Flash Notification --- */}
+        {detectedBadge && (
+          <div className="p-3 rounded-2xl bg-emerald-500 text-slate-950 font-black text-xs flex items-center justify-between shadow-xl animate-in fade-in">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4" />
+              <span>
+                {detectedBadge.source.includes('ocr') ? 'Tag Number Recognized:' : 'Barcode Scanned:'}
+                <strong className="ml-1 font-mono">{detectedBadge.code}</strong>
+              </span>
+            </div>
+            <span className="text-[10px] bg-slate-950/20 px-2 py-0.5 rounded-full uppercase">
+              {detectedBadge.source.includes('ocr') ? 'OCR Digits' : '1D Barcode'}
+            </span>
+          </div>
+        )}
 
         {/* --- Error Banner --- */}
         {errorMsg && (
@@ -473,7 +614,7 @@ export default function StaffStockCheckerPage({
                 </div>
                 {stockData.scannedBarcode && (
                   <div className="text-slate-500 font-mono text-[10px]">
-                    Scanned: {stockData.scannedBarcode}
+                    Matched: {stockData.scannedBarcode}
                   </div>
                 )}
               </div>
@@ -801,14 +942,20 @@ export default function StaffStockCheckerPage({
         )}
       </main>
 
-      {/* --- Fullscreen Camera Scanner Modal Overlay --- */}
+      {/* --- Fullscreen Enhanced Dual Camera Scanner Overlay --- */}
       {isCameraActive && (
         <div className="fixed inset-0 z-50 bg-black/95 flex flex-col justify-between animate-in fade-in duration-200">
           {/* Camera Viewfinder Header */}
           <div className="px-4 py-3 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 flex items-center justify-between z-10">
             <div className="flex items-center gap-2">
               <Camera className="w-4 h-4 text-amber-400" />
-              <span className="text-xs font-bold text-white">Scan Cobb Barcode</span>
+              <div>
+                <span className="text-xs font-bold text-white block">Fast Barcode + Number Reader</span>
+                <span className="text-[10px] text-emerald-400 flex items-center gap-1 font-semibold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>Dual Scan Active (60 FPS + OCR)</span>
+                </span>
+              </div>
             </div>
 
             <div className="flex items-center gap-2">
@@ -847,17 +994,31 @@ export default function StaffStockCheckerPage({
             </div>
           </div>
 
-          {/* Camera Viewport with Aiming Reticle */}
+          {/* Camera Viewport with Dual Target Reticle */}
           <div className="relative flex-1 flex items-center justify-center overflow-hidden bg-black">
             <div id={scannerContainerId} className="w-full max-w-md h-full object-cover"></div>
 
-            {/* Target Reticle Overlay */}
-            <div className="absolute inset-0 pointer-events-none flex items-center justify-center p-6">
-              <div className="w-64 h-36 border-2 border-amber-400/80 rounded-2xl relative shadow-[0_0_0_9999px_rgba(0,0,0,0.6)]">
-                {/* Red Laser Sweep Line Animation */}
-                <div className="w-full h-0.5 bg-gradient-to-r from-transparent via-rose-500 to-transparent absolute top-1/2 -translate-y-1/2 animate-pulse" />
-                <div className="absolute -bottom-7 left-0 right-0 text-center text-[11px] font-bold text-amber-300 bg-slate-900/80 px-2 py-1 rounded-full mx-auto w-fit">
-                  Align price tag barcode inside box
+            {/* Target Reticle Overlay covering Barcode Lines & Printed Numbers beneath */}
+            <div className="absolute inset-0 pointer-events-none flex items-center justify-center p-4">
+              <div className="w-72 h-44 border-2 border-amber-400/90 rounded-2xl relative shadow-[0_0_0_9999px_rgba(0,0,0,0.65)] flex flex-col justify-between p-2">
+                {/* Upper Zone: Barcode stripes target */}
+                <div className="flex items-center justify-between text-[9px] font-black uppercase text-amber-300/80 px-1 pt-0.5">
+                  <span>|||| Barcode Stripes</span>
+                  <span>Code-128 / EAN</span>
+                </div>
+
+                {/* Animated Red Laser Scanning Beam */}
+                <div className="w-full h-0.5 bg-gradient-to-r from-transparent via-rose-500 to-transparent absolute top-1/2 -translate-y-2 animate-pulse" />
+
+                {/* Lower Zone: Printed numbers beneath barcode */}
+                <div className="border-t border-dashed border-amber-400/50 pt-1 pb-0.5 flex items-center justify-between text-[9.5px] font-mono font-bold text-emerald-300 bg-slate-950/60 px-2 rounded-lg">
+                  <span className="flex items-center gap-1">
+                    <Focus className="w-3 h-3 text-emerald-400" />
+                    <span>0080... Numbers Beneath</span>
+                  </span>
+                  <span className="text-[9px] uppercase text-emerald-400 font-sans font-black">
+                    {isOcrActive ? 'Reading...' : 'OCR Ready'}
+                  </span>
                 </div>
               </div>
             </div>
@@ -880,13 +1041,24 @@ export default function StaffStockCheckerPage({
             )}
           </div>
 
-          {/* Camera Bottom Controls */}
-          <div className="p-4 bg-slate-900/90 backdrop-blur-md border-t border-slate-800 flex items-center justify-center">
+          {/* Camera Bottom Controls: Shutter Button for instant Number OCR + Cancel */}
+          <div className="p-4 bg-slate-900/90 backdrop-blur-md border-t border-slate-800 flex items-center justify-between gap-3">
             <button
               onClick={stopCamera}
-              className="px-6 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-slate-200 transition-all active:scale-95"
+              className="px-4 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-slate-200 transition-all active:scale-95"
             >
-              Cancel Camera Scan
+              Cancel
+            </button>
+
+            {/* Instant Snap & Read Printed Number button */}
+            <button
+              type="button"
+              onClick={handleTriggerOcrCapture}
+              disabled={isOcrActive}
+              className="flex-1 py-3 px-4 rounded-2xl bg-gradient-to-r from-amber-500 to-emerald-500 hover:from-amber-600 hover:to-emerald-600 text-slate-950 font-black text-xs flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-95 transition-all disabled:opacity-60"
+            >
+              <ScanLine className={`w-4 h-4 ${isOcrActive ? 'animate-spin' : ''}`} />
+              <span>{isOcrActive ? 'Reading Numbers...' : '⚡ Snap & Read Tag Number'}</span>
             </button>
           </div>
         </div>

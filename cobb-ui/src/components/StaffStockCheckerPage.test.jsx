@@ -13,6 +13,15 @@ vi.mock('../utils/sound', () => ({
   saveSoundSettings: vi.fn()
 }));
 
+vi.mock('../utils/tagScannerEngine', () => ({
+  isNativeBarcodeDetectorSupported: vi.fn(() => true),
+  getNativeBarcodeDetector: vi.fn(() => ({
+    detect: vi.fn().mockResolvedValue([])
+  })),
+  recognizeNumbersFromVideo: vi.fn().mockResolvedValue({ type: 'barcode', value: '0080727340' }),
+  terminateOcrWorker: vi.fn().mockResolvedValue()
+}));
+
 vi.mock('html5-qrcode', () => {
   return {
     Html5Qrcode: vi.fn().mockImplementation(() => ({
@@ -46,7 +55,7 @@ describe('StaffStockCheckerPage [Floor Mobile Stock Checker]', () => {
 
     expect(screen.getByText(/COBB STAFF/i)).toBeDefined();
     expect(screen.getByText(/Stock Checker/i)).toBeDefined();
-    expect(screen.getByText(/Open Phone Camera Scanner/i)).toBeDefined();
+    expect(screen.getByText(/Camera Scanner/i)).toBeDefined();
     expect(screen.getByPlaceholderText(/Enter barcode or article no/i)).toBeDefined();
   });
 
