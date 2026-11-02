@@ -65,6 +65,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
   const [statusFilter, setStatusFilter] = useState('active'); // 'active' | 'billed' | 'all'
   const [sortBy, setSortBy] = useState('newest'); // 'low_to_high' | 'high_to_low' | 'sold_asc' | 'sold_desc' | 'discount_desc' | 'discount_asc' | 'newest' | 'oldest'
   const [viewMode, setViewMode] = useState('list'); // 'list' | 'grid'
+  const [selectedMrpFilter, setSelectedMrpFilter] = useState(null); // null means All MRPs
   const [showAddModal, setShowAddModal] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
   const [toast, setToast] = useState(null);
@@ -466,6 +467,10 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
       if (statusFilter === 'active' && tag.status !== 'active') return false;
       if (statusFilter === 'billed' && tag.status !== 'billed') return false;
 
+      if (selectedMrpFilter !== null && (Number(tag.mrp) || 0) !== Number(selectedMrpFilter)) {
+        return false;
+      }
+
       if (!searchQuery.trim()) return true;
       const q = searchQuery.toLowerCase();
       return (
@@ -512,7 +517,28 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
     });
 
     return result;
-  }, [tags, statusFilter, searchQuery, sortBy]);
+  }, [tags, statusFilter, searchQuery, sortBy, selectedMrpFilter]);
+
+  // --- Quick MRP Group Summary (e.g. ₹1,899 (4 pcs), ₹2,499 (3 pcs - Combo Ready!)) ---
+  const mrpGroups = useMemo(() => {
+    const relevantTags = tags.filter(t => {
+      if (statusFilter === 'active') return t.status === 'active';
+      if (statusFilter === 'billed') return t.status === 'billed';
+      return true;
+    });
+
+    const groups = {};
+    relevantTags.forEach(t => {
+      const mrp = Number(t.mrp) || 0;
+      if (!groups[mrp]) {
+        groups[mrp] = { mrp, count: 0, items: [] };
+      }
+      groups[mrp].count += 1;
+      groups[mrp].items.push(t);
+    });
+
+    return Object.values(groups).sort((a, b) => a.mrp - b.mrp);
+  }, [tags, statusFilter]);
 
   // --- Smart B1G2 Combo Suggester (Find sets of 3 pending tags in similar category) ---
   const comboSuggestions = useMemo(() => {
@@ -836,6 +862,94 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
           </div>
         </div>
       </div>
+
+      {/* Quick MRP Group Filter Chips (e.g. ₹1,899 [4 pcs], ₹2,499 [3 pcs - Combo Ready!]) */}
+      {mrpGroups.length > 0 && (
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-0.5 no-scrollbar">
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 font-bold shrink-0 mr-1">
+            <Tag className="w-3.5 h-3.5 text-amber-500" />
+            <span>MRP Groups:</span>
+          </div>
+
+          {/* All MRPs button */}
+          <button
+            onClick={() => setSelectedMrpFilter(null)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 ${
+              selectedMrpFilter === null
+                ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-sm'
+                : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300'
+            }`}
+          >
+            <span>All MRPs</span>
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+              selectedMrpFilter === null
+                ? 'bg-white/20 text-white dark:bg-slate-900/20 dark:text-slate-900'
+                : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300'
+            }`}>
+              {mrpGroups.reduce((s, g) => s + g.count, 0)}
+            </span>
+          </button>
+
+          {/* Individual MRP Group Chips */}
+          {mrpGroups.map((group) => {
+            const isReadyForCombo = group.count >= 3;
+            const isSelected = selectedMrpFilter === group.mrp;
+            const comboCount = Math.floor(group.count / 3);
+
+            return (
+              <div key={group.mrp} className="flex items-center gap-1 shrink-0">
+                <button
+                  onClick={() => setSelectedMrpFilter(isSelected ? null : group.mrp)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 border ${
+                    isSelected
+                      ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md shadow-amber-500/20 ring-2 ring-amber-400/50'
+                      : isReadyForCombo
+                      ? 'bg-amber-500/10 hover:bg-amber-500/20 text-amber-900 dark:text-amber-200 border-amber-400/50 dark:border-amber-500/40'
+                      : 'bg-white dark:bg-slate-800/80 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700'
+                  }`}
+                  title={isReadyForCombo ? `${comboCount} B1G2 Combo(s) can be made with this exact MRP!` : `Filter by ₹${group.mrp.toLocaleString('en-IN')}`}
+                >
+                  <span className="font-mono font-black text-sm">
+                    ₹{group.mrp.toLocaleString('en-IN')}
+                  </span>
+                  
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                    isSelected
+                      ? 'bg-slate-950 text-amber-300'
+                      : isReadyForCombo
+                      ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30 font-black'
+                      : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
+                  }`}>
+                    {group.count} {group.count === 1 ? 'pc' : 'pcs'}
+                  </span>
+
+                  {isReadyForCombo && (
+                    <span className="flex items-center gap-0.5 text-[10px] font-black text-amber-600 dark:text-amber-400">
+                      <Sparkles className="w-3 h-3 animate-spin text-amber-500" />
+                      <span>{comboCount} Combo{comboCount > 1 ? 's' : ''} Ready!</span>
+                    </span>
+                  )}
+                </button>
+
+                {/* 1-Click Bill 3 button for Ready MRP groups */}
+                {isReadyForCombo && statusFilter !== 'billed' && (
+                  <button
+                    onClick={() => {
+                      const firstThree = group.items.slice(0, 3);
+                      handleBillInSpeedBilling(firstThree, 'b1g2');
+                    }}
+                    className="px-2 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 text-[11px] font-black flex items-center gap-1 shadow-sm active:scale-95 transition-all"
+                    title={`1-Click: Bill 3 pieces of ₹${group.mrp.toLocaleString('en-IN')} under B1G2 in Speed Billing`}
+                  >
+                    <Zap className="w-3 h-3 fill-current" />
+                    <span>Bill 3</span>
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Main Tags List */}
       {loading ? (
