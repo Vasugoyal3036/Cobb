@@ -66,7 +66,7 @@ const ENDPOINT_TTL = {
     '/api/sales/daily-month': 30,
     '/api/analytics/hourly': 20,
     '/api/reconciliation/latest': 30,
-    '/api/sales/live': 20,
+    '/api/sales/live': 10,
     '/api/sales/history': 120,
     '/api/sales/cancelled': 30,
     '/api/reports/eod-summary': 60,
@@ -2002,10 +2002,9 @@ app.post('/api/automation/stop', (req, res) => {
     res.json({ status: 'stopped' });
 });
 
-app.get('/api/automation/status', (req, res) => {
+app.get('/api/automation/status', async (req, res) => {
     try {
-        const result = require('child_process').execSync('powershell -WindowStyle Hidden -Command "Get-CimInstance Win32_Process | Where-Object CommandLine -match \'cobb_pos_listener\' | Select-Object -ExpandProperty ProcessId"', { windowsHide: true }).toString().trim();
-        const isRunning = result.length > 0;
+        const isRunning = await isPosListenerRunning();
 
         const dispatchesFile = path.join(__dirname, 'automation_dispatches.json');
         let allDispatches = [];

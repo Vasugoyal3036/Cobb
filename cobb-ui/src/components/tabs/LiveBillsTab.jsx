@@ -282,6 +282,7 @@ const LiveBillsTab = (props) => {
   useEffect(() => {
     if (dateFilter !== 'today') return;
     const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
       fetchBills('today');
     }, 25000);
     return () => clearInterval(interval);

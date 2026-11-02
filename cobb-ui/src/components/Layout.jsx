@@ -269,7 +269,10 @@ const Layout = ({
       }
     };
     fetchHealth();
-    const interval = setInterval(fetchHealth, 15000);
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      fetchHealth();
+    }, 15000);
     return () => clearInterval(interval);
   }, [API_BASE]);
 

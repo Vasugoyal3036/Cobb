@@ -130,6 +130,7 @@ export default function RatingsTab({
     fetchRatings();
     fetchBotStatus();
     const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
       fetchRatings();
     }, 15000);
     return () => clearInterval(interval);

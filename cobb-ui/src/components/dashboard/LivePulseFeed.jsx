@@ -97,7 +97,10 @@ const LivePulseFeed = ({
 
   useEffect(() => {
     const unsubPromise = loadAlterations();
-    const interval = setInterval(loadAlterations, 15000);
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && document.hidden) return;
+      loadAlterations();
+    }, 15000);
     return () => {
       clearInterval(interval);
       if (typeof unsubPromise === 'function') unsubPromise();
