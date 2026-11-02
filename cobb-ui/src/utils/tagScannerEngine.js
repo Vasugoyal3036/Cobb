@@ -194,3 +194,4 @@ export const terminateOcrWorker = async () => {
     cachedWorker = null;
   }
 };
+

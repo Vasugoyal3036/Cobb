@@ -104,15 +104,15 @@ describe('StaffStockCheckerPage [Floor Mobile Stock Checker]', () => {
     await waitFor(() => {
       expect(screen.getAllByText('FSRE4214').length).toBeGreaterThan(0);
       expect(screen.getAllByText(/12 In Stock/i).length).toBeGreaterThan(0);
-      expect(screen.getByText('NAVY BLUE')).toBeDefined();
-      expect(screen.getByText('BLACK')).toBeDefined();
+      expect(screen.getAllByText('NAVY BLUE').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('BLACK').length).toBeGreaterThan(0);
       expect(screen.getByText('₹2,699')).toBeDefined();
     });
 
-    // Check size boxes for active color (NAVY BLUE)
-    expect(screen.getByText('38')).toBeDefined();
-    expect(screen.getByText('40')).toBeDefined();
-    expect(screen.getByText('42')).toBeDefined();
+    // Check size boxes for grouped colors
+    expect(screen.getAllByText('38').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('40').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('42').length).toBeGreaterThan(0);
   });
 
   it('allows switching colors to view sizes for that color', async () => {
@@ -154,7 +154,7 @@ describe('StaffStockCheckerPage [Floor Mobile Stock Checker]', () => {
     fireEvent.click(oliveBtn);
 
     await waitFor(() => {
-      expect(screen.getByText(/OLIVE Sizes/i)).toBeDefined();
+      expect(screen.getAllByText('OLIVE').length).toBeGreaterThan(0);
       expect(screen.getByText('42')).toBeDefined();
     });
   });

@@ -24,7 +24,9 @@ import {
   Tag,
   Info,
   ScanLine,
-  Focus
+  Focus,
+  Image as ImageIcon,
+  ChevronDown
 } from 'lucide-react';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { playSound } from '../utils/sound';
@@ -33,10 +35,59 @@ import {
   isNativeBarcodeDetectorSupported,
   getNativeBarcodeDetector,
   recognizeNumbersFromVideo,
-  terminateOcrWorker
+  terminateOcrWorker,
+  parseTagNumbers,
+  getOcrWorker
 } from '../utils/tagScannerEngine';
 
 const RECENT_SCANS_KEY = 'cobb_staff_stock_recent_scans';
+
+// Helper to wait until a DOM element is mounted and visible
+const waitForElement = (id, maxWaitMs = 1200) => {
+  return new Promise((resolve) => {
+    const startTime = Date.now();
+    const check = () => {
+      const el = document.getElementById(id);
+      if (el && (el.offsetWidth > 0 || el.offsetHeight > 0 || el.offsetParent !== null)) {
+        return resolve(el);
+      }
+      if (Date.now() - startTime > maxWaitMs) {
+        return resolve(document.getElementById(id));
+      }
+      requestAnimationFrame(check);
+    };
+    check();
+  });
+};
+
+// Sort apparel sizes naturally (e.g. 28, 30, 32... or S, M, L, XL)
+const sortSizesNaturally = (sizesList) => {
+  if (!Array.isArray(sizesList)) return [];
+  const alphaOrder = {
+    'XXS': 1, 'XS': 2, 'S': 3, 'M': 4, 'L': 5, 'XL': 6, 'XXL': 7, '2XL': 7, '3XL': 8, '4XL': 9, '5XL': 10,
+    'STANDARD': 98, 'STD': 98, 'FREE': 98
+  };
+
+  return [...sizesList].sort((a, b) => {
+    if (a.sizeOrder && b.sizeOrder && a.sizeOrder !== b.sizeOrder) {
+      return a.sizeOrder - b.sizeOrder;
+    }
+    const cleanA = String(a.size || '').replace(/[^0-9A-Z]/gi, '').trim().toUpperCase();
+    const cleanB = String(b.size || '').replace(/[^0-9A-Z]/gi, '').trim().toUpperCase();
+
+    const numA = parseInt(cleanA, 10);
+    const numB = parseInt(cleanB, 10);
+
+    if (!isNaN(numA) && !isNaN(numB)) {
+      return numA - numB;
+    }
+    const rankA = alphaOrder[cleanA] || 99;
+    const rankB = alphaOrder[cleanB] || 99;
+    if (rankA !== rankB) return rankA - rankB;
+
+    return String(a.size).localeCompare(String(b.size));
+  });
+};
 
 export default function StaffStockCheckerPage({
   onClose,
@@ -49,13 +100,13 @@ export default function StaffStockCheckerPage({
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [stockData, setStockData] = useState(null);
-  const [selectedColor, setSelectedColor] = useState('');
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'matrix'
+  const [selectedColorFilter, setSelectedColorFilter] = useState('ALL'); // 'ALL' or specific color
   const [copiedBarcode, setCopiedBarcode] = useState(null);
 
   // Camera Scanner State
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState('');
+  const [cameraStarting, setCameraStarting] = useState(false);
   const [torchOn, setTorchOn] = useState(false);
   const [hasTorch, setHasTorch] = useState(false);
   const [cameraFacing, setCameraFacing] = useState('environment'); // 'environment' | 'user'
@@ -77,6 +128,7 @@ export default function StaffStockCheckerPage({
   const ocrIntervalRef = useRef(null);
   const isOcrProcessingRef = useRef(false);
   const isCodeResolvedRef = useRef(false);
+  const fileInputRef = useRef(null);
   const inputRef = useRef(null);
   const scannerContainerId = 'staff-camera-viewfinder';
 
@@ -114,7 +166,6 @@ export default function StaffStockCheckerPage({
     setErrorMsg('');
 
     try {
-      // Primary staff endpoint
       const endpoint = API_BASE
         ? `${API_BASE}/api/staff/stock-check?q=${encodeURIComponent(q)}`
         : `/api/staff/stock-check?q=${encodeURIComponent(q)}`;
@@ -123,12 +174,9 @@ export default function StaffStockCheckerPage({
 
       if (res.data && res.data.success) {
         setStockData(res.data);
-        // Default to the matched garment's color, or first color
-        const targetColor = res.data.matchedColor || res.data.colors?.[0]?.color || '';
-        setSelectedColor(targetColor);
         saveToRecentScans(res.data);
 
-        // Haptic feedback & soft click
+        // Haptic feedback & audio
         try {
           if (typeof navigator !== 'undefined' && navigator.vibrate) {
             navigator.vibrate([60, 40, 60]);
@@ -142,7 +190,6 @@ export default function StaffStockCheckerPage({
       }
     } catch (err) {
       console.error('[StaffStockCheck Error]', err);
-      // Fallback: try quick-scan if staff endpoint failed
       try {
         const fallbackEndpoint = API_BASE
           ? `${API_BASE}/api/inventory/quick-scan?q=${encodeURIComponent(q)}`
@@ -150,7 +197,6 @@ export default function StaffStockCheckerPage({
         const fallbackRes = await axios.get(fallbackEndpoint, { timeout: 6000 });
         if (fallbackRes.data && fallbackRes.data.success) {
           setStockData(fallbackRes.data);
-          setSelectedColor(fallbackRes.data.color || fallbackRes.data.colors?.[0]?.color || '');
           saveToRecentScans(fallbackRes.data);
           return;
         }
@@ -197,6 +243,7 @@ export default function StaffStockCheckerPage({
       html5QrCodeRef.current = null;
     }
     setIsCameraActive(false);
+    setCameraStarting(false);
     setTorchOn(false);
     setHasTorch(false);
     setIsOcrActive(false);
@@ -250,123 +297,193 @@ export default function StaffStockCheckerPage({
     }
   }, [handleDetectedCode]);
 
-  // Start Camera with Dual Native BarcodeDetector + html5-qrcode + Background OCR
+  // Start Camera with Rock-Solid Standard Constraints & Native Barcode Loop
   const startCamera = useCallback(async () => {
     setCameraError('');
+    setCameraStarting(true);
     isCodeResolvedRef.current = false;
     setIsCameraActive(true);
 
-    setTimeout(async () => {
+    // Wait until scanner container is attached in DOM
+    const containerEl = await waitForElement(scannerContainerId, 1500);
+    if (!containerEl) {
+      setCameraError('Scanner view container failed to mount in DOM.');
+      setCameraStarting(false);
+      return;
+    }
+
+    try {
+      const html5QrCode = new Html5Qrcode(scannerContainerId, {
+        experimentalFeatures: {
+          useBarCodeDetectorIfSupported: true
+        }
+      });
+      html5QrCodeRef.current = html5QrCode;
+
+      // Clean standard constraints supported across Safari iOS & Chrome Android
+      const cameraConfig = {
+        facingMode: cameraFacing === 'user' ? 'user' : 'environment'
+      };
+
+      const qrConfig = {
+        fps: 20,
+        qrbox: (viewfinderWidth, viewfinderHeight) => {
+          const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+          return {
+            width: Math.floor(minEdge * 0.9),
+            height: Math.floor(minEdge * 0.55)
+          };
+        },
+        formatsToSupport: [
+          Html5QrcodeSupportedFormats.CODE_128,
+          Html5QrcodeSupportedFormats.EAN_13,
+          Html5QrcodeSupportedFormats.EAN_8,
+          Html5QrcodeSupportedFormats.CODE_39,
+          Html5QrcodeSupportedFormats.UPC_A,
+          Html5QrcodeSupportedFormats.UPC_E,
+          Html5QrcodeSupportedFormats.QR_CODE
+        ]
+      };
+
+      await html5QrCode.start(
+        cameraConfig,
+        qrConfig,
+        (decodedText) => {
+          const clean = decodedText.trim();
+          if (clean) {
+            handleDetectedCode(clean, 'barcode_scanner');
+          }
+        },
+        () => {}
+      );
+
+      setCameraStarting(false);
+
+      // Check torch capability
       try {
-        // 1. Initialize Html5Qrcode with hardware BarcodeDetector acceleration
-        const html5QrCode = new Html5Qrcode(scannerContainerId, {
-          experimentalFeatures: {
-            useBarCodeDetectorIfSupported: true
-          }
-        });
-        html5QrCodeRef.current = html5QrCode;
+        const stream = html5QrCode.getRunningTrackCameraCapabilities();
+        if (stream && stream.torchFeature && stream.torchFeature().isSupported()) {
+          setHasTorch(true);
+        }
+      } catch {}
 
-        const config = {
-          fps: 25, // High FPS for quick tracking
-          qrbox: (viewfinderWidth, viewfinderHeight) => {
-            const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-            return {
-              width: Math.floor(minEdge * 0.88),
-              height: Math.floor(minEdge * 0.52) // Covers barcode stripes AND the printed numbers underneath
-            };
-          },
-          formatsToSupport: [
-            Html5QrcodeSupportedFormats.CODE_128,
-            Html5QrcodeSupportedFormats.EAN_13,
-            Html5QrcodeSupportedFormats.EAN_8,
-            Html5QrcodeSupportedFormats.CODE_39,
-            Html5QrcodeSupportedFormats.UPC_A,
-            Html5QrcodeSupportedFormats.UPC_E,
-            Html5QrcodeSupportedFormats.QR_CODE
-          ]
-        };
-
-        const cameraConstraints = {
-          facingMode: cameraFacing,
-          width: { ideal: 1280, min: 640 },
-          height: { ideal: 720, min: 480 },
-          focusMode: 'continuous'
-        };
-
-        await html5QrCode.start(
-          cameraConstraints,
-          config,
-          (decodedText) => {
-            const clean = decodedText.trim();
-            if (clean) {
-              handleDetectedCode(clean, 'barcode_scanner');
-            }
-          },
-          () => {}
-        );
-
-        // Check torch support
-        try {
-          const stream = html5QrCode.getRunningTrackCameraCapabilities();
-          if (stream && stream.torchFeature && stream.torchFeature().isSupported()) {
-            setHasTorch(true);
-          }
-        } catch {}
-
-        // 2. Hardware Native BarcodeDetector GPU Loop (sub-15ms 60 FPS detection)
-        const videoEl = document.querySelector(`#${scannerContainerId} video`);
-        const nativeDetector = getNativeBarcodeDetector();
-        if (nativeDetector && videoEl) {
-          let runningNative = true;
-          const detectNativeFrame = async () => {
-            if (!runningNative || isCodeResolvedRef.current || !html5QrCodeRef.current?.isScanning) return;
-            try {
-              if (videoEl.readyState >= 2) {
-                const results = await nativeDetector.detect(videoEl);
-                if (results && results.length > 0) {
-                  const raw = results[0]?.rawValue?.trim();
-                  if (raw) {
-                    runningNative = false;
-                    handleDetectedCode(raw, 'barcode_native_gpu');
-                    return;
-                  }
+      // Hardware Native BarcodeDetector GPU Loop
+      const videoEl = document.querySelector(`#${scannerContainerId} video`);
+      const nativeDetector = getNativeBarcodeDetector();
+      if (nativeDetector && videoEl) {
+        let runningNative = true;
+        const detectNativeFrame = async () => {
+          if (!runningNative || isCodeResolvedRef.current || !html5QrCodeRef.current?.isScanning) return;
+          try {
+            if (videoEl.readyState >= 2) {
+              const results = await nativeDetector.detect(videoEl);
+              if (results && results.length > 0) {
+                const raw = results[0]?.rawValue?.trim();
+                if (raw) {
+                  runningNative = false;
+                  handleDetectedCode(raw, 'barcode_native_gpu');
+                  return;
                 }
               }
-            } catch (e) {}
-
-            if (runningNative && !isCodeResolvedRef.current) {
-              nativeRafRef.current = requestAnimationFrame(detectNativeFrame);
             }
-          };
-          nativeRafRef.current = requestAnimationFrame(detectNativeFrame);
-        }
+          } catch (e) {}
 
-        // 3. Background OCR Reader for Printed Numbers beneath barcode
-        // Periodically checks if human-readable numbers underneath the barcode are clearly focused
-        ocrIntervalRef.current = setInterval(async () => {
-          if (isOcrProcessingRef.current || isCodeResolvedRef.current || !html5QrCodeRef.current?.isScanning) return;
-          const currentVideo = document.querySelector(`#${scannerContainerId} video`);
-          if (!currentVideo || currentVideo.readyState < 2) return;
-
-          isOcrProcessingRef.current = true;
-          try {
-            const parsed = await recognizeNumbersFromVideo(currentVideo);
-            if (parsed?.value) {
-              await handleDetectedCode(parsed.value, 'printed_ocr_auto');
-            }
-          } catch (e) {
-          } finally {
-            isOcrProcessingRef.current = false;
+          if (runningNative && !isCodeResolvedRef.current) {
+            nativeRafRef.current = requestAnimationFrame(detectNativeFrame);
           }
-        }, 750);
-
-      } catch (err) {
-        console.error('Camera start failed:', err);
-        setCameraError(err.message || 'Unable to access phone camera. Please grant camera permission.');
-        setIsCameraActive(false);
+        };
+        nativeRafRef.current = requestAnimationFrame(detectNativeFrame);
       }
-    }, 120);
+
+      // Background OCR Reader for numbers beneath barcode
+      ocrIntervalRef.current = setInterval(async () => {
+        if (isOcrProcessingRef.current || isCodeResolvedRef.current || !html5QrCodeRef.current?.isScanning) return;
+        const currentVideo = document.querySelector(`#${scannerContainerId} video`);
+        if (!currentVideo || currentVideo.readyState < 2) return;
+
+        isOcrProcessingRef.current = true;
+        try {
+          const parsed = await recognizeNumbersFromVideo(currentVideo);
+          if (parsed?.value) {
+            await handleDetectedCode(parsed.value, 'printed_ocr_auto');
+          }
+        } catch (e) {
+        } finally {
+          isOcrProcessingRef.current = false;
+        }
+      }, 750);
+
+    } catch (err) {
+      console.error('Camera start failed:', err);
+      setCameraStarting(false);
+      setCameraError(
+        err.message?.includes('NotAllowedError') || err.message?.includes('Permission')
+          ? 'Camera permission denied. Please allow camera access in your browser settings (tap the lock icon in your address bar).'
+          : (err.message || 'Unable to open camera stream. Tap "Snap Tag Photo" below to use your phone camera directly.')
+      );
+    }
   }, [cameraFacing, handleDetectedCode]);
+
+  // Fallback: Snap Tag Photo via phone's native camera input
+  const handleFilePhotoScan = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setLoading(true);
+    setErrorMsg('');
+
+    try {
+      // 1. Try barcode decoding via html5QrCode
+      let scanner = html5QrCodeRef.current;
+      if (!scanner) {
+        scanner = new Html5Qrcode(scannerContainerId);
+        html5QrCodeRef.current = scanner;
+      }
+      try {
+        const decoded = await scanner.scanFile(file, false);
+        if (decoded?.trim()) {
+          await handleDetectedCode(decoded.trim(), 'photo_barcode');
+          return;
+        }
+      } catch (scanErr) {
+        // Fall through to OCR
+      }
+
+      // 2. OCR Fallback on the uploaded image
+      const img = new Image();
+      img.src = URL.createObjectURL(file);
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+      });
+
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+
+      const worker = await getOcrWorker();
+      if (worker) {
+        const ocrRes = await worker.recognize(canvas);
+        if (ocrRes?.data?.text) {
+          const parsed = parseTagNumbers(ocrRes.data.text);
+          if (parsed?.value) {
+            await handleDetectedCode(parsed.value, 'photo_ocr');
+            return;
+          }
+        }
+      }
+
+      setErrorMsg('Could not detect barcode or numbers in the photo. Please enter code manually.');
+    } catch (err) {
+      console.error('Photo processing error:', err);
+      setErrorMsg('Failed to process tag photo. Try entering barcode manually.');
+    } finally {
+      setLoading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   // Toggle Torch / Flashlight
   const toggleTorch = async () => {
@@ -405,24 +522,25 @@ export default function StaffStockCheckerPage({
     };
   }, []);
 
-  // Compute selected color's sizes & cross-color availability
-  const activeColorObj = useMemo(() => {
-    if (!stockData?.colors || stockData.colors.length === 0) return null;
-    return stockData.colors.find(c => c.color === selectedColor) || stockData.colors[0];
-  }, [stockData, selectedColor]);
-
-  // Unique list of all sizes in this article across all colors (for matrix view)
-  const allArticleSizes = useMemo(() => {
+  // Filtered color list based on selectedColorFilter
+  const displayedColors = useMemo(() => {
     if (!stockData?.colors) return [];
-    const sizeSet = new Set();
-    stockData.colors.forEach(c => {
-      (c.sizes || []).forEach(s => sizeSet.add(s.size));
-    });
-    return Array.from(sizeSet);
-  }, [stockData]);
+    if (selectedColorFilter === 'ALL') return stockData.colors;
+    return stockData.colors.filter(c => c.color === selectedColorFilter);
+  }, [stockData, selectedColorFilter]);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans pb-16 selection:bg-amber-500 selection:text-slate-950">
+      {/* Hidden file input for native camera snapshot fallback */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handleFilePhotoScan}
+        className="hidden"
+      />
+
       {/* --- Sticky Top Header Bar --- */}
       <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
@@ -438,7 +556,7 @@ export default function StaffStockCheckerPage({
             </div>
             <p className="text-[11px] text-slate-400 flex items-center gap-1">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span>Dual Scanner: Barcode + Number OCR</span>
+              <span>Sizes Grouped by Colour</span>
             </p>
           </div>
         </div>
@@ -459,20 +577,34 @@ export default function StaffStockCheckerPage({
 
       {/* --- Main Mobile Content Container --- */}
       <main className="flex-1 max-w-lg w-full mx-auto p-4 space-y-4">
-        {/* --- Big Camera Scan Button & Search Form --- */}
+        {/* --- Camera Scanner Controls & Search Form --- */}
         <div className="space-y-3">
-          {/* 1-Tap Camera Scan Button with Dual-Engine Badge */}
-          <button
-            onClick={startCamera}
-            disabled={isCameraActive || loading}
-            className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-amber-500 via-rose-500 to-amber-600 hover:from-amber-600 hover:to-rose-600 text-slate-950 font-black text-sm flex items-center justify-center gap-2.5 shadow-xl shadow-rose-500/20 active:scale-98 transition-all disabled:opacity-50"
-          >
-            <Camera className="w-5 h-5 fill-current" />
-            <span>Open Fast Camera Scanner</span>
-            <span className="ml-1 px-2 py-0.5 rounded-full bg-slate-950/20 text-slate-950 text-[10px] font-black uppercase">
-              Lines + Digits
-            </span>
-          </button>
+          <div className="grid grid-cols-5 gap-2">
+            {/* Primary Live Camera Button */}
+            <button
+              onClick={startCamera}
+              disabled={isCameraActive || loading || cameraStarting}
+              className="col-span-4 py-3 px-3 rounded-2xl bg-gradient-to-r from-amber-500 via-rose-500 to-amber-600 hover:from-amber-600 hover:to-rose-600 text-slate-950 font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xl shadow-rose-500/20 active:scale-98 transition-all disabled:opacity-50"
+            >
+              <Camera className="w-4 h-4 fill-current shrink-0" />
+              <span>{cameraStarting ? 'Starting Camera...' : 'Open Camera Scanner'}</span>
+              <span className="px-1.5 py-0.2 rounded-full bg-slate-950/20 text-slate-950 text-[9.5px] font-black uppercase">
+                Dual
+              </span>
+            </button>
+
+            {/* Direct Native Camera Photo Snap Fallback */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={loading}
+              className="col-span-1 p-3 rounded-2xl bg-slate-900 border border-slate-700 hover:bg-slate-850 text-slate-300 hover:text-white flex flex-col items-center justify-center transition-all active:scale-95 shadow-sm"
+              title="Snap photo of tag with phone camera"
+            >
+              <ImageIcon className="w-4 h-4" />
+              <span className="text-[9px] font-bold mt-0.5">Photo</span>
+            </button>
+          </div>
 
           {/* Barcode & Article No Input Field */}
           <form
@@ -529,7 +661,7 @@ export default function StaffStockCheckerPage({
               </span>
             </div>
             <span className="text-[10px] bg-slate-950/20 px-2 py-0.5 rounded-full uppercase">
-              {detectedBadge.source.includes('ocr') ? 'OCR Digits' : '1D Barcode'}
+              {detectedBadge.source.includes('ocr') ? 'OCR Number' : '1D Barcode'}
             </span>
           </div>
         )}
@@ -550,11 +682,11 @@ export default function StaffStockCheckerPage({
           <div className="p-8 rounded-3xl bg-slate-900/60 border border-slate-800 text-center space-y-3">
             <RefreshCw className="w-8 h-8 text-amber-500 animate-spin mx-auto" />
             <div className="text-xs font-bold text-slate-300">Searching Cobb Inventory...</div>
-            <p className="text-[11px] text-slate-500">Retrieving all available colors and sizes</p>
+            <p className="text-[11px] text-slate-500">Grouping all sizes and colors</p>
           </div>
         )}
 
-        {/* --- Scanned Article Details Card --- */}
+        {/* --- Scanned Article Details & Sizes Grouped By Color --- */}
         {stockData && !loading && (
           <div className="space-y-4 animate-in fade-in duration-200">
             {/* Article Top Bento Summary */}
@@ -620,271 +752,173 @@ export default function StaffStockCheckerPage({
               </div>
             </div>
 
-            {/* View Mode Toggle: Color Tab vs Full Matrix */}
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                Select Garment Color
-              </span>
-              <div className="flex items-center bg-slate-900 border border-slate-800 p-0.5 rounded-xl text-xs">
-                <button
-                  onClick={() => setViewMode('grid')}
-                  className={`px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 transition-all ${
-                    viewMode === 'grid'
-                      ? 'bg-amber-500 text-slate-950 shadow-sm'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  <LayoutGrid className="w-3 h-3" />
-                  <span>Color View</span>
-                </button>
-                <button
-                  onClick={() => setViewMode('matrix')}
-                  className={`px-2.5 py-1 rounded-lg font-bold flex items-center gap-1 transition-all ${
-                    viewMode === 'matrix'
-                      ? 'bg-amber-500 text-slate-950 shadow-sm'
-                      : 'text-slate-400 hover:text-slate-200'
-                  }`}
-                >
-                  <Layers className="w-3 h-3" />
-                  <span>All Matrix</span>
-                </button>
-              </div>
-            </div>
-
-            {/* --- Horizontal Color Selection Chips --- */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-              {(stockData.colors || []).map((c) => {
-                const isSelected = selectedColor === c.color;
-                const dotColor = getColorDot(c.color);
-                return (
+            {/* --- Quick Filter / Jump Chips Bar --- */}
+            {stockData.colors && stockData.colors.length > 1 && (
+              <div className="space-y-1.5">
+                <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1 flex items-center justify-between">
+                  <span>Filter / Jump to Color</span>
+                  <span>{stockData.colors.length} Available</span>
+                </div>
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
                   <button
-                    key={c.color}
-                    onClick={() => {
-                      setSelectedColor(c.color);
-                      setViewMode('grid');
-                      try { playSound('click'); } catch {}
-                    }}
-                    className={`shrink-0 px-3.5 py-2 rounded-2xl text-xs font-bold flex items-center gap-2 border transition-all active:scale-95 ${
-                      isSelected
-                        ? 'bg-slate-800 border-amber-500 text-white shadow-lg shadow-amber-500/10 ring-1 ring-amber-500/50'
-                        : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:text-slate-200 hover:border-slate-700'
+                    onClick={() => setSelectedColorFilter('ALL')}
+                    className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                      selectedColorFilter === 'ALL'
+                        ? 'bg-amber-500 text-slate-950 font-black shadow-md shadow-amber-500/20'
+                        : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
                     }`}
                   >
-                    <span
-                      className="w-3 h-3 rounded-full border border-white/20 shrink-0"
-                      style={{ backgroundColor: dotColor }}
-                    />
-                    <span>{c.color}</span>
-                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-black ${
-                      c.totalStock > 0
-                        ? 'bg-emerald-500/20 text-emerald-400'
-                        : 'bg-rose-500/20 text-rose-400'
-                    }`}>
-                      {c.totalStock}
-                    </span>
+                    All Colors ({stockData.totalStock})
                   </button>
-                );
-              })}
-            </div>
 
-            {/* --- View Mode 1: Color Specific Size Run Grid --- */}
-            {viewMode === 'grid' && activeColorObj && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between text-xs text-slate-400 px-1">
-                  <div className="flex items-center gap-1.5 font-bold text-white">
-                    <span
-                      className="w-2.5 h-2.5 rounded-full"
-                      style={{ backgroundColor: getColorDot(activeColorObj.color) }}
-                    />
-                    <span>{activeColorObj.color} Sizes</span>
-                  </div>
-                  <span>{activeColorObj.totalStock} available in this color</span>
-                </div>
-
-                {/* Size Chips Grid */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                  {(activeColorObj.sizes || []).map((sz) => {
-                    const isOutOfStock = sz.stock <= 0;
-                    const isLowStock = sz.stock === 1 || sz.stock === 2;
-                    const isScannedPiece = stockData.scannedBarcode && (sz.barcode === stockData.scannedBarcode || sz.vendorEan === stockData.scannedBarcode);
-
+                  {stockData.colors.map(c => {
+                    const isSelected = selectedColorFilter === c.color;
                     return (
-                      <div
-                        key={sz.size}
-                        className={`p-3 rounded-2xl border transition-all flex flex-col justify-between ${
-                          isScannedPiece
-                            ? 'bg-amber-500/10 border-amber-500 shadow-md ring-1 ring-amber-500/40'
-                            : isOutOfStock
-                            ? 'bg-slate-900/40 border-slate-800/80 opacity-60'
-                            : isLowStock
-                            ? 'bg-slate-900 border-amber-500/40'
-                            : 'bg-slate-900 border-slate-700/70'
+                      <button
+                        key={c.color}
+                        onClick={() => setSelectedColorFilter(c.color)}
+                        className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
+                          isSelected
+                            ? 'bg-amber-500 text-slate-950 font-black shadow-md shadow-amber-500/20'
+                            : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
                         }`}
                       >
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <span className={`text-lg font-black tracking-tight ${
-                              isOutOfStock ? 'text-slate-500 line-through' : 'text-white'
-                            }`}>
-                              {sz.size}
-                            </span>
-                            {isScannedPiece && (
-                              <div className="text-[10px] font-black text-amber-400 uppercase tracking-wider mt-0.5">
-                                Scanned Tag
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Stock Status Badge */}
-                          <div className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase ${
-                            isOutOfStock
-                              ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                              : isLowStock
-                              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                              : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                          }`}>
-                            {isOutOfStock ? 'Out' : isLowStock ? `${sz.stock} Left!` : `${sz.stock} in stock`}
-                          </div>
-                        </div>
-
-                        {/* Barcode & 1-Tap Copy */}
-                        {sz.barcode && (
-                          <div className="mt-3 pt-2 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400 font-mono">
-                            <span className="truncate pr-1 text-[10px]">{sz.barcode}</span>
-                            <button
-                              onClick={() => handleCopyBarcode(sz.barcode)}
-                              className="p-1 rounded text-slate-400 hover:text-white"
-                              title="Copy Barcode"
-                            >
-                              {copiedBarcode === sz.barcode ? (
-                                <Check className="w-3 h-3 text-emerald-400" />
-                              ) : (
-                                <Copy className="w-3 h-3" />
-                              )}
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                        <span
+                          className="w-2.5 h-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: getColorDot(c.color) }}
+                        />
+                        <span>{c.color}</span>
+                        <span className="text-[10px] opacity-80">({c.totalStock})</span>
+                      </button>
                     );
                   })}
                 </div>
+              </div>
+            )}
 
-                {/* --- Cross-Color Helper: When a size is Out of Stock in this color --- */}
-                {(() => {
-                  const outSizes = (activeColorObj.sizes || []).filter(s => s.stock <= 0).map(s => s.size);
-                  if (outSizes.length === 0) return null;
+            {/* --- SIZES GROUPED BY EACH COLOUR (Full Stacked Color Cards) --- */}
+            <div className="space-y-4">
+              {displayedColors.map((colorGroup) => {
+                const sortedSizes = sortSizesNaturally(colorGroup.sizes || []);
+                const isOutOfStock = colorGroup.totalStock <= 0;
+                const dotColor = getColorDot(colorGroup.color);
 
-                  // Find other colors that have this size in stock
-                  const crossAvail = [];
-                  outSizes.forEach(sizeName => {
-                    const otherColors = (stockData.colors || [])
-                      .filter(c => c.color !== activeColorObj.color)
-                      .map(c => {
-                        const matchingSize = (c.sizes || []).find(s => s.size === sizeName && s.stock > 0);
-                        return matchingSize ? { color: c.color, stock: matchingSize.stock } : null;
-                      })
-                      .filter(Boolean);
-
-                    if (otherColors.length > 0) {
-                      crossAvail.push({ size: sizeName, others: otherColors });
-                    }
-                  });
-
-                  if (crossAvail.length === 0) return null;
-
-                  return (
-                    <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 space-y-2 mt-3">
-                      <div className="flex items-center gap-1.5 text-xs font-black text-amber-400">
-                        <Info className="w-4 h-4 shrink-0" />
-                        <span>Customer Wants Another Size? In-Stock in other colors:</span>
+                return (
+                  <div
+                    key={colorGroup.color}
+                    className={`rounded-3xl border transition-all overflow-hidden ${
+                      isOutOfStock
+                        ? 'bg-slate-900/50 border-slate-800/80 opacity-70'
+                        : 'bg-slate-900 border-slate-800 shadow-xl'
+                    }`}
+                  >
+                    {/* Color Header Banner */}
+                    <div className="p-3.5 bg-slate-850/80 border-b border-slate-800 flex items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <span
+                          className="w-4 h-4 rounded-full border border-white/20 shadow-sm shrink-0"
+                          style={{ backgroundColor: dotColor }}
+                        />
+                        <div>
+                          <h3 className="font-black text-sm text-white tracking-tight flex items-center gap-2">
+                            <span>{colorGroup.color}</span>
+                            {stockData.matchedColor === colorGroup.color && (
+                              <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase">
+                                Scanned Color
+                              </span>
+                            )}
+                          </h3>
+                        </div>
                       </div>
-                      <div className="space-y-1.5">
-                        {crossAvail.map(({ size, others }) => (
-                          <div key={size} className="text-xs text-slate-300 flex items-center gap-2 flex-wrap">
-                            <span className="font-bold text-white bg-slate-800 px-2 py-0.5 rounded-md border border-slate-700">
-                              Size {size}:
-                            </span>
-                            {others.map(o => (
-                              <button
-                                key={o.color}
-                                onClick={() => setSelectedColor(o.color)}
-                                className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25 flex items-center gap-1 transition-all"
-                              >
-                                <span
-                                  className="w-2 h-2 rounded-full"
-                                  style={{ backgroundColor: getColorDot(o.color) }}
-                                />
-                                <span>{o.color} ({o.stock} pcs)</span>
-                              </button>
-                            ))}
-                          </div>
-                        ))}
+
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2.5 py-1 rounded-xl text-xs font-black ${
+                          colorGroup.totalStock > 0
+                            ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                            : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+                        }`}>
+                          {colorGroup.totalStock > 0 ? `${colorGroup.totalStock} in stock` : 'Out of stock'}
+                        </span>
                       </div>
                     </div>
-                  );
-                })()}
-              </div>
-            )}
 
-            {/* --- View Mode 2: All Colors & Sizes Matrix Table --- */}
-            {viewMode === 'matrix' && (
-              <div className="p-3.5 rounded-3xl bg-slate-900 border border-slate-800 overflow-x-auto space-y-3">
-                <div className="flex items-center justify-between text-xs px-1">
-                  <span className="font-bold text-white flex items-center gap-1.5">
-                    <Layers className="w-3.5 h-3.5 text-amber-500" />
-                    <span>Complete Style Matrix</span>
-                  </span>
-                  <span className="text-[11px] text-slate-400">
-                    {allArticleSizes.length} Sizes • {stockData.colors?.length} Colors
-                  </span>
-                </div>
+                    {/* All Sizes for this specific color */}
+                    <div className="p-3.5 space-y-2">
+                      <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider flex items-center justify-between px-1">
+                        <span>Sizes in {colorGroup.color}</span>
+                        <span>{sortedSizes.length} size{sortedSizes.length === 1 ? '' : 's'}</span>
+                      </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full text-xs text-left">
-                    <thead>
-                      <tr className="border-b border-slate-800 text-slate-400 font-semibold">
-                        <th className="py-2 px-2.5 font-bold text-slate-300">Color</th>
-                        {allArticleSizes.map(sz => (
-                          <th key={sz} className="py-2 px-2 text-center font-bold text-white">{sz}</th>
-                        ))}
-                        <th className="py-2 px-2 text-right font-bold text-slate-300">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800/60">
-                      {(stockData.colors || []).map(c => (
-                        <tr key={c.color} className="hover:bg-slate-850/50 transition-colors">
-                          <td className="py-2.5 px-2.5 font-semibold text-white flex items-center gap-1.5">
-                            <span
-                              className="w-2.5 h-2.5 rounded-full shrink-0"
-                              style={{ backgroundColor: getColorDot(c.color) }}
-                            />
-                            <span className="truncate max-w-[90px]">{c.color}</span>
-                          </td>
-                          {allArticleSizes.map(sz => {
-                            const found = (c.sizes || []).find(s => s.size === sz);
-                            const stock = found ? found.stock : 0;
-                            return (
-                              <td key={sz} className="py-2.5 px-2 text-center font-mono">
-                                {stock > 0 ? (
-                                  <span className="font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">
-                                    {stock}
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                        {sortedSizes.map((sz) => {
+                          const isSizeOut = sz.stock <= 0;
+                          const isSizeLow = sz.stock === 1 || sz.stock === 2;
+                          const isExactScannedPiece = stockData.scannedBarcode && (sz.barcode === stockData.scannedBarcode || sz.vendorEan === stockData.scannedBarcode);
+
+                          return (
+                            <div
+                              key={sz.size}
+                              className={`p-3 rounded-2xl border transition-all flex flex-col justify-between ${
+                                isExactScannedPiece
+                                  ? 'bg-amber-500/15 border-amber-500 shadow-lg ring-1 ring-amber-500/40'
+                                  : isSizeOut
+                                  ? 'bg-slate-950/60 border-slate-800/80 opacity-50'
+                                  : isSizeLow
+                                  ? 'bg-slate-950/80 border-amber-500/40'
+                                  : 'bg-slate-950/80 border-slate-800'
+                              }`}
+                            >
+                              <div className="flex items-start justify-between">
+                                <div>
+                                  <span className={`text-lg font-black tracking-tight ${
+                                    isSizeOut ? 'text-slate-500 line-through' : 'text-white'
+                                  }`}>
+                                    {sz.size}
                                   </span>
-                                ) : (
-                                  <span className="text-slate-600">-</span>
-                                )}
-                              </td>
-                            );
-                          })}
-                          <td className="py-2.5 px-2 text-right font-bold text-amber-400">
-                            {c.totalStock}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
+                                  {isExactScannedPiece && (
+                                    <div className="text-[9.5px] font-black text-amber-400 uppercase tracking-wider mt-0.5">
+                                      Scanned Tag
+                                    </div>
+                                  )}
+                                </div>
+
+                                <div className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase ${
+                                  isSizeOut
+                                    ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                                    : isSizeLow
+                                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                                    : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                }`}>
+                                  {isSizeOut ? 'Out' : isSizeLow ? `${sz.stock} Left` : `${sz.stock} in stock`}
+                                </div>
+                              </div>
+
+                              {/* Barcode & 1-Tap Copy */}
+                              {sz.barcode && (
+                                <div className="mt-3 pt-2 border-t border-slate-800 flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                                  <span className="truncate pr-1 text-[10px]">{sz.barcode}</span>
+                                  <button
+                                    onClick={() => handleCopyBarcode(sz.barcode)}
+                                    className="p-1 rounded text-slate-400 hover:text-white"
+                                    title="Copy Barcode"
+                                  >
+                                    {copiedBarcode === sz.barcode ? (
+                                      <Check className="w-3 h-3 text-emerald-400" />
+                                    ) : (
+                                      <Copy className="w-3 h-3" />
+                                    )}
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -942,7 +976,7 @@ export default function StaffStockCheckerPage({
         )}
       </main>
 
-      {/* --- Fullscreen Enhanced Dual Camera Scanner Overlay --- */}
+      {/* --- Fullscreen Camera Scanner Modal Overlay --- */}
       {isCameraActive && (
         <div className="fixed inset-0 z-50 bg-black/95 flex flex-col justify-between animate-in fade-in duration-200">
           {/* Camera Viewfinder Header */}
@@ -996,7 +1030,12 @@ export default function StaffStockCheckerPage({
 
           {/* Camera Viewport with Dual Target Reticle */}
           <div className="relative flex-1 flex items-center justify-center overflow-hidden bg-black">
-            <div id={scannerContainerId} className="w-full max-w-md h-full object-cover"></div>
+            {/* Explicit width/height on scanner element to guarantee Html5Qrcode initialization */}
+            <div
+              id={scannerContainerId}
+              style={{ width: '100%', minHeight: '300px', maxHeight: '100%' }}
+              className="w-full max-w-md h-full object-cover"
+            />
 
             {/* Target Reticle Overlay covering Barcode Lines & Printed Numbers beneath */}
             <div className="absolute inset-0 pointer-events-none flex items-center justify-center p-4">
@@ -1023,20 +1062,35 @@ export default function StaffStockCheckerPage({
               </div>
             </div>
 
-            {/* Camera Error Display */}
+            {/* Camera Error Display with Fallback Buttons */}
             {cameraError && (
-              <div className="absolute inset-x-4 top-20 p-4 rounded-2xl bg-rose-500/90 text-white text-xs space-y-2 z-20">
-                <div className="font-bold flex items-center gap-1.5">
-                  <AlertCircle className="w-4 h-4" />
-                  <span>Camera Access Error</span>
+              <div className="absolute inset-x-4 top-20 p-4 rounded-2xl bg-rose-950/95 border border-rose-500/50 text-white text-xs space-y-3 z-20 shadow-2xl">
+                <div className="font-bold flex items-center gap-1.5 text-rose-300">
+                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                  <span>Camera Access Issue</span>
                 </div>
-                <p>{cameraError}</p>
-                <button
-                  onClick={stopCamera}
-                  className="px-3 py-1.5 rounded-xl bg-white text-slate-950 font-bold"
-                >
-                  Close & Type Barcode
-                </button>
+                <p className="text-slate-300 leading-relaxed text-[11px]">{cameraError}</p>
+
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      stopCamera();
+                      fileInputRef.current?.click();
+                    }}
+                    className="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-rose-500 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5"
+                  >
+                    <Camera className="w-3.5 h-3.5 fill-current" />
+                    <span>Snap Tag Photo</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={stopCamera}
+                    className="px-3 py-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 font-bold text-xs"
+                  >
+                    Type Barcode
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -1044,6 +1098,7 @@ export default function StaffStockCheckerPage({
           {/* Camera Bottom Controls: Shutter Button for instant Number OCR + Cancel */}
           <div className="p-4 bg-slate-900/90 backdrop-blur-md border-t border-slate-800 flex items-center justify-between gap-3">
             <button
+              type="button"
               onClick={stopCamera}
               className="px-4 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-slate-200 transition-all active:scale-95"
             >

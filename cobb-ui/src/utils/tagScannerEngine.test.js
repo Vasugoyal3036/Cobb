@@ -39,3 +39,4 @@ describe('tagScannerEngine [Dual Barcode & Number OCR Parser]', () => {
     expect(parseTagNumbers('HELLO WORLD NO CODE')).toBeNull();
   });
 });
+
