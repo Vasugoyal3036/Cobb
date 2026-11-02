@@ -2435,7 +2435,7 @@ app.post('/api/broadcast/start', async (req, res) => {
                 const response = await fetch('http://localhost:3000/send', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ number: targetPhone, message: finalMsg })
+                    body: JSON.stringify({ number: targetPhone, message: finalMsg, isBroadcast: true })
                 });
                 const data = await response.json();
                 if (response.ok) {

@@ -1452,7 +1452,7 @@ async function flushOutbox() {
 }
 
 app.post('/send', async (req, res) => {
-    const { number, message, mediaPath, dedupeKey } = req.body;
+    const { number, message, mediaPath, dedupeKey, isBroadcast } = req.body;
 
     if (!number || !message) {
         return res.status(400).json({ error: 'Number and message are required.' });
@@ -1505,8 +1505,9 @@ app.post('/send', async (req, res) => {
         }
 
         // On checkout: dispatch interactive rating poll immediately with the thank-you message
+        // NEVER dispatch rating poll for broadcast messages - only for real checkout receipts
         const lowerMsg = (message || '').toLowerCase();
-        const isBillDispatch = lowerMsg.includes('bill') || lowerMsg.includes('receipt') || lowerMsg.includes('cobb') || lowerMsg.includes('shopping') || lowerMsg.includes('total') || lowerMsg.includes('digital receipt');
+        const isBillDispatch = !isBroadcast && (lowerMsg.includes('bill') || lowerMsg.includes('receipt') || lowerMsg.includes('cobb') || lowerMsg.includes('shopping') || lowerMsg.includes('total') || lowerMsg.includes('digital receipt'));
         if (isBillDispatch && result.success) {
             const cleanPhone = String(number).replace(/[^0-9]/g, '').slice(-10);
             const customerNameMatch = message.match(/(?:Hello|Dear)\s+\*?([A-Za-z\s]+?)\*?(?:!|,)/i);
