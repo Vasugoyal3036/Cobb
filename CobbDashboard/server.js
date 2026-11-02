@@ -76,6 +76,7 @@ const ENDPOINT_TTL = {
     '/api/analytics/top-movers': 120,
     '/api/sales/returns': 60,
     '/api/staff/leaderboard': 120,
+    '/api/staff/stock-check': 15,
     '/api/inventory': 600,
     '/api/inventory/dead-stock': 600,
     '/api/inventory/size-matrix': 600,
@@ -810,6 +811,147 @@ app.get('/api/inventory/quick-scan', async (req, res) => {
         });
     } catch (err) {
         console.error('[QuickScan API Error]', err);
+        return res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// ===================================================================
+// STAFF MOBILE STOCK CHECKER ENDPOINT
+// Fast lookup by barcode or articleNo returning all colors and sizes in each color
+// ===================================================================
+app.get('/api/staff/stock-check', async (req, res) => {
+    try {
+        const query = (req.query.q || req.query.barcode || req.query.articleNo || '').trim();
+        if (!query) {
+            return res.json({ success: false, message: 'Barcode or Article No is required' });
+        }
+
+        const findReq = new sql.Request();
+        findReq.input('q', sql.NVarChar, query);
+        
+        const matchRes = await findReq.query(`
+            SELECT TOP 1 
+                s.article_no, 
+                ISNULL(s.article_name, s.section_name) as itemName, 
+                s.section_name as sectionName,
+                ISNULL(s.sub_section_name, '') as subSectionName,
+                s.product_Code as matchedBarcode,
+                ISNULL(s.para1_name, 'Standard') as matchedColor,
+                ISNULL(s.para2_name, 'Standard') as matchedSize
+            FROM SKU_NAMES s WITH (NOLOCK)
+            WHERE LTRIM(RTRIM(s.product_Code)) = @q 
+               OR LTRIM(RTRIM(s.article_no)) = @q 
+               OR LTRIM(RTRIM(s.VENDOR_EAN_NO)) = @q
+               OR s.product_Code = @q 
+               OR s.article_no = @q 
+               OR s.VENDOR_EAN_NO = @q
+               OR s.article_no LIKE @q + '%'
+               OR s.article_name LIKE '%' + @q + '%'
+            ORDER BY 
+               CASE 
+                 WHEN LTRIM(RTRIM(s.product_Code)) = @q THEN 1
+                 WHEN LTRIM(RTRIM(s.article_no)) = @q THEN 2
+                 WHEN LTRIM(RTRIM(s.VENDOR_EAN_NO)) = @q THEN 3
+                 WHEN s.article_no LIKE @q + '%' THEN 4
+                 ELSE 5 
+               END
+        `);
+
+        if (!matchRes.recordset || matchRes.recordset.length === 0) {
+            return res.json({ success: false, message: `No item found matching "${query}"` });
+        }
+
+        const matchedRow = matchRes.recordset[0];
+        const matchedArticle = matchedRow.article_no;
+        const matchedItemName = matchedRow.itemName;
+        const matchedSection = matchedRow.sectionName;
+        const matchedSubSection = matchedRow.subSectionName;
+
+        const variantReq = new sql.Request();
+        variantReq.input('art', sql.NVarChar, matchedArticle);
+
+        const variantsRes = await variantReq.query(`
+            SELECT 
+                s.product_Code as barcode,
+                s.article_no as articleNo,
+                ISNULL(s.article_name, s.section_name) as itemName,
+                s.section_name as sectionName,
+                ISNULL(s.sub_section_name, '') as subSectionName,
+                ISNULL(s.para1_name, 'Standard') as color,
+                ISNULL(s.para2_name, 'Standard') as size,
+                ISNULL(s.para2_order, 99) as sizeOrder,
+                ISNULL(s.mrp, 0) as mrp,
+                ISNULL(p.quantity_in_stock, 0) as stock,
+                ISNULL(s.VENDOR_EAN_NO, '') as vendorEan
+            FROM SKU_NAMES s WITH (NOLOCK)
+            LEFT JOIN PMT01106 p WITH (NOLOCK) ON s.product_Code = p.product_code
+            WHERE s.article_no = @art
+            ORDER BY s.para1_name, s.para2_order, s.para2_name
+        `);
+
+        const rows = variantsRes.recordset || [];
+        const totalStock = rows.reduce((sum, r) => sum + Math.max(0, r.stock || 0), 0);
+        const mrp = rows[0]?.mrp || 0;
+
+        // Group variants by color
+        const colorMap = {};
+        rows.forEach(r => {
+            const clr = (r.color || 'Standard').trim();
+            if (!colorMap[clr]) {
+                colorMap[clr] = {
+                    color: clr,
+                    totalStock: 0,
+                    sizes: []
+                };
+            }
+            const stockQty = Math.max(0, r.stock || 0);
+            colorMap[clr].totalStock += stockQty;
+            colorMap[clr].sizes.push({
+                size: (r.size || 'Standard').trim(),
+                stock: stockQty,
+                barcode: r.barcode,
+                vendorEan: r.vendorEan,
+                sizeOrder: r.sizeOrder || 99
+            });
+        });
+
+        const colors = Object.values(colorMap).map(c => {
+            c.sizes.sort((a, b) => a.sizeOrder - b.sizeOrder);
+            return c;
+        });
+
+        // Aggregated unique sizes across all colors
+        const sizeMap = {};
+        rows.forEach(r => {
+            const sz = (r.size || 'Standard').trim();
+            if (!sizeMap[sz]) {
+                sizeMap[sz] = { size: sz, stock: 0, barcode: r.barcode, sizeOrder: r.sizeOrder || 99 };
+            }
+            sizeMap[sz].stock += Math.max(0, r.stock || 0);
+        });
+        const sizes = Object.values(sizeMap).sort((a, b) => a.sizeOrder - b.sizeOrder);
+
+        const specificMatch = rows.find(r => r.barcode === query || r.vendorEan === query) || rows[0];
+
+        return res.json({
+            success: true,
+            articleNo: matchedArticle,
+            itemName: matchedItemName,
+            sectionName: matchedSection,
+            subSectionName: matchedSubSection,
+            mrp,
+            totalStock,
+            scannedBarcode: query,
+            matchedBarcode: specificMatch?.barcode || query,
+            matchedColor: specificMatch?.color || (colors[0]?.color || ''),
+            matchedSize: specificMatch?.size || '',
+            matchedStock: Math.max(0, specificMatch?.stock || 0),
+            colors,
+            sizes,
+            variants: rows
+        });
+    } catch (err) {
+        console.error('[StaffStockCheck API Error]', err);
         return res.status(500).json({ success: false, error: err.message });
     }
 });

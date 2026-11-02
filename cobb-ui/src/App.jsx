@@ -28,6 +28,7 @@ const SpeedBillingModal = lazy(() => import('./components/SpeedBillingModal'));
 const GodModeModal = lazy(() => import('./components/GodModeModal'));
 const GunScannerModal = lazy(() => import('./components/GunScannerModal'));
 const CustomerFeedbackPage = lazy(() => import('./components/CustomerFeedbackPage'));
+const StaffStockCheckerPage = lazy(() => import('./components/StaffStockCheckerPage'));
 
 import { fetchWithOfflineFallback, subscribeToData } from './utils/offlineDb';
 
@@ -214,8 +215,8 @@ axios.get = async (url, config) => {
 
   // 2. Fallback to Firestore Cloud Cache when running on remote phone without live tunnel
   if (!isLocalEnvironment && db && url.includes('/api/')) {
-    // Dynamic handler for /api/inventory/quick-scan on remote Phone Link / cloud sessions
-    if (url.includes('/api/inventory/quick-scan')) {
+    // Dynamic handler for /api/inventory/quick-scan & /api/staff/stock-check on remote Phone Link / cloud sessions
+    if (url.includes('/api/inventory/quick-scan') || url.includes('/api/staff/stock-check')) {
       try {
         if (authPromise) await authPromise;
         const targetStore = getActiveStoreId();
@@ -363,6 +364,10 @@ axios.get = async (url, config) => {
               sectionName: sectionName,
               subSectionName: subSectionName,
               color: scannedVariant?.Color || scannedVariant?.color || Object.keys(colorMap)[0] || 'Standard',
+              matchedBarcode: scannedVariant?.SKU || scannedVariant?.barcode || rawQ,
+              matchedColor: scannedVariant?.Color || scannedVariant?.color || Object.keys(colorMap)[0] || 'Standard',
+              matchedSize: scannedVariant?.Size || scannedVariant?.size || 'Standard',
+              matchedStock: Math.max(0, Number(scannedVariant?.CurrentStock || scannedVariant?.stock || 0)),
               mrp: resolvedMrp,
               totalStock: totalStock,
               soldToday: soldToday,
@@ -824,6 +829,9 @@ export default function App() {
 
       if (urlTab === 'livebills' || urlTab === 'live') {
         setActiveTab('live');
+      }
+      if (urlTab === 'stock' || urlTab === 'stock_checker' || urlTab === 'checker') {
+        setActiveTab('stock_checker');
       }
       if (urlBill) {
         setTargetHighlightBill(String(urlBill).trim());
@@ -2337,6 +2345,29 @@ export default function App() {
     );
   }
 
+  // Direct Staff Stock Checker Page (For floor staff on personal mobile devices)
+  const isStaffStockPage = typeof window !== 'undefined' && (
+    window.location.pathname.includes('/stock') ||
+    window.location.pathname.includes('/checker') ||
+    window.location.search.includes('stock') ||
+    window.location.search.includes('checker') ||
+    window.location.hash.includes('stock') ||
+    window.location.hash.includes('checker')
+  );
+
+  if (isStaffStockPage) {
+    return (
+      <Suspense fallback={<div className="min-h-screen bg-slate-950 flex items-center justify-center text-amber-400 font-bold">Loading Cobb Stock Checker...</div>}>
+        <StaffStockCheckerPage
+          API_BASE={API_BASE}
+          activeStore={activeStore}
+          darkMode={darkMode}
+          onClose={() => { window.location.href = '/'; }}
+        />
+      </Suspense>
+    );
+  }
+
   if (!user) {
     return <LoginScreen onSetup={() => setShowSetup(true)} />;
   }
@@ -2955,6 +2986,16 @@ export default function App() {
             {/* 20B. INTER-BRANCH TRANSFERS */}
             {activeTab === 'ibt' && (
               <InterBranchTransferTab API_BASE={API_BASE} darkMode={darkMode} activeStore={activeStore} />
+            )}
+
+            {/* 22. STAFF STOCK CHECKER */}
+            {activeTab === 'stock_checker' && (
+              <StaffStockCheckerPage
+                API_BASE={API_BASE}
+                activeStore={activeStore}
+                darkMode={darkMode}
+                onClose={() => setActiveTab('dashboard')}
+              />
             )}
 
             {/* 21. DEAD-STOCK DEPRECIATION CLOCK & CLEARANCE MATRIX */}

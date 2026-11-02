@@ -81,6 +81,7 @@ import {
   Volume2,
   Banknote,
   Lock,
+  Smartphone,
   Fingerprint
 } from 'lucide-react';
 const BiometricModal = lazy(() => import('./BiometricModal'));
@@ -110,6 +111,7 @@ const navigationItems = [
       { id: "denomination", label: "Cash Drawer Denomination", icon: Banknote, colorClass: "text-emerald-600 dark:text-emerald-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold border-l-2 border-emerald-500" },
       { id: "hold_desk", label: "Hold & Reserve Desk", icon: AlarmClock, colorClass: "text-amber-600 dark:text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold border-l-2 border-amber-500" },
       { id: "pending_tags", label: "🏷️ Pending Tags", icon: Tag, colorClass: "text-rose-600 dark:text-rose-400 hover:bg-slate-900 hover:text-white font-bold", activeColorClass: "bg-rose-500/15 text-rose-600 dark:text-rose-400 font-bold border-l-2 border-rose-500 shadow-sm shadow-rose-500/20" },
+      { id: "stock_checker", label: "📱 Staff Stock Checker", icon: Smartphone, colorClass: "text-amber-500 hover:bg-slate-900 hover:text-white font-bold", activeColorClass: "bg-amber-500/15 text-amber-500 font-bold border-l-2 border-amber-500 shadow-sm shadow-amber-500/20" },
       { id: "returns", label: "Product Exchanges", icon: RotateCcw, colorClass: "text-amber-600 dark:text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold border-l-2 border-amber-500" },
       { id: "alterations", label: "Alteration Desk", icon: Scissors, colorClass: "text-indigo-600 dark:text-indigo-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 font-bold border-l-2 border-indigo-500" },
       { id: "topmovers", label: "Top Movers & Size Demand", icon: Flame, colorClass: "text-rose-600 dark:text-rose-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-rose-500/15 text-rose-600 dark:text-rose-400 font-bold border-l-2 border-rose-500" },
@@ -627,7 +629,7 @@ const Layout = ({
         </header>
 
         <div className={
-          ['copilot', 'transit', 'vip', 'dormant', 'inventory', 'reorder', 'loyalty', 'smart_bundles'].includes(activeTab)
+          ['copilot', 'transit', 'vip', 'dormant', 'inventory', 'reorder', 'loyalty', 'smart_bundles', 'stock_checker'].includes(activeTab)
             ? 'p-0 sm:p-4 lg:p-6 mx-auto w-full h-full'
             : 'p-3 sm:p-6 lg:p-8 max-w-7xl mx-auto'
         }>

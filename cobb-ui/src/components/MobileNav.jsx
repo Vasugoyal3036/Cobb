@@ -13,7 +13,8 @@ import {
   Calculator,
   ChevronDown,
   ChevronUp,
-  Sparkles
+  Sparkles,
+  Smartphone
 } from 'lucide-react';
 
 export default function MobileNav({
@@ -29,6 +30,13 @@ export default function MobileNav({
   const [showQuickDock, setShowQuickDock] = useState(true);
 
   const quickActions = [
+    {
+      id: 'stock_checker',
+      label: 'Stock Check',
+      icon: Smartphone,
+      color: 'amber',
+      onClick: () => setActiveTab('stock_checker')
+    },
     {
       id: 'speed_billing',
       label: 'Speed Bill',
