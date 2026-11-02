@@ -28,7 +28,9 @@ import {
   Square,
   ArrowUp,
   ArrowDown,
-  ArrowUpDown
+  ArrowUpDown,
+  List,
+  LayoutGrid
 } from 'lucide-react';
 import { db } from '../../utils/firebase';
 import { doc, onSnapshot, setDoc, getDoc } from 'firebase/firestore';
@@ -62,6 +64,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('active'); // 'active' | 'billed' | 'all'
   const [sortBy, setSortBy] = useState('newest'); // 'low_to_high' | 'high_to_low' | 'sold_asc' | 'sold_desc' | 'discount_desc' | 'discount_asc' | 'newest' | 'oldest'
+  const [viewMode, setViewMode] = useState('list'); // 'list' | 'grid'
   const [showAddModal, setShowAddModal] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
   const [toast, setToast] = useState(null);
@@ -792,8 +795,36 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
             <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
+          {/* View Mode Toggle: List vs Grid */}
+          <div className="flex items-center bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700 shrink-0">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all ${
+                viewMode === 'list'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+              }`}
+              title="Compact List View"
+            >
+              <List className="w-4 h-4" />
+              <span className="hidden sm:inline text-[11px]">List</span>
+            </button>
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`p-1.5 rounded-lg text-xs font-bold flex items-center gap-1 transition-all ${
+                viewMode === 'grid'
+                  ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-sm'
+                  : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'
+              }`}
+              title="Card Grid View"
+            >
+              <LayoutGrid className="w-4 h-4" />
+              <span className="hidden sm:inline text-[11px]">Cards</span>
+            </button>
+          </div>
+
           {/* Search Box */}
-          <div className="relative flex-1 sm:w-60 min-w-[180px]">
+          <div className="relative flex-1 sm:w-56 min-w-[160px]">
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
             <input
               type="text"
@@ -831,6 +862,242 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
               Add First Pending Tag
             </button>
           )}
+        </div>
+      ) : viewMode === 'list' ? (
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  <th className="py-3 px-3 w-10 text-center">
+                    <button
+                      onClick={() => {
+                        const activeIds = filteredTags.filter(t => t.status === 'active').map(t => t.id);
+                        if (selectedTagIds.length === activeIds.length && activeIds.length > 0) {
+                          clearSelection();
+                        } else {
+                          setSelectedTagIds(activeIds);
+                        }
+                      }}
+                      className="text-slate-400 hover:text-amber-500 transition-colors"
+                      title="Select all active tags"
+                    >
+                      {selectedTagIds.length > 0 && selectedTagIds.length === filteredTags.filter(t => t.status === 'active').length ? (
+                        <CheckSquare className="w-4 h-4 text-amber-500" />
+                      ) : (
+                        <Square className="w-4 h-4" />
+                      )}
+                    </button>
+                  </th>
+                  <th className="py-3 px-4 text-amber-600 dark:text-amber-400 font-black cursor-pointer select-none" onClick={() => setSortBy(sortBy === 'low_to_high' ? 'high_to_low' : 'low_to_high')} title="Click to sort by MRP">
+                    <div className="flex items-center gap-1.5">
+                      <span>TAG MRP</span>
+                      {sortBy === 'low_to_high' ? (
+                        <span className="text-[10px] text-rose-500 font-bold flex items-center">↑ Low</span>
+                      ) : sortBy === 'high_to_low' ? (
+                        <span className="text-[10px] text-rose-500 font-bold flex items-center">↓ High</span>
+                      ) : (
+                        <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+                      )}
+                    </div>
+                  </th>
+                  <th className="py-3 px-4">Article & Category</th>
+                  <th className="py-3 px-3 text-center">Size</th>
+                  <th className="py-3 px-4 font-mono">Barcode</th>
+                  <th className="py-3 px-4">Sold Deal</th>
+                  <th className="py-3 px-3">Salesperson</th>
+                  <th className="py-3 px-3">Status</th>
+                  <th className="py-3 px-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-xs">
+                {filteredTags.map((tag) => {
+                  const isBilled = tag.status === 'billed';
+                  const isSelected = selectedTagIds.includes(tag.id);
+                  return (
+                    <tr
+                      key={tag.id}
+                      className={`transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/50 ${
+                        isSelected
+                          ? 'bg-amber-500/10 dark:bg-amber-500/15'
+                          : isBilled
+                          ? 'bg-slate-50/40 dark:bg-slate-900/40 opacity-70'
+                          : ''
+                      }`}
+                    >
+                      {/* Checkbox */}
+                      <td className="py-3 px-3 text-center">
+                        {!isBilled ? (
+                          <button
+                            onClick={() => toggleSelectTag(tag.id)}
+                            className="text-slate-400 hover:text-amber-500 transition-colors"
+                            title={isSelected ? "Deselect" : "Select tag to bill"}
+                          >
+                            {isSelected ? (
+                              <CheckSquare className="w-4 h-4 text-amber-500" />
+                            ) : (
+                              <Square className="w-4 h-4" />
+                            )}
+                          </button>
+                        ) : (
+                          <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-700 inline-block" />
+                        )}
+                      </td>
+
+                      {/* HERO MRP COLUMN - LARGE & FOCUSED */}
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg sm:text-xl font-black font-mono tracking-tight text-slate-900 dark:text-white">
+                            ₹{Number(tag.mrp || 0).toLocaleString('en-IN')}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Article Details */}
+                      <td className="py-3 px-4">
+                        <div className="font-bold text-slate-900 dark:text-slate-100 line-clamp-1">
+                          {tag.articleName || tag.articleNo || 'Apparel'}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
+                          <span>{tag.section}</span>
+                          {tag.articleNo && tag.articleName && (
+                            <>
+                              <span>•</span>
+                              <span className="font-mono text-[10px] text-slate-400">{tag.articleNo}</span>
+                            </>
+                          )}
+                          {tag.color && (
+                            <>
+                              <span>•</span>
+                              <span>{tag.color}</span>
+                            </>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Size Badge */}
+                      <td className="py-3 px-3 text-center">
+                        <span className="px-2.5 py-1 rounded-md bg-purple-500/15 text-purple-700 dark:text-purple-300 font-black text-xs border border-purple-500/20 whitespace-nowrap">
+                          {tag.size || 'Free'}
+                        </span>
+                      </td>
+
+                      {/* Barcode Strip */}
+                      <td className="py-3 px-4 font-mono">
+                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs">
+                          <span className="font-bold tracking-wider text-slate-800 dark:text-slate-200">
+                            {tag.barcode}
+                          </span>
+                          <button
+                            onClick={() => handleCopyBarcode(tag.barcode, tag.id)}
+                            className="p-0.5 hover:text-amber-500 text-slate-400 transition-colors"
+                            title="Copy Barcode"
+                          >
+                            {copiedId === tag.id ? (
+                              <Check className="w-3.5 h-3.5 text-emerald-500" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        </div>
+                      </td>
+
+                      {/* Deal / Sold Price */}
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <span className="px-1.5 py-0.5 rounded-md text-[10px] font-black bg-rose-500 text-white shadow-xs">
+                            -{tag.discountPercent}%
+                          </span>
+                          <span className="font-black text-emerald-600 dark:text-emerald-400 text-sm font-mono">
+                            ₹{Number(tag.soldPrice || 0).toLocaleString('en-IN')}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Salesperson & Date */}
+                      <td className="py-3 px-3 whitespace-nowrap text-slate-600 dark:text-slate-400">
+                        <div className="font-semibold text-xs text-slate-800 dark:text-slate-200">
+                          {tag.salesperson || 'Cashier'}
+                        </div>
+                        <div className="text-[10px] text-slate-400">
+                          {new Date(tag.createdAt).toLocaleDateString('en-IN', {
+                            day: 'numeric',
+                            month: 'short',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </div>
+                      </td>
+
+                      {/* Status */}
+                      <td className="py-3 px-3 whitespace-nowrap">
+                        {isBilled ? (
+                          <div className="flex flex-col">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1 w-fit">
+                              <CheckCircle2 className="w-3 h-3" />
+                              <span>Billed</span>
+                            </span>
+                            {tag.billedInBillNo && (
+                              <span className="text-[10px] text-slate-400 font-mono mt-0.5">
+                                #{tag.billedInBillNo}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 flex items-center gap-1 w-fit">
+                            <Clock className="w-3 h-3 animate-pulse" />
+                            <span>Pending</span>
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Actions */}
+                      <td className="py-3 px-4 text-right whitespace-nowrap">
+                        <div className="inline-flex items-center gap-1.5">
+                          <button
+                            onClick={() => handlePrintSlip(tag)}
+                            className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300"
+                            title="Print thermal slip"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                          </button>
+
+                          {!isBilled && (
+                            <>
+                              <button
+                                onClick={() => handleBillInSpeedBilling([tag], 'b1g2')}
+                                className="px-2.5 py-1 rounded-lg bg-amber-500 text-slate-950 font-black text-xs flex items-center gap-1 hover:bg-amber-400 shadow-sm active:scale-95 transition-all"
+                                title="Bill this item in Speed Billing POS"
+                              >
+                                <Zap className="w-3.5 h-3.5 fill-current" />
+                                <span>Bill</span>
+                              </button>
+
+                              <button
+                                onClick={() => handleMarkBilled(tag.id)}
+                                className="px-2.5 py-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold"
+                                title="Mark as billed manually"
+                              >
+                                Mark Billed
+                              </button>
+                            </>
+                          )}
+
+                          <button
+                            onClick={() => handleDeleteTag(tag.id)}
+                            className="p-1.5 rounded-lg hover:bg-rose-500/15 text-slate-400 hover:text-rose-500 transition-colors"
+                            title="Delete / Void tag"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
