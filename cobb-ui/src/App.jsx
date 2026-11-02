@@ -730,6 +730,19 @@ export default function App() {
   const [topMoversData, setTopMoversData] = useState(() => getLocalCache('topMoversData', { topArticles: [], sizeDemand: [] }));
 
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [speedBillingInitialData, setSpeedBillingInitialData] = useState(null);
+
+  // Global listener for 1-click loading into Zero-Mouse Speed Billing POS (e.g. from Pending Tags combos)
+  useEffect(() => {
+    const handleGlobalLoadSpeedBilling = (e) => {
+      if (e.detail && Array.isArray(e.detail.items)) {
+        setSpeedBillingInitialData(e.detail);
+        setActiveTab('speed_billing');
+      }
+    };
+    window.addEventListener('cobb_load_speed_billing', handleGlobalLoadSpeedBilling);
+    return () => window.removeEventListener('cobb_load_speed_billing', handleGlobalLoadSpeedBilling);
+  }, []);
 
   // RBAC Tab Protection Guard — uses ROLE_PERMISSIONS to redirect if current tab is not allowed
   useEffect(() => {
@@ -2871,7 +2884,11 @@ export default function App() {
             {activeTab === 'speed_billing' && (
               <SpeedBillingModal
                 isOpen={true}
-                onClose={() => setActiveTab('dashboard')}
+                onClose={() => {
+                  setSpeedBillingInitialData(null);
+                  setActiveTab('dashboard');
+                }}
+                initialData={speedBillingInitialData}
                 API_BASE={API_BASE}
                 activeStore={activeStore}
                 userRole={currentRole}
@@ -2896,7 +2913,15 @@ export default function App() {
 
             {/* 12b. PENDING TAGS DESK (B1G2 SINGLE-PIECE MANAGER) */}
             {activeTab === 'pending_tags' && (
-              <PendingTagsTab darkMode={darkMode} activeStore={activeStore} />
+              <PendingTagsTab
+                darkMode={darkMode}
+                activeStore={activeStore}
+                setActiveTab={setActiveTab}
+                onOpenSpeedBilling={(data) => {
+                  setSpeedBillingInitialData(data);
+                  setActiveTab('speed_billing');
+                }}
+              />
             )}
 
 

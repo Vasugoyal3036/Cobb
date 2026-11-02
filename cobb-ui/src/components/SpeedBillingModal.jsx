@@ -70,25 +70,54 @@ export default function SpeedBillingModal({
   onClose,
   API_BASE = 'http://localhost:5000',
   activeStore = 'Pundri',
-  userRole = 'cashier'
+  userRole = 'cashier',
+  initialData = null
 }) {
   // Cart & Line Items
-  const [cart, setCart] = useState([
-    {
-      id: 'item-1',
-      barcode: '8907234001',
-      name: 'Cobb Formal White Shirt',
-      size: '40',
-      category: 'Formal Shirts',
-      mrp: 1899,
-      qty: 1,
-      discountPct: 0,
-      discountFlat: 0,
-      gstPct: 5,
-      stock: 14,
-      staff: 'Rahul Sharma'
+  const [cart, setCart] = useState(() => {
+    if (initialData && Array.isArray(initialData.items) && initialData.items.length > 0) {
+      return initialData.items;
     }
-  ]);
+    return [
+      {
+        id: 'item-1',
+        barcode: '8907234001',
+        name: 'Cobb Formal White Shirt',
+        size: '40',
+        category: 'Formal Shirts',
+        mrp: 1899,
+        qty: 1,
+        discountPct: 0,
+        discountFlat: 0,
+        gstPct: 5,
+        stock: 14,
+        staff: 'Rahul Sharma'
+      }
+    ];
+  });
+
+  // Listen for initialData prop changes or global load events from Pending Tags
+  useEffect(() => {
+    if (initialData && Array.isArray(initialData.items) && initialData.items.length > 0) {
+      setCart(initialData.items);
+      if (initialData.promo) setActivePromo(initialData.promo);
+      if (initialData.customerName) setCustomerName(initialData.customerName);
+      if (initialData.customerPhone) setCustomerPhone(initialData.customerPhone);
+    }
+  }, [initialData]);
+
+  useEffect(() => {
+    const handleLoadSpeedBilling = (e) => {
+      if (e.detail && Array.isArray(e.detail.items) && e.detail.items.length > 0) {
+        setCart(e.detail.items);
+        if (e.detail.promo) setActivePromo(e.detail.promo);
+        if (e.detail.customerName) setCustomerName(e.detail.customerName);
+        if (e.detail.customerPhone) setCustomerPhone(e.detail.customerPhone);
+      }
+    };
+    window.addEventListener('cobb_load_speed_billing', handleLoadSpeedBilling);
+    return () => window.removeEventListener('cobb_load_speed_billing', handleLoadSpeedBilling);
+  }, []);
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   // Barcode / Item Search
@@ -283,7 +312,7 @@ export default function SpeedBillingModal({
       }));
     }
 
-    if (activePromo === 'b1g3' || activePromo === 'b2g5') {
+    if (activePromo === 'b1g2' || activePromo === 'b1g3' || activePromo === 'b2g5') {
       // Unroll all units sorted by MRP descending
       const unrolled = [];
       cart.forEach((item, originalIdx) => {
@@ -293,8 +322,8 @@ export default function SpeedBillingModal({
       });
       unrolled.sort((a, b) => b.mrp - a.mrp);
 
-      const groupSize = activePromo === 'b1g3' ? 4 : 7;
-      const paidPerGroup = activePromo === 'b1g3' ? 1 : 2;
+      const groupSize = activePromo === 'b1g2' ? 3 : (activePromo === 'b1g3' ? 4 : 7);
+      const paidPerGroup = (activePromo === 'b1g2' || activePromo === 'b1g3') ? 1 : 2;
 
       // Map discounts back to items
       const itemDiscTotals = {};
@@ -883,6 +912,17 @@ _Thank you for choosing Cobb! For sizing alterations or exchanges, please quote 
 
     // Invalidate backend sales cache so the new bill appears in LiveBillsTab
     axios.post(`${API_BASE}/api/cache/invalidate-sales`).catch(() => {});
+
+    // Auto-mark any pending tags present in this bill as settled
+    processedCart.forEach(item => {
+      const tagId = item.pendingTagId || item.tagId;
+      if (tagId) {
+        axios.post(`${API_BASE}/api/pending-tags/${tagId}/mark-billed`, {
+          billNo: billNumber,
+          amount: Math.max(0, item.mrp - (item.effectiveDiscFlat || 0))
+        }).catch(() => {});
+      }
+    });
   };
 
   // Park / Hold Active Bill
@@ -988,7 +1028,7 @@ _Thank you for choosing Cobb! For sizing alterations or exchanges, please quote 
                 {activePromo !== 'none' && (
                   <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-500/20 text-purple-300 border border-purple-500/40 flex items-center gap-1">
                     <Sparkles className="w-3 h-3 text-purple-400" />
-                    PROMO: {activePromo === 'b3_70' ? 'BUY 3 @ 70% OFF' : activePromo.toUpperCase()}
+                    PROMO: {activePromo === 'b3_70' ? 'BUY 3 @ 70% OFF' : activePromo === 'b1g2' ? 'BUY 1 GET 2 FREE' : activePromo.toUpperCase()}
                   </span>
                 )}
               </div>
@@ -1122,6 +1162,18 @@ _Thank you for choosing Cobb! For sizing alterations or exchanges, please quote 
               >
                 <Sparkles className="w-3 h-3 text-yellow-300" />
                 <span>B3 @ 70% Off</span>
+              </button>
+
+              <button
+                onClick={() => setActivePromo('b1g2')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-black transition flex items-center gap-1 ${
+                  activePromo === 'b1g2'
+                    ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30 ring-2 ring-purple-400'
+                    : 'bg-slate-800 text-purple-300 hover:bg-purple-950/40'
+                }`}
+              >
+                <Sparkles className="w-3 h-3 text-yellow-300" />
+                <span>B1G2 Free</span>
               </button>
 
               <button
@@ -2022,6 +2074,26 @@ _Thank you for choosing Cobb! For sizing alterations or exchanges, please quote 
                   <div className="text-xs text-slate-400 mt-0.5">70% discount applied across items when buying 3+ garments</div>
                 </div>
                 {activePromo === 'b3_70' && <CheckCircle2 className="w-5 h-5 text-amber-400" />}
+              </button>
+
+              <button
+                onClick={() => {
+                  setActivePromo('b1g2');
+                  setActiveModal(null);
+                }}
+                className={`w-full p-4 rounded-2xl border text-left transition flex items-center justify-between ${
+                  activePromo === 'b1g2'
+                    ? 'bg-purple-950/60 border-purple-500 text-white'
+                    : 'bg-slate-950 border-slate-800 hover:border-purple-500/50 text-slate-300'
+                }`}
+              >
+                <div>
+                  <div className="font-bold text-sm text-purple-300 flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-yellow-400" /> Buy 1 Get 2 Free (B1G2)
+                  </div>
+                  <div className="text-xs text-slate-400 mt-0.5">Pay for highest MRP item, next 2 lowest free</div>
+                </div>
+                {activePromo === 'b1g2' && <CheckCircle2 className="w-5 h-5 text-purple-400" />}
               </button>
 
               <button

@@ -23,7 +23,9 @@ import {
   User,
   Phone,
   ArrowRight,
-  Receipt
+  Receipt,
+  CheckSquare,
+  Square
 } from 'lucide-react';
 import { db } from '../../utils/firebase';
 import { doc, onSnapshot, setDoc, getDoc } from 'firebase/firestore';
@@ -41,8 +43,9 @@ const DISCOUNT_PRESETS = [
   { label: '70% Off', value: 70 }
 ];
 
-export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001' }) {
+export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001', setActiveTab, onOpenSpeedBilling }) {
   const [tags, setTags] = useState([]);
+  const [selectedTagIds, setSelectedTagIds] = useState([]);
   const [summary, setSummary] = useState({
     activeCount: 0,
     billedCount: 0,
@@ -86,6 +89,55 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
   const showToastMsg = (msg, type = 'success') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3500);
+  };
+
+  // --- 1-Click Fast Transfer to Zero-Mouse Speed Billing POS ---
+  const handleBillInSpeedBilling = (itemsToBill, promo = 'b1g2') => {
+    if (!itemsToBill || itemsToBill.length === 0) return;
+
+    const cartItems = itemsToBill.map(t => ({
+      barcode: t.barcode,
+      name: t.articleName || t.articleNo || 'Garment',
+      size: t.size || 'M',
+      category: t.section || 'Apparel',
+      mrp: Number(t.mrp) || 1999,
+      qty: 1,
+      discountPct: 0,
+      discountFlat: 0,
+      gstPct: 5,
+      stock: 1,
+      staff: t.salesperson || 'Cashier',
+      pendingTagId: t.id
+    }));
+
+    const payload = {
+      items: cartItems,
+      promo,
+      customerName: itemsToBill[0]?.customerName || 'Walk-in Guest',
+      customerPhone: itemsToBill[0]?.customerPhone || ''
+    };
+
+    // 1. Dispatch custom event for active SpeedBillingModal listeners
+    window.dispatchEvent(new CustomEvent('cobb_load_speed_billing', { detail: payload }));
+
+    // 2. Call parent callback if passed
+    if (typeof onOpenSpeedBilling === 'function') {
+      onOpenSpeedBilling(payload);
+    } else if (typeof setActiveTab === 'function') {
+      setActiveTab('speed_billing');
+    }
+
+    showToastMsg(`⚡ Loaded ${cartItems.length} garment(s) into Speed Billing with ${promo.toUpperCase()} offer!`, 'success');
+  };
+
+  const toggleSelectTag = (id) => {
+    setSelectedTagIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  const clearSelection = () => {
+    setSelectedTagIds([]);
   };
 
   // --- 1. Fetch from Local Backend API ---
@@ -548,31 +600,54 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
 
       {/* Smart B1G2 Combo Suggester Card (When 3 pieces in category are ready) */}
       {comboSuggestions.length > 0 && statusFilter !== 'billed' && (
-        <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/30 dark:border-amber-500/20">
-          <div className="flex items-center gap-2 mb-2 text-amber-600 dark:text-amber-400 font-bold text-sm">
-            <Sparkles className="w-4 h-4 animate-spin text-amber-500" />
-            <span>Ready for B1G2 Billing! ({comboSuggestions.length} Combos can be generated)</span>
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-transparent border border-amber-500/30 dark:border-amber-500/20 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2">
+            <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 font-bold text-sm">
+              <Sparkles className="w-4 h-4 animate-spin text-amber-500" />
+              <span>Ready for B1G2 Billing! ({comboSuggestions.length} Combos can be generated)</span>
+            </div>
+            <span className="text-[11px] text-amber-700/80 dark:text-amber-300/80 font-medium">
+              1-Click loads all 3 into Speed POS & applies B1G2 Free
+            </span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
             {comboSuggestions.map((combo, idx) => (
-              <div key={idx} className="p-3 rounded-xl bg-white dark:bg-slate-900 border border-amber-300/60 dark:border-amber-500/30 flex items-center justify-between text-xs">
+              <div key={idx} className="p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-amber-300/70 dark:border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-sm">
                 <div>
-                  <span className="font-bold text-slate-800 dark:text-slate-200">{combo.section} Triplet:</span>
-                  <div className="text-slate-500 dark:text-slate-400 text-[11px] mt-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-slate-800 dark:text-slate-200">{combo.section} Triplet:</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30">
+                      B1G2 Ready
+                    </span>
+                  </div>
+                  <div className="text-slate-500 dark:text-slate-400 text-[11px] mt-1">
                     3 Tags • Total MRP ₹{combo.totalMrp.toLocaleString('en-IN')} (Collected ₹{combo.totalCollected.toLocaleString('en-IN')})
                   </div>
+                  <div className="flex items-center gap-1.5 mt-1 font-mono text-[10px] text-slate-400">
+                    {combo.items.map(it => it.barcode).join(' • ')}
+                  </div>
                 </div>
-                <button
-                  onClick={() => {
-                    const codes = combo.items.map(x => x.barcode).join(' | ');
-                    navigator.clipboard.writeText(codes);
-                    showToastMsg(`Copied 3 Barcodes: ${codes}`, 'success');
-                  }}
-                  className="px-2.5 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-700 dark:text-amber-300 font-semibold text-[11px] flex items-center gap-1 transition-all"
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                  <span>Copy 3 Barcodes</span>
-                </button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => {
+                      const codes = combo.items.map(x => x.barcode).join(' | ');
+                      navigator.clipboard.writeText(codes);
+                      showToastMsg(`Copied 3 Barcodes: ${codes}`, 'success');
+                    }}
+                    className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-all"
+                    title="Copy 3 barcodes"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={() => handleBillInSpeedBilling(combo.items, 'b1g2')}
+                    className="px-3 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-md shadow-amber-500/20 transition-all active:scale-95"
+                    title="Transfer these 3 garments directly into Speed Billing POS under B1G2 promo"
+                  >
+                    <Zap className="w-3.5 h-3.5 fill-current" />
+                    <span>Bill Triplet</span>
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -667,20 +742,35 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
               >
                 {/* Header: Article Name & Status */}
                 <div className="flex items-start justify-between gap-2 mb-2">
-                  <div className="flex-1">
-                    <h4 className="font-bold text-sm text-slate-800 dark:text-slate-100 line-clamp-1">
-                      {tag.articleName || tag.articleNo || 'Apparel'}
-                    </h4>
-                    <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
-                      <span>{tag.section}</span>
-                      <span>•</span>
-                      <span className="font-semibold text-slate-700 dark:text-slate-300">Size: {tag.size}</span>
-                      {tag.color && (
-                        <>
-                          <span>•</span>
-                          <span>{tag.color}</span>
-                        </>
-                      )}
+                  <div className="flex items-start gap-2 flex-1">
+                    {!isBilled && (
+                      <button
+                        onClick={() => toggleSelectTag(tag.id)}
+                        className="mt-0.5 text-slate-400 hover:text-amber-500 transition-colors"
+                        title={selectedTagIds.includes(tag.id) ? "Deselect" : "Select tag to bill"}
+                      >
+                        {selectedTagIds.includes(tag.id) ? (
+                          <CheckSquare className="w-4 h-4 text-amber-500" />
+                        ) : (
+                          <Square className="w-4 h-4" />
+                        )}
+                      </button>
+                    )}
+                    <div>
+                      <h4 className="font-bold text-sm text-slate-800 dark:text-slate-100 line-clamp-1">
+                        {tag.articleName || tag.articleNo || 'Apparel'}
+                      </h4>
+                      <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
+                        <span>{tag.section}</span>
+                        <span>•</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">Size: {tag.size}</span>
+                        {tag.color && (
+                          <>
+                            <span>•</span>
+                            <span>{tag.color}</span>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -777,13 +867,24 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
 
                   <div className="flex items-center gap-1.5">
                     {!isBilled && (
-                      <button
-                        onClick={() => handleMarkBilled(tag.id)}
-                        className="px-2.5 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold transition-all"
-                        title="Mark as billed if manually combined in POS"
-                      >
-                        Mark Billed
-                      </button>
+                      <>
+                        <button
+                          onClick={() => handleBillInSpeedBilling([tag], 'b1g2')}
+                          className="px-2.5 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs font-bold flex items-center gap-1 transition-all"
+                          title="Load this garment into Speed Billing POS"
+                        >
+                          <Zap className="w-3.5 h-3.5 fill-current" />
+                          <span>Speed Bill</span>
+                        </button>
+
+                        <button
+                          onClick={() => handleMarkBilled(tag.id)}
+                          className="px-2.5 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold transition-all"
+                          title="Mark as billed if manually combined in POS"
+                        >
+                          Mark Billed
+                        </button>
+                      </>
                     )}
 
                     <button
@@ -798,6 +899,41 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Floating Bottom Action Dock for Multi-Tag Speed Billing */}
+      {selectedTagIds.length > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900/95 text-white backdrop-blur-md px-5 py-3 rounded-2xl shadow-2xl border border-slate-700 flex items-center gap-4 animate-in fade-in slide-in-from-bottom-4">
+          <div className="flex items-center gap-2">
+            <span className="w-6 h-6 rounded-full bg-amber-500 text-slate-950 font-black text-xs flex items-center justify-center">
+              {selectedTagIds.length}
+            </span>
+            <span className="text-xs font-semibold">
+              Tags Selected ({selectedTagIds.length % 3 === 0 ? `${selectedTagIds.length / 3} B1G2 Combo(s)` : `${selectedTagIds.length} garments`})
+            </span>
+          </div>
+
+          <div className="h-5 w-px bg-slate-700" />
+
+          <button
+            onClick={() => {
+              const selectedItems = tags.filter(t => selectedTagIds.includes(t.id));
+              handleBillInSpeedBilling(selectedItems, 'b1g2');
+            }}
+            className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-lg shadow-amber-500/30 transition-all active:scale-95"
+          >
+            <Zap className="w-4 h-4 fill-current" />
+            <span>Bill Selected ({selectedTagIds.length}) in Speed Billing</span>
+          </button>
+
+          <button
+            onClick={clearSelection}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white transition-colors text-xs"
+            title="Clear Selection"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 
