@@ -501,8 +501,6 @@ def send_whatsapp_message(phone_number, customer_name, dedupe_key=None, amount=N
         f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
         f"Dear *{cust_name}*,\n"
         f"Thank you for shopping at *Cobb Apparels (Pundri)* today! We truly appreciate your visit and hope you loved our latest collection. ✨\n\n"
-        f"Could you please rate your shopping experience in the poll below? 🙏\n"
-        f"_(Or reply with a number: 5 for Excellent ⭐⭐⭐⭐⭐, 1 for Poor ⭐)_\n\n"
         f"-----------------------------------\n"
         f"📍 *Store Location:*\n{LOCATION_LINK}\n"
         f"-----------------------------------\n\n"
