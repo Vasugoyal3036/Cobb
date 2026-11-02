@@ -1504,15 +1504,37 @@ app.post('/send', async (req, res) => {
             return res.status(400).json(result);
         }
 
-        // Auto-queue 30-minute customer feedback survey if this is a checkout bill dispatch
+        // On checkout: dispatch interactive rating poll immediately with the thank-you message
         const lowerMsg = (message || '').toLowerCase();
-        const isBillDispatch = lowerMsg.includes('bill') || lowerMsg.includes('invoice') || lowerMsg.includes('cobb') || lowerMsg.includes('shopping') || lowerMsg.includes('total');
-        if (isBillDispatch && result.success && !isOwnerPhone(number)) {
+        const isBillDispatch = lowerMsg.includes('bill') || lowerMsg.includes('receipt') || lowerMsg.includes('cobb') || lowerMsg.includes('shopping') || lowerMsg.includes('total') || lowerMsg.includes('digital receipt');
+        if (isBillDispatch && result.success) {
+            const cleanPhone = String(number).replace(/[^0-9]/g, '').slice(-10);
             const customerNameMatch = message.match(/(?:Hello|Dear)\s+\*?([A-Za-z\s]+?)\*?(?:!|,)/i);
             const parsedName = customerNameMatch ? customerNameMatch[1].trim() : (req.body.customerName || 'Valued Customer');
             const billNoMatch = message.match(/(?:Bill|Inv(?:oice)?)\s*(?:No\.?|#)?\s*:?\s*\*?([A-Za-z0-9\/-]+)\*?/i);
             const parsedBillNo = billNoMatch ? billNoMatch[1].trim() : (req.body.billNo || '');
-            queueNpsSurvey(number, parsedName, parsedBillNo, 30);
+
+            setReviewSession(cleanPhone, {
+                customerName: parsedName,
+                billNo: parsedBillNo,
+                step: 'waiting_rating'
+            });
+
+            // Dispatch interactive rating poll immediately with the thank-you message
+            if (isClientReady && client) {
+                try {
+                    const chatId = `91${cleanPhone}@c.us`;
+                    const ratingPoll = createRatingPoll();
+                    const sentPoll = await client.sendMessage(chatId, ratingPoll);
+                    if (sentPoll?.to?._serialized?.includes('@lid')) {
+                        lidToPhoneCache.set(sentPoll.to._serialized, cleanPhone);
+                        setReviewSession(cleanPhone, { lid: sentPoll.to._serialized });
+                    }
+                    console.log(`[CHECKOUT POLL] Rating poll dispatched immediately with thank-you bill to ${cleanPhone}`);
+                } catch (pollErr) {
+                    console.warn(`[CHECKOUT POLL ERR] Failed to dispatch rating poll to ${cleanPhone}:`, pollErr.message);
+                }
+            }
         }
 
         return res.json(result);

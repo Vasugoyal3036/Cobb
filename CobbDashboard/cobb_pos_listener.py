@@ -493,24 +493,29 @@ def send_whatsapp_message(phone_number, customer_name, dedupe_key=None, amount=N
 
     display_mobile = clean_phone[-10:] if len(clean_phone) >= 10 else clean_phone
     cust_name = str(customer_name or 'Valued Customer').strip()
+    amt_line = f"💰 *Amount Paid:* ₹{int(round(amount)):,}\n" if amount else ""
+    bill_line = f"🧾 *Bill No:* #{bill_no}\n" if bill_no else ""
 
     message_text = (
         f"🛍️ *COBB ITALY (PUNDRI) — DIGITAL RECEIPT*\n"
         f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
         f"👤 *Customer:* *{cust_name}* (📱 *{display_mobile}*)\n"
+        f"{bill_line}"
+        f"{amt_line}"
         f"━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
         f"Dear *{cust_name}*,\n"
-        f"Thank you for shopping at *Cobb Pundri* today! We hope you loved our latest collection and had a wonderful experience with us. ✨\n\n"
+        f"Thank you for shopping at *Cobb Apparels (Pundri)* today! We truly appreciate your visit and hope you loved our latest collection. ✨\n\n"
+        f"Could you please rate your shopping experience in the poll below? 🙏\n"
+        f"_(Or reply with a number: 5 for Excellent ⭐⭐⭐⭐⭐, 1 for Poor ⭐)_\n\n"
         f"-----------------------------------\n"
-        f"📍 *Store Location:*\n{LOCATION_LINK}\n\n"
-        f"⭐ *Rate Your Experience & Leave Us a Google Review:*\n{DIRECT_REVIEW_LINK}\n"
+        f"📍 *Store Location:*\n{LOCATION_LINK}\n"
         f"-----------------------------------\n\n"
         f"Stay connected with our latest drops:\n"
         f"📸 *Instagram:* {INSTAGRAM_LINK}\n"
         f"👍 *Facebook:* {FACEBOOK_LINK}\n\n"
         f"Warm Regards,\n"
         f"*Parbhat Goyal*\n"
-        f"Cobb Pundri"
+        f"Cobb Apparels (Pundri)"
     )
 
     payload = {
