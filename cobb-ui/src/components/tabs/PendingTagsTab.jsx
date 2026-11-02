@@ -25,7 +25,10 @@ import {
   ArrowRight,
   Receipt,
   CheckSquare,
-  Square
+  Square,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown
 } from 'lucide-react';
 import { db } from '../../utils/firebase';
 import { doc, onSnapshot, setDoc, getDoc } from 'firebase/firestore';
@@ -58,6 +61,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('active'); // 'active' | 'billed' | 'all'
+  const [sortBy, setSortBy] = useState('newest'); // 'low_to_high' | 'high_to_low' | 'sold_asc' | 'sold_desc' | 'discount_desc' | 'discount_asc' | 'newest' | 'oldest'
   const [showAddModal, setShowAddModal] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
   const [toast, setToast] = useState(null);
@@ -455,7 +459,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
 
   // --- Filtering & Sorting ---
   const filteredTags = useMemo(() => {
-    return tags.filter(tag => {
+    let result = tags.filter(tag => {
       if (statusFilter === 'active' && tag.status !== 'active') return false;
       if (statusFilter === 'billed' && tag.status !== 'billed') return false;
 
@@ -470,7 +474,42 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
         (tag.billedInBillNo && tag.billedInBillNo.toLowerCase().includes(q))
       );
     });
-  }, [tags, statusFilter, searchQuery]);
+
+    result = [...result].sort((a, b) => {
+      const mrpA = Number(a.mrp) || 0;
+      const mrpB = Number(b.mrp) || 0;
+      const soldA = Number(a.soldPrice) || 0;
+      const soldB = Number(b.soldPrice) || 0;
+      const discA = Number(a.discountPercent) || 0;
+      const discB = Number(b.discountPercent) || 0;
+      const dateA = new Date(a.createdAt || 0).getTime();
+      const dateB = new Date(b.createdAt || 0).getTime();
+
+      switch (sortBy) {
+        case 'low_to_high':
+        case 'price_asc':
+          return mrpA - mrpB;
+        case 'high_to_low':
+        case 'price_desc':
+          return mrpB - mrpA;
+        case 'sold_asc':
+          return soldA - soldB;
+        case 'sold_desc':
+          return soldB - soldA;
+        case 'discount_desc':
+          return discB - discA;
+        case 'discount_asc':
+          return discA - discB;
+        case 'oldest':
+          return dateA - dateB;
+        case 'newest':
+        default:
+          return dateB - dateA;
+      }
+    });
+
+    return result;
+  }, [tags, statusFilter, searchQuery, sortBy]);
 
   // --- Smart B1G2 Combo Suggester (Find sets of 3 pending tags in similar category) ---
   const comboSuggestions = useMemo(() => {
@@ -483,13 +522,14 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
     });
     const triplets = [];
     Object.entries(grouped).forEach(([section, list]) => {
-      if (list.length >= 3) {
-        for (let i = 0; i + 2 < list.length; i += 3) {
+      const sortedList = [...list].sort((a, b) => (Number(b.mrp) || 0) - (Number(a.mrp) || 0));
+      if (sortedList.length >= 3) {
+        for (let i = 0; i + 2 < sortedList.length; i += 3) {
           triplets.push({
             section,
-            items: [list[i], list[i + 1], list[i + 2]],
-            totalMrp: (Number(list[i].mrp) || 0) + (Number(list[i + 1].mrp) || 0) + (Number(list[i + 2].mrp) || 0),
-            totalCollected: (Number(list[i].soldPrice) || 0) + (Number(list[i + 1].soldPrice) || 0) + (Number(list[i + 2].soldPrice) || 0)
+            items: [sortedList[i], sortedList[i + 1], sortedList[i + 2]],
+            totalMrp: (Number(sortedList[i].mrp) || 0) + (Number(sortedList[i + 1].mrp) || 0) + (Number(sortedList[i + 2].mrp) || 0),
+            totalCollected: (Number(sortedList[i].soldPrice) || 0) + (Number(sortedList[i + 1].soldPrice) || 0) + (Number(sortedList[i + 2].soldPrice) || 0)
           });
         }
       }
@@ -654,12 +694,13 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
         </div>
       )}
 
-      {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-        <div className="flex items-center bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700 w-full sm:w-auto">
+      {/* Filter, Sort and Search Bar */}
+      <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+        {/* Status Filter Tabs */}
+        <div className="flex items-center bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700 overflow-x-auto">
           <button
             onClick={() => setStatusFilter('active')}
-            className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
+            className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
               statusFilter === 'active'
                 ? 'bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-sm'
                 : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
@@ -669,7 +710,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
           </button>
           <button
             onClick={() => setStatusFilter('billed')}
-            className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
+            className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
               statusFilter === 'billed'
                 ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm'
                 : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
@@ -679,7 +720,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
           </button>
           <button
             onClick={() => setStatusFilter('all')}
-            className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
+            className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
               statusFilter === 'all'
                 ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm'
                 : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
@@ -689,15 +730,67 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
           </button>
         </div>
 
-        <div className="relative w-full sm:w-72">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder="Search barcode, article, staff..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-rose-500"
-          />
+        {/* Sort Controls & Search Bar */}
+        <div className="flex flex-wrap sm:flex-nowrap items-center gap-2">
+          {/* Quick 1-Click Low to High / High to Low Buttons */}
+          <div className="flex items-center bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700 shrink-0">
+            <button
+              onClick={() => setSortBy('low_to_high')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+                sortBy === 'low_to_high'
+                  ? 'bg-rose-500 text-white shadow-sm'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+              }`}
+              title="Sort articles by Price: Low to High"
+            >
+              <ArrowUp className="w-3.5 h-3.5" />
+              <span>Low to High</span>
+            </button>
+            <button
+              onClick={() => setSortBy('high_to_low')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+                sortBy === 'high_to_low'
+                  ? 'bg-rose-500 text-white shadow-sm'
+                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+              }`}
+              title="Sort articles by Price: High to Low"
+            >
+              <ArrowDown className="w-3.5 h-3.5" />
+              <span>High to Low</span>
+            </button>
+          </div>
+
+          {/* Advanced Sort Dropdown */}
+          <div className="relative shrink-0">
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="pl-2.5 pr-8 py-1.5 text-xs font-semibold rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-rose-500 appearance-none cursor-pointer"
+              title="Choose sorting criteria"
+            >
+              <option value="newest">🕒 Newest First</option>
+              <option value="oldest">🕒 Oldest First</option>
+              <option value="low_to_high">⬆️ MRP: Low to High</option>
+              <option value="high_to_low">⬇️ MRP: High to Low</option>
+              <option value="sold_asc">⬆️ Sold Price: Low to High</option>
+              <option value="sold_desc">⬇️ Sold Price: High to Low</option>
+              <option value="discount_desc">⬇️ Discount %: High to Low</option>
+              <option value="discount_asc">⬆️ Discount %: Low to High</option>
+            </select>
+            <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+
+          {/* Search Box */}
+          <div className="relative flex-1 sm:w-60 min-w-[180px]">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search barcode, article..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-rose-500"
+            />
+          </div>
         </div>
       </div>
 
