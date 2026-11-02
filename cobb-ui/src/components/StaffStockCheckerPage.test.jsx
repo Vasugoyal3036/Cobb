@@ -109,10 +109,11 @@ describe('StaffStockCheckerPage [Floor Mobile Stock Checker]', () => {
       expect(screen.getByText('₹2,699')).toBeDefined();
     });
 
-    // Check size boxes for grouped colors
-    expect(screen.getAllByText('38').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('40').length).toBeGreaterThan(0);
-    expect(screen.getAllByText('42').length).toBeGreaterThan(0);
+    // Check size list rows ("38 size  2 available") for grouped colors
+    expect(screen.getAllByText(/38 size/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/40 size/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/42 size/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/available/i).length).toBeGreaterThan(0);
   });
 
   it('allows switching colors to view sizes for that color', async () => {
@@ -155,7 +156,8 @@ describe('StaffStockCheckerPage [Floor Mobile Stock Checker]', () => {
 
     await waitFor(() => {
       expect(screen.getAllByText('OLIVE').length).toBeGreaterThan(0);
-      expect(screen.getByText('42')).toBeDefined();
+      expect(screen.getByText(/42 size/i)).toBeDefined();
+      expect(screen.getAllByText(/3 available/i).length).toBeGreaterThan(0);
     });
   });
 
