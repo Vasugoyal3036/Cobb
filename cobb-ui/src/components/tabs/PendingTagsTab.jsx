@@ -660,8 +660,20 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                       B1G2 Ready
                     </span>
                   </div>
+                  <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                    <span className="text-[10px] uppercase font-black text-amber-700 dark:text-amber-400">MRPs:</span>
+                    {combo.items.map((it, i) => (
+                      <span key={i} className="px-2 py-0.5 rounded-md bg-amber-500/20 border border-amber-500/30 text-amber-900 dark:text-amber-200 font-black text-xs">
+                        ₹{Number(it.mrp || 0).toLocaleString('en-IN')}
+                      </span>
+                    ))}
+                    <span className="text-slate-400 font-bold text-xs">=</span>
+                    <span className="font-black text-slate-900 dark:text-white text-xs">
+                      ₹{combo.totalMrp.toLocaleString('en-IN')} Total MRP
+                    </span>
+                  </div>
                   <div className="text-slate-500 dark:text-slate-400 text-[11px] mt-1">
-                    3 Tags • Total MRP ₹{combo.totalMrp.toLocaleString('en-IN')} (Collected ₹{combo.totalCollected.toLocaleString('en-IN')})
+                    3 Tags • Single-piece cash realized: <span className="font-bold text-emerald-600 dark:text-emerald-400">₹{combo.totalCollected.toLocaleString('en-IN')}</span>
                   </div>
                   <div className="flex items-center gap-1.5 mt-1 font-mono text-[10px] text-slate-400">
                     {combo.items.map(it => it.barcode).join(' • ')}
@@ -835,87 +847,102 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
               >
                 {/* Header: Article Name & Status */}
                 <div className="flex items-start justify-between gap-2 mb-2">
-                  <div className="flex items-start gap-2 flex-1">
+                  <div className="flex items-start gap-2.5 flex-1">
                     {!isBilled && (
                       <button
                         onClick={() => toggleSelectTag(tag.id)}
-                        className="mt-0.5 text-slate-400 hover:text-amber-500 transition-colors"
+                        className="mt-0.5 text-slate-400 hover:text-amber-500 transition-colors shrink-0"
                         title={selectedTagIds.includes(tag.id) ? "Deselect" : "Select tag to bill"}
                       >
                         {selectedTagIds.includes(tag.id) ? (
-                          <CheckSquare className="w-4 h-4 text-amber-500" />
+                          <CheckSquare className="w-5 h-5 text-amber-500" />
                         ) : (
-                          <Square className="w-4 h-4" />
+                          <Square className="w-5 h-5" />
                         )}
                       </button>
                     )}
-                    <div>
-                      <h4 className="font-bold text-sm text-slate-800 dark:text-slate-100 line-clamp-1">
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-bold text-sm sm:text-base text-slate-900 dark:text-slate-100 truncate">
                         {tag.articleName || tag.articleNo || 'Apparel'}
                       </h4>
-                      <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
-                        <span>{tag.section}</span>
-                        <span>•</span>
-                        <span className="font-semibold text-slate-700 dark:text-slate-300">Size: {tag.size}</span>
+                      <div className="flex items-center gap-1.5 mt-1 text-[11px] flex-wrap">
+                        <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold border border-slate-200 dark:border-slate-700">
+                          {tag.section}
+                        </span>
+                        <span className="px-2 py-0.5 rounded-md bg-purple-500/15 text-purple-700 dark:text-purple-300 font-bold border border-purple-500/30">
+                          Size: {tag.size}
+                        </span>
                         {tag.color && (
-                          <>
-                            <span>•</span>
-                            <span>{tag.color}</span>
-                          </>
+                          <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                            {tag.color}
+                          </span>
                         )}
                       </div>
                     </div>
                   </div>
 
                   {isBilled ? (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" />
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1 shrink-0">
+                      <CheckCircle2 className="w-3.5 h-3.5" />
                       <span>Billed</span>
                     </span>
                   ) : (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 flex items-center gap-1">
-                      <Clock className="w-3 h-3 animate-pulse" />
+                    <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 flex items-center gap-1 shrink-0">
+                      <Clock className="w-3.5 h-3.5 animate-pulse" />
                       <span>Pending</span>
                     </span>
                   )}
                 </div>
 
+                {/* HERO FOCUS: LARGE HIGH-CONTRAST MRP CONTAINER */}
+                <div className="my-2.5 p-3.5 rounded-2xl bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-slate-100/50 dark:from-amber-500/15 dark:via-slate-800 dark:to-slate-800/80 border-2 border-amber-400/60 dark:border-amber-500/40 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-md border border-amber-500/30">
+                          TAG MRP
+                        </span>
+                        <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">Original Price</span>
+                      </div>
+                      <div className="text-3xl font-black text-slate-900 dark:text-white tracking-tight mt-1 font-mono">
+                        ₹{Number(tag.mrp || 0).toLocaleString('en-IN')}
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-end justify-center">
+                      <span className="px-2.5 py-1 rounded-xl text-xs font-black bg-rose-500 text-white shadow-sm shadow-rose-500/30">
+                        -{tag.discountPercent}% OFF
+                      </span>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 font-medium">
+                        Sold At: <span className="font-black text-emerald-600 dark:text-emerald-400 text-sm">₹{Number(tag.soldPrice || 0).toLocaleString('en-IN')}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Barcode Strip with 1-Click Copy */}
-                <div className="flex items-center justify-between p-2 rounded-xl bg-slate-100 dark:bg-slate-800/80 my-2.5 font-mono text-xs text-slate-700 dark:text-slate-200">
-                  <span className="font-bold tracking-wider">{tag.barcode}</span>
+                <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 font-mono my-2 text-xs">
+                  <div className="flex items-center gap-2">
+                    <Tag className="w-3.5 h-3.5 text-slate-400" />
+                    <span className="font-black tracking-widest text-slate-800 dark:text-slate-100 text-xs sm:text-sm">{tag.barcode}</span>
+                  </div>
                   <button
                     onClick={() => handleCopyBarcode(tag.barcode, tag.id)}
-                    className="p-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 transition-all"
+                    className="px-2 py-1 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-[11px] font-bold flex items-center gap-1 transition-all"
                     title="Copy barcode to paste into Speed Billing"
                   >
                     {copiedId === tag.id ? (
-                      <Check className="w-4 h-4 text-emerald-500" />
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-500" />
+                        <span className="text-emerald-500">Copied</span>
+                      </>
                     ) : (
-                      <Copy className="w-4 h-4" />
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Copy</span>
+                      </>
                     )}
                   </button>
-                </div>
-
-                {/* Price Breakdown Pill */}
-                <div className="grid grid-cols-3 gap-2 p-2.5 rounded-xl bg-gradient-to-r from-slate-50 to-rose-50/50 dark:from-slate-800/40 dark:to-rose-950/20 border border-slate-200/60 dark:border-slate-700/50 my-2 text-center">
-                  <div>
-                    <div className="text-[10px] text-slate-400">MRP</div>
-                    <div className="text-xs font-bold text-slate-700 dark:text-slate-200 line-through">
-                      ₹{Number(tag.mrp || 0).toLocaleString('en-IN')}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] text-rose-500 font-semibold">Discount</div>
-                    <div className="text-xs font-black text-rose-600 dark:text-rose-400">
-                      -{tag.discountPercent}%
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] text-emerald-500 font-semibold">Sold At</div>
-                    <div className="text-xs font-black text-emerald-600 dark:text-emerald-400">
-                      ₹{Number(tag.soldPrice || 0).toLocaleString('en-IN')}
-                    </div>
-                  </div>
                 </div>
 
                 {/* Bill Resolution details if billed */}
@@ -1233,9 +1260,10 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
 
                 {/* Live Realization Preview */}
                 {form.mrp && form.soldPrice && (
-                  <div className="flex items-center justify-between text-xs pt-1 border-t border-rose-200/60 dark:border-rose-900/40 text-slate-600 dark:text-slate-300">
-                    <span>Customer Paid: <strong className="text-emerald-600 dark:text-emerald-400">₹{form.soldPrice}</strong></span>
-                    <span>Customer Saved: <strong className="text-rose-600 dark:text-rose-400">₹{Math.max(0, form.mrp - form.soldPrice)}</strong></span>
+                  <div className="flex items-center justify-between text-xs pt-1.5 border-t border-rose-200/60 dark:border-rose-900/40 text-slate-600 dark:text-slate-300">
+                    <span>MRP: <strong className="text-slate-900 dark:text-white font-black text-sm">₹{form.mrp}</strong></span>
+                    <span>Paid: <strong className="text-emerald-600 dark:text-emerald-400 font-black">₹{form.soldPrice}</strong></span>
+                    <span>Saved: <strong className="text-rose-600 dark:text-rose-400 font-bold">₹{Math.max(0, form.mrp - form.soldPrice)}</strong></span>
                   </div>
                 )}
               </div>
