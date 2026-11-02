@@ -102,6 +102,7 @@ export default function StaffStockCheckerPage({
   const [errorMsg, setErrorMsg] = useState('');
   const [stockData, setStockData] = useState(null);
   const [selectedColorFilter, setSelectedColorFilter] = useState('ALL'); // 'ALL' or specific color
+  const [selectedSizeFilter, setSelectedSizeFilter] = useState('ALL'); // 'ALL' or specific size
   const [copiedBarcode, setCopiedBarcode] = useState(null);
 
   // PWA Install / Shortcut State
@@ -238,6 +239,8 @@ export default function StaffStockCheckerPage({
 
       if (res.data && res.data.success) {
         setStockData(res.data);
+        setSelectedColorFilter('ALL');
+        setSelectedSizeFilter('ALL');
         saveToRecentScans(res.data);
 
         // Haptic feedback & audio
@@ -586,19 +589,40 @@ export default function StaffStockCheckerPage({
     };
   }, []);
 
-  // Filtered color list based on selectedColorFilter, with COMBINED sizes and SOLD articles filtered out
+  // All unique available sizes across all colors for 1-tap size filter chips
+  const allAvailableSizes = useMemo(() => {
+    if (!stockData?.colors) return [];
+    const sizeMap = {};
+    stockData.colors.forEach(c => {
+      (c.sizes || []).forEach(sz => {
+        const stock = Math.max(0, Number(sz.stock || 0));
+        if (stock > 0) {
+          const sName = String(sz.size || '').trim();
+          if (!sizeMap[sName]) {
+            sizeMap[sName] = {
+              size: sName,
+              totalStock: 0,
+              sizeOrder: sz.sizeOrder || 99
+            };
+          }
+          sizeMap[sName].totalStock += stock;
+        }
+      });
+    });
+    return sortSizesNaturally(Object.values(sizeMap));
+  }, [stockData]);
+
+  // Filtered color list based on selectedColorFilter AND selectedSizeFilter
   const displayedColors = useMemo(() => {
     if (!stockData?.colors) return [];
-    const sourceColors = selectedColorFilter === 'ALL'
+    let sourceColors = selectedColorFilter === 'ALL'
       ? stockData.colors
       : stockData.colors.filter(c => c.color === selectedColorFilter);
 
-    return sourceColors.map(colorGroup => {
-      // Combine identical sizes and sum their stock
+    let processed = sourceColors.map(colorGroup => {
       const sizeMap = {};
       (colorGroup.sizes || []).forEach(item => {
         const stockQty = Math.max(0, Number(item.stock || 0));
-        // Filter out sold articles (stock <= 0)
         if (stockQty <= 0) return;
 
         const sz = String(item.size || 'Standard').trim();
@@ -618,13 +642,26 @@ export default function StaffStockCheckerPage({
         }
       });
 
-      const combinedSizes = sortSizesNaturally(Object.values(sizeMap));
+      let combinedSizes = sortSizesNaturally(Object.values(sizeMap));
+
+      // If a specific size filter is active (e.g. '34'), filter to only that size
+      if (selectedSizeFilter !== 'ALL') {
+        combinedSizes = combinedSizes.filter(s => s.size === selectedSizeFilter);
+      }
+
       return {
         ...colorGroup,
         sizes: combinedSizes
       };
     });
-  }, [stockData, selectedColorFilter]);
+
+    // If size filter is active, only show colours that have that size available!
+    if (selectedSizeFilter !== 'ALL') {
+      processed = processed.filter(c => c.sizes.length > 0);
+    }
+
+    return processed;
+  }, [stockData, selectedColorFilter, selectedSizeFilter]);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans pb-16 selection:bg-amber-500 selection:text-slate-950">
@@ -874,61 +911,159 @@ export default function StaffStockCheckerPage({
                 </div>
               </div>
 
-              {/* B1G2 Promo / Realization Reminder */}
-              <div className="mt-3 pt-3 border-t border-slate-800 flex items-center justify-between text-[11px]">
-                <div className="flex items-center gap-1.5 text-amber-400 font-bold">
-                  <Sparkles className="w-3.5 h-3.5 fill-current" />
-                  <span>Buy 1 Get 2 Free Applicable</span>
-                </div>
-                {stockData.scannedBarcode && (
-                  <div className="text-slate-500 font-mono text-[10px]">
-                    Matched: {stockData.scannedBarcode}
+              {/* Instant Offer & Net Deal Price Breakdown */}
+              {stockData.mrp > 0 && (
+                <div className="mt-3 pt-2.5 border-t border-slate-800/80 space-y-2">
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    {/* B1G2 Deal */}
+                    <div className="p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between shadow-sm">
+                      <div>
+                        <div className="text-[10.5px] font-black text-amber-300 uppercase tracking-wider flex items-center gap-1">
+                          <Sparkles className="w-3 h-3 fill-current text-amber-400" />
+                          <span>Buy 1 Get 2 Free</span>
+                        </div>
+                        <div className="text-[10px] text-slate-400 mt-0.5">3 pcs @ ₹{Number(stockData.mrp).toLocaleString('en-IN')}</div>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xs sm:text-sm font-black text-amber-300">
+                          ₹{Math.round(stockData.mrp / 3).toLocaleString('en-IN')}
+                        </span>
+                        <span className="text-[9px] text-slate-400 block font-medium">/pc net</span>
+                      </div>
+                    </div>
+
+                    {/* Flat 50% Deal */}
+                    <div className="p-2.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between shadow-sm">
+                      <div>
+                        <div className="text-[10.5px] font-black text-emerald-300 uppercase tracking-wider flex items-center gap-1">
+                          <Tag className="w-3 h-3 text-emerald-400" />
+                          <span>Flat 50% Off</span>
+                        </div>
+                        <div className="text-[10px] text-slate-400 mt-0.5">Single piece deal</div>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xs sm:text-sm font-black text-emerald-300">
+                          ₹{Math.round(stockData.mrp * 0.5).toLocaleString('en-IN')}
+                        </span>
+                        <span className="text-[9px] text-slate-400 block font-medium">net price</span>
+                      </div>
+                    </div>
                   </div>
-                )}
-              </div>
+
+                  {stockData.scannedBarcode && (
+                    <div className="text-slate-500 font-mono text-[10px] text-right">
+                      Matched Scanned Code: {stockData.scannedBarcode}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
-            {/* --- Quick Filter / Jump Chips Bar --- */}
-            {stockData.colors && stockData.colors.length > 1 && (
-              <div className="space-y-1.5">
-                <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1 flex items-center justify-between">
-                  <span>Filter / Jump to Color</span>
-                  <span>{stockData.colors.length} Available</span>
-                </div>
-                <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-                  <button
-                    onClick={() => setSelectedColorFilter('ALL')}
-                    className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                      selectedColorFilter === 'ALL'
-                        ? 'bg-amber-500 text-slate-950 font-black shadow-md shadow-amber-500/20'
-                        : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    All Colors ({stockData.totalStock})
-                  </button>
-
-                  {stockData.colors.map(c => {
-                    const isSelected = selectedColorFilter === c.color;
-                    return (
+            {/* --- Quick Filter Chips: 1-Tap Size Filter & Colour Filter --- */}
+            {stockData.colors && stockData.colors.length > 0 && (
+              <div className="space-y-2.5">
+                {/* 1. 1-Tap "Find My Size" Filter Chips */}
+                {allAvailableSizes.length > 0 && (
+                  <div className="space-y-1">
+                    <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 text-amber-400">
+                        <Tag className="w-3 h-3" />
+                        <span>Find Size (All Colours)</span>
+                      </span>
+                      {selectedSizeFilter !== 'ALL' && (
+                        <button
+                          type="button"
+                          onClick={() => setSelectedSizeFilter('ALL')}
+                          className="text-[10px] text-amber-400 hover:underline font-bold"
+                        >
+                          Clear Size Filter
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
                       <button
-                        key={c.color}
-                        onClick={() => setSelectedColorFilter(c.color)}
-                        className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
-                          isSelected
+                        type="button"
+                        onClick={() => setSelectedSizeFilter('ALL')}
+                        className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                          selectedSizeFilter === 'ALL'
                             ? 'bg-amber-500 text-slate-950 font-black shadow-md shadow-amber-500/20'
                             : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
                         }`}
                       >
-                        <span
-                          className="w-2.5 h-2.5 rounded-full shrink-0"
-                          style={{ backgroundColor: getColorDot(c.color) }}
-                        />
-                        <span>{c.color}</span>
-                        <span className="text-[10px] opacity-80">({c.totalStock})</span>
+                        All Sizes ({stockData.totalStock})
                       </button>
-                    );
-                  })}
-                </div>
+
+                      {allAvailableSizes.map(sz => {
+                        const isSelected = selectedSizeFilter === sz.size;
+                        return (
+                          <button
+                            key={sz.size}
+                            type="button"
+                            onClick={() => setSelectedSizeFilter(isSelected ? 'ALL' : sz.size)}
+                            className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                              isSelected
+                                ? 'bg-amber-500 text-slate-950 font-black shadow-md shadow-amber-500/20'
+                                : 'bg-slate-900 border border-slate-800 text-slate-300 hover:text-white'
+                            }`}
+                          >
+                            <span>{sz.size}</span>
+                            <span className={`text-[10px] px-1 py-0.2 rounded ${isSelected ? 'bg-slate-950/20 text-slate-950 font-black' : 'bg-slate-800 text-slate-400'}`}>
+                              {sz.totalStock}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. Quick Colour Filter Chips */}
+                {stockData.colors.length > 1 && (
+                  <div className="space-y-1">
+                    <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1 flex items-center justify-between">
+                      <span>Filter by Colour</span>
+                      <span>{stockData.colors.length} Colours</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedColorFilter('ALL')}
+                        className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                          selectedColorFilter === 'ALL'
+                            ? 'bg-amber-500 text-slate-950 font-black shadow-md shadow-amber-500/20'
+                            : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
+                        }`}
+                      >
+                        All Colours
+                      </button>
+
+                      {stockData.colors.map(c => {
+                        const isSelected = selectedColorFilter === c.color;
+                        return (
+                          <button
+                            key={c.color}
+                            type="button"
+                            onClick={() => setSelectedColorFilter(isSelected ? 'ALL' : c.color)}
+                            className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
+                              isSelected
+                                ? 'bg-amber-500 text-slate-950 font-black shadow-md shadow-amber-500/20'
+                                : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
+                            }`}
+                          >
+                            <span
+                              className="w-2.5 h-2.5 rounded-full shrink-0"
+                              style={{ backgroundColor: getColorDot(c.color) }}
+                            />
+                            <span>{c.color}</span>
+                            <span className={`text-[10px] ${isSelected ? 'text-slate-950/80 font-black' : 'text-slate-500'}`}>
+                              ({c.totalStock})
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

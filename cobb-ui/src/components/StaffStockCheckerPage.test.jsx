@@ -233,4 +233,97 @@ describe('StaffStockCheckerPage [Floor Mobile Stock Checker]', () => {
       expect(screen.queryByText(/0 available/i)).toBeNull();
     });
   });
+
+  it('displays instant offer breakdown with Buy 1 Get 2 and Flat 50% net prices', async () => {
+    const mockData = {
+      success: true,
+      articleNo: 'SHIRT-777',
+      itemName: 'SLIM FIT SHIRT',
+      mrp: 3000,
+      totalStock: 5,
+      matchedColor: 'BLUE',
+      colors: [
+        {
+          color: 'BLUE',
+          totalStock: 5,
+          sizes: [{ size: '40', stock: 5, barcode: 'B-777' }]
+        }
+      ]
+    };
+
+    axios.get.mockResolvedValueOnce({ data: mockData });
+
+    render(<StaffStockCheckerPage onClose={vi.fn()} />);
+
+    const input = screen.getByPlaceholderText(/Enter barcode or article no/i);
+    fireEvent.change(input, { target: { value: 'SHIRT-777' } });
+    fireEvent.click(screen.getByRole('button', { name: /find/i }));
+
+    await waitFor(() => {
+      // MRP ₹3,000
+      expect(screen.getByText('₹3,000')).toBeDefined();
+      // Buy 1 Get 2 Free: ₹3,000 / 3 = ₹1,000 /pc net
+      expect(screen.getByText(/Buy 1 Get 2 Free/i)).toBeDefined();
+      expect(screen.getByText('₹1,000')).toBeDefined();
+      // Flat 50% Off: ₹3,000 * 0.5 = ₹1,500 net price
+      expect(screen.getByText(/Flat 50% Off/i)).toBeDefined();
+      expect(screen.getByText('₹1,500')).toBeDefined();
+    });
+  });
+
+  it('filters colours by selected size when 1-tap size chip is tapped', async () => {
+    const mockData = {
+      success: true,
+      articleNo: 'POLO-55',
+      itemName: 'COTTON POLO',
+      mrp: 1999,
+      totalStock: 6,
+      colors: [
+        {
+          color: 'NAVY',
+          totalStock: 4,
+          sizes: [
+            { size: 'M', stock: 2, barcode: 'N-M' },
+            { size: 'L', stock: 2, barcode: 'N-L' }
+          ]
+        },
+        {
+          color: 'BLACK',
+          totalStock: 2,
+          sizes: [
+            { size: 'M', stock: 2, barcode: 'B-M' }
+            // No L in Black!
+          ]
+        }
+      ]
+    };
+
+    axios.get.mockResolvedValueOnce({ data: mockData });
+
+    render(<StaffStockCheckerPage onClose={vi.fn()} />);
+
+    const input = screen.getByPlaceholderText(/Enter barcode or article no/i);
+    fireEvent.change(input, { target: { value: 'POLO-55' } });
+    fireEvent.click(screen.getByRole('button', { name: /find/i }));
+
+    await waitFor(() => {
+      expect(screen.getAllByText('POLO-55').length).toBeGreaterThan(0);
+    });
+
+    // Both Navy and Black are initially visible
+    expect(screen.getAllByText('NAVY').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('BLACK').length).toBeGreaterThan(0);
+
+    // Tap on size 'L' chip (only Navy has L!)
+    const sizeLBtn = screen.getByRole('button', { name: /^L/i });
+    fireEvent.click(sizeLBtn);
+
+    await waitFor(() => {
+      // Navy has L, so it stays visible as a color card
+      expect(screen.getByRole('heading', { name: /NAVY/i })).toBeDefined();
+      expect(screen.getByText(/^L size$/)).toBeDefined();
+      // Black has NO L, so its card is filtered out!
+      expect(screen.queryByRole('heading', { name: /BLACK/i })).toBeNull();
+    });
+  });
 });
