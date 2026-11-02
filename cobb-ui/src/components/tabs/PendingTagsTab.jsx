@@ -66,6 +66,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
   const [sortBy, setSortBy] = useState('newest'); // 'low_to_high' | 'high_to_low' | 'sold_asc' | 'sold_desc' | 'discount_desc' | 'discount_asc' | 'newest' | 'oldest'
   const [viewMode, setViewMode] = useState('list'); // 'list' | 'grid'
   const [selectedMrpFilter, setSelectedMrpFilter] = useState(null); // null means All MRPs
+  const [tripletBreakdownModal, setTripletBreakdownModal] = useState(null); // B1G2 Triplet discount review modal
   const [showAddModal, setShowAddModal] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
   const [toast, setToast] = useState(null);
@@ -136,6 +137,70 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
     }
 
     showToastMsg(`⚡ Loaded ${cartItems.length} garment(s) into Speed Billing with ${promo.toUpperCase()} offer!`, 'success');
+  };
+
+  // --- Open Triplet Breakdown & Discount Preview ---
+  const openTripletBreakdown = (items, section = 'General') => {
+    if (!items || items.length === 0) return;
+
+    // Sort descending by MRP (highest MRP is the paid piece in B1G2)
+    const sorted = [...items].sort((a, b) => (Number(b.mrp) || 0) - (Number(a.mrp) || 0));
+    const highestMrp = Number(sorted[0].mrp) || 0;
+    const totalMrp = sorted.reduce((s, it) => s + (Number(it.mrp) || 0), 0);
+    const totalCollected = sorted.reduce((s, it) => s + (Number(it.soldPrice) || 0), 0);
+    const totalDiscount = Math.max(0, totalMrp - highestMrp);
+    const overallDiscountPct = totalMrp > 0 ? ((totalDiscount / totalMrp) * 100).toFixed(1) : '0.0';
+
+    // Itemized discount breakdown for each of the 3 articles
+    const breakdownItems = sorted.map((item, idx) => {
+      const mrp = Number(item.mrp) || 0;
+      const isPaid = idx === 0;
+      const b1g2DiscFlat = isPaid ? 0 : mrp;
+      const b1g2DiscPct = isPaid ? 0 : 100;
+      const b1g2Net = isPaid ? mrp : 0;
+      
+      // Proportional discount across triplet (for GST invoices)
+      const propDiscFlat = totalMrp > 0 ? Math.round(mrp * (totalDiscount / totalMrp)) : 0;
+      const propNet = mrp - propDiscFlat;
+
+      return {
+        ...item,
+        isPaid,
+        b1g2DiscFlat,
+        b1g2DiscPct,
+        b1g2Net,
+        propDiscFlat,
+        propNet,
+        tagDiscount: Number(item.discountPercent) || 0,
+        tagSoldPrice: Number(item.soldPrice) || 0
+      };
+    });
+
+    setTripletBreakdownModal({
+      section,
+      items: breakdownItems,
+      totalMrp,
+      highestMrp,
+      totalDiscount,
+      overallDiscountPct,
+      totalCollected,
+      variance: totalCollected - highestMrp
+    });
+  };
+
+  const handleMarkTripletBilled = async (items) => {
+    if (!items || items.length === 0) return;
+    const billNo = window.prompt('Enter Bill No (or leave blank for B1G2-COMBO):', 'B1G2-COMBO');
+    if (billNo === null) return;
+    try {
+      for (const it of items) {
+        await handleMarkBilled(it.id, billNo);
+      }
+      setTripletBreakdownModal(null);
+      showToastMsg('All 3 tags in triplet marked as billed in ' + billNo + '!', 'success');
+    } catch (err) {
+      showToastMsg('Failed to mark triplet billed: ' + err.message, 'error');
+    }
   };
 
   const toggleSelectTag = (id) => {
@@ -702,7 +767,13 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                     </span>
                   </div>
                   <div className="text-slate-500 dark:text-slate-400 text-[11px] mt-1">
-                    3 Tags • Single-piece cash realized: <span className="font-bold text-emerald-600 dark:text-emerald-400">₹{combo.totalCollected.toLocaleString('en-IN')}</span>
+                    <span>3 Tags</span>
+                    <span>•</span>
+                    <span className="text-rose-500 font-bold">
+                      Discount: -₹{(combo.totalMrp - Math.max(...combo.items.map(x => Number(x.mrp) || 0))).toLocaleString('en-IN')} ({Math.round(((combo.totalMrp - Math.max(...combo.items.map(x => Number(x.mrp) || 0))) / combo.totalMrp) * 100)}% Off)
+                    </span>
+                    <span>•</span>
+                    <span>Single-piece cash: <strong className="text-emerald-600 dark:text-emerald-400">₹{combo.totalCollected.toLocaleString('en-IN')}</strong></span>
                   </div>
                   <div className="flex items-center gap-1.5 mt-1 font-mono text-[10px] text-slate-400">
                     {combo.items.map(it => it.barcode).join(' • ')}
@@ -721,7 +792,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                     <Copy className="w-3.5 h-3.5" />
                   </button>
                   <button
-                    onClick={() => handleBillInSpeedBilling(combo.items, 'b1g2')}
+                    onClick={() => openTripletBreakdown(combo.items, `${combo.section} Triplet`)}
                     className="px-3 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-md shadow-amber-500/20 transition-all active:scale-95"
                     title="Transfer these 3 garments directly into Speed Billing POS under B1G2 promo"
                   >
@@ -936,7 +1007,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                   <button
                     onClick={() => {
                       const firstThree = group.items.slice(0, 3);
-                      handleBillInSpeedBilling(firstThree, 'b1g2');
+                      openTripletBreakdown(firstThree, `₹${group.mrp.toLocaleString('en-IN')} MRP Group`);
                     }}
                     className="px-2 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 text-[11px] font-black flex items-center gap-1 shadow-sm active:scale-95 transition-all"
                     title={`1-Click: Bill 3 pieces of ₹${group.mrp.toLocaleString('en-IN')} under B1G2 in Speed Billing`}
@@ -1420,7 +1491,11 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
           <button
             onClick={() => {
               const selectedItems = tags.filter(t => selectedTagIds.includes(t.id));
-              handleBillInSpeedBilling(selectedItems, 'b1g2');
+              if (selectedItems.length === 3) {
+                openTripletBreakdown(selectedItems, 'Selected 3-Piece Triplet');
+              } else {
+                handleBillInSpeedBilling(selectedItems, 'b1g2');
+              }
             }}
             className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black text-xs flex items-center gap-1.5 shadow-lg shadow-amber-500/30 transition-all active:scale-95"
           >
@@ -1690,6 +1765,289 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* --- B1G2 TRIPLET BILLING & DISCOUNT BREAKDOWN MODAL --- */}
+      {tripletBreakdownModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl max-w-3xl w-full max-h-[92vh] flex flex-col overflow-hidden">
+            {/* Modal Header */}
+            <div className="px-6 py-5 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-r from-amber-500/10 via-rose-500/10 to-transparent flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-amber-500 to-rose-500 text-white shadow-md shadow-amber-500/30">
+                  <Receipt className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">
+                      B1G2 Triplet Discount Breakdown
+                    </h2>
+                    <span className="px-2 py-0.5 rounded-full text-[11px] font-black bg-amber-500 text-slate-950">
+                      3 Articles
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    {tripletBreakdownModal.section} • Full itemized discount breakdown before billing
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setTripletBreakdownModal(null)}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                title="Close Breakdown"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Scrollable Body */}
+            <div className="p-6 overflow-y-auto space-y-6">
+              {/* Financial Bento Summary Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {/* Gross MRP */}
+                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60">
+                  <div className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">
+                    Gross 3-Pc MRP
+                  </div>
+                  <div className="text-xl font-black text-slate-900 dark:text-white">
+                    ₹{tripletBreakdownModal.totalMrp.toLocaleString('en-IN')}
+                  </div>
+                  <div className="text-[10px] text-slate-400 mt-0.5">Sum of all 3 tags</div>
+                </div>
+
+                {/* Total B1G2 Discount */}
+                <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 dark:bg-rose-950/20">
+                  <div className="text-[11px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider mb-1 flex items-center justify-between">
+                    <span>Total Discount</span>
+                    <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-rose-500 text-white">
+                      {tripletBreakdownModal.overallDiscountPct}% OFF
+                    </span>
+                  </div>
+                  <div className="text-xl font-black text-rose-600 dark:text-rose-400">
+                    -₹{tripletBreakdownModal.totalDiscount.toLocaleString('en-IN')}
+                  </div>
+                  <div className="text-[10px] text-rose-600/80 dark:text-rose-400/80 mt-0.5">2 lowest pieces free</div>
+                </div>
+
+                {/* Net Bill Payable */}
+                <div className="p-3.5 rounded-2xl bg-gradient-to-br from-amber-500/20 to-amber-600/10 border border-amber-500/40 shadow-sm">
+                  <div className="text-[11px] font-bold text-amber-700 dark:text-amber-300 uppercase tracking-wider mb-1">
+                    Bill Payable (POS)
+                  </div>
+                  <div className="text-xl font-black text-amber-600 dark:text-amber-400">
+                    ₹{tripletBreakdownModal.highestMrp.toLocaleString('en-IN')}
+                  </div>
+                  <div className="text-[10px] text-amber-600/80 dark:text-amber-400/80 mt-0.5 font-medium">
+                    Highest MRP piece
+                  </div>
+                </div>
+
+                {/* Counter Realization / Variance */}
+                <div className="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 dark:bg-emerald-950/20">
+                  <div className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider mb-1">
+                    Cash Realized
+                  </div>
+                  <div className="text-xl font-black text-emerald-600 dark:text-emerald-400">
+                    ₹{tripletBreakdownModal.totalCollected.toLocaleString('en-IN')}
+                  </div>
+                  <div className="text-[10px] font-bold mt-0.5">
+                    {tripletBreakdownModal.variance > 0 ? (
+                      <span className="text-emerald-600 dark:text-emerald-400">
+                        +₹{tripletBreakdownModal.variance.toLocaleString('en-IN')} Surplus
+                      </span>
+                    ) : tripletBreakdownModal.variance < 0 ? (
+                      <span className="text-rose-600 dark:text-rose-400">
+                        -₹{Math.abs(tripletBreakdownModal.variance).toLocaleString('en-IN')} Shortage
+                      </span>
+                    ) : (
+                      <span className="text-slate-500 dark:text-slate-400">Exact 100% Match</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Itemized Discount Breakdown Table */}
+              <div>
+                <div className="flex items-center justify-between mb-2.5">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-amber-500" />
+                    <span>Itemized Garment Breakdown ({tripletBreakdownModal.items.length} Articles)</span>
+                  </h3>
+                  <span className="text-[11px] text-slate-400 font-medium">
+                    Sorted by MRP: Highest to Lowest
+                  </span>
+                </div>
+
+                <div className="space-y-2.5">
+                  {tripletBreakdownModal.items.map((item, idx) => (
+                    <div
+                      key={item.id || idx}
+                      className={`p-3.5 rounded-2xl border transition-all ${
+                        item.isPaid
+                          ? 'bg-amber-500/5 dark:bg-amber-500/10 border-amber-500/30 shadow-sm'
+                          : 'bg-slate-50/70 dark:bg-slate-800/40 border-slate-200 dark:border-slate-800'
+                      }`}
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        {/* Article Info */}
+                        <div className="flex items-start gap-3">
+                          <div className={`w-8 h-8 rounded-xl font-black text-xs flex items-center justify-center shrink-0 ${
+                            item.isPaid
+                              ? 'bg-gradient-to-tr from-amber-500 to-amber-600 text-slate-950 shadow-md shadow-amber-500/20'
+                              : 'bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300'
+                          }`}>
+                            #{idx + 1}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-mono text-xs font-bold text-slate-900 dark:text-white">
+                                {item.barcode}
+                              </span>
+                              <span className={`px-2 py-0.5 rounded-md text-[10px] font-black uppercase ${
+                                item.isPaid
+                                  ? 'bg-amber-500 text-slate-950'
+                                  : 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30'
+                              }`}>
+                                {item.isPaid ? 'Paid Piece (Full MRP)' : '100% Free Piece'}
+                              </span>
+                              {item.section && (
+                                <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                                  {item.section}
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-2">
+                              <span>Size: <strong className="text-slate-700 dark:text-slate-200">{item.size || 'M'}</strong></span>
+                              {item.color && (
+                                <>
+                                  <span>•</span>
+                                  <span>Color: <strong className="text-slate-700 dark:text-slate-200">{item.color}</strong></span>
+                                </>
+                              )}
+                              {item.customerName && (
+                                <>
+                                  <span>•</span>
+                                  <span>Sold to: <strong className="text-slate-700 dark:text-slate-200">{item.customerName}</strong></span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Financial Columns */}
+                        <div className="flex items-center gap-4 shrink-0 sm:text-right">
+                          {/* Tag MRP */}
+                          <div>
+                            <div className="text-[10px] font-bold text-slate-400 uppercase">Tag MRP</div>
+                            <div className="font-mono text-xs font-semibold text-slate-700 dark:text-slate-300">
+                              ₹{(Number(item.mrp) || 0).toLocaleString('en-IN')}
+                            </div>
+                          </div>
+
+                          {/* B1G2 Discount */}
+                          <div>
+                            <div className="text-[10px] font-bold text-slate-400 uppercase">B1G2 Discount</div>
+                            <div className={`font-mono text-xs font-black ${
+                              item.isPaid
+                                ? 'text-slate-500 dark:text-slate-400'
+                                : 'text-rose-500 dark:text-rose-400'
+                            }`}>
+                              {item.isPaid
+                                ? '₹0 (0% Off)'
+                                : `-₹${(Number(item.mrp) || 0).toLocaleString('en-IN')} (100% Free)`}
+                            </div>
+                          </div>
+
+                          {/* Net Billed */}
+                          <div>
+                            <div className="text-[10px] font-bold text-slate-400 uppercase">Net Billed</div>
+                            <div className="font-mono text-sm font-black text-slate-900 dark:text-white">
+                              {item.isPaid ? `₹${item.b1g2Net.toLocaleString('en-IN')}` : '₹0.00'}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Sub-bar: Proportional GST split + Counter Single Sale realized */}
+                      <div className="mt-2.5 pt-2 border-t border-slate-200/60 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                        <div className="flex items-center gap-1.5">
+                          <Receipt className="w-3.5 h-3.5 text-slate-400" />
+                          <span>
+                            Proportional GST Split: <strong>{tripletBreakdownModal.overallDiscountPct}% Off</strong> (-₹{item.propDiscFlat.toLocaleString('en-IN')}) = Net: <strong className="text-slate-700 dark:text-slate-200">₹{item.propNet.toLocaleString('en-IN')}</strong>
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <DollarSign className="w-3.5 h-3.5 text-emerald-500" />
+                          <span>
+                            Single sale collected: <strong className="text-emerald-600 dark:text-emerald-400 font-bold">₹{item.tagSoldPrice.toLocaleString('en-IN')}</strong> ({item.tagDiscount}% tag discount)
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Informative Rule Explainer */}
+              <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs flex items-start gap-2.5">
+                <Sparkles className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <div className="font-bold">How Buy 1 Get 2 Free billing works:</div>
+                  <p className="text-[11px] leading-relaxed opacity-90">
+                    The highest MRP garment (<strong>₹{tripletBreakdownModal.highestMrp.toLocaleString('en-IN')}</strong>) is billed as the payable item, while the other 2 garments are 100% discounted (free).
+                    When billing into Busy POS or Speed Billing, the system maps this triplet as 1 complete B1G2 voucher so physical stock, sales invoices, and GST return remain perfectly balanced.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Actions Footer */}
+            <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  const barcodes = tripletBreakdownModal.items.map(i => i.barcode).join('\n');
+                  navigator.clipboard.writeText(barcodes);
+                  showToastMsg('Copied 3 barcodes to clipboard!', 'success');
+                }}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 transition-all active:scale-95 w-full sm:w-auto justify-center"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                <span>Copy 3 Barcodes</span>
+              </button>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                <button
+                  type="button"
+                  onClick={() => setTripletBreakdownModal(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleMarkTripletBilled(tripletBreakdownModal.items)}
+                  className="px-4 py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold transition-all active:scale-95"
+                  title="Mark all 3 tags as billed directly in Busy POS"
+                >
+                  Mark Billed Directly
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const items = tripletBreakdownModal.items;
+                    setTripletBreakdownModal(null);
+                    handleBillInSpeedBilling(items, 'b1g2');
+                  }}
+                  className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black text-xs shadow-lg shadow-amber-500/30 transition-all active:scale-95"
+                >
+                  <Zap className="w-3.5 h-3.5 fill-current" />
+                  <span>Open in Speed Billing</span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
