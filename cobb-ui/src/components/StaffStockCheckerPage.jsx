@@ -26,7 +26,8 @@ import {
   ScanLine,
   Focus,
   Image as ImageIcon,
-  ChevronDown
+  ChevronDown,
+  Download
 } from 'lucide-react';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { playSound } from '../utils/sound';
@@ -102,6 +103,69 @@ export default function StaffStockCheckerPage({
   const [stockData, setStockData] = useState(null);
   const [selectedColorFilter, setSelectedColorFilter] = useState('ALL'); // 'ALL' or specific color
   const [copiedBarcode, setCopiedBarcode] = useState(null);
+
+  // PWA Install / Shortcut State
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+  const [isInstalled, setIsInstalled] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return Boolean(
+        window.matchMedia?.('(display-mode: standalone)').matches ||
+        window.navigator?.standalone
+      );
+    }
+    return false;
+  });
+  const [showInstallGuide, setShowInstallGuide] = useState(false);
+  const [copiedUrl, setCopiedUrl] = useState(false);
+  const [dismissedTip, setDismissedTip] = useState(false);
+
+  useEffect(() => {
+    const handleBeforeInstall = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    const handleAppInstalled = () => {
+      setIsInstalled(true);
+      setDeferredPrompt(null);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (deferredPrompt) {
+      try {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        if (outcome === 'accepted') {
+          setIsInstalled(true);
+        }
+      } catch (err) {
+        console.warn('Install prompt note:', err);
+        setShowInstallGuide(true);
+      } finally {
+        setDeferredPrompt(null);
+      }
+    } else {
+      setShowInstallGuide(true);
+    }
+  };
+
+  const copyDirectStockLink = () => {
+    const link = 'https://cobb-store.web.app/#stock';
+    if (navigator?.clipboard) {
+      navigator.clipboard.writeText(link).catch(() => {});
+    }
+    setCopiedUrl(true);
+    setTimeout(() => setCopiedUrl(false), 2000);
+  };
 
   // Camera Scanner State
   const [isCameraActive, setIsCameraActive] = useState(false);
@@ -562,6 +626,17 @@ export default function StaffStockCheckerPage({
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleInstallClick}
+            className="px-2.5 py-1.5 rounded-xl border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-xs font-bold text-amber-300 flex items-center gap-1.5 transition-all active:scale-95 shadow-sm"
+            title="Add shortcut to your phone home screen"
+          >
+            <Download className="w-3.5 h-3.5 text-amber-400" />
+            <span className="hidden sm:inline">Add Shortcut</span>
+            <span className="sm:hidden">Shortcut</span>
+          </button>
+
           {onClose && (
             <button
               onClick={onClose}
@@ -577,6 +652,34 @@ export default function StaffStockCheckerPage({
 
       {/* --- Main Mobile Content Container --- */}
       <main className="flex-1 max-w-lg w-full mx-auto p-4 space-y-4">
+        {/* Shortcut Banner Tip for Staff */}
+        {!isInstalled && !dismissedTip && (
+          <div className="p-3 rounded-2xl bg-gradient-to-r from-amber-950/40 via-slate-900 to-amber-950/20 border border-amber-500/30 flex items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2 text-slate-200">
+              <span className="text-base shrink-0">📲</span>
+              <p className="text-[11px] leading-tight">
+                <span className="font-bold text-amber-300">Fast Floor Access:</span> Add direct shortcut to your home screen!
+              </p>
+            </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={handleInstallClick}
+                className="px-2.5 py-1 rounded-lg bg-amber-500 text-slate-950 font-black text-[11px] shadow hover:bg-amber-400 active:scale-95 transition-all"
+              >
+                Add Shortcut
+              </button>
+              <button
+                type="button"
+                onClick={() => setDismissedTip(true)}
+                className="p-1 text-slate-400 hover:text-slate-200"
+                title="Dismiss"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
         {/* --- Camera Scanner Controls & Search Form --- */}
         <div className="space-y-3">
           <div className="grid grid-cols-5 gap-2">
@@ -1114,6 +1217,97 @@ export default function StaffStockCheckerPage({
             >
               <ScanLine className={`w-4 h-4 ${isOcrActive ? 'animate-spin' : ''}`} />
               <span>{isOcrActive ? 'Reading Numbers...' : '⚡ Snap & Read Tag Number'}</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Install / Shortcut Guidance Modal */}
+      {showInstallGuide && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-end sm:items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-5 space-y-4 shadow-2xl text-slate-100 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-amber-500 text-slate-950 font-black">
+                  <Smartphone className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-white">Add Stock Checker to Home Screen</h3>
+                  <p className="text-[11px] text-slate-400">Launch directly in 1-tap from your phone</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowInstallGuide(false)}
+                className="p-1.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Direct Link Box with 1-Tap Copy */}
+            <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1.5">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-slate-400">Direct Staff Link:</span>
+                <button
+                  type="button"
+                  onClick={copyDirectStockLink}
+                  className="text-amber-400 font-bold flex items-center gap-1 hover:underline"
+                >
+                  {copiedUrl ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                  <span>{copiedUrl ? 'Copied!' : 'Copy Link'}</span>
+                </button>
+              </div>
+              <p className="font-mono text-xs text-amber-300 font-bold break-all select-all">
+                https://cobb-store.web.app/#stock
+              </p>
+            </div>
+
+            {/* Step-by-Step for Chrome & Safari */}
+            <div className="space-y-2.5 text-xs">
+              <div className="p-3 rounded-2xl bg-slate-800/60 border border-slate-700/60 space-y-1">
+                <p className="font-black text-amber-300 flex items-center gap-1.5">
+                  <span>🤖</span>
+                  <span>Google Chrome (Android)</span>
+                </p>
+                <ol className="list-decimal list-inside space-y-1 text-slate-300 text-[11.5px] leading-relaxed">
+                  <li>Tap the <strong>3 dots (⋮)</strong> menu in Chrome at top right.</li>
+                  <li>Select <strong>&quot;Add to Home screen&quot;</strong> or <strong>&quot;Install app&quot;</strong>.</li>
+                  <li>Tap <strong>&quot;Install / Add&quot;</strong>.</li>
+                  <li>The <strong>Cobb Stock</strong> icon is now on your phone home screen!</li>
+                </ol>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-slate-800/60 border border-slate-700/60 space-y-1">
+                <p className="font-black text-rose-300 flex items-center gap-1.5">
+                  <span>🍎</span>
+                  <span>iPhone / Safari (iOS)</span>
+                </p>
+                <ol className="list-decimal list-inside space-y-1 text-slate-300 text-[11.5px] leading-relaxed">
+                  <li>Tap the <strong>Share (📤)</strong> button at the bottom of Safari.</li>
+                  <li>Scroll down and tap <strong>&quot;Add to Home Screen&quot; (➕)</strong>.</li>
+                  <li>Tap <strong>&quot;Add&quot;</strong> at the top right.</li>
+                </ol>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-slate-800/60 border border-slate-700/60 space-y-1">
+                <p className="font-black text-sky-300 flex items-center gap-1.5">
+                  <span>💻</span>
+                  <span>Desktop Chrome / Edge</span>
+                </p>
+                <ol className="list-decimal list-inside space-y-1 text-slate-300 text-[11.5px] leading-relaxed">
+                  <li>Click the <strong>Install icon</strong> in the right side of the address bar.</li>
+                  <li>Or tap <strong>⋮ ➔ Save and share ➔ Create shortcut...</strong></li>
+                </ol>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowInstallGuide(false)}
+              className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition-all active:scale-98 shadow-md"
+            >
+              Got It
             </button>
           </div>
         </div>

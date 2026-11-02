@@ -32,6 +32,13 @@
   ],
   "shortcuts": [
     {
+      "name": "Staff Stock Checker",
+      "short_name": "Stock Check",
+      "description": "Floor Staff Garment & Size Stock Checker",
+      "url": "/#stock",
+      "icons": [{ "src": "/ors-logo.png", "sizes": "192x192" }]
+    },
+    {
       "name": "Cobb CRM POS",
       "short_name": "CRM",
       "description": "Open Cobb Store CRM POS",

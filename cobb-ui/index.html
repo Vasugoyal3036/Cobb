@@ -4,8 +4,38 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/ors-logo.png" />
     <link rel="apple-touch-icon" href="/ors-logo.png" />
-    <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="manifest" href="/manifest.json" />
+    <script>
+      (function() {
+        // Resolve root base for SPA deep routing when running over HTTP/HTTPS
+        if (window.location.protocol.startsWith('http')) {
+          var baseTag = document.createElement('base');
+          baseTag.href = '/';
+          document.head.appendChild(baseTag);
+        }
+
+        var isStock = window.location.pathname.includes('/stock') ||
+                      window.location.pathname.includes('/checker') ||
+                      window.location.search.includes('stock') ||
+                      window.location.search.includes('checker') ||
+                      window.location.hash.includes('stock') ||
+                      window.location.hash.includes('checker');
+
+        // Dynamically provide dedicated PWA manifest for Staff Stock Checker vs POS CRM
+        var manifestHref = isStock ? '/manifest-stock.json' : '/manifest.json';
+        var link = document.createElement('link');
+        link.rel = 'manifest';
+        link.id = 'app-manifest-link';
+        link.href = manifestHref;
+        document.head.appendChild(link);
+
+        if (isStock) {
+          document.title = 'Cobb Stock Checker | Floor Staff';
+        }
+      })();
+    </script>
+    <noscript>
+      <link rel="manifest" href="/manifest.json" />
+    </noscript>
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
     <meta name="theme-color" content="#0d1017" />
     <meta name="mobile-web-app-capable" content="yes" />

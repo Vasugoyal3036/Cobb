@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cobb-crm-cache-v8';
+const CACHE_NAME = 'cobb-crm-cache-v9';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -6,7 +6,9 @@ const ASSETS_TO_CACHE = [
   '/ors-squircle.jpg',
   '/favicon.svg',
   '/manifest.webmanifest',
-  '/manifest.json'
+  '/manifest.json',
+  '/manifest-stock.json',
+  '/manifest-stock.webmanifest'
 ];
 
 self.addEventListener('install', (event) => {

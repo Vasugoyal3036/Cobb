@@ -175,4 +175,17 @@ describe('StaffStockCheckerPage [Floor Mobile Stock Checker]', () => {
       expect(screen.getByText(/No Cobb article found matching "XYZ999"/i)).toBeDefined();
     });
   });
+
+  it('renders shortcut button and opens home screen install guide when clicked', () => {
+    render(<StaffStockCheckerPage onClose={vi.fn()} />);
+
+    const shortcutBtns = screen.getAllByRole('button', { name: /shortcut/i });
+    expect(shortcutBtns.length).toBeGreaterThan(0);
+
+    fireEvent.click(shortcutBtns[0]);
+
+    expect(screen.getByText(/Add Stock Checker to Home Screen/i)).toBeDefined();
+    expect(screen.getByText(/https:\/\/cobb-store.web.app\/#stock/i)).toBeDefined();
+    expect(screen.getByText(/Google Chrome \(Android\)/i)).toBeDefined();
+  });
 });

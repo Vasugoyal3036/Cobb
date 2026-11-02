@@ -1,0 +1,34 @@
+{
+  "name": "Cobb Stock Checker",
+  "short_name": "Stock Check",
+  "description": "Floor Staff Garment & Size Stock Checker",
+  "start_url": "/#stock",
+  "scope": "/",
+  "id": "/stock-checker",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#020617",
+  "theme_color": "#0f172a",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "/ors-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/ors-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/ors-squircle.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any"
+    }
+  ]
+}
+
