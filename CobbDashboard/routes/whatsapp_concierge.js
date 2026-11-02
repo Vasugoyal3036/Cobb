@@ -307,4 +307,18 @@ router.post('/reviews/reset-session', async (req, res) => {
     }
 });
 
+router.post('/reviews/remind-pending', async (req, res) => {
+    try {
+        const waRes = await fetch('http://localhost:3000/api/reviews/remind-pending', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(req.body || {})
+        });
+        const data = await waRes.json();
+        res.status(waRes.status).json(data);
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 module.exports = router;

@@ -51,6 +51,7 @@ export default function RatingsTab({
   const [promptDelay, setPromptDelay] = useState(0); // 0 = immediate, 30 = 30m
   const [dispatching, setDispatching] = useState(false);
   const [dispatchResult, setDispatchResult] = useState(null);
+  const [reminding, setReminding] = useState(false);
 
   const fetchBotStatus = async () => {
     try {
@@ -58,6 +59,19 @@ export default function RatingsTab({
       if (res.data) setBotStatus(res.data);
     } catch (e) {
       // ignore offline fallback
+    }
+  };
+
+  const handleRemindPending = async () => {
+    try {
+      setReminding(true);
+      const res = await axios.post(`${API_BASE}/api/whatsapp/concierge/reviews/remind-pending`);
+      fetchBotStatus();
+      alert(res.data?.message || 'Review reminder sent to pending survey customers!');
+    } catch (err) {
+      alert(err.response?.data?.error || err.message || 'Failed to dispatch reminders');
+    } finally {
+      setReminding(false);
     }
   };
 
@@ -347,6 +361,20 @@ export default function RatingsTab({
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            {botStatus?.waitingRatingCount > 0 && (
+              <button
+                type="button"
+                onClick={handleRemindPending}
+                disabled={reminding}
+                className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50 active:scale-95 ${
+                  darkMode ? 'bg-slate-800/80 hover:bg-slate-700/80 border-slate-700 text-slate-200' : 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-800'
+                }`}
+                title="Send updated prompt with 1-tap reply options to all customers who haven't rated yet"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${reminding ? 'animate-spin' : ''}`} />
+                <span>Remind Pending ({botStatus.waitingRatingCount})</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setIsPromptModalOpen(true)}

@@ -114,7 +114,7 @@ function saveRatingToLedger(entry) {
 
         const cleanPhone = String(entry.phone || '').replace(/[^0-9]/g, '').slice(-10);
         const existingIdx = list.findIndex(r => r.phone === cleanPhone && (entry.billNo ? r.billNo === entry.billNo : true));
-        
+
         const ratingNum = Math.min(5, Math.max(1, Number(entry.rating) || 5));
         const ratingItem = {
             id: entry.id || `RATE_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`,
@@ -152,7 +152,7 @@ function saveRatingToLedger(entry) {
                     rating: ratingNum,
                     billNo: entry.billNo || ''
                 })
-            }).catch(() => {});
+            }).catch(() => { });
         } catch (e) { }
 
         return ratingItem;
@@ -184,7 +184,7 @@ function getLiveStoreRatingStats() {
                 };
             }
         }
-    } catch (e) {}
+    } catch (e) { }
 
     return {
         hasData: false,
@@ -195,13 +195,92 @@ function getLiveStoreRatingStats() {
     };
 }
 
-function getReviewPromptMessage(customerName = 'Valued Customer') {
-    return `✨ *How was your shopping experience at Cobb?* 🛍️\n\n` +
-        `Hello *${customerName}*! 👋\n` +
+// In-memory cache for resolved LIDs to phone numbers
+const lidToPhoneCache = new Map();
+
+async function resolvePhoneNumber(rawId) {
+    if (!rawId) return '';
+    const strId = typeof rawId === 'string' ? rawId : (rawId._serialized || rawId.user || '');
+    if (!strId) return '';
+
+    // If it's a standard @c.us JID without @lid, e.g. "919896253933@c.us"
+    if (strId.includes('@c.us') && !strId.includes('@lid')) {
+        const cleaned = strId.replace(/[^0-9]/g, '').slice(-10);
+        if (cleaned && cleaned.length === 10) return cleaned;
+    }
+
+    // Check in-memory cache
+    if (lidToPhoneCache.has(strId)) {
+        return lidToPhoneCache.get(strId);
+    }
+
+    // If it's an @lid or non-standard format, resolve via WhatsApp Web Contact Collection
+    if (isClientReady && client && client.pupPage) {
+        try {
+            const resolved = await client.pupPage.evaluate((targetId) => {
+                try {
+                    const WidFactory = window.require('WAWebWidFactory');
+                    const ContactCollection = window.require('WAWebCollections').Contact;
+                    const wid = WidFactory.createWid(targetId);
+                    const contact = ContactCollection.get(wid) || ContactCollection.find(wid);
+                    if (contact && contact.phoneNumber) {
+                        return contact.phoneNumber._serialized || contact.phoneNumber.user || String(contact.phoneNumber);
+                    }
+                    if (contact && contact.id && !contact.id.isLid()) {
+                        return contact.id._serialized || contact.id.user || String(contact.id);
+                    }
+                } catch (e) { }
+                return null;
+            }, strId);
+
+            if (resolved) {
+                const cleaned = String(resolved).replace(/[^0-9]/g, '').slice(-10);
+                if (cleaned && cleaned.length === 10) {
+                    lidToPhoneCache.set(strId, cleaned);
+                    return cleaned;
+                }
+            }
+        } catch (e) {
+            console.warn('[RESOLVE PHONE ERR]:', e.message);
+        }
+    }
+
+    // Fallback: check if any review session matches
+    try {
+        const sessions = loadReviewSessions();
+        for (const [sPhone, sData] of Object.entries(sessions)) {
+            if (sData.lid && sData.lid === strId) {
+                lidToPhoneCache.set(strId, sPhone);
+                return sPhone;
+            }
+        }
+    } catch (e) { }
+
+    // Fallback for regular phone numbers without @c.us
+    const digits = strId.replace(/[^0-9]/g, '');
+    if (digits.length <= 13 && digits.length >= 10) {
+        return digits.slice(-10);
+    }
+
+    return '';
+}
+
+function getReviewPromptMessage(customerName = 'Valued Customer', cleanPhone = '', billNo = '') {
+    const safeName = (customerName || 'Valued Customer').trim();
+    const phoneParam = cleanPhone ? `?phone=${cleanPhone}&name=${encodeURIComponent(safeName)}${billNo ? `&bill=${encodeURIComponent(billNo.trim())}` : ''}` : '';
+    const feedbackUrl = `https://cobb-store.web.app/feedback${phoneParam}`;
+
+    return `⭐ *How was your shopping experience at Cobb Apparels?* ⭐\n\n` +
+        `Hello *${safeName}*! 👋\n` +
         `Thank you for shopping at *Cobb Apparels (Pundri)* earlier today.\n\n` +
-        `Could you please take 5 seconds to rate your visit in the poll below? 🙏\n` +
-        `🔗 *View live ratings & feedback:* https://cobb-store.web.app/feedback\n\n` +
-        `_(Or tap an option in the poll below)_`;
+        `Could you please rate your visit by replying with a number? 🙏\n` +
+        `5️⃣ - Excellent (⭐⭐⭐⭐⭐)\n` +
+        `4️⃣ - Good (⭐⭐⭐⭐)\n` +
+        `3️⃣ - Fair (⭐⭐⭐)\n` +
+        `2️⃣ - Needs Improvement (⭐⭐)\n` +
+        `1️⃣ - Poor (⭐)\n\n` +
+        `🔗 *1-Tap Instant Review:* ${feedbackUrl}\n\n` +
+        `_(Or select your rating in the poll below)_`;
 }
 
 function createRatingPoll() {
@@ -243,9 +322,9 @@ async function dispatchReviewSurvey(phone, customerName = 'Valued Customer', bil
         step: 'waiting_rating'
     });
 
-    const promptMsg = getReviewPromptMessage(customerName);
+    const promptMsg = getReviewPromptMessage(customerName, cleanPhone, billNo);
 
-    // 1. Dispatch text greeting
+    // 1. Dispatch text greeting with clear reply options & 1-tap link
     let textSent = false;
     try {
         await dispatchMessage(cleanPhone, promptMsg);
@@ -259,7 +338,11 @@ async function dispatchReviewSurvey(phone, customerName = 'Valued Customer', bil
     if (isClientReady && client) {
         try {
             const ratingPoll = createRatingPoll();
-            await client.sendMessage(chatId, ratingPoll);
+            const sentMsg = await client.sendMessage(chatId, ratingPoll);
+            if (sentMsg?.to?._serialized?.includes('@lid')) {
+                lidToPhoneCache.set(sentMsg.to._serialized, cleanPhone);
+                setReviewSession(cleanPhone, { lid: sentMsg.to._serialized });
+            }
             console.log(`[POLL] Checkbox rating poll dispatched to ${chatId}`);
             pollSent = true;
         } catch (pollErr) {
@@ -342,7 +425,7 @@ setInterval(async () => {
                 changed = true;
 
                 const name = item.customerName || 'Valued Customer';
-                const surveyMsg = getReviewPromptMessage(name);
+                const surveyMsg = getReviewPromptMessage(name, item.phone, item.billNo);
 
                 setReviewSession(item.phone, {
                     customerName: name,
@@ -552,8 +635,15 @@ async function initWhatsApp(isFresh = false) {
                 const rawBody = (msg.body || '').trim();
                 if (!rawBody) return;
                 const lower = rawBody.toLowerCase();
+
+                // Resolve customer phone supporting both @c.us and modern WhatsApp @lid
+                let cleanPhone = await resolvePhoneNumber(msg.from);
+                if (!cleanPhone && msg.author) {
+                    cleanPhone = await resolvePhoneNumber(msg.author);
+                }
                 const phone = msg.from.replace('@c.us', '');
-                const cleanPhone = phone.replace(/[^0-9]/g, '').slice(-10);
+                if (!cleanPhone) cleanPhone = phone.replace(/[^0-9]/g, '').slice(-10);
+                if (!cleanPhone) return;
 
                 // --- 2-STEP WHATSAPP REVIEW FUNNEL & GRIEVANCE INTERCEPTION ---
                 const activeSession = getActiveReviewSession(cleanPhone);
@@ -651,10 +741,12 @@ async function initWhatsApp(isFresh = false) {
                 const isWaitingRating = activeSession && activeSession.step === 'waiting_rating';
 
                 const isPositiveRating = (isWaitingRating && (lower === '5' || lower === 'five' || lower === '4' || lower === 'four')) ||
-                    ['5 star', '5 stars', '5/5', '5⭐', '4 star', '4 stars', '4/5', '4⭐', 'excellent', 'superb'].some(k => lower === k || lower.startsWith(k + ' ') || lower.endsWith(' ' + k) || lower.includes(k)) ||
+                    ['5', 'five', '4', 'four', '5 star', '5 stars', '5/5', '5⭐', '4 star', '4 stars', '4/5', '4⭐', 'excellent', 'superb', 'great'].some(k => lower === k || lower.startsWith(k + ' ') || lower.endsWith(' ' + k) || lower.includes(k)) ||
                     lower.includes('⭐⭐⭐⭐⭐') || lower.includes('⭐⭐⭐⭐');
 
                 const isNegativeRating = (isWaitingRating && (lower === '1' || lower === 'one' || lower === '2' || lower === 'two' || lower === '3' || lower === 'three')) ||
+                    ['1', 'one', '2', 'two', '3', 'three', '1 star', '1 stars', '1/5', '1⭐', '2 star', '2 stars', '2/5', '2⭐', '3 star', '3 stars', '3/5', '3⭐', 'bad', 'poor', 'worst', 'issue', 'complaint', 'terrible', 'pathetic', 'dissatisfied'].some(k => lower === k || lower.startsWith(k + ' ') || lower.endsWith(' ' + k) || lower.includes(k)) ||
+                    lower.includes('⭐⭐⭐') || lower.includes('⭐⭐') || lower.includes('⭐');
                     ['1 star', '1 stars', '1/5', '1⭐', '2 star', '2 stars', '2/5', '2⭐', '3 star', '3 stars', '3/5', '3⭐', 'bad', 'poor', 'worst', 'issue', 'complaint', 'terrible', 'pathetic', 'dissatisfied'].some(k => lower === k || lower.startsWith(k + ' ') || lower.endsWith(' ' + k) || lower.includes(k)) ||
                     lower.includes('⭐⭐⭐') || lower.includes('⭐⭐') || lower.includes('⭐');
 
@@ -897,10 +989,17 @@ async function initWhatsApp(isFresh = false) {
                 if (!vote) return;
                 const rawVoter = typeof vote.voter === 'string'
                     ? vote.voter
-                    : (vote.voter?._serialized || vote.voter?.user || vote.senderUserJid || vote.parentMsgKey?.remote?._serialized || '');
-                const cleanPhone = String(rawVoter || '').replace(/[^0-9]/g, '').slice(-10);
+                    : (vote.voter?._serialized || vote.voter?.user || vote.senderUserJid || '');
+                const parentRemote = vote.parentMsgKey?.remote?._serialized || vote.parentMsgKey?.remote?.user || '';
+
+                // Try resolving phone from voter JID, or fall back to parentMsgKey remote chat
+                let cleanPhone = await resolvePhoneNumber(rawVoter);
+                if (!cleanPhone && parentRemote) {
+                    cleanPhone = await resolvePhoneNumber(parentRemote);
+                }
+
                 if (!cleanPhone) {
-                    console.warn('[VOTE UPDATE] Could not extract voter phone:', vote.voter);
+                    console.warn('[VOTE UPDATE] Could not resolve voter phone:', { rawVoter, parentRemote });
                     return;
                 }
 
@@ -912,7 +1011,12 @@ async function initWhatsApp(isFresh = false) {
                 if (inboundCooldown.has(cleanPhone) && (now - inboundCooldown.get(cleanPhone) < 2000)) return;
                 inboundCooldown.set(cleanPhone, now);
 
-                const chatId = rawVoter.includes('@c.us') ? rawVoter : `91${cleanPhone}@c.us`;
+                const chatId = (rawVoter && rawVoter.includes('@c.us') && !rawVoter.includes('@lid'))
+                    ? rawVoter
+                    : (parentRemote && parentRemote.includes('@c.us') && !parentRemote.includes('@lid'))
+                        ? parentRemote
+                        : `91${cleanPhone}@c.us`;
+
                 console.log(`[VOTE UPDATE] Processing poll vote from ${cleanPhone} (${chatId}):`, vote.selectedOptions);
                 const activeSession = getActiveReviewSession(cleanPhone);
 
@@ -1174,6 +1278,8 @@ app.get('/status', (req, res) => {
 app.get('/bot-status', (req, res) => {
     res.json({ enabled: enableInboundBot });
 });
+
+
 
 app.post('/bot-toggle', (req, res) => {
     if (typeof req.body.enabled === 'boolean') {
@@ -1462,7 +1568,7 @@ app.post('/api/reviews/send-prompt', async (req, res) => {
         return res.json({ success: true, message: `Review prompt scheduled in ${delay} minutes for ${cleanPhone}` });
     }
 
-    const promptMsg = getReviewPromptMessage(name);
+    const promptMsg = getReviewPromptMessage(name, cleanPhone, billNo);
     setReviewSession(cleanPhone, {
         customerName: name,
         billNo: billNo || '',
@@ -1487,6 +1593,41 @@ app.post('/api/reviews/send-prompt', async (req, res) => {
         });
     } catch (err) {
         return res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+app.post('/api/reviews/remind-pending', async (req, res) => {
+    try {
+        const sessions = loadReviewSessions();
+        const pending = Object.entries(sessions).filter(([_, s]) => s.step === 'waiting_rating');
+
+        if (pending.length === 0) {
+            return res.json({ success: true, count: 0, message: 'No pending review sessions found.' });
+        }
+
+        console.log(`[REVIEW REMIND] Re-dispatching upgraded prompt to ${pending.length} pending sessions...`);
+        let dispatched = 0;
+
+        for (const [phone, sess] of pending) {
+            try {
+                const name = sess.customerName || 'Valued Customer';
+                await dispatchReviewSurvey(phone, name, sess.billNo || '');
+                dispatched++;
+                // 2-second pacing between messages
+                await new Promise(r => setTimeout(r, 2000));
+            } catch (err) {
+                console.warn(`[REVIEW REMIND ERR] Failed for ${phone}:`, err.message);
+            }
+        }
+
+        res.json({
+            success: true,
+            count: dispatched,
+            total: pending.length,
+            message: `Dispatched updated review prompt with 1-tap reply options to ${dispatched}/${pending.length} customers.`
+        });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
     }
 });
 

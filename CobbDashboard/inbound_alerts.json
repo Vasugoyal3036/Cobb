@@ -1,5 +1,25 @@
 [
   {
+    "id": 1793595881786,
+    "phone": "8708788707",
+    "customerName": "Vasu",
+    "message": "5 - Exceptional service and tailoring!",
+    "type": "rating_positive",
+    "rating": 5,
+    "timestamp": "2026-11-02T05:04:41.786Z",
+    "status": "unread"
+  },
+  {
+    "id": 1793546377882,
+    "phone": "8708788707",
+    "customerName": "Vasu",
+    "message": "????? Excellent collection and fast billing!",
+    "type": "rating_positive",
+    "rating": 5,
+    "timestamp": "2026-11-01T15:19:37.882Z",
+    "status": "unread"
+  },
+  {
     "id": 1793537132606,
     "phone": "8708788707",
     "customerName": "Valued Shopper",

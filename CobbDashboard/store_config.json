@@ -8,19 +8,19 @@
   },
   "operatingExpenses": {
     "rent": 40000,
-    "staffSalaries": 31000,
+    "staffSalaries": 46000,
     "electricity": 10000,
     "miscExpenses": 5000,
     "franchiseRoyalty": 0,
-    "totalExpenses": 86000,
-    "dailyExpense": 2967,
-    "dailyOpEx": 2967,
-    "dailyAmortizedExpense": 2967,
+    "totalExpenses": 101000,
+    "dailyExpense": 3367,
+    "dailyOpEx": 3367,
+    "dailyAmortizedExpense": 3367,
     "targetMarginPct": 25,
     "dailyTargetSales": 50000,
-    "monthlyTargetSales": 600000,
-    "dailyBreakEvenSales": 11868,
-    "monthlyBreakEvenSales": 344000,
+    "monthlyTargetSales": 1200000,
+    "dailyBreakEvenSales": 13468,
+    "monthlyBreakEvenSales": 404000,
     "salesmanSalaries": [
       {
         "id": "2800003",
@@ -34,9 +34,9 @@
         "id": "3200014",
         "empCode": "3200014",
         "name": "Pawan",
-        "salary": "",
+        "salary": 9000,
         "mtdSales": 0,
-        "isActive": false
+        "isActive": true
       },
       {
         "id": "0001001",
@@ -56,11 +56,11 @@
       }
     ],
     "staffSalariesBreakdown": {
-      "totalBaseSalaries": 25000,
-      "totalIncentives": 6000,
-      "dynamicStaffSalaries": 31000,
-      "activeSalesmenCount": 2,
-      "targetPerSalesman": 300000,
+      "totalBaseSalaries": 34000,
+      "totalIncentives": 12000,
+      "dynamicStaffSalaries": 46000,
+      "activeSalesmenCount": 3,
+      "targetPerSalesman": 400000,
       "incentiveMode": "target"
     }
   },
@@ -74,5 +74,5 @@
     "password": "",
     "port": 1433
   },
-  "lastUpdated": "2026-10-24T12:46:59.383Z"
+  "lastUpdated": "2026-11-02T05:01:17.707Z"
 }
