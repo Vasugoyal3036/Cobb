@@ -158,7 +158,7 @@ export default function GoodsInTransitDesk({
 
   useEffect(() => {
     fetchTransitData();
-    const interval = setInterval(fetchTransitData, 60000);
+    // No polling interval - Firestore onSnapshot handles live updates
 
     let unsubscribe = null;
     if (db) {
@@ -190,7 +190,6 @@ export default function GoodsInTransitDesk({
     }
 
     return () => {
-      clearInterval(interval);
       if (unsubscribe) unsubscribe();
     };
   }, [API_BASE]);

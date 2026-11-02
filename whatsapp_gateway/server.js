@@ -410,7 +410,8 @@ function queueNpsSurvey(phone, customerName = 'Valued Customer', billNo = '', de
     console.log(`[NPS QUEUE] Queued survey for ${cleanPhone} (${customerName}) in ${delayMinutes}m (at ${new Date(scheduledAt).toLocaleTimeString()})`);
 }
 
-// Background worker: check pending NPS surveys every 25 seconds
+// Background worker: check pending NPS surveys — slowed to 5 minutes since poll is now dispatched
+// immediately at checkout. No pending surveys are expected under normal operation.
 setInterval(async () => {
     if (!isClientReady || !client) return;
     try {
@@ -425,8 +426,6 @@ setInterval(async () => {
                 changed = true;
 
                 const name = item.customerName || 'Valued Customer';
-                const surveyMsg = getReviewPromptMessage(name, item.phone, item.billNo);
-
                 setReviewSession(item.phone, {
                     customerName: name,
                     billNo: item.billNo || '',
@@ -446,7 +445,7 @@ setInterval(async () => {
     } catch (e) {
         console.error('[NPS TICKER ERROR]:', e.message);
     }
-}, 25000);
+}, 300000); // 5 minutes — queue is empty under normal ops, no need to poll frequently
 
 // Clean up stale lock files & ephemeral crash-prone caches without touching auth tokens or database files
 function cleanStaleLocksAndCaches() {

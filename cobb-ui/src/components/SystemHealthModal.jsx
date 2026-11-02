@@ -36,12 +36,12 @@ export default function SystemHealthModal({ isOpen, onClose, API_BASE = 'http://
 
   useEffect(() => {
     if (isOpen) {
+      // Fetch once on open — Layout.jsx already polls /api/system/health every 15s
+      // so we don't need a competing interval here
       fetchHealth();
       fetchInboundAlerts();
       fetchAnniversaries();
       fetchRatings();
-      const interval = setInterval(fetchHealth, 10000);
-      return () => clearInterval(interval);
     }
   }, [isOpen]);
 

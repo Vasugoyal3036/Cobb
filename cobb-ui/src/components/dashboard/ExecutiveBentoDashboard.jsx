@@ -1,4 +1,21 @@
 import React, { useState, useEffect, useMemo, useRef, Suspense, lazy } from 'react';
+
+/**
+ * SyncCounter — isolated 1-second ticker.
+ * Extracted from ExecutiveBentoDashboard so the 1s interval only re-renders
+ * this tiny span instead of the entire 1100-line dashboard component.
+ */
+const SyncCounter = React.memo(function SyncCounter({ resetSignal }) {
+  const [sec, setSec] = useState(4);
+  useEffect(() => {
+    setSec(0);
+  }, [resetSignal]);
+  useEffect(() => {
+    const t = setInterval(() => setSec(prev => prev >= 60 ? 1 : prev + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+  return <span className="font-mono">Synced {sec}s ago</span>;
+});
 import {
   Activity,
   ArrowRight,
@@ -140,7 +157,7 @@ const ExecutiveBentoDashboard = (props) => {
   const [selectedCalendarDay, setSelectedCalendarDay] = useState(null);
 
   // Live Sync ticker state & Cloud Sentry Offline Detection
-  const [syncSecondsAgo, setSyncSecondsAgo] = useState(4);
+  const [syncResetSignal, setSyncResetSignal] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isOnline, setIsOnline] = useState(() => (typeof navigator !== 'undefined' ? navigator.onLine : true));
 
@@ -156,16 +173,14 @@ const ExecutiveBentoDashboard = (props) => {
   }, []);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setSyncSecondsAgo((prev) => (prev >= 60 ? 1 : prev + 1));
-    }, 1000);
-    return () => clearInterval(timer);
+    // Removed: 1-second setInterval that caused full component re-render every second
+    // Replaced by isolated <SyncCounter> component above
   }, []);
 
   // 1-tap Cloud Force Sync trigger
   const handleManualSync = () => {
     setIsSyncing(true);
-    setSyncSecondsAgo(0);
+    setSyncResetSignal(s => s + 1);
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('cobb_force_sync'));
     }
@@ -340,7 +355,7 @@ const ExecutiveBentoDashboard = (props) => {
                 )}
               </span>
               <span>•</span>
-              <span className="font-mono">Synced {syncSecondsAgo}s ago</span>
+              <SyncCounter resetSignal={syncResetSignal} />
               <span>•</span>
               <span>{todayBills.length} Bills Today</span>
 

@@ -178,6 +178,10 @@ let pythonLogs = [];
 let gatewayProcess = null;
 let gatewayLogs = [];
 
+// Bounded log push helpers — caps both arrays at 200 entries to prevent memory growth
+function pushPythonLog(entry) { pythonLogs.push(entry); if (pythonLogs.length > 200) pythonLogs = pythonLogs.slice(-200); }
+function pushGatewayLog(entry) { gatewayLogs.push(entry); if (gatewayLogs.length > 200) gatewayLogs = gatewayLogs.slice(-200); }
+
 const mapLoyalty = (customers) => {
     return customers.map(c => {
         let tier = 'Bronze';
@@ -1737,7 +1741,7 @@ async function startGatewayHelper(forceRestart = false) {
         cleanLockFiles(lockDir);
     } catch (e) { }
 
-    gatewayLogs.push(`[${new Date().toLocaleTimeString()}] Auto-spawning WhatsApp Gateway process...`);
+    pushGatewayLog(`[${new Date().toLocaleTimeString()}] Auto-spawning WhatsApp Gateway process...`);
     gatewayProcess = spawn('node', ['server.js'], {
         cwd: gatewayDir,
         shell: false, 
@@ -1748,21 +1752,21 @@ async function startGatewayHelper(forceRestart = false) {
 
     gatewayProcess.stdout.on('data', (data) => {
         const lines = data.toString().split('\n').map(l => l.trim()).filter(Boolean);
-        lines.forEach(line => gatewayLogs.push(`[${new Date().toLocaleTimeString()}] ${line}`));
+        lines.forEach(line => pushGatewayLog(`[${new Date().toLocaleTimeString()}] ${line}`));
     });
 
     gatewayProcess.stderr.on('data', (data) => {
         const lines = data.toString().split('\n').map(l => l.trim()).filter(Boolean);
-        lines.forEach(line => gatewayLogs.push(`[ERROR ${new Date().toLocaleTimeString()}] ${line}`));
+        lines.forEach(line => pushGatewayLog(`[ERROR ${new Date().toLocaleTimeString()}] ${line}`));
     });
 
     gatewayProcess.on('error', (err) => {
-        gatewayLogs.push(`[ERROR ${new Date().toLocaleTimeString()}] Process failed to start: ${err.message}`);
+        pushGatewayLog(`[ERROR ${new Date().toLocaleTimeString()}] Process failed to start: ${err.message}`);
         gatewayProcess = null;
     });
 
     gatewayProcess.on('close', (code) => {
-        gatewayLogs.push(`[${new Date().toLocaleTimeString()}] Gateway process exited with code ${code}`);
+        pushGatewayLog(`[${new Date().toLocaleTimeString()}] Gateway process exited with code ${code}`);
         gatewayProcess = null;
     });
     return true;
@@ -1869,7 +1873,7 @@ async function startAutomationHelper() {
     if (isRunning) return true;
 
     const { scriptPath, cwd } = getListenerScriptPath();
-    pythonLogs.push(`[${new Date().toLocaleTimeString()}] Auto-spawning Automation Engine Listener silently...`);
+    pushPythonLog(`[${new Date().toLocaleTimeString()}] Auto-spawning Automation Engine Listener silently...`);
     // Use pythonw with stdio: 'ignore' so Windows never creates any console window or pipe EOF
     pythonProcess = spawn(getPythonwExecutable(), ['-u', scriptPath], {
         shell: false, 
@@ -1878,11 +1882,11 @@ async function startAutomationHelper() {
         stdio: 'ignore'
     });
     pythonProcess.on('error', (err) => {
-        pythonLogs.push(`[${new Date().toLocaleTimeString()}] Listener failed to start: ${err.message}`);
+        pushPythonLog(`[${new Date().toLocaleTimeString()}] Listener failed to start: ${err.message}`);
         pythonProcess = null;
     });
     pythonProcess.on('close', (code) => {
-        pythonLogs.push(`[${new Date().toLocaleTimeString()}] Listener closed with code ${code}`);
+        pushPythonLog(`[${new Date().toLocaleTimeString()}] Listener closed with code ${code}`);
         pythonProcess = null;
     });
     return true;
@@ -1902,14 +1906,14 @@ app.post('/api/gateway/stop', (req, res) => {
             gatewayProcess.kill();
         }
         gatewayProcess = null;
-        gatewayLogs.push(`[${new Date().toLocaleTimeString()}] Gateway manually stopped.`);
+        pushGatewayLog(`[${new Date().toLocaleTimeString()}] Gateway manually stopped.`);
         return res.json({ status: 'stopped' });
     }
     res.json({ status: 'stopped' });
 });
 
 app.post('/api/gateway/reset', async (req, res) => {
-    gatewayLogs.push(`[${new Date().toLocaleTimeString()}] Reset request received. Halting gateway and clearing session cache...`);
+    pushGatewayLog(`[${new Date().toLocaleTimeString()}] Reset request received. Halting gateway and clearing session cache...`);
     try {
         try {
             await fetch('http://localhost:3000/reset', { method: 'POST', signal: AbortSignal.timeout(2000) });
@@ -1947,14 +1951,14 @@ app.post('/api/gateway/reset', async (req, res) => {
             }
         }
 
-        gatewayLogs.push(`[${new Date().toLocaleTimeString()}] Session wiped. Auto-spawning fresh gateway instance...`);
+        pushGatewayLog(`[${new Date().toLocaleTimeString()}] Session wiped. Auto-spawning fresh gateway instance...`);
         setTimeout(() => {
             startGatewayHelper();
         }, 1500);
 
         res.json({ status: 'resetting', message: 'WhatsApp session wiped and restarting fresh.' });
     } catch (err) {
-        gatewayLogs.push(`[ERROR ${new Date().toLocaleTimeString()}] Reset failed: ${err.message}`);
+        pushGatewayLog(`[ERROR ${new Date().toLocaleTimeString()}] Reset failed: ${err.message}`);
         res.status(500).json({ error: err.message });
     }
 });
@@ -2130,18 +2134,18 @@ app.post('/api/whatsapp/send', async (req, res) => {
         const timestamp = new Date().toLocaleTimeString();
         if (response.ok) {
             const successLog = `[${timestamp}] [SUCCESS] Direct WhatsApp sent to ${finalPhone}`;
-            gatewayLogs.push(successLog);
-            pythonLogs.push(successLog);
+            pushGatewayLog(successLog);
+            pushPythonLog(successLog);
             return res.json({ success: true });
         }
         const failLog = `[ERROR ${timestamp}] Failed to send to ${finalPhone}: ${data.error || 'Unknown'}`;
-        gatewayLogs.push(failLog);
-        pythonLogs.push(failLog);
+        pushGatewayLog(failLog);
+        pushPythonLog(failLog);
         return res.status(500).json({ error: data.error || 'Failed to send' });
     } catch (err) {
         const errLog = `[ERROR ${new Date().toLocaleTimeString()}] WhatsApp Gateway offline (port 3000)`;
-        gatewayLogs.push(errLog);
-        pythonLogs.push(errLog);
+        pushGatewayLog(errLog);
+        pushPythonLog(errLog);
         return res.status(500).json({ error: 'WhatsApp Gateway offline.' });
     }
 });
@@ -2398,7 +2402,7 @@ app.post('/api/broadcast/start', async (req, res) => {
                 activeBroadcast.inCooldown = true;
                 const cdLog = `[${new Date().toLocaleTimeString()}] ☕ Batch milestone reached (${i} contacts sent). Cooling down for ${Math.round(pauseTime / 60)} minutes to protect WhatsApp account from spam filters...`;
                 activeBroadcast.logs.push(cdLog);
-                pythonLogs.push(cdLog);
+                pushPythonLog(cdLog);
 
                 for (let cd = pauseTime; cd > 0; cd--) {
                     if (broadcastShouldStop) break;
@@ -2411,7 +2415,7 @@ app.post('/api/broadcast/start', async (req, res) => {
 
                 const resumeLog = `[${new Date().toLocaleTimeString()}] ▶️ Cooldown complete. Resuming next safe batch of messages...`;
                 activeBroadcast.logs.push(resumeLog);
-                pythonLogs.push(resumeLog);
+                pushPythonLog(resumeLog);
             }
 
             const contact = contacts[i];
@@ -2442,8 +2446,8 @@ app.post('/api/broadcast/start', async (req, res) => {
                     activeBroadcast.sentCount++;
                     const log = `[${new Date().toLocaleTimeString()}] [${i + 1}/${contacts.length}] ✅ Sent offer to ${contact.customerName} (${targetPhone})`;
                     activeBroadcast.logs.push(log);
-                    gatewayLogs.push(log);
-                    pythonLogs.push(log);
+                    pushGatewayLog(log);
+                    pushPythonLog(log);
 
                     // Persist to sent ledger
                     const curLedger = loadBroadcastSentLedger();
@@ -2459,15 +2463,15 @@ app.post('/api/broadcast/start', async (req, res) => {
                     activeBroadcast.failedCount++;
                     const log = `[ERROR ${new Date().toLocaleTimeString()}] [${i + 1}/${contacts.length}] ❌ Failed to send to ${contact.customerName} (${targetPhone}): ${data.error}`;
                     activeBroadcast.logs.push(log);
-                    gatewayLogs.push(log);
-                    pythonLogs.push(log);
+                    pushGatewayLog(log);
+                    pushPythonLog(log);
                 }
             } catch (err) {
                 activeBroadcast.failedCount++;
                 const log = `[ERROR ${new Date().toLocaleTimeString()}] [${i + 1}/${contacts.length}] ❌ Network error sending to ${contact.customerName} (${targetPhone})`;
                 activeBroadcast.logs.push(log);
-                gatewayLogs.push(log);
-                pythonLogs.push(log);
+                pushGatewayLog(log);
+                pushPythonLog(log);
             }
 
             // --- HUMANIZED DELAY WITH JITTER (ANTI-BAN PACING) ---
@@ -5189,7 +5193,7 @@ app.listen(PORT, () => {
                     consecutiveGatewayFailures++;
                     if (consecutiveGatewayFailures >= 6) { // 60 seconds stuck unready without QR code
                         console.log('[SUPERVISOR] WhatsApp Client unready for >60s. Auto-restarting gateway process...');
-                        gatewayLogs.push(`[${new Date().toLocaleTimeString()}] [SUPERVISOR] Gateway stuck — auto-restarting cleanly...`);
+                        pushGatewayLog(`[${new Date().toLocaleTimeString()}] [SUPERVISOR] Gateway stuck — auto-restarting cleanly...`);
                         consecutiveGatewayFailures = 0;
                         if (gatewayProcess) {
                             try { spawn('taskkill', ['/PID', gatewayProcess.pid.toString(), '/F', '/T'], { windowsHide: true }); } catch (err) {}
@@ -5206,7 +5210,7 @@ app.listen(PORT, () => {
             // Only trigger recovery if the gateway HTTP server is completely unreachable for 3 consecutive checks (30s)
             if (consecutiveGatewayFailures >= 3) {
                 console.log('[SUPERVISOR] WhatsApp Gateway port 3000 is unresponsive (30s). Auto-restarting...');
-                gatewayLogs.push(`[${new Date().toLocaleTimeString()}] [SUPERVISOR] Gateway offline — restarting process...`);
+                pushGatewayLog(`[${new Date().toLocaleTimeString()}] [SUPERVISOR] Gateway offline — restarting process...`);
                 consecutiveGatewayFailures = 0;
                 if (gatewayProcess) {
                     try { spawn('taskkill', ['/PID', gatewayProcess.pid.toString(), '/F', '/T'], { windowsHide: true }); } catch (err) {}
@@ -5221,7 +5225,7 @@ app.listen(PORT, () => {
             const isPosAlive = await isPosListenerRunning();
             if (!isPosAlive) {
                 console.log('[SUPERVISOR] cobb_pos_listener is offline. Auto-reviving listener silently...');
-                pythonLogs.push(`[${new Date().toLocaleTimeString()}] [SUPERVISOR] Listener down — auto-respawning silently...`);
+                pushPythonLog(`[${new Date().toLocaleTimeString()}] [SUPERVISOR] Listener down — auto-respawning silently...`);
                 pythonProcess = null;
                 await startAutomationHelper();
             }
@@ -5254,7 +5258,7 @@ app.listen(PORT, () => {
         } catch (backupErr) {
             /* ignore */
         }
-    }, 10000);
+    }, 30000); // 30s — was 10s; each tick runs 2 PowerShell Get-CimInstance calls which are slow on Windows
 
     // --- AUTOMATIC EOD CLOSING DISPATCH & RECOVERY ENGINE ---
     let lastEodCheckTimestamp = 0;
