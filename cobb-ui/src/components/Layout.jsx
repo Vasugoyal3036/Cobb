@@ -82,7 +82,8 @@ import {
   Banknote,
   Lock,
   Smartphone,
-  Fingerprint
+  Fingerprint,
+  Sliders
 } from 'lucide-react';
 const BiometricModal = lazy(() => import('./BiometricModal'));
 const GlobalCommandBar = lazy(() => import('./GlobalCommandBar'));
@@ -95,6 +96,7 @@ const navigationItems = [
   {
     category: "Overview & P&L", items: [
       { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+      { id: "owner_hub", label: "📱 Store Control Hub", icon: Sliders, colorClass: "text-purple-600 dark:text-purple-400 hover:bg-slate-900 hover:text-white font-bold", activeColorClass: "bg-purple-500/15 text-purple-600 dark:text-purple-400 font-bold border-l-2 border-purple-500 shadow-sm shadow-purple-500/20" },
       { id: "pnl", label: "Sales & P&L Statement", icon: DollarSign, colorClass: "text-green-600 dark:text-green-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-green-500/15 text-green-600 dark:text-green-400 font-bold border-l-2 border-green-500" },
       { id: "gst", label: "GST & Tax Summary", icon: FileText, colorClass: "text-emerald-600 dark:text-emerald-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold border-l-2 border-emerald-500" },
       { id: "analytics", label: "Visual Rush Chart", icon: Clock },

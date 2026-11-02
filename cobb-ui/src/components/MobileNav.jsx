@@ -14,7 +14,8 @@ import {
   ChevronDown,
   ChevronUp,
   Sparkles,
-  Smartphone
+  Smartphone,
+  Sliders
 } from 'lucide-react';
 
 export default function MobileNav({
@@ -30,6 +31,13 @@ export default function MobileNav({
   const [showQuickDock, setShowQuickDock] = useState(true);
 
   const quickActions = [
+    {
+      id: 'owner_hub',
+      label: 'Store Inputs',
+      icon: Sliders,
+      color: 'purple',
+      onClick: () => setActiveTab('owner_hub')
+    },
     {
       id: 'stock_checker',
       label: 'Stock Check',

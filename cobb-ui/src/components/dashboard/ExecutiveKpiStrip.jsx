@@ -443,9 +443,12 @@ const ExecutiveKpiStrip = ({
                   {userRole === 'owner' && (
                     <button
                       type="button"
-                      onClick={() => window.dispatchEvent(new Event('cobb_open_store_expenses'))}
+                      onClick={() => {
+                        if (typeof setActiveTab === 'function') setActiveTab('owner_hub');
+                        else window.dispatchEvent(new CustomEvent('cobb_open_owner_hub'));
+                      }}
                       className="p-0.5 rounded text-slate-400 hover:text-sky-400 transition-colors cursor-pointer"
-                      title="Click to edit Daily Target & Store Expenses"
+                      title="Click to edit Daily Target & Store Inputs directly on mobile"
                     >
                       <Settings className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                     </button>
@@ -583,9 +586,12 @@ const ExecutiveKpiStrip = ({
                   {userRole === 'owner' && (
                     <button
                       type="button"
-                      onClick={() => window.dispatchEvent(new Event('cobb_open_store_expenses'))}
+                      onClick={() => {
+                        if (typeof setActiveTab === 'function') setActiveTab('owner_hub');
+                        else window.dispatchEvent(new CustomEvent('cobb_open_owner_hub'));
+                      }}
                       className="p-0.5 rounded text-slate-400 hover:text-amber-400 transition-colors cursor-pointer"
-                      title="Click to edit Daily OpEx & Margin %"
+                      title="Click to edit Daily OpEx & Margin % directly on mobile"
                     >
                       <Settings className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                     </button>

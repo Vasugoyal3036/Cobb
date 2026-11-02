@@ -1087,6 +1087,80 @@ function listenForTestAlertsAndDispatchFcm() {
 }
 
 // Real-time listener for Staff Names & Target changes from Phone Link
+
+// Real-time listener for Store Config, Expenses, Targets & Promos from Phone Link
+function listenForStoreConfigChanges() {
+    if (!db) return;
+    console.log("[SYNC AGENT] 👂 Listening for Store Config, Expense & Target updates from Phone Link...");
+
+    db.collection("stores").doc(STORE_ID).collection("data").doc("store_config")
+        .onSnapshot(async (snapshot) => {
+            if (!snapshot.exists) return;
+            const cloudData = snapshot.data();
+            if (!cloudData) return;
+
+            const configPath = path.join(__dirname, 'store_config.json');
+            let localConfig = {};
+            try {
+                if (fs.existsSync(configPath)) {
+                    localConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+                }
+            } catch (e) {}
+
+            let hasChanges = false;
+
+            if (cloudData.operatingExpenses && typeof cloudData.operatingExpenses === 'object') {
+                const ce = cloudData.operatingExpenses;
+                const le = localConfig.operatingExpenses || {};
+                if (
+                    ce.rent !== le.rent ||
+                    ce.electricity !== le.electricity ||
+                    ce.miscExpenses !== le.miscExpenses ||
+                    ce.franchiseRoyalty !== le.franchiseRoyalty ||
+                    ce.dailyTargetSales !== le.dailyTargetSales ||
+                    ce.monthlyTargetSales !== le.monthlyTargetSales ||
+                    ce.targetMarginPct !== le.targetMarginPct ||
+                    ce.dailyExpense !== le.dailyExpense ||
+                    ce.staffSalaries !== le.staffSalaries ||
+                    JSON.stringify(ce.salesmanSalaries) !== JSON.stringify(le.salesmanSalaries)
+                ) {
+                    localConfig.operatingExpenses = { ...le, ...ce };
+                    hasChanges = true;
+                }
+            }
+
+            if (cloudData.storeProfile && typeof cloudData.storeProfile === 'object') {
+                const cp = cloudData.storeProfile;
+                const lp = localConfig.storeProfile || {};
+                if (
+                    cp.storeName !== lp.storeName ||
+                    cp.branch !== lp.branch ||
+                    JSON.stringify(cp.ownerPhones) !== JSON.stringify(lp.ownerPhones)
+                ) {
+                    localConfig.storeProfile = { ...lp, ...cp };
+                    hasChanges = true;
+                }
+            }
+
+            if (cloudData.promotions && JSON.stringify(cloudData.promotions) !== JSON.stringify(localConfig.promotions)) {
+                localConfig.promotions = cloudData.promotions;
+                hasChanges = true;
+            }
+
+            if (hasChanges) {
+                localConfig.lastUpdated = new Date().toISOString();
+                try {
+                    fs.writeFileSync(configPath, JSON.stringify(localConfig, null, 2), 'utf8');
+                    console.log('[SYNC AGENT] 💾 Successfully merged Phone Link store config updates into store_config.json');
+                } catch (e) {
+                    console.error('[SYNC AGENT] Error saving store_config.json:', e.message);
+                }
+            }
+        }, (err) => {
+            console.warn('[SYNC AGENT] Store config listener notice:', err.message);
+        });
+}
+
 function listenForStaffConfigChanges() {
     if (!db) return;
     console.log("[SYNC AGENT] 👂 Listening for Staff Name updates from Phone Link...");
@@ -1449,6 +1523,7 @@ function startSyncAgent() {
         checkAndDispatchCancelledBillAlerts();
         listenForTestAlertsAndDispatchFcm();
         listenForStaffConfigChanges();
+        listenForStoreConfigChanges();
         setInterval(() => syncEndpointList(operationalEndpoints, 'Operational Tier'), OPERATIONAL_INTERVAL);
         setInterval(() => syncEndpointList(standardEndpoints, 'Standard Tier'), STANDARD_INTERVAL);
         setInterval(() => {

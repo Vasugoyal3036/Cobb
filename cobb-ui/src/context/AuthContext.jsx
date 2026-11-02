@@ -46,7 +46,7 @@ export const AVAILABLE_STORES = DEFAULT_STORES;
 export const ROLE_PERMISSIONS = {
   owner: null, // null = all tabs allowed
   manager: [
-    'copilot','dashboard','speed_billing','analytics','monthly','live',
+    'copilot','dashboard','owner_hub','speed_billing','analytics','monthly','live',
     'staff_leaderboard','pocket_khata','denomination','pending_tags','hold_desk','returns',
     'alterations','topmovers','sizematrix','transit','ibt','deadstock','reorder',
     'smart_bundles','loyalty','ratings','vip','dormant','wardrobe','retention'

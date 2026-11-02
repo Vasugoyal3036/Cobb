@@ -29,6 +29,7 @@ const GodModeModal = lazy(() => import('./components/GodModeModal'));
 const GunScannerModal = lazy(() => import('./components/GunScannerModal'));
 const CustomerFeedbackPage = lazy(() => import('./components/CustomerFeedbackPage'));
 const StaffStockCheckerPage = lazy(() => import('./components/StaffStockCheckerPage'));
+const OwnerHubTab = lazy(() => import('./components/tabs/OwnerHubTab'));
 
 import { fetchWithOfflineFallback, subscribeToData } from './utils/offlineDb';
 
@@ -1391,6 +1392,8 @@ export default function App() {
     const handleToggleGunScanner = () => setShowGunScannerModal(prev => !prev);
 
     window.addEventListener('cobb_force_sync', handleForceSync);
+    const handleOpenOwnerHub = () => setActiveTab('owner_hub');
+    window.addEventListener('cobb_open_owner_hub', handleOpenOwnerHub);
     window.addEventListener('cobb_open_speed_billing', handleOpenSpeed);
     window.addEventListener('cobb_open_eod', handleOpenEod);
     window.addEventListener('cobb_open_alteration', handleOpenAlteration);
@@ -1403,6 +1406,7 @@ export default function App() {
 
     return () => {
       window.removeEventListener('cobb_force_sync', handleForceSync);
+      window.removeEventListener('cobb_open_owner_hub', handleOpenOwnerHub);
       window.removeEventListener('cobb_open_speed_billing', handleOpenSpeed);
       window.removeEventListener('cobb_open_eod', handleOpenEod);
       window.removeEventListener('cobb_open_alteration', handleOpenAlteration);
@@ -3014,6 +3018,16 @@ export default function App() {
                 activeStore={activeStore}
                 darkMode={darkMode}
                 onClose={() => setActiveTab('dashboard')}
+              />
+            )}
+
+            {/* 23. STORE CONTROL HUB / MOBILE INPUTS */}
+            {activeTab === 'owner_hub' && (
+              <OwnerHubTab
+                API_BASE={API_BASE}
+                activeStore={activeStore}
+                darkMode={darkMode}
+                formatCurrency={formatCurrency}
               />
             )}
 

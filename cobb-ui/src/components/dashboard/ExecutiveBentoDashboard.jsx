@@ -432,6 +432,19 @@ const ExecutiveBentoDashboard = (props) => {
 
             <button
               type="button"
+              onClick={() => {
+                if (typeof setActiveTab === 'function') setActiveTab('owner_hub');
+                else window.dispatchEvent(new CustomEvent('cobb_open_owner_hub'));
+              }}
+              className="px-2.5 py-1.5 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 text-purple-400 border border-purple-500/30 text-xs font-black shadow-sm transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+              title="Open Store Controls & Mobile Inputs"
+            >
+              <Sliders className="w-3.5 h-3.5" />
+              <span>Store Inputs</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setShowMissionControl(true)}
               className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black shadow-md shadow-emerald-600/25 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
               title="Open Fullscreen TV Wall / Mission Control Mode (Ctrl+Shift+T)"
