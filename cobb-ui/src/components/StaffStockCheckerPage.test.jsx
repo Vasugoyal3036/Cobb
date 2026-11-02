@@ -234,7 +234,7 @@ describe('StaffStockCheckerPage [Floor Mobile Stock Checker]', () => {
     });
   });
 
-  it('displays instant offer breakdown with Buy 1 Get 2 and Flat 50% net prices', async () => {
+  it('displays instant offer breakdown with Buy 1 Get 2, Flat 50% and Flat 60% net prices', async () => {
     const mockData = {
       success: true,
       articleNo: 'SHIRT-777',
@@ -263,11 +263,14 @@ describe('StaffStockCheckerPage [Floor Mobile Stock Checker]', () => {
       // MRP ₹3,000
       expect(screen.getByText('₹3,000')).toBeDefined();
       // Buy 1 Get 2 Free: ₹3,000 / 3 = ₹1,000 /pc net
-      expect(screen.getByText(/Buy 1 Get 2 Free/i)).toBeDefined();
+      expect(screen.getByText(/Buy 1 Get 2/i)).toBeDefined();
       expect(screen.getByText('₹1,000')).toBeDefined();
       // Flat 50% Off: ₹3,000 * 0.5 = ₹1,500 net price
       expect(screen.getByText(/Flat 50% Off/i)).toBeDefined();
       expect(screen.getByText('₹1,500')).toBeDefined();
+      // Flat 60% Off: ₹3,000 * 0.4 = ₹1,200 net price
+      expect(screen.getByText(/Flat 60% Off/i)).toBeDefined();
+      expect(screen.getByText('₹1,200')).toBeDefined();
     });
   });
 

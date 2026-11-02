@@ -27,7 +27,8 @@ import {
   Focus,
   Image as ImageIcon,
   ChevronDown,
-  Download
+  Download,
+  Percent
 } from 'lucide-react';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { playSound } from '../utils/sound';
@@ -914,39 +915,41 @@ export default function StaffStockCheckerPage({
               {/* Instant Offer & Net Deal Price Breakdown */}
               {stockData.mrp > 0 && (
                 <div className="mt-3 pt-2.5 border-t border-slate-800/80 space-y-2">
-                  <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="grid grid-cols-3 gap-1.5 text-xs">
                     {/* B1G2 Deal */}
-                    <div className="p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between shadow-sm">
-                      <div>
-                        <div className="text-[10.5px] font-black text-amber-300 uppercase tracking-wider flex items-center gap-1">
-                          <Sparkles className="w-3 h-3 fill-current text-amber-400" />
-                          <span>Buy 1 Get 2 Free</span>
-                        </div>
-                        <div className="text-[10px] text-slate-400 mt-0.5">3 pcs @ ₹{Number(stockData.mrp).toLocaleString('en-IN')}</div>
+                    <div className="p-2 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col justify-between text-center shadow-sm">
+                      <div className="text-[10px] font-black text-amber-300 uppercase tracking-tight flex items-center justify-center gap-1">
+                        <Sparkles className="w-2.5 h-2.5 fill-current text-amber-400 shrink-0" />
+                        <span className="truncate">Buy 1 Get 2</span>
                       </div>
-                      <div className="text-right">
-                        <span className="text-xs sm:text-sm font-black text-amber-300">
-                          ₹{Math.round(stockData.mrp / 3).toLocaleString('en-IN')}
-                        </span>
-                        <span className="text-[9px] text-slate-400 block font-medium">/pc net</span>
+                      <div className="text-xs sm:text-sm font-black text-amber-300 my-0.5">
+                        ₹{Math.round(stockData.mrp / 3).toLocaleString('en-IN')}
                       </div>
+                      <div className="text-[9px] text-slate-400 font-medium truncate">/pc net</div>
                     </div>
 
                     {/* Flat 50% Deal */}
-                    <div className="p-2.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-between shadow-sm">
-                      <div>
-                        <div className="text-[10.5px] font-black text-emerald-300 uppercase tracking-wider flex items-center gap-1">
-                          <Tag className="w-3 h-3 text-emerald-400" />
-                          <span>Flat 50% Off</span>
-                        </div>
-                        <div className="text-[10px] text-slate-400 mt-0.5">Single piece deal</div>
+                    <div className="p-2 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex flex-col justify-between text-center shadow-sm">
+                      <div className="text-[10px] font-black text-emerald-300 uppercase tracking-tight flex items-center justify-center gap-1">
+                        <Tag className="w-2.5 h-2.5 text-emerald-400 shrink-0" />
+                        <span className="truncate">Flat 50% Off</span>
                       </div>
-                      <div className="text-right">
-                        <span className="text-xs sm:text-sm font-black text-emerald-300">
-                          ₹{Math.round(stockData.mrp * 0.5).toLocaleString('en-IN')}
-                        </span>
-                        <span className="text-[9px] text-slate-400 block font-medium">net price</span>
+                      <div className="text-xs sm:text-sm font-black text-emerald-300 my-0.5">
+                        ₹{Math.round(stockData.mrp * 0.5).toLocaleString('en-IN')}
                       </div>
+                      <div className="text-[9px] text-slate-400 font-medium truncate">net price</div>
+                    </div>
+
+                    {/* Flat 60% Deal */}
+                    <div className="p-2 rounded-2xl bg-sky-500/10 border border-sky-500/30 flex flex-col justify-between text-center shadow-sm">
+                      <div className="text-[10px] font-black text-sky-300 uppercase tracking-tight flex items-center justify-center gap-1">
+                        <Percent className="w-2.5 h-2.5 text-sky-400 shrink-0" />
+                        <span className="truncate">Flat 60% Off</span>
+                      </div>
+                      <div className="text-xs sm:text-sm font-black text-sky-300 my-0.5">
+                        ₹{Math.round(stockData.mrp * 0.4).toLocaleString('en-IN')}
+                      </div>
+                      <div className="text-[9px] text-slate-400 font-medium truncate">net price</div>
                     </div>
                   </div>
 
