@@ -5591,7 +5591,9 @@ app.listen(PORT, () => {
             const isEveningSchedule = (hour >= 20);
             const isEveningInactivity = (hour > 19 || (hour === 19 && minute >= 15));
 
-            if (lastSentDate !== todayStr && (isEveningSchedule || isEveningInactivity)) {
+            // Automated EOD digest disabled per user request
+            const isAutomatedEodEnabled = false;
+            if (isAutomatedEodEnabled && lastSentDate !== todayStr && (isEveningSchedule || isEveningInactivity)) {
                 await connectDB();
                 const activityQuery = await sql.query(`
                     SELECT 
@@ -5667,21 +5669,8 @@ async function handleProcessTermination(signal) {
         const day = String(now.getDate()).padStart(2, '0');
         const todayStr = `${year}-${month}-${day}`;
 
-        // Shutdown during store closing hours: 7:00 PM (19:00) onwards
-        const isClosingHours = (hour >= 19);
-        if (isClosingHours) {
-            const sentFilePath = path.join(__dirname, 'sent_eod_date.txt');
-            let lastSentDate = '';
-            if (fs.existsSync(sentFilePath)) {
-                try { lastSentDate = fs.readFileSync(sentFilePath, 'utf8').trim(); } catch (e) {}
-            }
-            if (lastSentDate !== todayStr) {
-                console.log(`[PROCESS TERMINATION] Shutdown during store closing hours detected at ${hour}:${String(minute).padStart(2, '0')}. Auto-dispatching EOD digest for ${todayStr}...`);
-                await dispatchEodReportToOwners(todayStr, ` (Shutdown Closing at ${hour}:${String(minute).padStart(2, '0')})`);
-            } else {
-                console.log(`[PROCESS TERMINATION] EOD digest for ${todayStr} was already dispatched earlier today. Skipping.`);
-            }
-        }
+        // Shutdown during store closing hours: (DISABLED per user request: automated EOD stopped)
+        console.log(`[PROCESS TERMINATION] Received ${signal}. Automated EOD digest is disabled.`);
     } catch (e) {
         console.error('[PROCESS TERMINATION EOD ERROR]:', e.message);
     }

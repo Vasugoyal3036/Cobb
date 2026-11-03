@@ -270,10 +270,12 @@ def record_eod_sent(target_date_str):
 
 def trigger_eod_closing_dispatch(cursor, label_suffix=" (Store Closing Digest)"):
     """
-    Executes the store closing digest dispatch.
-    First tries the CRM backend endpoint for detailed drawer/petty-cash reconciliation,
-    and falls back to direct SQL execution + port 3000 WhatsApp sender.
+    Automated EOD digest dispatch is disabled per user request.
     """
+    log_engine("[EOD CLOSING] Automated EOD digest dispatch is disabled.")
+    return False
+
+def _original_trigger_eod_closing_dispatch(cursor, label_suffix=" (Store Closing Digest)"):
     now = time.localtime()
     today_str = time.strftime('%Y-%m-%d', now)
 
@@ -735,7 +737,8 @@ def run_listener():
             is_night_schedule = (now.tm_hour >= 20)
             is_closing_inactivity = (now.tm_hour > 19 or (now.tm_hour == 19 and now.tm_min >= 15))
 
-            if (is_night_schedule or is_closing_inactivity) and not is_eod_already_sent(today_str):
+            # Automated EOD disabled per user request
+            if False and (is_night_schedule or is_closing_inactivity) and not is_eod_already_sent(today_str):
                 try:
                     cursor.execute("""
                         SELECT 

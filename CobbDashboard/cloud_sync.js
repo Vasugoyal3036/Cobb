@@ -791,9 +791,14 @@ async function checkAndDispatchCancelledBillAlerts() {
 let lastDispatchedEodDate = '';
 
 async function dispatchEodDigestAlert(isScheduled = false) {
+    // Automated EOD digest disabled per user request
+    if (isScheduled) {
+        console.log('[SYNC AGENT] Automated EOD digest is disabled.');
+        return;
+    }
     if (!db) return;
     const todayStr = new Date().toISOString().split('T')[0];
-    if (isScheduled && lastDispatchedEodDate === todayStr) {
+    if (lastDispatchedEodDate === todayStr) {
         return; // Don't send duplicate on same day
     }
 
@@ -1538,7 +1543,8 @@ function startSyncAgent() {
         setInterval(checkAndDispatchCancelledBillAlerts, CANCELLED_INTERVAL);
         setInterval(updateHeartbeat, HEARTBEAT_INTERVAL);
 
-        // 3. Nightly closing digest scheduled trigger (8:00 PM onwards)
+        // 3. Nightly closing digest scheduled trigger (DISABLED per user request)
+        /*
         setInterval(() => {
             const now = new Date();
             const hour = now.getHours();
@@ -1546,6 +1552,7 @@ function startSyncAgent() {
                 dispatchEodDigestAlert(true);
             }
         }, 60 * 1000);
+        */
     } else {
         console.log("[SYNC AGENT] Please update .env with FIREBASE_SERVICE_ACCOUNT and restart.");
     }

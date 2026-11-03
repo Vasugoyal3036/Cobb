@@ -245,3 +245,4 @@ export function subscribeToTeaExpenses(storeId = 'DEMO_STORE_001', onUpdate) {
     return () => {};
   }
 }
+
