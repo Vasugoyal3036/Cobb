@@ -620,6 +620,42 @@ axios.get = async (url, config) => {
       }
     }
 
+    // Dynamic handler for /api/expenses/tea on remote Phone Link
+    if (url.includes('/api/expenses/tea')) {
+      try {
+        if (authPromise) await authPromise;
+        const targetStore = getActiveStoreId();
+        const teaSnap = await getDoc(doc(db, 'stores', targetStore, 'data', 'tea_expenses'));
+        if (teaSnap.exists()) {
+          return { data: { success: true, record: teaSnap.data() }, status: 200, statusText: 'OK' };
+        } else {
+          return {
+            data: {
+              success: true,
+              record: {
+                date: new Date().toISOString().split('T')[0],
+                ratePerCup: 10,
+                totalCups: 0,
+                totalAmount: 0,
+                salesmen: {
+                  Vikas: { name: 'Vikas', cups: 0, amount: 0, lastLogged: null },
+                  Pawan: { name: 'Pawan', cups: 0, amount: 0, lastLogged: null },
+                  Simran: { name: 'Simran', cups: 0, amount: 0, lastLogged: null },
+                  Akhil: { name: 'Akhil', cups: 0, amount: 0, lastLogged: null }
+                },
+                logs: [],
+                lastUpdated: new Date().toISOString()
+              }
+            },
+            status: 200,
+            statusText: 'OK'
+          };
+        }
+      } catch (teaErr) {
+        console.warn('[SaaS Interceptor] tea_expenses error:', teaErr);
+      }
+    }
+
     let docName = url.replace(API_BASE, '').replace('/api/', '').replace(/\//g, '_');
     docName = docName.split('?')[0];
     try {

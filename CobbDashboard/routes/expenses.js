@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const expensesManager = require('../expenses_manager');
+const teaManager = require('../tea_manager');
 
 // GET /api/expenses/categories
 router.get('/categories', (req, res) => {
@@ -9,6 +10,64 @@ router.get('/categories', (req, res) => {
         categories: expensesManager.CATEGORY_MAP
     });
 });
+
+// --- SALESMAN TEA (CHAI) EXPENSES ---
+
+// GET /api/expenses/tea/today
+router.get('/tea/today', (req, res) => {
+    try {
+        const storeId = req.query.storeId || 'DEMO_STORE_001';
+        const dateStr = req.query.date;
+        const record = teaManager.getTodayRecord(dateStr, storeId);
+        res.json({
+            success: true,
+            record
+        });
+    } catch (err) {
+        console.error('[ExpensesRoute] Error getting tea record:', err.message);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// POST /api/expenses/tea/log
+router.post('/tea/log', (req, res) => {
+    try {
+        const { salesman, cups = 1, ratePerCup, note, storeId = 'DEMO_STORE_001' } = req.body;
+        if (!salesman) {
+            return res.status(400).json({ success: false, error: 'Salesman is required' });
+        }
+        const updated = teaManager.logTea({ salesman, cups, ratePerCup, note, storeId });
+        res.json({
+            success: true,
+            message: `Logged ${cups} tea for ${salesman}`,
+            record: updated
+        });
+    } catch (err) {
+        console.error('[ExpensesRoute] Error logging tea:', err.message);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// POST /api/expenses/tea/set
+router.post('/tea/set', (req, res) => {
+    try {
+        const { salesman, totalCups, ratePerCup, note, storeId = 'DEMO_STORE_001' } = req.body;
+        if (!salesman) {
+            return res.status(400).json({ success: false, error: 'Salesman is required' });
+        }
+        const updated = teaManager.setTeaCount({ salesman, totalCups, ratePerCup, note, storeId });
+        res.json({
+            success: true,
+            message: `Set tea count for ${salesman} to ${totalCups}`,
+            record: updated
+        });
+    } catch (err) {
+        console.error('[ExpensesRoute] Error setting tea count:', err.message);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// --- GENERAL EXPENSES ---
 
 // GET /api/expenses/today
 router.get('/today', (req, res) => {

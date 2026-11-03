@@ -5,6 +5,11 @@ import StaffStockCheckerPage from './StaffStockCheckerPage';
 import axios from 'axios';
 
 vi.mock('axios');
+
+vi.mock('../utils/firebase', () => ({
+  db: null,
+  authPromise: Promise.resolve()
+}));
 vi.mock('../utils/sound', () => ({
   playSound: vi.fn(),
   playBarcodeBeep: vi.fn(),
@@ -54,7 +59,7 @@ describe('StaffStockCheckerPage [Floor Mobile Stock Checker]', () => {
     render(<StaffStockCheckerPage onClose={vi.fn()} />);
 
     expect(screen.getByText(/COBB STAFF/i)).toBeDefined();
-    expect(screen.getByText(/Stock Checker/i)).toBeDefined();
+    expect(screen.getAllByText(/Stock Checker/i).length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText(/Camera Scanner/i)).toBeDefined();
     expect(screen.getByPlaceholderText(/Enter barcode or article no/i)).toBeDefined();
   });
@@ -450,6 +455,108 @@ describe('StaffStockCheckerPage [Floor Mobile Stock Checker]', () => {
 
     await waitFor(() => {
       expect(axios.post).toHaveBeenCalled();
+    });
+  });
+
+  it('switches to Daily Chai tab and displays salesman tea logging interface', async () => {
+    axios.get.mockResolvedValueOnce({
+      data: {
+        success: true,
+        record: {
+          date: new Date().toISOString().split('T')[0],
+          ratePerCup: 10,
+          totalCups: 0,
+          totalAmount: 0,
+          salesmen: {
+            Vikas: { name: 'Vikas', cups: 0, amount: 0 },
+            Pawan: { name: 'Pawan', cups: 0, amount: 0 },
+            Simran: { name: 'Simran', cups: 0, amount: 0 },
+            Akhil: { name: 'Akhil', cups: 0, amount: 0 }
+          },
+          logs: []
+        }
+      }
+    });
+
+    render(<StaffStockCheckerPage API_BASE="http://localhost:5000" onClose={vi.fn()} />);
+
+    // Click on Daily Chai (Tea) tab
+    const teaTab = screen.getByRole('button', { name: /Daily Chai/i });
+    fireEvent.click(teaTab);
+
+    expect(screen.getByText(/Salesman Tea \(Chai\) Log/i)).toBeDefined();
+    expect(screen.getAllByText(/Vikas/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Pawan/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/Simran/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByRole('button', { name: /\+1 Chai ☕/i })).toBeDefined();
+  });
+
+  it('allows salesman to switch their active name and log tea', async () => {
+    axios.get.mockResolvedValue({
+      data: {
+        success: true,
+        record: {
+          date: new Date().toISOString().split('T')[0],
+          ratePerCup: 10,
+          totalCups: 0,
+          totalAmount: 0,
+          salesmen: {
+            Vikas: { name: 'Vikas', cups: 0, amount: 0 },
+            Pawan: { name: 'Pawan', cups: 0, amount: 0 },
+            Simran: { name: 'Simran', cups: 0, amount: 0 },
+            Akhil: { name: 'Akhil', cups: 0, amount: 0 }
+          },
+          logs: []
+        }
+      }
+    });
+
+    axios.post.mockResolvedValue({
+      data: {
+        success: true,
+        record: {
+          date: new Date().toISOString().split('T')[0],
+          ratePerCup: 10,
+          totalCups: 1,
+          totalAmount: 10,
+          salesmen: {
+            Vikas: { name: 'Vikas', cups: 0, amount: 0 },
+            Pawan: { name: 'Pawan', cups: 1, amount: 10, lastLogged: new Date().toISOString() },
+            Simran: { name: 'Simran', cups: 0, amount: 0 },
+            Akhil: { name: 'Akhil', cups: 0, amount: 0 }
+          },
+          logs: [
+            {
+              id: 'tea_test_1',
+              salesman: 'Pawan',
+              cupsAdded: 1,
+              totalCupsForDay: 1,
+              ratePerCup: 10,
+              amount: 10,
+              time: '12:00 PM',
+              timestamp: new Date().toISOString(),
+              note: 'Tea Break (+1)'
+            }
+          ]
+        }
+      }
+    });
+
+    render(<StaffStockCheckerPage API_BASE="http://localhost:5000" onClose={vi.fn()} />);
+
+    // Switch to Chai tab
+    fireEvent.click(screen.getByRole('button', { name: /Daily Chai/i }));
+
+    // Select Pawan
+    const pawanBtns = screen.getAllByText(/Pawan/i);
+    fireEvent.click(pawanBtns[0]);
+
+    // Click +1 Chai
+    const plusChaiBtn = screen.getByRole('button', { name: /\+1 Chai ☕/i });
+    fireEvent.click(plusChaiBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Logged \+1 tea for Pawan!/i)).toBeDefined();
     });
   });
 });

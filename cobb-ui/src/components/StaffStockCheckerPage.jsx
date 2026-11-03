@@ -30,8 +30,16 @@ import {
   Image as ImageIcon,
   ChevronDown,
   Download,
-  Percent
+  Percent,
+  Coffee
 } from 'lucide-react';
+import {
+  fetchTodayTeaRecord,
+  logSalesmanTea,
+  setSalesmanTeaCount,
+  subscribeToTeaExpenses,
+  DEFAULT_SALESMEN
+} from '../utils/teaExpenses';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { playSound } from '../utils/sound';
 import { getColorDot } from './GunScannerModal';
@@ -99,6 +107,73 @@ export default function StaffStockCheckerPage({
   activeStore = 'DEMO_STORE_001',
   darkMode = true
 }) {
+  // --- Salesman Tea Expense State ---
+  const [activeMainTab, setActiveMainTab] = useState('stock'); // 'stock' | 'tea'
+  const [teaRecord, setTeaRecord] = useState(null);
+  const [activeSalesman, setActiveSalesman] = useState(() => {
+    try {
+      return localStorage.getItem('cobb_active_salesman') || 'Vikas';
+    } catch (e) {
+      return 'Vikas';
+    }
+  });
+  const [teaLogging, setTeaLogging] = useState(false);
+  const [teaSuccessMsg, setTeaSuccessMsg] = useState('');
+  const [teaNote, setTeaNote] = useState('');
+
+  useEffect(() => {
+    fetchTodayTeaRecord(API_BASE, activeStore).then(rec => {
+      if (rec) setTeaRecord(rec);
+    });
+
+    const unsub = subscribeToTeaExpenses(activeStore, (rec) => {
+      if (rec) setTeaRecord(rec);
+    });
+
+    return () => {
+      if (unsub) unsub();
+    };
+  }, [activeStore, API_BASE]);
+
+  const handleSelectSalesman = (name) => {
+    setActiveSalesman(name);
+    try {
+      localStorage.setItem('cobb_active_salesman', name);
+    } catch (e) {}
+  };
+
+  const handleLogSalesmanTea = async (cupsToAdd, note = '') => {
+    if (teaLogging) return;
+    setTeaLogging(true);
+    try {
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate([60, 30, 60]);
+      }
+      playSound('click');
+
+      const updated = await logSalesmanTea(API_BASE, activeStore, {
+        salesman: activeSalesman,
+        cups: cupsToAdd,
+        ratePerCup: teaRecord?.ratePerCup || 10,
+        note: note || teaNote
+      });
+      if (updated) setTeaRecord(updated);
+      setTeaSuccessMsg(`Logged ${cupsToAdd > 0 ? `+${cupsToAdd}` : cupsToAdd} tea for ${activeSalesman}!`);
+      setTeaNote('');
+      setTimeout(() => setTeaSuccessMsg(''), 3000);
+    } catch (err) {
+      console.error('Error logging tea:', err);
+    } finally {
+      setTeaLogging(false);
+    }
+  };
+
+  const todayTeaTotalCups = teaRecord?.totalCups || 0;
+  const todayTeaTotalAmount = teaRecord?.totalAmount || 0;
+  const currentSalesmanTea = teaRecord?.salesmen?.[activeSalesman] || { cups: 0, amount: 0 };
+  const allSalesmenList = DEFAULT_SALESMEN;
+  const todayTeaLogs = teaRecord?.logs || [];
+
   // Search & Lookup State
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
@@ -856,6 +931,258 @@ export default function StaffStockCheckerPage({
 
       {/* --- Main Mobile Content Container --- */}
       <main className="flex-1 max-w-lg w-full mx-auto p-4 space-y-4">
+        {/* --- Primary Mode Switcher: Stock Checker vs Chai Tracker --- */}
+        <div className="flex bg-[#E8E1D3] p-1 rounded-2xl border border-[#D5C9B7] shadow-inner">
+          <button
+            type="button"
+            onClick={() => setActiveMainTab('stock')}
+            className={`flex-1 py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition-all ${
+              activeMainTab === 'stock'
+                ? 'bg-[#FFFDF9] text-[#231F1C] shadow-sm border border-[#DCD3C4]'
+                : 'text-[#6B5E51] hover:text-[#231F1C]'
+            }`}
+          >
+            <Search className="w-3.5 h-3.5 text-[#B45309]" />
+            <span>Stock Checker</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveMainTab('tea')}
+            className={`flex-1 py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition-all ${
+              activeMainTab === 'tea'
+                ? 'bg-[#FFFDF9] text-[#231F1C] shadow-sm border border-[#DCD3C4]'
+                : 'text-[#6B5E51] hover:text-[#231F1C]'
+            }`}
+          >
+            <Coffee className="w-3.5 h-3.5 text-[#B45309]" />
+            <span>Daily Chai (Tea)</span>
+            {todayTeaTotalCups > 0 && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]">
+                {todayTeaTotalCups} ☕
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* ======================================================== */}
+        {/* --- TEA (CHAI) EXPENSE VIEW --- */}
+        {/* ======================================================== */}
+        {activeMainTab === 'tea' && (
+          <div className="space-y-4 animate-in fade-in duration-150">
+            {/* Header Hero Banner */}
+            <div className="p-4 rounded-3xl bg-gradient-to-br from-[#FFFDF9] via-[#FAF6F0] to-[#F5ECE0] border border-[#DCD3C4] shadow-sm">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#B45309] to-[#D97706] text-[#FFFDF9] flex items-center justify-center font-black shadow-sm">
+                    <Coffee className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="font-black text-sm tracking-tight text-[#231F1C]">Salesman Tea (Chai) Log</h2>
+                    <p className="text-[11px] font-semibold text-[#6B5E51]">
+                      ₹{teaRecord?.ratePerCup || 10} / cup • Live Synced with Admin Panel
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] uppercase font-bold text-[#8C7E70] block">Store Total Today</span>
+                  <span className="text-sm font-black font-mono text-[#B45309]">
+                    {todayTeaTotalCups} Cups • ₹{todayTeaTotalAmount}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Step 1: Select Your Salesman Name */}
+            <div className="p-4 rounded-3xl bg-[#FFFDF9] border border-[#DCD3C4] shadow-sm space-y-2.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-black uppercase tracking-wider text-[#6B5E51]">
+                  1. Select Your Name
+                </label>
+                <span className="text-[10px] font-semibold text-[#8C7E70]">
+                  Active: <strong className="text-[#B45309]">{activeSalesman}</strong>
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {allSalesmenList.map((name) => {
+                  const isSelected = activeSalesman === name;
+                  const staffTea = teaRecord?.salesmen?.[name] || { cups: 0, amount: 0 };
+                  return (
+                    <button
+                      key={name}
+                      type="button"
+                      onClick={() => handleSelectSalesman(name)}
+                      className={`p-2.5 rounded-2xl border text-left transition-all active:scale-95 flex items-center justify-between ${
+                        isSelected
+                          ? 'bg-[#FEF3C7] border-[#B45309] text-[#92400E] shadow-sm ring-1 ring-[#B45309]/30'
+                          : 'bg-[#FAF6F0] border-[#E5DCCF] text-[#4A4036] hover:bg-[#F3ECE0]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 truncate">
+                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0 ${
+                          isSelected ? 'bg-[#B45309] text-[#FFFDF9]' : 'bg-[#E5DCCF] text-[#6B5E51]'
+                        }`}>
+                          {name.charAt(0)}
+                        </span>
+                        <span className="font-bold text-xs truncate">{name}</span>
+                      </div>
+                      <span className="text-[11px] font-mono font-bold shrink-0 ml-1">
+                        {staffTea.cups > 0 ? `${staffTea.cups} ☕` : '0'}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Step 2: Personal Tea Counter for Selected Salesman */}
+            <div className="p-5 rounded-3xl bg-[#FFFDF9] border-2 border-[#DCD3C4] shadow-md space-y-4 text-center">
+              <div>
+                <span className="inline-block px-3 py-1 rounded-full text-xs font-black bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A] uppercase tracking-wide">
+                  ☕ {activeSalesman}'s Tea Today
+                </span>
+                <div className="mt-3 flex items-baseline justify-center gap-2">
+                  <span className="text-5xl font-black font-mono text-[#231F1C]">
+                    {currentSalesmanTea.cups}
+                  </span>
+                  <span className="text-lg font-bold text-[#6B5E51]">
+                    {currentSalesmanTea.cups === 1 ? 'Cup' : 'Cups'}
+                  </span>
+                  <span className="text-base font-black font-mono text-[#B45309] ml-1">
+                    (₹{currentSalesmanTea.amount || currentSalesmanTea.cups * (teaRecord?.ratePerCup || 10)})
+                  </span>
+                </div>
+                <p className="text-xs text-[#8C7E70] mt-1 flex items-center justify-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#15803D] animate-pulse"></span>
+                  <span>Instant live sync to counter & admin panel</span>
+                </p>
+              </div>
+
+              {/* Success Message Banner */}
+              {teaSuccessMsg && (
+                <div className="p-2.5 rounded-2xl bg-[#E8F5E9] border border-[#86EFAC] text-[#15803D] text-xs font-black flex items-center justify-center gap-1.5 animate-in fade-in">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <span>{teaSuccessMsg}</span>
+                </div>
+              )}
+
+              {/* Quick Stepper Action Buttons */}
+              <div className="grid grid-cols-3 gap-2.5 pt-1">
+                <button
+                  type="button"
+                  disabled={teaLogging || currentSalesmanTea.cups <= 0}
+                  onClick={() => handleLogSalesmanTea(-1, 'Correction (-1)')}
+                  className="py-3 px-2 rounded-2xl border border-[#DCD3C4] bg-[#FAF6F0] hover:bg-[#EAE2D3] active:scale-95 disabled:opacity-40 disabled:pointer-events-none text-xs font-black text-[#6B5E51] transition-all flex items-center justify-center gap-1 shadow-sm"
+                >
+                  <span>- 1 Cup</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={teaLogging}
+                  onClick={() => handleLogSalesmanTea(1, 'Tea Break (+1)')}
+                  className="py-3 px-2 rounded-2xl bg-gradient-to-r from-[#B45309] to-[#D97706] text-[#FFFDF9] hover:from-[#92400E] hover:to-[#B45309] active:scale-95 disabled:opacity-50 text-xs font-black transition-all flex items-center justify-center gap-1.5 shadow-md col-span-1"
+                >
+                  <Coffee className="w-4 h-4 shrink-0" />
+                  <span>+1 Chai ☕</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={teaLogging}
+                  onClick={() => handleLogSalesmanTea(2, 'Tea Break (+2)')}
+                  className="py-3 px-2 rounded-2xl border-2 border-[#B45309]/30 bg-[#FEF3C7] text-[#92400E] hover:bg-[#FDE68A] active:scale-95 disabled:opacity-50 text-xs font-black transition-all flex items-center justify-center gap-1 shadow-sm"
+                >
+                  <span>+2 Chai ☕</span>
+                </button>
+              </div>
+
+              {/* Optional Quick Note Input */}
+              <div className="pt-2">
+                <input
+                  type="text"
+                  value={teaNote}
+                  onChange={(e) => setTeaNote(e.target.value)}
+                  placeholder="Add note (e.g. Morning tea, Client tea) • Optional"
+                  className="w-full px-3 py-2 text-xs rounded-xl bg-[#FAF6F0] border border-[#DCD3C4] text-[#231F1C] placeholder-[#8C7E70] focus:outline-none focus:ring-1 focus:ring-[#B45309]"
+                />
+              </div>
+            </div>
+
+            {/* Step 3: Store Tea Summary Board (All Salesmen) */}
+            <div className="p-4 rounded-3xl bg-[#FFFDF9] border border-[#DCD3C4] shadow-sm space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-black uppercase tracking-wider text-[#6B5E51]">
+                  Today's Store Tea Ledger
+                </h3>
+                <span className="text-xs font-black font-mono text-[#B45309]">
+                  Total: {todayTeaTotalCups} Cups • ₹{todayTeaTotalAmount}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                {allSalesmenList.map((name) => {
+                  const s = teaRecord?.salesmen?.[name] || { cups: 0, amount: 0 };
+                  const isCurrent = activeSalesman === name;
+                  return (
+                    <div
+                      key={name}
+                      className={`p-3 rounded-2xl border flex items-center justify-between ${
+                        s.cups > 0
+                          ? 'bg-[#FEF3C7]/40 border-[#FDE68A]'
+                          : 'bg-[#FAF6F0] border-[#E5DCCF]'
+                      } ${isCurrent ? 'ring-1 ring-[#B45309]' : ''}`}
+                    >
+                      <div>
+                        <p className="font-bold text-xs text-[#231F1C]">{name}</p>
+                        <p className="text-[10px] text-[#8C7E70]">₹{s.amount || s.cups * 10}</p>
+                      </div>
+                      <span className="text-base font-black font-mono text-[#B45309]">
+                        {s.cups} <span className="text-[10px] font-normal text-[#6B5E51]">cups</span>
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Step 4: Today's Timestamped Log History */}
+            {todayTeaLogs.length > 0 && (
+              <div className="p-4 rounded-3xl bg-[#FFFDF9] border border-[#DCD3C4] shadow-sm space-y-2">
+                <h3 className="text-xs font-black uppercase tracking-wider text-[#6B5E51]">
+                  Today's Floor Tea Logs
+                </h3>
+                <div className="divide-y divide-[#E5DCCF] max-h-48 overflow-y-auto">
+                  {todayTeaLogs.slice(0, 8).map((log) => (
+                    <div key={log.id} className="py-2 flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full bg-[#FAF6F0] text-[#B45309] flex items-center justify-center text-[10px] font-bold">
+                          ☕
+                        </span>
+                        <div>
+                          <p className="font-bold text-[#231F1C]">
+                            {log.salesman}{' '}
+                            <span className="text-[11px] font-semibold text-[#B45309]">
+                              ({log.cupsAdded > 0 ? `+${log.cupsAdded}` : log.cupsAdded} cup)
+                            </span>
+                          </p>
+                          {log.note && <p className="text-[10px] text-[#8C7E70]">{log.note}</p>}
+                        </div>
+                      </div>
+                      <span className="text-[10px] font-mono text-[#8C7E70]">{log.time}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ======================================================== */}
+        {/* --- STOCK CHECKER VIEW (Default) --- */}
+        {/* ======================================================== */}
+        {activeMainTab === 'stock' && (
+          <div className="space-y-4">
         {/* Shortcut Banner Tip for Staff */}
         {!isInstalled && !dismissedTip && (
           <div className="p-3 rounded-2xl bg-[#FFFDF9] border border-[#DCD3C4] flex items-center justify-between gap-3 text-xs shadow-sm">
@@ -1456,6 +1783,8 @@ export default function StaffStockCheckerPage({
                 </button>
               ))}
             </div>
+          </div>
+        )}
           </div>
         )}
       </main>

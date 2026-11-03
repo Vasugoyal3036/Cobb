@@ -29,8 +29,10 @@ import {
   Tag,
   Megaphone,
   Smartphone,
-  Info
+  Info,
+  Coffee
 } from 'lucide-react';
+import { fetchTodayTeaRecord, subscribeToTeaExpenses } from '../../utils/teaExpenses';
 import { db, authPromise } from '../../utils/firebase';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { useToast } from '../../context/ToastContext';
@@ -95,6 +97,36 @@ export default function OwnerHubTab({
   const [ownerPhones, setOwnerPhones] = useState(DEFAULT_OWNER_PHONES);
   const [newOwnerPhone, setNewOwnerPhone] = useState('');
   const [helplinePhone, setHelplinePhone] = useState('9138122820');
+
+  // --- 6. SALESMEN TEA (CHAI) EXPENSES STATE ---
+  const [teaRecord, setTeaRecord] = useState(null);
+
+  useEffect(() => {
+    fetchTodayTeaRecord(API_BASE, activeStore).then(rec => {
+      if (rec) setTeaRecord(rec);
+    });
+
+    const unsub = subscribeToTeaExpenses(activeStore, (rec) => {
+      if (rec) setTeaRecord(rec);
+    });
+
+    return () => {
+      if (unsub) unsub();
+    };
+  }, [activeStore, API_BASE]);
+
+  const todayTeaTotalCups = teaRecord?.totalCups || 0;
+  const todayTeaTotalAmount = teaRecord?.totalAmount || 0;
+  const salesmenTeaList = salesmen.map(s => {
+    const sName = s.name || s.empCode;
+    const rec = teaRecord?.salesmen?.[sName] || { cups: 0, amount: 0 };
+    return {
+      name: sName,
+      cups: rec.cups || 0,
+      amount: rec.amount || (rec.cups || 0) * (teaRecord?.ratePerCup || 10)
+    };
+  });
+  const todayTeaLogs = teaRecord?.logs || [];
 
   // Load initial store config from Cloud Firestore / Local API
   useEffect(() => {
@@ -751,6 +783,84 @@ export default function OwnerHubTab({
                 <p className="text-base font-black">{formatCurrency(dailyAmortizedExpense)}/day</p>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* SECTION 2.5: ☕ DAILY SALESMEN TEA (CHAI) EXPENSES */}
+        {(activeCategory === 'all' || activeCategory === 'expenses' || activeCategory === 'staff') && (
+          <div className={`rounded-3xl p-5 sm:p-6 border transition-all ${
+            darkMode ? 'bg-[#121622]/80 border-white/[0.08] shadow-xl' : 'bg-white border-slate-200 shadow-sm'
+          }`}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-amber-500/15 text-amber-500 flex items-center justify-center font-bold">
+                  <Coffee className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-bold text-sm sm:text-base leading-tight">Salesmen Tea (Chai) Tracker</h2>
+                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                      Live Synced
+                    </span>
+                  </div>
+                  <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                    Real-time tea logged by salesmen on floor • Rate: ₹{teaRecord?.ratePerCup || 10}/cup
+                  </p>
+                </div>
+              </div>
+
+              <div className="text-right">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">Today's Tea Total</span>
+                <span className="text-base sm:text-lg font-black text-amber-500 font-mono">
+                  {todayTeaTotalCups} Cups • ₹{todayTeaTotalAmount}
+                </span>
+              </div>
+            </div>
+
+            {/* SALESMEN TEA BREAKDOWN GRID */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {salesmenTeaList.map((st) => (
+                <div
+                  key={st.name}
+                  className={`p-3.5 rounded-2xl border flex flex-col justify-between transition-all ${
+                    st.cups > 0
+                      ? darkMode
+                        ? 'bg-amber-500/10 border-amber-500/30'
+                        : 'bg-amber-50/70 border-amber-200'
+                      : darkMode
+                        ? 'bg-white/[0.02] border-white/5'
+                        : 'bg-slate-50 border-slate-100'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-sm">{st.name}</span>
+                    <span className="text-xs">☕</span>
+                  </div>
+                  <div className="mt-2 flex items-baseline justify-between">
+                    <span className="text-2xl font-black font-mono text-amber-500">
+                      {st.cups} <span className="text-xs font-semibold text-slate-400">cups</span>
+                    </span>
+                    <span className="text-xs font-bold font-mono text-slate-400">
+                      ₹{st.amount}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* QUICK OWNER TEA LOG SUMMARY */}
+            {todayTeaLogs.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-white/5 text-xs text-slate-400 flex flex-wrap items-center gap-2">
+                <span className="font-bold text-slate-300">Latest Floor Log:</span>
+                <span className="px-2 py-0.5 rounded-lg bg-black/20 text-slate-300 font-mono text-[11px]">
+                  ☕ {todayTeaLogs[0].salesman} ({todayTeaLogs[0].cupsAdded > 0 ? `+${todayTeaLogs[0].cupsAdded}` : todayTeaLogs[0].cupsAdded} cup) at {todayTeaLogs[0].time}
+                </span>
+                {todayTeaLogs.length > 1 && (
+                  <span className="text-[11px] text-slate-500">+{todayTeaLogs.length - 1} more today</span>
+                )}
+              </div>
+            )}
           </div>
         )}
 
