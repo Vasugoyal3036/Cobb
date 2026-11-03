@@ -893,7 +893,51 @@ app.get('/api/staff/stock-check', async (req, res) => {
         const totalStock = rows.reduce((sum, r) => sum + Math.max(0, r.stock || 0), 0);
         const mrp = rows[0]?.mrp || 0;
 
-        // Group variants by color and combine sizes (filter out sold items)
+        // Fetch active pending tags matching this article or any of its variant barcodes
+        let activePendingForArticle = [];
+        try {
+            const allPtags = (typeof pendingTagsRouter.readTags === 'function')
+                ? pendingTagsRouter.readTags()
+                : (fs.existsSync(path.join(__dirname, 'pending_tags.json'))
+                    ? JSON.parse(fs.readFileSync(path.join(__dirname, 'pending_tags.json'), 'utf8') || '[]')
+                    : []);
+            const artUpper = (matchedArticle || '').trim().toUpperCase();
+            const variantBarcodes = new Set(rows.map(r => (r.barcode || '').trim().toUpperCase()).filter(Boolean));
+
+            activePendingForArticle = allPtags.filter(t => {
+                if (t.status !== 'active') return false;
+                const tagArt = (t.articleNo || '').trim().toUpperCase();
+                const tagBarcode = (t.barcode || '').trim().toUpperCase();
+                return (tagArt && tagArt === artUpper) || (tagBarcode && variantBarcodes.has(tagBarcode));
+            });
+        } catch (ptagErr) {
+            console.warn('[StaffStockCheck] Error reading pending tags:', ptagErr.message);
+        }
+
+        const normalizeColor = (c) => String(c || 'Standard').trim().toUpperCase();
+        const normalizeSize = (s) => String(s || 'Standard').trim().toUpperCase();
+        const cleanSizeToken = (s) => normalizeSize(s).split(/[\s(]/)[0];
+
+        const getPendingTagsForVariant = (clr, sz, barcodes = []) => {
+            const normClr = normalizeColor(clr);
+            const normSz = normalizeSize(sz);
+            const tokenSz = cleanSizeToken(sz);
+            const bcodeSet = new Set(barcodes.map(b => String(b || '').trim().toUpperCase()).filter(Boolean));
+
+            return activePendingForArticle.filter(t => {
+                const tBc = String(t.barcode || '').trim().toUpperCase();
+                if (tBc && bcodeSet.has(tBc)) return true;
+
+                const tClr = normalizeColor(t.color);
+                if (tClr !== normClr && tClr !== 'STANDARD' && normClr !== 'STANDARD') return false;
+
+                const tSz = normalizeSize(t.size);
+                const tToken = cleanSizeToken(t.size);
+                return tSz === normSz || (tokenSz && tToken === tokenSz);
+            });
+        };
+
+        // Group variants by color and combine sizes (including sizes with pending tags)
         const colorMap = {};
         rows.forEach(r => {
             const clr = (r.color || 'Standard').trim();
@@ -901,19 +945,26 @@ app.get('/api/staff/stock-check', async (req, res) => {
                 colorMap[clr] = {
                     color: clr,
                     totalStock: 0,
+                    pendingTagsCount: 0,
                     sizeMap: {}
                 };
             }
             const stockQty = Math.max(0, r.stock || 0);
             colorMap[clr].totalStock += stockQty;
 
-            // Only combine and include available items (do NOT show sold articles)
-            if (stockQty > 0) {
-                const sz = (r.size || 'Standard').trim();
+            const sz = (r.size || 'Standard').trim();
+            const matchingPending = getPendingTagsForVariant(clr, sz, [r.barcode]);
+            const pCount = matchingPending.length;
+
+            // Combine and include available items OR items with active pending tags
+            if (stockQty > 0 || pCount > 0) {
                 if (!colorMap[clr].sizeMap[sz]) {
                     colorMap[clr].sizeMap[sz] = {
                         size: sz,
                         stock: 0,
+                        pendingTagsCount: 0,
+                        pendingTagDetails: [],
+                        hasPendingTag: false,
                         barcode: r.barcode,
                         barcodes: [],
                         vendorEan: r.vendorEan,
@@ -921,18 +972,73 @@ app.get('/api/staff/stock-check', async (req, res) => {
                     };
                 }
                 colorMap[clr].sizeMap[sz].stock += stockQty;
+                colorMap[clr].sizeMap[sz].pendingTagsCount = pCount;
+                colorMap[clr].sizeMap[sz].hasPendingTag = pCount > 0;
+                colorMap[clr].sizeMap[sz].pendingTagDetails = matchingPending.map(t => ({
+                    id: t.id,
+                    barcode: t.barcode,
+                    size: t.size,
+                    color: t.color,
+                    notes: t.notes || '',
+                    mrp: t.mrp || mrp,
+                    soldPrice: t.soldPrice,
+                    salesperson: t.salesperson || '',
+                    createdAt: t.createdAt
+                }));
+
                 if (r.barcode && !colorMap[clr].sizeMap[sz].barcodes.includes(r.barcode)) {
                     colorMap[clr].sizeMap[sz].barcodes.push(r.barcode);
                 }
             }
         });
 
+        // Also check if any pending tag has a color/size not yet present in colorMap
+        activePendingForArticle.forEach(t => {
+            const clr = (t.color || 'Standard').trim();
+            const sz = (t.size || 'Standard').trim();
+            if (!colorMap[clr]) {
+                colorMap[clr] = {
+                    color: clr,
+                    totalStock: 0,
+                    pendingTagsCount: 0,
+                    sizeMap: {}
+                };
+            }
+            if (!colorMap[clr].sizeMap[sz]) {
+                const matchingPending = getPendingTagsForVariant(clr, sz, [t.barcode]);
+                colorMap[clr].sizeMap[sz] = {
+                    size: sz,
+                    stock: 0,
+                    pendingTagsCount: matchingPending.length,
+                    pendingTagDetails: matchingPending.map(x => ({
+                        id: x.id,
+                        barcode: x.barcode,
+                        size: x.size,
+                        color: x.color,
+                        notes: x.notes || '',
+                        mrp: x.mrp || mrp,
+                        soldPrice: x.soldPrice,
+                        salesperson: x.salesperson || '',
+                        createdAt: x.createdAt
+                    })),
+                    hasPendingTag: true,
+                    barcode: t.barcode || '',
+                    barcodes: t.barcode ? [t.barcode] : [],
+                    vendorEan: '',
+                    sizeOrder: 99
+                };
+            }
+        });
+
         const colors = Object.values(colorMap).map(c => {
             const sizeList = Object.values(c.sizeMap);
             sizeList.sort((a, b) => a.sizeOrder - b.sizeOrder);
+            const colorPendingCount = sizeList.reduce((sum, s) => sum + (s.pendingTagsCount || 0), 0);
             return {
                 color: c.color,
                 totalStock: c.totalStock,
+                pendingTagsCount: colorPendingCount,
+                hasPendingTags: colorPendingCount > 0,
                 sizes: sizeList
             };
         });
@@ -942,10 +1048,28 @@ app.get('/api/staff/stock-check', async (req, res) => {
         rows.forEach(r => {
             const sz = (r.size || 'Standard').trim();
             if (!sizeMap[sz]) {
-                sizeMap[sz] = { size: sz, stock: 0, barcode: r.barcode, sizeOrder: r.sizeOrder || 99 };
+                sizeMap[sz] = { size: sz, stock: 0, pendingTagsCount: 0, hasPendingTag: false, barcode: r.barcode, sizeOrder: r.sizeOrder || 99 };
             }
             sizeMap[sz].stock += Math.max(0, r.stock || 0);
         });
+
+        colors.forEach(c => {
+            (c.sizes || []).forEach(s => {
+                if (!sizeMap[s.size]) {
+                    sizeMap[s.size] = {
+                        size: s.size,
+                        stock: 0,
+                        pendingTagsCount: 0,
+                        hasPendingTag: false,
+                        barcode: s.barcode,
+                        sizeOrder: s.sizeOrder || 99
+                    };
+                }
+                sizeMap[s.size].pendingTagsCount += (s.pendingTagsCount || 0);
+                sizeMap[s.size].hasPendingTag = sizeMap[s.size].pendingTagsCount > 0;
+            });
+        });
+
         const sizes = Object.values(sizeMap).sort((a, b) => a.sizeOrder - b.sizeOrder);
 
         const specificMatch = rows.find(r => r.barcode === query || r.vendorEan === query) || rows[0];
@@ -958,6 +1082,22 @@ app.get('/api/staff/stock-check', async (req, res) => {
             subSectionName: matchedSubSection,
             mrp,
             totalStock,
+            hasPendingTags: activePendingForArticle.length > 0,
+            totalPendingTags: activePendingForArticle.length,
+            pendingTagsList: activePendingForArticle.map(t => ({
+                id: t.id,
+                barcode: t.barcode,
+                articleNo: t.articleNo || matchedArticle,
+                articleName: t.articleName || matchedItemName,
+                color: t.color,
+                size: t.size,
+                status: t.status,
+                notes: t.notes || '',
+                salesperson: t.salesperson || '',
+                mrp: t.mrp || mrp,
+                soldPrice: t.soldPrice,
+                createdAt: t.createdAt
+            })),
             scannedBarcode: query,
             matchedBarcode: specificMatch?.barcode || query,
             matchedColor: specificMatch?.color || (colors[0]?.color || ''),

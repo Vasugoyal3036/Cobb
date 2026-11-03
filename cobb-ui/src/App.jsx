@@ -310,26 +310,71 @@ axios.get = async (url, config) => {
           const subSectionName = first.subSectionName || (isBlazer ? 'EXECUTIVE BLAZER' : '');
           const totalStock = variantsList.reduce((sum, it) => sum + Math.max(0, Number(it.CurrentStock || it.stock || 0)), 0);
 
-          // Group by Color and combine sizes (filter out sold items)
+          // Fetch pending tags from Firestore
+          let activePendingTags = [];
+          try {
+            const ptagsSnap = await getDoc(doc(db, 'stores', targetStore, 'data', 'pending_tags'));
+            if (ptagsSnap.exists()) {
+              const ptData = ptagsSnap.data();
+              const rawTags = Array.isArray(ptData) ? ptData : (ptData.tags || ptData.items || []);
+              activePendingTags = rawTags.filter(t => t.status === 'active');
+            }
+          } catch (e) {}
+
+          const targetArtUpper = String(targetArticle || '').trim().toUpperCase();
+          const variantBarcodes = new Set(variantsList.map(v => String(v.SKU || v.barcode || '').trim().toUpperCase()).filter(Boolean));
+
+          const matchingPendingTags = activePendingTags.filter(t => {
+            const tArt = String(t.articleNo || '').trim().toUpperCase();
+            const tBc = String(t.barcode || '').trim().toUpperCase();
+            return (tArt && tArt === targetArtUpper) || (tBc && variantBarcodes.has(tBc));
+          });
+
+          const getPendingForVariant = (clr, sz, barcodes = []) => {
+            const normClr = String(clr || 'Standard').trim().toUpperCase();
+            const normSz = String(sz || 'Standard').trim().toUpperCase();
+            const tokenSz = normSz.split(/[\s(]/)[0];
+            const bcodeSet = new Set(barcodes.map(b => String(b || '').trim().toUpperCase()).filter(Boolean));
+
+            return matchingPendingTags.filter(t => {
+              const tBc = String(t.barcode || '').trim().toUpperCase();
+              if (tBc && bcodeSet.has(tBc)) return true;
+              const tClr = String(t.color || 'Standard').trim().toUpperCase();
+              if (tClr !== normClr && tClr !== 'STANDARD' && normClr !== 'STANDARD') return false;
+              const tSz = String(t.size || 'Standard').trim().toUpperCase();
+              const tToken = tSz.split(/[\s(]/)[0];
+              return tSz === normSz || (tokenSz && tToken === tokenSz);
+            });
+          };
+
+          // Group by Color and combine sizes (including active pending tags)
           const colorMap = {};
           variantsList.forEach(v => {
             const clr = (v.Color || v.color || 'Standard').trim();
-            if (!colorMap[clr]) colorMap[clr] = { color: clr, totalStock: 0, sizeMap: {} };
+            if (!colorMap[clr]) colorMap[clr] = { color: clr, totalStock: 0, pendingTagsCount: 0, sizeMap: {} };
             const stock = Math.max(0, Number(v.CurrentStock || v.stock || 0));
             colorMap[clr].totalStock += stock;
 
-            // Only combine available stock (do NOT show sold articles)
-            if (stock > 0) {
-              const sz = (v.Size || v.size || 'Standard').trim();
+            const sz = (v.Size || v.size || 'Standard').trim();
+            const matchingPending = getPendingForVariant(clr, sz, [v.SKU || v.barcode]);
+            const pCount = matchingPending.length;
+
+            if (stock > 0 || pCount > 0) {
               if (!colorMap[clr].sizeMap[sz]) {
                 colorMap[clr].sizeMap[sz] = {
                   size: sz,
                   stock: 0,
+                  pendingTagsCount: pCount,
+                  hasPendingTag: pCount > 0,
+                  pendingTagDetails: matchingPending,
                   barcode: v.SKU || v.barcode || '',
                   barcodes: []
                 };
               }
               colorMap[clr].sizeMap[sz].stock += stock;
+              colorMap[clr].sizeMap[sz].pendingTagsCount = pCount;
+              colorMap[clr].sizeMap[sz].hasPendingTag = pCount > 0;
+              colorMap[clr].sizeMap[sz].pendingTagDetails = matchingPending;
               const bc = v.SKU || v.barcode;
               if (bc && !colorMap[clr].sizeMap[sz].barcodes.includes(bc)) {
                 colorMap[clr].sizeMap[sz].barcodes.push(bc);
@@ -337,18 +382,59 @@ axios.get = async (url, config) => {
             }
           });
 
-          const colors = Object.values(colorMap).map(c => ({
-            color: c.color,
-            totalStock: c.totalStock,
-            sizes: Object.values(c.sizeMap)
-          }));
+          // Also include pending tags that might have colors/sizes not currently in variantsList
+          matchingPendingTags.forEach(t => {
+            const clr = (t.color || 'Standard').trim();
+            const sz = (t.size || 'Standard').trim();
+            if (!colorMap[clr]) colorMap[clr] = { color: clr, totalStock: 0, pendingTagsCount: 0, sizeMap: {} };
+            if (!colorMap[clr].sizeMap[sz]) {
+              const matchingPending = getPendingForVariant(clr, sz, [t.barcode]);
+              colorMap[clr].sizeMap[sz] = {
+                size: sz,
+                stock: 0,
+                pendingTagsCount: matchingPending.length,
+                hasPendingTag: true,
+                pendingTagDetails: matchingPending,
+                barcode: t.barcode || '',
+                barcodes: t.barcode ? [t.barcode] : []
+              };
+            }
+          });
+
+          const colors = Object.values(colorMap).map(c => {
+            const sizeList = Object.values(c.sizeMap);
+            const colorPendingCount = sizeList.reduce((sum, s) => sum + (s.pendingTagsCount || 0), 0);
+            return {
+              color: c.color,
+              totalStock: c.totalStock,
+              pendingTagsCount: colorPendingCount,
+              hasPendingTags: colorPendingCount > 0,
+              sizes: sizeList
+            };
+          });
 
           // Group by Size
           const sizeMap = {};
           variantsList.forEach(v => {
             const sz = (v.Size || v.size || 'Standard').trim();
-            if (!sizeMap[sz]) sizeMap[sz] = { size: sz, stock: 0, barcode: v.SKU || v.barcode || '' };
+            if (!sizeMap[sz]) sizeMap[sz] = { size: sz, stock: 0, pendingTagsCount: 0, hasPendingTag: false, barcode: v.SKU || v.barcode || '' };
             sizeMap[sz].stock += Math.max(0, Number(v.CurrentStock || v.stock || 0));
+          });
+
+          colors.forEach(c => {
+            (c.sizes || []).forEach(s => {
+              if (!sizeMap[s.size]) {
+                sizeMap[s.size] = {
+                  size: s.size,
+                  stock: 0,
+                  pendingTagsCount: 0,
+                  hasPendingTag: false,
+                  barcode: s.barcode
+                };
+              }
+              sizeMap[s.size].pendingTagsCount += (s.pendingTagsCount || 0);
+              sizeMap[s.size].hasPendingTag = sizeMap[s.size].pendingTagsCount > 0;
+            });
           });
 
           // Resolve MRP
@@ -390,6 +476,22 @@ axios.get = async (url, config) => {
               matchedStock: Math.max(0, Number(scannedVariant?.CurrentStock || scannedVariant?.stock || 0)),
               mrp: resolvedMrp,
               totalStock: totalStock,
+              hasPendingTags: matchingPendingTags.length > 0,
+              totalPendingTags: matchingPendingTags.length,
+              pendingTagsList: matchingPendingTags.map(t => ({
+                id: t.id,
+                barcode: t.barcode,
+                articleNo: t.articleNo || targetArticle,
+                articleName: t.articleName || itemName,
+                color: t.color,
+                size: t.size,
+                status: t.status,
+                notes: t.notes || '',
+                salesperson: t.salesperson || '',
+                mrp: t.mrp || resolvedMrp,
+                soldPrice: t.soldPrice,
+                createdAt: t.createdAt
+              })),
               soldToday: soldToday,
               soldLast7Days: sold7,
               soldLast30Days: sold30,

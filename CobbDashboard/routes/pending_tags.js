@@ -334,4 +334,7 @@ router.get('/combos', (req, res) => {
     }
 });
 
+router.readTags = readTags;
+router.writeTags = writeTags;
+
 module.exports = router;

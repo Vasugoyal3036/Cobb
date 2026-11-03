@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import {
+  AlertTriangle,
+  Plus,
   Camera,
   Barcode,
   Search,
@@ -105,6 +107,20 @@ export default function StaffStockCheckerPage({
   const [selectedColorFilter, setSelectedColorFilter] = useState('ALL'); // 'ALL' or specific color
   const [selectedSizeFilter, setSelectedSizeFilter] = useState('ALL'); // 'ALL' or specific size
   const [copiedBarcode, setCopiedBarcode] = useState(null);
+
+  // Pending Tags Floor State
+  const [showPendingListModal, setShowPendingListModal] = useState(false);
+  const [selectedPendingSize, setSelectedPendingSize] = useState(null);
+  const [showAddPendingModal, setShowAddPendingModal] = useState(false);
+  const [isSubmittingPending, setIsSubmittingPending] = useState(false);
+  const [pendingSuccessMsg, setPendingSuccessMsg] = useState('');
+  const [addPendingForm, setAddPendingForm] = useState({
+    color: '',
+    size: '',
+    barcode: '',
+    notes: 'Tag torn on floor',
+    discountPercent: 60
+  });
 
   // PWA Install / Shortcut State
   const [deferredPrompt, setDeferredPrompt] = useState(null);
@@ -238,7 +254,7 @@ export default function StaffStockCheckerPage({
 
       const res = await axios.get(endpoint, { timeout: 6000 });
 
-      if (res.data && res.data.success) {
+      if (res?.data?.success) {
         setStockData(res.data);
         setSelectedColorFilter('ALL');
         setSelectedSizeFilter('ALL');
@@ -252,7 +268,7 @@ export default function StaffStockCheckerPage({
           playSound('click');
         } catch {}
       } else {
-        setErrorMsg(res.data?.message || `No Cobb article found matching "${q}"`);
+        setErrorMsg(res?.data?.message || `No Cobb article found matching "${q}"`);
         setStockData(null);
         try { playSound('error'); } catch {}
       }
@@ -276,6 +292,109 @@ export default function StaffStockCheckerPage({
       setLoading(false);
     }
   }, [query, API_BASE, saveToRecentScans]);
+
+  // Fast Floor Actions for Pending Tags
+  const handleOpenAddPendingTag = (prefillColor = '', prefillSize = '') => {
+    if (!stockData) return;
+    const targetColor = prefillColor || stockData.matchedColor || (stockData.colors?.[0]?.color || '');
+    const matchedColorGroup = stockData.colors?.find(c => c.color === targetColor) || stockData.colors?.[0];
+    const targetSize = prefillSize || stockData.matchedSize || (matchedColorGroup?.sizes?.[0]?.size || '');
+    const matchedSizeObj = matchedColorGroup?.sizes?.find(s => s.size === targetSize) || matchedColorGroup?.sizes?.[0];
+    const defaultBarcode = matchedSizeObj?.barcode || stockData.matchedBarcode || stockData.scannedBarcode || '';
+
+    setAddPendingForm({
+      color: targetColor,
+      size: targetSize,
+      barcode: defaultBarcode,
+      notes: 'Tag torn / missing in store',
+      discountPercent: 60
+    });
+    setShowAddPendingModal(true);
+  };
+
+  const handleSubmitPendingTag = async (e) => {
+    e?.preventDefault();
+    if (!stockData || isSubmittingPending) return;
+
+    setIsSubmittingPending(true);
+    try {
+      const payload = {
+        barcode: addPendingForm.barcode || stockData.matchedBarcode || stockData.scannedBarcode || '',
+        articleNo: stockData.articleNo,
+        articleName: stockData.itemName,
+        size: addPendingForm.size || 'Standard',
+        color: addPendingForm.color || 'Standard',
+        section: stockData.sectionName || 'Apparel',
+        mrp: Number(stockData.mrp) || 0,
+        discountPercent: Number(addPendingForm.discountPercent) || 60,
+        soldPrice: Math.round(Number(stockData.mrp || 0) * (1 - (Number(addPendingForm.discountPercent) || 60) / 100)),
+        salesperson: 'Floor Staff',
+        notes: addPendingForm.notes || 'Reported from Staff Stock Checker'
+      };
+
+      const endpoint = API_BASE ? `${API_BASE}/api/pending-tags/add` : '/api/pending-tags/add';
+      const res = await axios.post(endpoint, payload);
+
+      if (res.data?.success || res.status === 200) {
+        setShowAddPendingModal(false);
+        setPendingSuccessMsg(`Pending tag logged for ${payload.articleNo} (${payload.size})`);
+        setTimeout(() => setPendingSuccessMsg(''), 4000);
+        try { playSound('click'); } catch {}
+        handleLookup(stockData.articleNo);
+      } else {
+        alert(res.data?.error || 'Could not save pending tag');
+      }
+    } catch (err) {
+      console.warn('Backend pending tags endpoint note:', err.message);
+      // Fallback for Phone Link direct to Firestore
+      try {
+        const { db } = await import('../utils/firebase');
+        if (db) {
+          const { doc, getDoc, setDoc } = await import('firebase/firestore');
+          const ptagRef = doc(db, 'stores', activeStore || 'DEMO_STORE_001', 'data', 'pending_tags');
+          const ptagSnap = await getDoc(ptagRef);
+          let currentTags = [];
+          if (ptagSnap.exists()) {
+            const data = ptagSnap.data();
+            currentTags = Array.isArray(data) ? data : (data.tags || []);
+          }
+          const newTag = {
+            id: 'ptag_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+            barcode: addPendingForm.barcode || stockData.matchedBarcode || stockData.scannedBarcode || '',
+            articleNo: stockData.articleNo,
+            articleName: stockData.itemName,
+            size: addPendingForm.size || 'Standard',
+            color: addPendingForm.color || 'Standard',
+            section: stockData.sectionName || 'Apparel',
+            mrp: Number(stockData.mrp) || 0,
+            discountPercent: Number(addPendingForm.discountPercent) || 60,
+            soldPrice: Math.round(Number(stockData.mrp || 0) * (1 - (Number(addPendingForm.discountPercent) || 60) / 100)),
+            salesperson: 'Floor Staff',
+            notes: addPendingForm.notes || 'Reported from Staff Stock Checker',
+            status: 'active',
+            createdAt: new Date().toISOString()
+          };
+          currentTags.push(newTag);
+          await setDoc(ptagRef, {
+            tags: currentTags.slice(-300),
+            activeCount: currentTags.filter(t => t.status === 'active').length,
+            lastUpdated: new Date().toISOString()
+          }, { merge: true });
+
+          setShowAddPendingModal(false);
+          setPendingSuccessMsg(`Pending tag synced to Cloud for ${stockData.articleNo} (${addPendingForm.size})`);
+          setTimeout(() => setPendingSuccessMsg(''), 4000);
+          handleLookup(stockData.articleNo);
+          return;
+        }
+      } catch (fbErr) {
+        console.error('Firebase pending tag fallback error:', fbErr);
+      }
+      alert('Failed to register pending tag: ' + (err.response?.data?.error || err.message));
+    } finally {
+      setIsSubmittingPending(false);
+    }
+  };
 
   // Copy barcode to clipboard
   const handleCopyBarcode = (bcode) => {
@@ -597,16 +716,19 @@ export default function StaffStockCheckerPage({
     stockData.colors.forEach(c => {
       (c.sizes || []).forEach(sz => {
         const stock = Math.max(0, Number(sz.stock || 0));
-        if (stock > 0) {
+        const pending = Math.max(0, Number(sz.pendingTagsCount || sz.pendingStock || 0));
+        if (stock > 0 || pending > 0) {
           const sName = String(sz.size || '').trim();
           if (!sizeMap[sName]) {
             sizeMap[sName] = {
               size: sName,
               totalStock: 0,
+              totalPendingTags: 0,
               sizeOrder: sz.sizeOrder || 99
             };
           }
           sizeMap[sName].totalStock += stock;
+          sizeMap[sName].totalPendingTags += pending;
         }
       });
     });
@@ -624,13 +746,16 @@ export default function StaffStockCheckerPage({
       const sizeMap = {};
       (colorGroup.sizes || []).forEach(item => {
         const stockQty = Math.max(0, Number(item.stock || 0));
-        if (stockQty <= 0) return;
+        const pendingCount = Math.max(0, Number(item.pendingTagsCount || item.pendingStock || 0));
+        if (stockQty <= 0 && pendingCount <= 0) return;
 
         const sz = String(item.size || 'Standard').trim();
         if (!sizeMap[sz]) {
           sizeMap[sz] = {
             size: sz,
             stock: 0,
+            pendingTagsCount: 0,
+            pendingTagDetails: item.pendingTagDetails ? [...item.pendingTagDetails] : [],
             barcode: item.barcode || '',
             barcodes: item.barcodes ? [...item.barcodes] : (item.barcode ? [item.barcode] : []),
             vendorEan: item.vendorEan || '',
@@ -638,6 +763,14 @@ export default function StaffStockCheckerPage({
           };
         }
         sizeMap[sz].stock += stockQty;
+        sizeMap[sz].pendingTagsCount += pendingCount;
+        if (item.pendingTagDetails && Array.isArray(item.pendingTagDetails)) {
+          item.pendingTagDetails.forEach(pt => {
+            if (!sizeMap[sz].pendingTagDetails.some(existing => existing.id === pt.id)) {
+              sizeMap[sz].pendingTagDetails.push(pt);
+            }
+          });
+        }
         if (item.barcode && !sizeMap[sz].barcodes.includes(item.barcode)) {
           sizeMap[sz].barcodes.push(item.barcode);
         }
@@ -824,6 +957,23 @@ export default function StaffStockCheckerPage({
           </form>
         </div>
 
+        {/* --- Pending Tag Success Toast --- */}
+        {pendingSuccessMsg && (
+          <div className="p-3 rounded-2xl bg-amber-500 text-slate-950 font-black text-xs flex items-center justify-between shadow-xl animate-in fade-in">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4" />
+              <span>{pendingSuccessMsg}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setPendingSuccessMsg('')}
+              className="p-1 rounded-full hover:bg-slate-950/20 text-slate-950"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
         {/* --- Success Detection Flash Notification --- */}
         {detectedBadge && (
           <div className="p-3 rounded-2xl bg-emerald-500 text-slate-950 font-black text-xs flex items-center justify-between shadow-xl animate-in fade-in">
@@ -896,8 +1046,8 @@ export default function StaffStockCheckerPage({
                   </p>
                 </div>
 
-                {/* Stock Status Badge */}
-                <div className="text-right shrink-0">
+                {/* Stock Status & Pending Tag Badges */}
+                <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
                   <div className={`px-3 py-1.5 rounded-2xl text-xs font-black inline-flex items-center gap-1.5 ${
                     stockData.totalStock > 0
                       ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
@@ -906,7 +1056,20 @@ export default function StaffStockCheckerPage({
                     <span className={`w-2 h-2 rounded-full ${stockData.totalStock > 0 ? 'bg-emerald-400' : 'bg-rose-400'}`} />
                     <span>{stockData.totalStock} In Stock</span>
                   </div>
-                  <div className="text-[10px] text-slate-500 mt-1 font-medium">
+
+                  {stockData.totalPendingTags > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowPendingListModal(true)}
+                      className="px-2.5 py-1 rounded-xl text-[11px] font-black inline-flex items-center gap-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 shadow-sm transition-all active:scale-95 animate-pulse"
+                      title="View active pending tags for this article"
+                    >
+                      <Tag className="w-3 h-3 text-amber-400 shrink-0" />
+                      <span>{stockData.totalPendingTags} in Pending Tags</span>
+                    </button>
+                  )}
+
+                  <div className="text-[10px] text-slate-500 font-medium">
                     {stockData.colors?.length || 0} Color{(stockData.colors?.length || 0) === 1 ? '' : 's'}
                   </div>
                 </div>
@@ -960,6 +1123,42 @@ export default function StaffStockCheckerPage({
                   )}
                 </div>
               )}
+
+              {/* Pending Tags Notice & Fast Report Button */}
+              <div className="mt-3 pt-2.5 border-t border-slate-800/80 space-y-2">
+                {stockData.totalPendingTags > 0 ? (
+                  <div className="p-2.5 rounded-2xl bg-amber-950/40 border border-amber-500/40 flex items-center justify-between gap-2.5 text-xs">
+                    <div className="flex items-center gap-2 text-amber-200">
+                      <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                      <p className="text-[11px] leading-tight">
+                        <span className="font-bold text-amber-300">{stockData.totalPendingTags} piece(s) in Pending Tags</span> (torn / missing tags).
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowPendingListModal(true)}
+                      className="px-2.5 py-1 rounded-xl bg-amber-500 text-slate-950 font-black text-[11px] shrink-0 shadow hover:bg-amber-400 active:scale-95 transition-all"
+                    >
+                      View Tags
+                    </button>
+                  </div>
+                ) : null}
+
+                <div className="flex items-center justify-between gap-2 pt-1">
+                  <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                    <Tag className="w-3 h-3 text-amber-400/80" />
+                    <span>Have a piece with missing/torn tag?</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleOpenAddPendingTag()}
+                    className="px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 border border-amber-500/30 text-amber-300 text-[11px] font-bold flex items-center gap-1 transition-all active:scale-95"
+                  >
+                    <Plus className="w-3 h-3 text-amber-400" />
+                    <span>Add Pending Tag</span>
+                  </button>
+                </div>
+              </div>
             </div>
 
             {/* --- Quick Filter Chips: 1-Tap Size Filter & Colour Filter --- */}
@@ -1013,6 +1212,11 @@ export default function StaffStockCheckerPage({
                             <span className={`text-[10px] px-1 py-0.2 rounded ${isSelected ? 'bg-slate-950/20 text-slate-950 font-black' : 'bg-slate-800 text-slate-400'}`}>
                               {sz.totalStock}
                             </span>
+                            {sz.totalPendingTags > 0 && (
+                              <span className="text-[9px] px-1 py-0.2 rounded font-black bg-amber-500/30 text-amber-300 border border-amber-500/40" title={`${sz.totalPendingTags} in Pending Tags`}>
+                                🏷️ {sz.totalPendingTags}
+                              </span>
+                            )}
                           </button>
                         );
                       })}
@@ -1169,12 +1373,23 @@ export default function StaffStockCheckerPage({
                                 )}
                               </div>
 
-                              {/* Right: Availability */}
-                              <div className="flex items-center gap-2">
+                              {/* Right: Availability & Pending Tag Option */}
+                              <div className="flex items-center gap-2 flex-wrap justify-end">
+                                {sz.pendingTagsCount > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedPendingSize(sz)}
+                                    className="px-2 py-0.5 rounded-lg text-[10px] font-black bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 flex items-center gap-1 shadow-sm transition-all active:scale-95"
+                                    title="Tap to see pending tag details for this size"
+                                  >
+                                    <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0" />
+                                    <span>{sz.pendingTagsCount} in Pending Tag</span>
+                                  </button>
+                                )}
                                 <span className={`text-xs font-black ${
-                                  sz.stock <= 2
-                                    ? 'text-amber-400'
-                                    : 'text-emerald-400'
+                                  sz.stock <= 0
+                                    ? 'text-slate-500'
+                                    : (sz.stock <= 2 ? 'text-amber-400' : 'text-emerald-400')
                                 }`}>
                                   {sz.stock} available
                                 </span>
@@ -1384,6 +1599,285 @@ export default function StaffStockCheckerPage({
               <ScanLine className={`w-4 h-4 ${isOcrActive ? 'animate-spin' : ''}`} />
               <span>{isOcrActive ? 'Reading Numbers...' : '⚡ Snap & Read Tag Number'}</span>
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* --- Pending Tag Details Modal (For a specific size) --- */}
+      {selectedPendingSize && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-end sm:items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-5 space-y-4 shadow-2xl text-slate-100 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-amber-500 text-slate-950 font-black">
+                  <Tag className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-white">Pending Tag Size Details</h3>
+                  <p className="text-[11px] text-slate-400">
+                    Size: <strong className="text-amber-300">{selectedPendingSize.size}</strong> • {selectedPendingSize.pendingTagsCount || 1} piece(s) registered
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedPendingSize(null)}
+                className="p-1.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-3 rounded-2xl bg-amber-950/30 border border-amber-500/30 text-xs text-amber-200/90 leading-relaxed">
+              ⚠️ <strong>Floor Notice:</strong> This piece physically exists in the store without a printed/attached barcode tag. Locate it in the pending tags rack/trial room box.
+            </div>
+
+            <div className="space-y-2">
+              {(selectedPendingSize.pendingTagDetails || []).map((pt, idx) => (
+                <div key={pt.id || idx} className="p-3 rounded-2xl bg-slate-850 border border-slate-800 space-y-1.5 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono font-bold text-amber-400">#{pt.barcode || 'NO-BARCODE'}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyBarcode(pt.barcode)}
+                      className="text-[10px] text-slate-400 hover:text-white flex items-center gap-1 font-bold"
+                    >
+                      {copiedBarcode === pt.barcode ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                      <span>{copiedBarcode === pt.barcode ? 'Copied' : 'Copy'}</span>
+                    </button>
+                  </div>
+                  {pt.notes && (
+                    <p className="text-slate-300 text-[11px]">
+                      <span className="text-slate-500 font-medium">Notes:</span> {pt.notes}
+                    </p>
+                  )}
+                  <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1 border-t border-slate-800/60">
+                    <span>Added: {pt.createdAt ? new Date(pt.createdAt).toLocaleDateString('en-IN') : 'Recent'}</span>
+                    <span className="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 uppercase font-black">Active Tag</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setSelectedPendingSize(null)}
+              className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs transition-all active:scale-98"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* --- All Pending Tags Modal for this Article --- */}
+      {showPendingListModal && stockData && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-end sm:items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-5 space-y-4 shadow-2xl text-slate-100 max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-amber-500 text-slate-950 font-black">
+                  <Tag className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-white">Pending Tags for {stockData.articleNo}</h3>
+                  <p className="text-[11px] text-slate-400">{stockData.totalPendingTags || 0} active pending piece(s)</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPendingListModal(false)}
+                className="p-1.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              {(stockData.pendingTagsList || []).map((t) => (
+                <div key={t.id} className="p-3 rounded-2xl bg-slate-850 border border-slate-800 space-y-1.5 text-xs">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-amber-400">#{t.barcode}</span>
+                      <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-bold text-[10px]">
+                        {t.color} • {t.size}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyBarcode(t.barcode)}
+                      className="text-[10px] text-slate-400 hover:text-white flex items-center gap-1 font-bold"
+                    >
+                      {copiedBarcode === t.barcode ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                      <span>{copiedBarcode === t.barcode ? 'Copied' : 'Copy'}</span>
+                    </button>
+                  </div>
+                  {t.notes && (
+                    <p className="text-slate-300 text-[11px] leading-tight">
+                      <span className="text-slate-500">Reason:</span> {t.notes}
+                    </p>
+                  )}
+                  <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1 border-t border-slate-800/60">
+                    <span>By: {t.salesperson || 'Staff'} • {t.createdAt ? new Date(t.createdAt).toLocaleDateString('en-IN') : 'Recent'}</span>
+                    <span className="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 uppercase font-black">Active</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPendingListModal(false);
+                  handleOpenAddPendingTag();
+                }}
+                className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition-all active:scale-98 flex items-center justify-center gap-1.5"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>+ Add Another Tag</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowPendingListModal(false)}
+                className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs transition-all active:scale-98"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- Add / Report Pending Tag Modal --- */}
+      {showAddPendingModal && stockData && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-end sm:items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-5 space-y-4 shadow-2xl text-slate-100 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-amber-500 text-slate-950 font-black">
+                  <Plus className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-white">Report Pending / Missing Tag</h3>
+                  <p className="text-[11px] text-slate-400">{stockData.articleNo} • {stockData.itemName}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddPendingModal(false)}
+                className="p-1.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmitPendingTag} className="space-y-3.5 text-xs">
+              {/* Select Color */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-300">Colour</label>
+                <select
+                  value={addPendingForm.color}
+                  onChange={(e) => {
+                    const newClr = e.target.value;
+                    const cGroup = stockData.colors?.find(c => c.color === newClr);
+                    const firstSz = cGroup?.sizes?.[0];
+                    setAddPendingForm(prev => ({
+                      ...prev,
+                      color: newClr,
+                      size: firstSz?.size || prev.size,
+                      barcode: firstSz?.barcode || prev.barcode
+                    }));
+                  }}
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold outline-none focus:border-amber-500"
+                >
+                  {(stockData.colors || []).map(c => (
+                    <option key={c.color} value={c.color}>{c.color}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Select Size */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-300">Size</label>
+                <select
+                  value={addPendingForm.size}
+                  onChange={(e) => {
+                    const newSz = e.target.value;
+                    const cGroup = stockData.colors?.find(c => c.color === addPendingForm.color) || stockData.colors?.[0];
+                    const matchedSz = cGroup?.sizes?.find(s => s.size === newSz);
+                    setAddPendingForm(prev => ({
+                      ...prev,
+                      size: newSz,
+                      barcode: matchedSz?.barcode || prev.barcode
+                    }));
+                  }}
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold outline-none focus:border-amber-500"
+                >
+                  {allAvailableSizes.map(sz => (
+                    <option key={sz.size} value={sz.size}>{sz.size}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Barcode */}
+              <div className="space-y-1">
+                <label className="text-[11px] font-bold text-slate-300">Barcode / SKU</label>
+                <input
+                  type="text"
+                  value={addPendingForm.barcode}
+                  onChange={(e) => setAddPendingForm(prev => ({ ...prev, barcode: e.target.value }))}
+                  placeholder="Barcode (optional or auto-selected)"
+                  className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono font-bold outline-none focus:border-amber-500"
+                />
+              </div>
+
+              {/* Note / Reason Chips */}
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold text-slate-300">Reason / Note</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {['Tag torn on floor', 'Missing tag in trial room', 'Barcode unreadable', 'Defective tag'].map(preset => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setAddPendingForm(prev => ({ ...prev, notes: preset }))}
+                      className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                        addPendingForm.notes === preset
+                          ? 'bg-amber-500 text-slate-950'
+                          : 'bg-slate-800 text-slate-300 hover:text-white'
+                      }`}
+                    >
+                      {preset}
+                    </button>
+                  ))}
+                </div>
+                <input
+                  type="text"
+                  value={addPendingForm.notes}
+                  onChange={(e) => setAddPendingForm(prev => ({ ...prev, notes: e.target.value }))}
+                  placeholder="Enter note or reason"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs outline-none focus:border-amber-500 mt-1"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="submit"
+                  disabled={isSubmittingPending}
+                  className="flex-1 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-md active:scale-98 transition-all"
+                >
+                  {isSubmittingPending ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                  <span>{isSubmittingPending ? 'Registering...' : 'Register Pending Tag'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAddPendingModal(false)}
+                  className="px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

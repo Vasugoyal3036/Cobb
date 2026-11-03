@@ -9,58 +9,58 @@
   "operatingExpenses": {
     "rent": 40000,
     "staffSalaries": 46000,
-    "electricity": 10000,
+    "electricity": 8000,
     "miscExpenses": 5000,
     "franchiseRoyalty": 0,
-    "totalExpenses": 101000,
-    "dailyExpense": 3367,
-    "dailyOpEx": 3367,
-    "dailyAmortizedExpense": 3367,
+    "totalExpenses": 99000,
+    "dailyExpense": 3300,
+    "dailyOpEx": 3300,
+    "dailyAmortizedExpense": 3300,
     "targetMarginPct": 25,
     "dailyTargetSales": 50000,
     "monthlyTargetSales": 1200000,
-    "dailyBreakEvenSales": 13468,
-    "monthlyBreakEvenSales": 404000,
+    "dailyBreakEvenSales": 13200,
+    "monthlyBreakEvenSales": 396000,
     "salesmanSalaries": [
       {
+        "isActive": true,
+        "salary": 15000,
+        "name": "Vikas",
         "id": "2800003",
         "empCode": "2800003",
-        "name": "Vikas",
-        "salary": 15000,
-        "mtdSales": 0,
-        "isActive": true
+        "mtdSales": 0
       },
       {
-        "id": "3200014",
-        "empCode": "3200014",
+        "isActive": true,
         "name": "Pawan",
         "salary": 9000,
+        "id": "3200014",
         "mtdSales": 0,
-        "isActive": true
+        "empCode": "3200014"
       },
       {
-        "id": "0001001",
-        "empCode": "0001001",
         "name": "Simran",
-        "salary": 10000,
         "mtdSales": 0,
-        "isActive": true
+        "salary": 10000,
+        "empCode": "0001001",
+        "isActive": true,
+        "id": "0001001"
       },
       {
+        "isActive": false,
+        "salary": "",
+        "name": "Akhil",
         "id": "0000180",
         "empCode": "0000180",
-        "name": "Akhil",
-        "salary": "",
-        "mtdSales": 0,
-        "isActive": false
+        "mtdSales": 0
       }
     ],
     "staffSalariesBreakdown": {
-      "totalBaseSalaries": 34000,
-      "totalIncentives": 12000,
       "dynamicStaffSalaries": 46000,
-      "activeSalesmenCount": 3,
+      "totalIncentives": 12000,
       "targetPerSalesman": 400000,
+      "totalBaseSalaries": 34000,
+      "activeSalesmenCount": 3,
       "incentiveMode": "target"
     }
   },
@@ -74,5 +74,5 @@
     "password": "",
     "port": 1433
   },
-  "lastUpdated": "2026-11-02T05:01:17.707Z"
+  "lastUpdated": "2026-11-03T05:50:00.791Z"
 }

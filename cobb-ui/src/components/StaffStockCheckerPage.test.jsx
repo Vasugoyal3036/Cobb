@@ -329,4 +329,127 @@ describe('StaffStockCheckerPage [Floor Mobile Stock Checker]', () => {
       expect(screen.queryByRole('heading', { name: /BLACK/i })).toBeNull();
     });
   });
+
+  it('displays pending tag indicator on size when a size has pending tags', async () => {
+    const mockData = {
+      success: true,
+      articleNo: 'JKGC2705',
+      itemName: 'JACKET H/S - EX',
+      mrp: 5199,
+      totalStock: 3,
+      hasPendingTags: true,
+      totalPendingTags: 1,
+      pendingTagsList: [
+        {
+          id: 'ptag_001',
+          barcode: '0080094858',
+          articleNo: 'JKGC2705',
+          color: 'OLIVE',
+          size: '44',
+          notes: 'Tag torn at trial room',
+          salesperson: 'Ramesh',
+          createdAt: new Date().toISOString()
+        }
+      ],
+      colors: [
+        {
+          color: 'OLIVE',
+          totalStock: 3,
+          pendingTagsCount: 1,
+          hasPendingTags: true,
+          sizes: [
+            {
+              size: '42',
+              stock: 2,
+              pendingTagsCount: 0,
+              barcode: '0080094857'
+            },
+            {
+              size: '44',
+              stock: 1,
+              pendingTagsCount: 1,
+              hasPendingTag: true,
+              pendingTagDetails: [
+                {
+                  id: 'ptag_001',
+                  barcode: '0080094858',
+                  size: '44',
+                  color: 'OLIVE',
+                  notes: 'Tag torn at trial room'
+                }
+              ],
+              barcode: '0080094858'
+            }
+          ]
+        }
+      ]
+    };
+
+    axios.get.mockResolvedValueOnce({ data: mockData });
+
+    render(<StaffStockCheckerPage onClose={vi.fn()} />);
+
+    const input = screen.getByPlaceholderText(/Enter barcode or article no/i);
+    fireEvent.change(input, { target: { value: 'JKGC2705' } });
+    fireEvent.click(screen.getByRole('button', { name: /find/i }));
+
+    await waitFor(() => {
+      // Top summary badge indicates 1 in Pending Tags
+      expect(screen.getAllByText(/1 in Pending Tags/i).length).toBeGreaterThan(0);
+      // Size 44 shows pending tag badge button
+      expect(screen.getByRole('button', { name: /^1 in Pending Tag$/i })).toBeDefined();
+    });
+
+    // Clicking pending tag badge opens detailed size modal
+    const pendingChip = screen.getByRole('button', { name: /^1 in Pending Tag$/i });
+    fireEvent.click(pendingChip);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Pending Tag Size Details/i)).toBeDefined();
+      expect(screen.getByText(/Tag torn at trial room/i)).toBeDefined();
+    });
+  });
+
+  it('allows floor staff to open Add Pending Tag modal and submit', async () => {
+    const mockData = {
+      success: true,
+      articleNo: 'BLZ-500',
+      itemName: 'EXECUTIVE BLAZER',
+      mrp: 6999,
+      totalStock: 2,
+      colors: [
+        {
+          color: 'BLACK',
+          totalStock: 2,
+          sizes: [{ size: '40', stock: 2, barcode: 'BLZ-40-BC' }]
+        }
+      ]
+    };
+
+    axios.get.mockResolvedValue({ data: mockData });
+    axios.post.mockResolvedValueOnce({ data: { success: true, id: 'ptag_new_123' } });
+
+    render(<StaffStockCheckerPage onClose={vi.fn()} />);
+
+    const input = screen.getByPlaceholderText(/Enter barcode or article no/i);
+    fireEvent.change(input, { target: { value: 'BLZ-500' } });
+    fireEvent.click(screen.getByRole('button', { name: /find/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Add Pending Tag/i)).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByText(/Add Pending Tag/i));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Report Pending \/ Missing Tag/i)).toBeDefined();
+    });
+
+    const submitBtn = screen.getByRole('button', { name: /Register Pending Tag/i });
+    fireEvent.click(submitBtn);
+
+    await waitFor(() => {
+      expect(axios.post).toHaveBeenCalled();
+    });
+  });
 });
