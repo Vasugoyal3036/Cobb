@@ -798,7 +798,7 @@ export default function StaffStockCheckerPage({
   }, [stockData, selectedColorFilter, selectedSizeFilter]);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans pb-16 selection:bg-amber-500 selection:text-slate-950">
+    <div className="min-h-screen bg-[#F4EFE6] text-[#231F1C] flex flex-col font-sans pb-20 selection:bg-[#E0A96D] selection:text-[#231F1C]">
       {/* Hidden file input for native camera snapshot fallback */}
       <input
         ref={fileInputRef}
@@ -809,22 +809,22 @@ export default function StaffStockCheckerPage({
         className="hidden"
       />
 
-      {/* --- Sticky Top Header Bar --- */}
-      <header className="sticky top-0 z-40 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 py-3 flex items-center justify-between">
+      {/* --- Sticky Top Header Bar in Warm Sand --- */}
+      <header className="sticky top-0 z-40 bg-[#ECE5D8]/95 backdrop-blur-md border-b border-[#D8CEBC] px-4 py-3 flex items-center justify-between shadow-sm">
         <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-xl bg-gradient-to-tr from-amber-500 to-rose-500 text-slate-950 shadow-md shadow-amber-500/20">
+          <div className="p-2 rounded-xl bg-gradient-to-tr from-[#B45309] to-[#D97706] text-[#231F1C] shadow-sm">
             <Smartphone className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="font-black text-sm tracking-tight text-white">COBB STAFF</span>
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-amber-500 text-slate-950 uppercase tracking-wider">
+              <span className="font-black text-sm tracking-tight text-[#231F1C]">COBB STAFF</span>
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-[#231F1C] text-[#F4EFE6] uppercase tracking-wider">
                 Stock Checker
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span>Sizes Grouped by Colour</span>
+            <p className="text-[11px] text-[#6B5E51] font-semibold flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#15803D] animate-pulse"></span>
+              <span>Sizes Grouped by Colour • Linen Atelier</span>
             </p>
           </div>
         </div>
@@ -833,10 +833,10 @@ export default function StaffStockCheckerPage({
           <button
             type="button"
             onClick={handleInstallClick}
-            className="px-2.5 py-1.5 rounded-xl border border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20 text-xs font-bold text-amber-300 flex items-center gap-1.5 transition-all active:scale-95 shadow-sm"
+            className="px-2.5 py-1.5 rounded-xl border border-[#D8CEBC] bg-[#FAF6F0] hover:bg-[#EAE2D3] text-xs font-bold text-[#4A4036] flex items-center gap-1.5 transition-all active:scale-95 shadow-sm"
             title="Add shortcut to your phone home screen"
           >
-            <Download className="w-3.5 h-3.5 text-amber-400" />
+            <Download className="w-3.5 h-3.5 text-[#B45309]" />
             <span className="hidden sm:inline">Add Shortcut</span>
             <span className="sm:hidden">Shortcut</span>
           </button>
@@ -844,7 +844,7 @@ export default function StaffStockCheckerPage({
           {onClose && (
             <button
               onClick={onClose}
-              className="px-3 py-1.5 rounded-xl border border-slate-700 bg-slate-800/80 hover:bg-slate-700 text-xs font-semibold text-slate-300 flex items-center gap-1 transition-all active:scale-95"
+              className="px-3 py-1.5 rounded-xl border border-[#D8CEBC] bg-[#FAF6F0] hover:bg-[#EAE2D3] text-xs font-semibold text-[#4A4036] flex items-center gap-1 transition-all active:scale-95 shadow-sm"
               title="Return to Dashboard"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
@@ -858,25 +858,25 @@ export default function StaffStockCheckerPage({
       <main className="flex-1 max-w-lg w-full mx-auto p-4 space-y-4">
         {/* Shortcut Banner Tip for Staff */}
         {!isInstalled && !dismissedTip && (
-          <div className="p-3 rounded-2xl bg-gradient-to-r from-amber-950/40 via-slate-900 to-amber-950/20 border border-amber-500/30 flex items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-2 text-slate-200">
+          <div className="p-3 rounded-2xl bg-[#FFFDF9] border border-[#DCD3C4] flex items-center justify-between gap-3 text-xs shadow-sm">
+            <div className="flex items-center gap-2 text-[#4A4036]">
               <span className="text-base shrink-0">📲</span>
               <p className="text-[11px] leading-tight">
-                <span className="font-bold text-amber-300">Fast Floor Access:</span> Add direct shortcut to your home screen!
+                <span className="font-bold text-[#B45309]">Fast Floor Access:</span> Add direct shortcut to your home screen!
               </p>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               <button
                 type="button"
                 onClick={handleInstallClick}
-                className="px-2.5 py-1 rounded-lg bg-amber-500 text-slate-950 font-black text-[11px] shadow hover:bg-amber-400 active:scale-95 transition-all"
+                className="px-2.5 py-1 rounded-lg bg-[#B45309] text-[#231F1C] font-black text-[11px] shadow hover:bg-[#92400E] active:scale-95 transition-all"
               >
                 Add Shortcut
               </button>
               <button
                 type="button"
                 onClick={() => setDismissedTip(true)}
-                className="p-1 text-slate-400 hover:text-slate-200"
+                className="p-1 text-[#8C7E6F] hover:text-[#231F1C]"
                 title="Dismiss"
               >
                 <X className="w-3.5 h-3.5" />
@@ -884,18 +884,18 @@ export default function StaffStockCheckerPage({
             </div>
           </div>
         )}
-        {/* --- Camera Scanner Controls & Search Form --- */}
+        {/* --- Camera Scanner Controls & Search Form in Warm Linen --- */}
         <div className="space-y-3">
           <div className="grid grid-cols-5 gap-2">
             {/* Primary Live Camera Button */}
             <button
               onClick={startCamera}
               disabled={isCameraActive || loading || cameraStarting}
-              className="col-span-4 py-3 px-3 rounded-2xl bg-gradient-to-r from-amber-500 via-rose-500 to-amber-600 hover:from-amber-600 hover:to-rose-600 text-slate-950 font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-xl shadow-rose-500/20 active:scale-98 transition-all disabled:opacity-50"
+              className="col-span-4 py-3 px-3 rounded-2xl bg-[#B45309] hover:bg-[#92400E] text-[#231F1C] font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md active:scale-98 transition-all disabled:opacity-50"
             >
               <Camera className="w-4 h-4 fill-current shrink-0" />
               <span>{cameraStarting ? 'Starting Camera...' : 'Open Camera Scanner'}</span>
-              <span className="px-1.5 py-0.2 rounded-full bg-slate-950/20 text-slate-950 text-[9.5px] font-black uppercase">
+              <span className="px-1.5 py-0.2 rounded-full bg-white/20 text-[#231F1C] text-[9.5px] font-black uppercase">
                 Dual
               </span>
             </button>
@@ -905,10 +905,10 @@ export default function StaffStockCheckerPage({
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={loading}
-              className="col-span-1 p-3 rounded-2xl bg-slate-900 border border-slate-700 hover:bg-slate-850 text-slate-300 hover:text-white flex flex-col items-center justify-center transition-all active:scale-95 shadow-sm"
+              className="col-span-1 p-3 rounded-2xl bg-[#FFFDF9] border border-[#D5C9B7] hover:bg-[#FAF6F0] text-[#4A4036] flex flex-col items-center justify-center transition-all active:scale-95 shadow-sm"
               title="Snap photo of tag with phone camera"
             >
-              <ImageIcon className="w-4 h-4" />
+              <ImageIcon className="w-4 h-4 text-[#B45309]" />
               <span className="text-[9px] font-bold mt-0.5">Photo</span>
             </button>
           </div>
@@ -921,7 +921,7 @@ export default function StaffStockCheckerPage({
             }}
             className="relative flex items-center"
           >
-            <div className="absolute left-3.5 text-slate-400">
+            <div className="absolute left-3.5 text-[#8C7E6F]">
               <Barcode className="w-4 h-4" />
             </div>
             <input
@@ -930,7 +930,7 @@ export default function StaffStockCheckerPage({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Enter barcode or article no (e.g. 0080... or FSRE...)"
-              className="w-full pl-10 pr-24 py-3 rounded-2xl bg-slate-900 border border-slate-700/80 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 text-sm font-semibold placeholder:text-slate-500 text-white transition-all outline-none"
+              className="w-full pl-10 pr-24 py-3 rounded-2xl bg-[#FAF7F2] border border-[#D5C9B7] focus:border-[#B45309] focus:ring-2 focus:ring-[#B45309]/20 text-sm font-semibold placeholder-[#9E9080] text-[#231F1C] transition-all outline-none shadow-sm"
             />
             <div className="absolute right-2 flex items-center gap-1">
               {query && (
@@ -940,7 +940,7 @@ export default function StaffStockCheckerPage({
                     setQuery('');
                     inputRef.current?.focus();
                   }}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-white"
+                  className="p-1.5 rounded-lg text-[#8C7E6F] hover:text-[#231F1C]"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -948,7 +948,7 @@ export default function StaffStockCheckerPage({
               <button
                 type="submit"
                 disabled={loading || !query.trim()}
-                className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-40 text-slate-950 font-black text-xs flex items-center gap-1 transition-all active:scale-95"
+                className="px-3.5 py-1.5 rounded-xl bg-[#B45309] hover:bg-[#92400E] disabled:opacity-40 text-[#231F1C] font-black text-xs flex items-center gap-1 transition-all active:scale-95 shadow-sm"
               >
                 {loading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
                 <span>Find</span>
@@ -992,7 +992,7 @@ export default function StaffStockCheckerPage({
 
         {/* --- Error Banner --- */}
         {errorMsg && (
-          <div className="p-3.5 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-start gap-2.5 animate-in fade-in">
+          <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-start gap-2.5 animate-in fade-in shadow-sm">
             <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
             <div>
               <div className="font-bold">Article / Barcode Not Found</div>
@@ -1003,45 +1003,45 @@ export default function StaffStockCheckerPage({
 
         {/* --- Loading Indicator --- */}
         {loading && (
-          <div className="p-8 rounded-3xl bg-slate-900/60 border border-slate-800 text-center space-y-3">
+          <div className="p-8 rounded-3xl bg-[#FFFDF9] border border-[#DCD3C4] text-center space-y-3 shadow-sm">
             <RefreshCw className="w-8 h-8 text-amber-500 animate-spin mx-auto" />
-            <div className="text-xs font-bold text-slate-300">Searching Cobb Inventory...</div>
-            <p className="text-[11px] text-slate-500">Grouping all sizes and colors</p>
+            <div className="text-xs font-bold text-[#231F1C]">Searching Cobb Inventory...</div>
+            <p className="text-[11px] text-[#6B5E51]">Grouping all sizes and colors</p>
           </div>
         )}
 
         {/* --- Scanned Article Details & Sizes Grouped By Color --- */}
         {stockData && !loading && (
           <div className="space-y-4 animate-in fade-in duration-200">
-            {/* Article Top Bento Summary */}
-            <div className="p-4 rounded-3xl bg-gradient-to-br from-slate-900 to-slate-850 border border-slate-700/80 shadow-2xl relative overflow-hidden">
+            {/* Article Top Bento Summary in Warm Sand & Linen */}
+            <div className="p-4 rounded-3xl bg-[#FFFDF9] border border-[#DCD3C4] shadow-sm relative overflow-hidden space-y-3">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-mono text-sm font-black text-amber-400 tracking-wider">
-                      {stockData.articleNo}
+                    <span className="font-mono text-xs font-black text-[#92400E] bg-[#FEF3C7] px-2 py-0.5 rounded-lg border border-[#FDE68A]">
+                      #{stockData.articleNo}
                     </span>
                     <button
                       onClick={() => handleCopyBarcode(stockData.articleNo)}
-                      className="p-1 rounded text-slate-400 hover:text-white"
+                      className="p-1 rounded text-[#8C7E6F] hover:text-[#231F1C]"
                       title="Copy Article No"
                     >
                       {copiedBarcode === stockData.articleNo ? (
-                        <Check className="w-3 h-3 text-emerald-400" />
+                        <Check className="w-3 h-3 text-[#15803D]" />
                       ) : (
                         <Copy className="w-3 h-3" />
                       )}
                     </button>
                     {stockData.mrp > 0 && (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-black bg-slate-800 border border-slate-700 text-white">
+                      <span className="px-2 py-0.5 rounded-lg text-xs font-black bg-[#EFE9DF] text-[#4A4036] border border-[#DDD4C5]">
                         ₹{Number(stockData.mrp).toLocaleString('en-IN')}
                       </span>
                     )}
                   </div>
-                  <h2 className="text-base font-black text-white mt-1 leading-snug">
+                  <h2 className="text-base font-black text-[#231F1C] mt-1.5 leading-snug">
                     {stockData.itemName}
                   </h2>
-                  <p className="text-xs text-slate-400 mt-0.5">
+                  <p className="text-xs text-[#6B5E51] font-medium mt-0.5">
                     {stockData.sectionName} {stockData.subSectionName ? `• ${stockData.subSectionName}` : ''}
                   </p>
                 </div>
@@ -1050,10 +1050,10 @@ export default function StaffStockCheckerPage({
                 <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
                   <div className={`px-3 py-1.5 rounded-2xl text-xs font-black inline-flex items-center gap-1.5 ${
                     stockData.totalStock > 0
-                      ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                      : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+                      ? 'bg-[#E8F5E9] text-[#1B5E20] border border-[#C8E6C9]'
+                      : 'bg-rose-50 text-rose-800 border border-rose-200'
                   }`}>
-                    <span className={`w-2 h-2 rounded-full ${stockData.totalStock > 0 ? 'bg-emerald-400' : 'bg-rose-400'}`} />
+                    <span className={`w-2 h-2 rounded-full ${stockData.totalStock > 0 ? 'bg-[#2E7D32]' : 'bg-rose-500'}`} />
                     <span>{stockData.totalStock} In Stock</span>
                   </div>
 
@@ -1061,15 +1061,15 @@ export default function StaffStockCheckerPage({
                     <button
                       type="button"
                       onClick={() => setShowPendingListModal(true)}
-                      className="px-2.5 py-1 rounded-xl text-[11px] font-black inline-flex items-center gap-1.5 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 shadow-sm transition-all active:scale-95 animate-pulse"
+                      className="px-2.5 py-1 rounded-xl text-[11px] font-black inline-flex items-center gap-1.5 bg-[#FEF3C7] hover:bg-[#FDE68A] text-[#92400E] border border-[#F59E0B] shadow-sm transition-all active:scale-95"
                       title="View active pending tags for this article"
                     >
-                      <Tag className="w-3 h-3 text-amber-400 shrink-0" />
+                      <Tag className="w-3 h-3 text-[#B45309] shrink-0" />
                       <span>{stockData.totalPendingTags} in Pending Tags</span>
                     </button>
                   )}
 
-                  <div className="text-[10px] text-slate-500 font-medium">
+                  <div className="text-[10px] text-[#7A6E61] font-bold">
                     {stockData.colors?.length || 0} Color{(stockData.colors?.length || 0) === 1 ? '' : 's'}
                   </div>
                 </div>
@@ -1077,47 +1077,47 @@ export default function StaffStockCheckerPage({
 
               {/* Instant Offer & Net Deal Price Breakdown */}
               {stockData.mrp > 0 && (
-                <div className="mt-3 pt-2.5 border-t border-slate-800/80 space-y-2">
+                <div className="mt-3 pt-2.5 border-t border-[#EFE9DF] space-y-2">
                   <div className="grid grid-cols-3 gap-1.5 text-xs">
                     {/* B1G2 Deal */}
-                    <div className="p-2 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex flex-col justify-between text-center shadow-sm">
-                      <div className="text-[10px] font-black text-amber-300 uppercase tracking-tight flex items-center justify-center gap-1">
-                        <Sparkles className="w-2.5 h-2.5 fill-current text-amber-400 shrink-0" />
+                    <div className="p-2 rounded-2xl bg-[#FAF6F0] border border-[#E5DDCF] flex flex-col justify-between text-center shadow-sm">
+                      <div className="text-[10px] font-black text-[#92400E] uppercase tracking-tight flex items-center justify-center gap-1">
+                        <Sparkles className="w-2.5 h-2.5 fill-current text-[#B45309] shrink-0" />
                         <span className="truncate">Buy 1 Get 2</span>
                       </div>
-                      <div className="text-xs sm:text-sm font-black text-amber-300 my-0.5">
+                      <div className="text-xs sm:text-sm font-black text-[#78350F] my-0.5">
                         ₹{Math.round(stockData.mrp / 3).toLocaleString('en-IN')}
                       </div>
-                      <div className="text-[9px] text-slate-400 font-medium truncate">/pc net</div>
+                      <div className="text-[9px] text-[#7A6E61] font-medium truncate">/pc net</div>
                     </div>
 
                     {/* Flat 50% Deal */}
-                    <div className="p-2 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 flex flex-col justify-between text-center shadow-sm">
-                      <div className="text-[10px] font-black text-emerald-300 uppercase tracking-tight flex items-center justify-center gap-1">
-                        <Tag className="w-2.5 h-2.5 text-emerald-400 shrink-0" />
+                    <div className="p-2 rounded-2xl bg-[#E8F5E9]/60 border border-[#C8E6C9] flex flex-col justify-between text-center shadow-sm">
+                      <div className="text-[10px] font-black text-[#1B5E20] uppercase tracking-tight flex items-center justify-center gap-1">
+                        <Tag className="w-2.5 h-2.5 text-[#2E7D32] shrink-0" />
                         <span className="truncate">Flat 50% Off</span>
                       </div>
-                      <div className="text-xs sm:text-sm font-black text-emerald-300 my-0.5">
+                      <div className="text-xs sm:text-sm font-black text-[#1B5E20] my-0.5">
                         ₹{Math.round(stockData.mrp * 0.5).toLocaleString('en-IN')}
                       </div>
-                      <div className="text-[9px] text-slate-400 font-medium truncate">net price</div>
+                      <div className="text-[9px] text-[#7A6E61] font-medium truncate">net price</div>
                     </div>
 
                     {/* Flat 60% Deal */}
-                    <div className="p-2 rounded-2xl bg-sky-500/10 border border-sky-500/30 flex flex-col justify-between text-center shadow-sm">
-                      <div className="text-[10px] font-black text-sky-300 uppercase tracking-tight flex items-center justify-center gap-1">
-                        <Percent className="w-2.5 h-2.5 text-sky-400 shrink-0" />
+                    <div className="p-2 rounded-2xl bg-[#FBF0DC] border border-[#E9CCA0] flex flex-col justify-between text-center shadow-sm">
+                      <div className="text-[10px] font-black text-[#78350F] uppercase tracking-tight flex items-center justify-center gap-1">
+                        <Percent className="w-2.5 h-2.5 text-[#B45309] shrink-0" />
                         <span className="truncate">Flat 60% Off</span>
                       </div>
-                      <div className="text-xs sm:text-sm font-black text-sky-300 my-0.5">
+                      <div className="text-xs sm:text-sm font-black text-[#78350F] my-0.5">
                         ₹{Math.round(stockData.mrp * 0.4).toLocaleString('en-IN')}
                       </div>
-                      <div className="text-[9px] text-slate-400 font-medium truncate">net price</div>
+                      <div className="text-[9px] text-[#7A6E61] font-medium truncate">net price</div>
                     </div>
                   </div>
 
                   {stockData.scannedBarcode && (
-                    <div className="text-slate-500 font-mono text-[10px] text-right">
+                    <div className="text-[#8C7E6F] font-mono text-[10px] text-right">
                       Matched Scanned Code: {stockData.scannedBarcode}
                     </div>
                   )}
@@ -1125,19 +1125,19 @@ export default function StaffStockCheckerPage({
               )}
 
               {/* Pending Tags Notice & Fast Report Button */}
-              <div className="mt-3 pt-2.5 border-t border-slate-800/80 space-y-2">
+              <div className="mt-3 pt-2.5 border-t border-[#EFE9DF] space-y-2">
                 {stockData.totalPendingTags > 0 ? (
-                  <div className="p-2.5 rounded-2xl bg-amber-950/40 border border-amber-500/40 flex items-center justify-between gap-2.5 text-xs">
-                    <div className="flex items-center gap-2 text-amber-200">
-                      <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                  <div className="p-3 rounded-2xl bg-[#FEF3C7] border border-[#F59E0B] flex items-center justify-between gap-2.5 text-xs shadow-sm">
+                    <div className="flex items-center gap-2 text-[#78350F]">
+                      <AlertTriangle className="w-4 h-4 text-[#B45309] shrink-0" />
                       <p className="text-[11px] leading-tight">
-                        <span className="font-bold text-amber-300">{stockData.totalPendingTags} piece(s) in Pending Tags</span> (torn / missing tags).
+                        <span className="font-bold text-[#78350F]">{stockData.totalPendingTags} piece(s) in Pending Tags</span> (torn / missing tags).
                       </p>
                     </div>
                     <button
                       type="button"
                       onClick={() => setShowPendingListModal(true)}
-                      className="px-2.5 py-1 rounded-xl bg-amber-500 text-slate-950 font-black text-[11px] shrink-0 shadow hover:bg-amber-400 active:scale-95 transition-all"
+                      className="px-2.5 py-1 rounded-xl bg-[#231F1C] hover:bg-[#3D352E] text-[#FEF3C7] font-black text-[11px] shrink-0 shadow active:scale-95 transition-all"
                     >
                       View Tags
                     </button>
@@ -1145,16 +1145,16 @@ export default function StaffStockCheckerPage({
                 ) : null}
 
                 <div className="flex items-center justify-between gap-2 pt-1">
-                  <span className="text-[10px] text-slate-400 flex items-center gap-1">
-                    <Tag className="w-3 h-3 text-amber-400/80" />
+                  <span className="text-[10px] text-[#6B5E51] flex items-center gap-1">
+                    <Tag className="w-3 h-3 text-[#B45309]" />
                     <span>Have a piece with missing/torn tag?</span>
                   </span>
                   <button
                     type="button"
                     onClick={() => handleOpenAddPendingTag()}
-                    className="px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 border border-amber-500/30 text-amber-300 text-[11px] font-bold flex items-center gap-1 transition-all active:scale-95"
+                    className="px-2.5 py-1 rounded-xl bg-[#FFFDF9] hover:bg-[#FAF6F0] border border-[#D8CEBC] text-[#78350F] text-[11px] font-bold flex items-center gap-1 transition-all active:scale-95 shadow-sm"
                   >
-                    <Plus className="w-3 h-3 text-amber-400" />
+                    <Plus className="w-3 h-3 text-[#B45309]" />
                     <span>Add Pending Tag</span>
                   </button>
                 </div>
@@ -1167,8 +1167,8 @@ export default function StaffStockCheckerPage({
                 {/* 1. 1-Tap "Find My Size" Filter Chips */}
                 {allAvailableSizes.length > 0 && (
                   <div className="space-y-1">
-                    <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1 flex items-center justify-between">
-                      <span className="flex items-center gap-1.5 text-amber-400">
+                    <div className="text-[11px] font-bold text-[#6B5E51] uppercase tracking-wider px-1 flex items-center justify-between">
+                      <span className="flex items-center gap-1.5 text-[#B45309]">
                         <Tag className="w-3 h-3" />
                         <span>Find Size (All Colours)</span>
                       </span>
@@ -1176,7 +1176,7 @@ export default function StaffStockCheckerPage({
                         <button
                           type="button"
                           onClick={() => setSelectedSizeFilter('ALL')}
-                          className="text-[10px] text-amber-400 hover:underline font-bold"
+                          className="text-[10px] text-[#B45309] hover:underline font-bold"
                         >
                           Clear Size Filter
                         </button>
@@ -1188,8 +1188,8 @@ export default function StaffStockCheckerPage({
                         onClick={() => setSelectedSizeFilter('ALL')}
                         className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
                           selectedSizeFilter === 'ALL'
-                            ? 'bg-amber-500 text-slate-950 font-black shadow-md shadow-amber-500/20'
-                            : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
+                            ? 'bg-[#B45309] text-[#231F1C] font-black shadow-sm'
+                            : 'bg-[#FFFDF9] border border-[#DCD3C4] text-[#4A4036] hover:bg-[#FAF6F0]'
                         }`}
                       >
                         All Sizes ({stockData.totalStock})
@@ -1204,16 +1204,16 @@ export default function StaffStockCheckerPage({
                             onClick={() => setSelectedSizeFilter(isSelected ? 'ALL' : sz.size)}
                             className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
                               isSelected
-                                ? 'bg-amber-500 text-slate-950 font-black shadow-md shadow-amber-500/20'
-                                : 'bg-slate-900 border border-slate-800 text-slate-300 hover:text-white'
+                                ? 'bg-[#B45309] text-[#231F1C] font-black shadow-sm'
+                                : 'bg-[#FFFDF9] border border-[#DCD3C4] text-[#4A4036] hover:bg-[#FAF6F0]'
                             }`}
                           >
                             <span>{sz.size}</span>
-                            <span className={`text-[10px] px-1 py-0.2 rounded ${isSelected ? 'bg-slate-950/20 text-slate-950 font-black' : 'bg-slate-800 text-slate-400'}`}>
+                            <span className={`text-[10px] px-1 py-0.2 rounded ${isSelected ? 'bg-white/20 text-[#231F1C] font-black' : 'bg-[#EFE9DF] text-[#6B5E51]'}`}>
                               {sz.totalStock}
                             </span>
                             {sz.totalPendingTags > 0 && (
-                              <span className="text-[9px] px-1 py-0.2 rounded font-black bg-amber-500/30 text-amber-300 border border-amber-500/40" title={`${sz.totalPendingTags} in Pending Tags`}>
+                              <span className="text-[9px] px-1 py-0.2 rounded font-black bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]" title={`${sz.totalPendingTags} in Pending Tags`}>
                                 🏷️ {sz.totalPendingTags}
                               </span>
                             )}
@@ -1227,7 +1227,7 @@ export default function StaffStockCheckerPage({
                 {/* 2. Quick Colour Filter Chips */}
                 {stockData.colors.length > 1 && (
                   <div className="space-y-1">
-                    <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider px-1 flex items-center justify-between">
+                    <div className="text-[11px] font-bold text-[#6B5E51] uppercase tracking-wider px-1 flex items-center justify-between">
                       <span>Filter by Colour</span>
                       <span>{stockData.colors.length} Colours</span>
                     </div>
@@ -1237,8 +1237,8 @@ export default function StaffStockCheckerPage({
                         onClick={() => setSelectedColorFilter('ALL')}
                         className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
                           selectedColorFilter === 'ALL'
-                            ? 'bg-amber-500 text-slate-950 font-black shadow-md shadow-amber-500/20'
-                            : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
+                            ? 'bg-[#B45309] text-[#231F1C] font-black shadow-sm'
+                            : 'bg-[#FFFDF9] border border-[#DCD3C4] text-[#4A4036] hover:bg-[#FAF6F0]'
                         }`}
                       >
                         All Colours
@@ -1253,8 +1253,8 @@ export default function StaffStockCheckerPage({
                             onClick={() => setSelectedColorFilter(isSelected ? 'ALL' : c.color)}
                             className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
                               isSelected
-                                ? 'bg-amber-500 text-slate-950 font-black shadow-md shadow-amber-500/20'
-                                : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
+                                ? 'bg-[#B45309] text-[#231F1C] font-black shadow-sm'
+                                : 'bg-[#FFFDF9] border border-[#DCD3C4] text-[#4A4036] hover:bg-[#FAF6F0]'
                             }`}
                           >
                             <span
@@ -1262,7 +1262,7 @@ export default function StaffStockCheckerPage({
                               style={{ backgroundColor: getColorDot(c.color) }}
                             />
                             <span>{c.color}</span>
-                            <span className={`text-[10px] ${isSelected ? 'text-slate-950/80 font-black' : 'text-slate-500'}`}>
+                            <span className={`text-[10px] ${isSelected ? 'text-[#231F1C]/80 font-black' : 'text-[#7A6E61]'}`}>
                               ({c.totalStock})
                             </span>
                           </button>
@@ -1286,21 +1286,21 @@ export default function StaffStockCheckerPage({
                     key={colorGroup.color}
                     className={`rounded-2xl border transition-all overflow-hidden shadow-lg ${
                       isOutOfStock
-                        ? 'bg-slate-900/50 border-slate-800/80 opacity-70'
-                        : 'bg-slate-900 border-slate-800'
+                        ? 'bg-[#F7F2E9]/60 border-[#DCD3C4] opacity-70'
+                        : 'bg-[#FFFDF9] border-[#DCD3C4]'
                     }`}
                   >
                     {/* Colour Header Banner */}
-                    <div className="px-4 py-2.5 bg-slate-850/90 border-b border-slate-800 flex items-center justify-between">
+                    <div className="px-4 py-2.5 bg-[#F7F2E9] border-b border-[#E3DAC9] flex items-center justify-between">
                       <div className="flex items-center gap-2.5">
                         <span
                           className="w-3.5 h-3.5 rounded-full border border-white/20 shadow-sm shrink-0"
                           style={{ backgroundColor: dotColor }}
                         />
-                        <h3 className="font-black text-sm text-white tracking-wide uppercase flex items-center gap-2">
+                        <h3 className="font-black text-sm text-[#231F1C] tracking-wide uppercase flex items-center gap-2">
                           <span>{colorGroup.color}</span>
                           {stockData.matchedColor === colorGroup.color && (
-                            <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase tracking-wider">
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A] uppercase tracking-wider">
                               Scanned Color
                             </span>
                           )}
@@ -1309,8 +1309,8 @@ export default function StaffStockCheckerPage({
 
                       <span className={`px-2.5 py-1 rounded-xl text-xs font-black ${
                         colorGroup.totalStock > 0
-                          ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                          : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+                          ? 'bg-[#E8F5E9] text-[#1B5E20] border border-[#C8E6C9]'
+                          : 'bg-rose-50 text-rose-800 border border-rose-200'
                       }`}>
                         {colorGroup.totalStock > 0 ? `${colorGroup.totalStock} available` : '0 available'}
                       </span>
@@ -1322,7 +1322,7 @@ export default function StaffStockCheckerPage({
                         No pieces currently available in this colour (Sold out)
                       </div>
                     ) : (
-                      <div className="divide-y divide-slate-800/60">
+                      <div className="divide-y divide-[#EFE9DF]">
                         {sortedSizes.map((sz) => {
                           const isExactScannedPiece = stockData.scannedBarcode && (
                             sz.barcode === stockData.scannedBarcode ||
@@ -1335,18 +1335,18 @@ export default function StaffStockCheckerPage({
                               key={sz.size}
                               className={`px-4 py-2.5 flex items-center justify-between transition-colors ${
                                 isExactScannedPiece
-                                  ? 'bg-amber-500/15 border-l-4 border-amber-500'
-                                  : 'hover:bg-slate-800/40'
+                                  ? 'bg-[#FEF3C7]/60 border-l-4 border-[#B45309]'
+                                  : 'hover:bg-[#FAF6F0]'
                               }`}
                             >
                               {/* Left: Size & Scanned Tag Badge */}
                               <div className="flex items-center gap-2.5">
-                                <span className="text-sm font-black tracking-tight text-white">
+                                <span className="text-sm font-black tracking-tight text-[#231F1C]">
                                   {sz.size} size
                                 </span>
 
                                 {isExactScannedPiece && (
-                                  <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-amber-500 text-slate-950 uppercase tracking-wider">
+                                  <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-[#B45309] text-[#231F1C] uppercase tracking-wider">
                                     Scanned Tag
                                   </span>
                                 )}
@@ -1355,7 +1355,7 @@ export default function StaffStockCheckerPage({
                                   <button
                                     type="button"
                                     onClick={() => handleCopyBarcode(sz.barcode)}
-                                    className="text-[10px] text-slate-500 hover:text-slate-300 font-mono flex items-center gap-0.5 ml-1"
+                                    className="text-[10px] text-[#7A6E61] hover:text-[#231F1C] font-mono flex items-center gap-0.5 ml-1"
                                     title={sz.barcodes?.length > 1 ? `Barcodes: ${sz.barcodes.join(', ')}` : 'Tap to copy barcode'}
                                   >
                                     <span>#{sz.barcode}</span>
@@ -1379,17 +1379,17 @@ export default function StaffStockCheckerPage({
                                   <button
                                     type="button"
                                     onClick={() => setSelectedPendingSize(sz)}
-                                    className="px-2 py-0.5 rounded-lg text-[10px] font-black bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 flex items-center gap-1 shadow-sm transition-all active:scale-95"
+                                    className="px-2 py-0.5 rounded-lg text-[10px] font-black bg-[#FEF3C7] hover:bg-[#FDE68A] text-[#92400E] border border-[#F59E0B] flex items-center gap-1 shadow-sm transition-all active:scale-95"
                                     title="Tap to see pending tag details for this size"
                                   >
-                                    <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0" />
+                                    <AlertTriangle className="w-3 h-3 text-[#B45309] shrink-0" />
                                     <span>{sz.pendingTagsCount} in Pending Tag</span>
                                   </button>
                                 )}
                                 <span className={`text-xs font-black ${
                                   sz.stock <= 0
-                                    ? 'text-slate-500'
-                                    : (sz.stock <= 2 ? 'text-amber-400' : 'text-emerald-400')
+                                    ? 'text-[#8C7E6F]'
+                                    : (sz.stock <= 2 ? 'text-[#B45309]' : 'text-[#1B5E20]')
                                 }`}>
                                   {sz.stock} available
                                 </span>
@@ -1409,8 +1409,8 @@ export default function StaffStockCheckerPage({
         {/* --- Recent Searches / Floor Quick History --- */}
         {recentScans.length > 0 && (
           <div className="pt-4 border-t border-slate-800 space-y-2.5">
-            <div className="flex items-center justify-between text-xs text-slate-400 px-1">
-              <span className="font-bold uppercase tracking-wider text-slate-400">Recent Floor Checks</span>
+            <div className="flex items-center justify-between text-xs text-[#6B5E51] px-1">
+              <span className="font-bold uppercase tracking-wider text-[#6B5E51]">Recent Floor Checks</span>
               <button
                 onClick={() => {
                   setRecentScans([]);
@@ -1430,18 +1430,18 @@ export default function StaffStockCheckerPage({
                     setQuery(item.articleNo);
                     handleLookup(item.articleNo);
                   }}
-                  className="w-full p-2.5 rounded-2xl bg-slate-900/60 hover:bg-slate-850 border border-slate-800/80 hover:border-slate-700 text-left flex items-center justify-between transition-all active:scale-98"
+                  className="w-full p-2.5 rounded-2xl bg-slate-900/60 hover:bg-[#FAF8F5] border border-[#E3DAC9]/80 hover:border-slate-700 text-left flex items-center justify-between transition-all active:scale-98"
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <div className="p-1.5 rounded-lg bg-slate-800 text-amber-400 shrink-0">
                       <Tag className="w-3.5 h-3.5" />
                     </div>
                     <div className="truncate">
-                      <div className="text-xs font-bold text-white flex items-center gap-2">
+                      <div className="text-xs font-bold text-[#231F1C] flex items-center gap-2">
                         <span>{item.articleNo}</span>
-                        {item.mrp && <span className="text-slate-400 font-normal">₹{item.mrp}</span>}
+                        {item.mrp && <span className="text-[#6B5E51] font-normal">₹{item.mrp}</span>}
                       </div>
-                      <div className="text-[11px] text-slate-400 truncate mt-0.5">{item.itemName}</div>
+                      <div className="text-[11px] text-[#6B5E51] truncate mt-0.5">{item.itemName}</div>
                     </div>
                   </div>
 
@@ -1464,11 +1464,11 @@ export default function StaffStockCheckerPage({
       {isCameraActive && (
         <div className="fixed inset-0 z-50 bg-black/95 flex flex-col justify-between animate-in fade-in duration-200">
           {/* Camera Viewfinder Header */}
-          <div className="px-4 py-3 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 flex items-center justify-between z-10">
+          <div className="px-4 py-3 bg-slate-900/90 backdrop-blur-md border-b border-[#EFE9DF] flex items-center justify-between z-10">
             <div className="flex items-center gap-2">
               <Camera className="w-4 h-4 text-amber-400" />
               <div>
-                <span className="text-xs font-bold text-white block">Fast Barcode + Number Reader</span>
+                <span className="text-xs font-bold text-[#231F1C] block">Fast Barcode + Number Reader</span>
                 <span className="text-[10px] text-emerald-400 flex items-center gap-1 font-semibold">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   <span>Dual Scan Active (60 FPS + OCR)</span>
@@ -1504,7 +1504,7 @@ export default function StaffStockCheckerPage({
               <button
                 type="button"
                 onClick={stopCamera}
-                className="p-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 hover:text-white transition-all"
+                className="p-2 rounded-xl bg-slate-800 border border-slate-700 text-slate-300 hover:text-[#231F1C] transition-all"
                 title="Close Scanner"
               >
                 <X className="w-4 h-4" />
@@ -1548,7 +1548,7 @@ export default function StaffStockCheckerPage({
 
             {/* Camera Error Display with Fallback Buttons */}
             {cameraError && (
-              <div className="absolute inset-x-4 top-20 p-4 rounded-2xl bg-rose-950/95 border border-rose-500/50 text-white text-xs space-y-3 z-20 shadow-2xl">
+              <div className="absolute inset-x-4 top-20 p-4 rounded-2xl bg-rose-950/95 border border-rose-500/50 text-[#231F1C] text-xs space-y-3 z-20 shadow-2xl">
                 <div className="font-bold flex items-center gap-1.5 text-rose-300">
                   <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
                   <span>Camera Access Issue</span>
@@ -1605,16 +1605,16 @@ export default function StaffStockCheckerPage({
 
       {/* --- Pending Tag Details Modal (For a specific size) --- */}
       {selectedPendingSize && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-end sm:items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-5 space-y-4 shadow-2xl text-slate-100 max-h-[85vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="fixed inset-0 z-50 bg-[#231F1C]/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+          <div className="bg-[#FFFDF9] border border-[#DCD3C4] rounded-3xl max-w-md w-full p-5 space-y-4 shadow-2xl text-[#231F1C] max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-[#EFE9DF] pb-3">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-xl bg-amber-500 text-slate-950 font-black">
                   <Tag className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm text-white">Pending Tag Size Details</h3>
-                  <p className="text-[11px] text-slate-400">
+                  <h3 className="font-bold text-sm text-[#231F1C]">Pending Tag Size Details</h3>
+                  <p className="text-[11px] text-[#6B5E51]">
                     Size: <strong className="text-amber-300">{selectedPendingSize.size}</strong> • {selectedPendingSize.pendingTagsCount || 1} piece(s) registered
                   </p>
                 </div>
@@ -1622,7 +1622,7 @@ export default function StaffStockCheckerPage({
               <button
                 type="button"
                 onClick={() => setSelectedPendingSize(null)}
-                className="p-1.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white"
+                className="p-1.5 rounded-full hover:bg-slate-800 text-[#6B5E51] hover:text-[#231F1C]"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1634,13 +1634,13 @@ export default function StaffStockCheckerPage({
 
             <div className="space-y-2">
               {(selectedPendingSize.pendingTagDetails || []).map((pt, idx) => (
-                <div key={pt.id || idx} className="p-3 rounded-2xl bg-slate-850 border border-slate-800 space-y-1.5 text-xs">
+                <div key={pt.id || idx} className="p-3 rounded-2xl bg-[#FAF8F5] border border-[#E3DAC9] space-y-1.5 text-xs">
                   <div className="flex items-center justify-between">
                     <span className="font-mono font-bold text-amber-400">#{pt.barcode || 'NO-BARCODE'}</span>
                     <button
                       type="button"
                       onClick={() => handleCopyBarcode(pt.barcode)}
-                      className="text-[10px] text-slate-400 hover:text-white flex items-center gap-1 font-bold"
+                      className="text-[10px] text-[#6B5E51] hover:text-[#231F1C] flex items-center gap-1 font-bold"
                     >
                       {copiedBarcode === pt.barcode ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
                       <span>{copiedBarcode === pt.barcode ? 'Copied' : 'Copy'}</span>
@@ -1662,7 +1662,7 @@ export default function StaffStockCheckerPage({
             <button
               type="button"
               onClick={() => setSelectedPendingSize(null)}
-              className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs transition-all active:scale-98"
+              className="w-full py-2.5 rounded-xl bg-[#EFE9DF] hover:bg-[#E5DDCF] text-[#4A4036] font-bold text-xs transition-all active:scale-98"
             >
               Close
             </button>
@@ -1672,22 +1672,22 @@ export default function StaffStockCheckerPage({
 
       {/* --- All Pending Tags Modal for this Article --- */}
       {showPendingListModal && stockData && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-end sm:items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-5 space-y-4 shadow-2xl text-slate-100 max-h-[85vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="fixed inset-0 z-50 bg-[#231F1C]/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+          <div className="bg-[#FFFDF9] border border-[#DCD3C4] rounded-3xl max-w-md w-full p-5 space-y-4 shadow-2xl text-[#231F1C] max-h-[85vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-[#EFE9DF] pb-3">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-xl bg-amber-500 text-slate-950 font-black">
                   <Tag className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm text-white">Pending Tags for {stockData.articleNo}</h3>
-                  <p className="text-[11px] text-slate-400">{stockData.totalPendingTags || 0} active pending piece(s)</p>
+                  <h3 className="font-bold text-sm text-[#231F1C]">Pending Tags for {stockData.articleNo}</h3>
+                  <p className="text-[11px] text-[#6B5E51]">{stockData.totalPendingTags || 0} active pending piece(s)</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setShowPendingListModal(false)}
-                className="p-1.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white"
+                className="p-1.5 rounded-full hover:bg-slate-800 text-[#6B5E51] hover:text-[#231F1C]"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1695,7 +1695,7 @@ export default function StaffStockCheckerPage({
 
             <div className="space-y-2">
               {(stockData.pendingTagsList || []).map((t) => (
-                <div key={t.id} className="p-3 rounded-2xl bg-slate-850 border border-slate-800 space-y-1.5 text-xs">
+                <div key={t.id} className="p-3 rounded-2xl bg-[#FAF8F5] border border-[#E3DAC9] space-y-1.5 text-xs">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="font-mono font-bold text-amber-400">#{t.barcode}</span>
@@ -1706,7 +1706,7 @@ export default function StaffStockCheckerPage({
                     <button
                       type="button"
                       onClick={() => handleCopyBarcode(t.barcode)}
-                      className="text-[10px] text-slate-400 hover:text-white flex items-center gap-1 font-bold"
+                      className="text-[10px] text-[#6B5E51] hover:text-[#231F1C] flex items-center gap-1 font-bold"
                     >
                       {copiedBarcode === t.barcode ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
                       <span>{copiedBarcode === t.barcode ? 'Copied' : 'Copy'}</span>
@@ -1732,7 +1732,7 @@ export default function StaffStockCheckerPage({
                   setShowPendingListModal(false);
                   handleOpenAddPendingTag();
                 }}
-                className="flex-1 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition-all active:scale-98 flex items-center justify-center gap-1.5"
+                className="flex-1 py-2.5 rounded-xl bg-[#B45309] hover:bg-[#92400E] text-white font-black text-xs transition-all active:scale-98 flex items-center justify-center gap-1.5 shadow-sm"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>+ Add Another Tag</span>
@@ -1740,7 +1740,7 @@ export default function StaffStockCheckerPage({
               <button
                 type="button"
                 onClick={() => setShowPendingListModal(false)}
-                className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs transition-all active:scale-98"
+                className="px-4 py-2.5 rounded-xl bg-[#EFE9DF] hover:bg-[#E5DDCF] text-[#4A4036] font-bold text-xs transition-all active:scale-98"
               >
                 Close
               </button>
@@ -1751,22 +1751,22 @@ export default function StaffStockCheckerPage({
 
       {/* --- Add / Report Pending Tag Modal --- */}
       {showAddPendingModal && stockData && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-end sm:items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-5 space-y-4 shadow-2xl text-slate-100 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="fixed inset-0 z-50 bg-[#231F1C]/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+          <div className="bg-[#FFFDF9] border border-[#DCD3C4] rounded-3xl max-w-md w-full p-5 space-y-4 shadow-2xl text-[#231F1C] max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-[#EFE9DF] pb-3">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-xl bg-amber-500 text-slate-950 font-black">
                   <Plus className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm text-white">Report Pending / Missing Tag</h3>
-                  <p className="text-[11px] text-slate-400">{stockData.articleNo} • {stockData.itemName}</p>
+                  <h3 className="font-bold text-sm text-[#231F1C]">Report Pending / Missing Tag</h3>
+                  <p className="text-[11px] text-[#6B5E51]">{stockData.articleNo} • {stockData.itemName}</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setShowAddPendingModal(false)}
-                className="p-1.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white"
+                className="p-1.5 rounded-full hover:bg-slate-800 text-[#6B5E51] hover:text-[#231F1C]"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -1775,7 +1775,7 @@ export default function StaffStockCheckerPage({
             <form onSubmit={handleSubmitPendingTag} className="space-y-3.5 text-xs">
               {/* Select Color */}
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-300">Colour</label>
+                <label className="text-[11px] font-bold text-[#4A4036]">Colour</label>
                 <select
                   value={addPendingForm.color}
                   onChange={(e) => {
@@ -1789,7 +1789,7 @@ export default function StaffStockCheckerPage({
                       barcode: firstSz?.barcode || prev.barcode
                     }));
                   }}
-                  className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold outline-none focus:border-amber-500"
+                  className="w-full px-3 py-2.5 rounded-xl bg-[#FAF7F2] border border-[#D5C9B7] text-[#231F1C] font-bold outline-none focus:border-[#B45309]"
                 >
                   {(stockData.colors || []).map(c => (
                     <option key={c.color} value={c.color}>{c.color}</option>
@@ -1799,7 +1799,7 @@ export default function StaffStockCheckerPage({
 
               {/* Select Size */}
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-300">Size</label>
+                <label className="text-[11px] font-bold text-[#4A4036]">Size</label>
                 <select
                   value={addPendingForm.size}
                   onChange={(e) => {
@@ -1812,7 +1812,7 @@ export default function StaffStockCheckerPage({
                       barcode: matchedSz?.barcode || prev.barcode
                     }));
                   }}
-                  className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white font-bold outline-none focus:border-amber-500"
+                  className="w-full px-3 py-2.5 rounded-xl bg-[#FAF7F2] border border-[#D5C9B7] text-[#231F1C] font-bold outline-none focus:border-[#B45309]"
                 >
                   {allAvailableSizes.map(sz => (
                     <option key={sz.size} value={sz.size}>{sz.size}</option>
@@ -1822,19 +1822,19 @@ export default function StaffStockCheckerPage({
 
               {/* Barcode */}
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-300">Barcode / SKU</label>
+                <label className="text-[11px] font-bold text-[#4A4036]">Barcode / SKU</label>
                 <input
                   type="text"
                   value={addPendingForm.barcode}
                   onChange={(e) => setAddPendingForm(prev => ({ ...prev, barcode: e.target.value }))}
                   placeholder="Barcode (optional or auto-selected)"
-                  className="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-slate-700 text-white font-mono font-bold outline-none focus:border-amber-500"
+                  className="w-full px-3 py-2.5 rounded-xl bg-[#FAF7F2] border border-[#D5C9B7] text-[#231F1C] font-mono font-bold outline-none focus:border-[#B45309]"
                 />
               </div>
 
               {/* Note / Reason Chips */}
               <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-slate-300">Reason / Note</label>
+                <label className="text-[11px] font-bold text-[#4A4036]">Reason / Note</label>
                 <div className="flex flex-wrap gap-1.5">
                   {['Tag torn on floor', 'Missing tag in trial room', 'Barcode unreadable', 'Defective tag'].map(preset => (
                     <button
@@ -1843,8 +1843,8 @@ export default function StaffStockCheckerPage({
                       onClick={() => setAddPendingForm(prev => ({ ...prev, notes: preset }))}
                       className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${
                         addPendingForm.notes === preset
-                          ? 'bg-amber-500 text-slate-950'
-                          : 'bg-slate-800 text-slate-300 hover:text-white'
+                          ? 'bg-[#B45309] text-white'
+                          : 'bg-[#FAF7F2] border border-[#D5C9B7] text-[#4A4036] hover:bg-[#EAE2D3]'
                       }`}
                     >
                       {preset}
@@ -1856,7 +1856,7 @@ export default function StaffStockCheckerPage({
                   value={addPendingForm.notes}
                   onChange={(e) => setAddPendingForm(prev => ({ ...prev, notes: e.target.value }))}
                   placeholder="Enter note or reason"
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950 border border-slate-700 text-white text-xs outline-none focus:border-amber-500 mt-1"
+                  className="w-full px-3 py-2 rounded-xl bg-[#FAF7F2] border border-[#D5C9B7] text-[#231F1C] text-xs outline-none focus:border-[#B45309] mt-1"
                 />
               </div>
 
@@ -1864,7 +1864,7 @@ export default function StaffStockCheckerPage({
                 <button
                   type="submit"
                   disabled={isSubmittingPending}
-                  className="flex-1 py-3 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-md active:scale-98 transition-all"
+                  className="flex-1 py-3 rounded-xl bg-[#B45309] hover:bg-[#92400E] disabled:opacity-50 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-98 transition-all"
                 >
                   {isSubmittingPending ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
                   <span>{isSubmittingPending ? 'Registering...' : 'Register Pending Tag'}</span>
@@ -1872,7 +1872,7 @@ export default function StaffStockCheckerPage({
                 <button
                   type="button"
                   onClick={() => setShowAddPendingModal(false)}
-                  className="px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs"
+                  className="px-4 py-3 rounded-xl bg-[#EFE9DF] hover:bg-[#E5DDCF] text-[#4A4036] font-bold text-xs"
                 >
                   Cancel
                 </button>
@@ -1884,31 +1884,31 @@ export default function StaffStockCheckerPage({
 
       {/* Install / Shortcut Guidance Modal */}
       {showInstallGuide && (
-        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-end sm:items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-5 space-y-4 shadow-2xl text-slate-100 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="fixed inset-0 z-50 bg-[#231F1C]/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+          <div className="bg-[#FFFDF9] border border-[#DCD3C4] rounded-3xl max-w-md w-full p-5 space-y-4 shadow-2xl text-[#231F1C] max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-[#EFE9DF] pb-3">
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-xl bg-amber-500 text-slate-950 font-black">
                   <Smartphone className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm text-white">Add Stock Checker to Home Screen</h3>
-                  <p className="text-[11px] text-slate-400">Launch directly in 1-tap from your phone</p>
+                  <h3 className="font-bold text-sm text-[#231F1C]">Add Stock Checker to Home Screen</h3>
+                  <p className="text-[11px] text-[#6B5E51]">Launch directly in 1-tap from your phone</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setShowInstallGuide(false)}
-                className="p-1.5 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white"
+                className="p-1.5 rounded-full hover:bg-slate-800 text-[#6B5E51] hover:text-[#231F1C]"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Direct Link Box with 1-Tap Copy */}
-            <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1.5">
+            <div className="p-3 rounded-2xl bg-[#FAF7F2] border border-[#D5C9B7] space-y-1.5">
               <div className="flex items-center justify-between text-[11px]">
-                <span className="text-slate-400">Direct Staff Link:</span>
+                <span className="text-[#6B5E51]">Direct Staff Link:</span>
                 <button
                   type="button"
                   onClick={copyDirectStockLink}
@@ -1918,19 +1918,19 @@ export default function StaffStockCheckerPage({
                   <span>{copiedUrl ? 'Copied!' : 'Copy Link'}</span>
                 </button>
               </div>
-              <p className="font-mono text-xs text-amber-300 font-bold break-all select-all">
+              <p className="font-mono text-xs text-[#B45309] font-bold break-all select-all">
                 https://cobb-store.web.app/#stock
               </p>
             </div>
 
             {/* Step-by-Step for Chrome & Safari */}
             <div className="space-y-2.5 text-xs">
-              <div className="p-3 rounded-2xl bg-slate-800/60 border border-slate-700/60 space-y-1">
+              <div className="p-3 rounded-2xl bg-[#FAF8F5] border border-[#E3DAC9] space-y-1">
                 <p className="font-black text-amber-300 flex items-center gap-1.5">
                   <span>🤖</span>
                   <span>Google Chrome (Android)</span>
                 </p>
-                <ol className="list-decimal list-inside space-y-1 text-slate-300 text-[11.5px] leading-relaxed">
+                <ol className="list-decimal list-inside space-y-1 text-[#4A4036] text-[11.5px] leading-relaxed">
                   <li>Tap the <strong>3 dots (⋮)</strong> menu in Chrome at top right.</li>
                   <li>Select <strong>&quot;Add to Home screen&quot;</strong> or <strong>&quot;Install app&quot;</strong>.</li>
                   <li>Tap <strong>&quot;Install / Add&quot;</strong>.</li>
@@ -1938,24 +1938,24 @@ export default function StaffStockCheckerPage({
                 </ol>
               </div>
 
-              <div className="p-3 rounded-2xl bg-slate-800/60 border border-slate-700/60 space-y-1">
+              <div className="p-3 rounded-2xl bg-[#FAF8F5] border border-[#E3DAC9] space-y-1">
                 <p className="font-black text-rose-300 flex items-center gap-1.5">
                   <span>🍎</span>
                   <span>iPhone / Safari (iOS)</span>
                 </p>
-                <ol className="list-decimal list-inside space-y-1 text-slate-300 text-[11.5px] leading-relaxed">
+                <ol className="list-decimal list-inside space-y-1 text-[#4A4036] text-[11.5px] leading-relaxed">
                   <li>Tap the <strong>Share (📤)</strong> button at the bottom of Safari.</li>
                   <li>Scroll down and tap <strong>&quot;Add to Home Screen&quot; (➕)</strong>.</li>
                   <li>Tap <strong>&quot;Add&quot;</strong> at the top right.</li>
                 </ol>
               </div>
 
-              <div className="p-3 rounded-2xl bg-slate-800/60 border border-slate-700/60 space-y-1">
+              <div className="p-3 rounded-2xl bg-[#FAF8F5] border border-[#E3DAC9] space-y-1">
                 <p className="font-black text-sky-300 flex items-center gap-1.5">
                   <span>💻</span>
                   <span>Desktop Chrome / Edge</span>
                 </p>
-                <ol className="list-decimal list-inside space-y-1 text-slate-300 text-[11.5px] leading-relaxed">
+                <ol className="list-decimal list-inside space-y-1 text-[#4A4036] text-[11.5px] leading-relaxed">
                   <li>Click the <strong>Install icon</strong> in the right side of the address bar.</li>
                   <li>Or tap <strong>⋮ ➔ Save and share ➔ Create shortcut...</strong></li>
                 </ol>
@@ -1965,7 +1965,7 @@ export default function StaffStockCheckerPage({
             <button
               type="button"
               onClick={() => setShowInstallGuide(false)}
-              className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition-all active:scale-98 shadow-md"
+              className="w-full py-2.5 rounded-xl bg-[#B45309] hover:bg-[#92400E] text-white font-black text-xs transition-all active:scale-98 shadow-sm"
             >
               Got It
             </button>
