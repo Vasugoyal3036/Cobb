@@ -458,6 +458,59 @@ describe('StaffStockCheckerPage [Floor Mobile Stock Checker]', () => {
     });
   });
 
+  it('detects duplicate barcode in Add Pending Tag modal and disables register button', async () => {
+    const mockData = {
+      success: true,
+      articleNo: 'BLZ-500',
+      itemName: 'EXECUTIVE BLAZER',
+      mrp: 6999,
+      totalStock: 2,
+      hasPendingTags: true,
+      totalPendingTags: 1,
+      pendingTagsList: [
+        {
+          id: 'ptag_001',
+          barcode: 'BLZ-40-BC',
+          articleNo: 'BLZ-500',
+          color: 'BLACK',
+          size: '40',
+          status: 'active'
+        }
+      ],
+      colors: [
+        {
+          color: 'BLACK',
+          totalStock: 2,
+          sizes: [{ size: '40', stock: 2, barcode: 'BLZ-40-BC' }]
+        }
+      ]
+    };
+
+    axios.get.mockResolvedValue({ data: mockData });
+
+    render(<StaffStockCheckerPage onClose={vi.fn()} />);
+
+    const input = screen.getByPlaceholderText(/Enter barcode or article no/i);
+    fireEvent.change(input, { target: { value: 'BLZ-500' } });
+    fireEvent.click(screen.getByRole('button', { name: /find/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Add Pending Tag/i)).toBeDefined();
+    });
+
+    fireEvent.click(screen.getByText(/Add Pending Tag/i));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Report Pending \/ Missing Tag/i)).toBeDefined();
+      // Should show duplicate alert banner
+      expect(screen.getByText(/Barcode Already on Pending Rack/i)).toBeDefined();
+    });
+
+    // Register button should be disabled with 'Duplicate Barcode'
+    const submitBtn = screen.getByRole('button', { name: /Duplicate Barcode/i });
+    expect(submitBtn.disabled).toBe(true);
+  });
+
   it('switches to Daily Chai tab and displays salesman tea logging interface', async () => {
     axios.get.mockResolvedValueOnce({
       data: {

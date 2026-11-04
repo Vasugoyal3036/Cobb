@@ -42,6 +42,7 @@ import {
 } from '../utils/teaExpenses';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { playSound } from '../utils/sound';
+import { isBarcodeDuplicate } from './tabs/PendingTagsTab';
 import { getColorDot } from './GunScannerModal';
 import {
   isNativeBarcodeDetectorSupported,
@@ -188,6 +189,7 @@ export default function StaffStockCheckerPage({
   const [selectedPendingSize, setSelectedPendingSize] = useState(null);
   const [showAddPendingModal, setShowAddPendingModal] = useState(false);
   const [isSubmittingPending, setIsSubmittingPending] = useState(false);
+
   const [pendingSuccessMsg, setPendingSuccessMsg] = useState('');
   const [addPendingForm, setAddPendingForm] = useState({
     color: '',
@@ -196,6 +198,15 @@ export default function StaffStockCheckerPage({
     notes: 'Tag torn on floor',
     discountPercent: 60
   });
+
+  // Real-time detection of duplicate active tag in Add Modal
+  const duplicateStaffPendingTag = useMemo(() => {
+    const candidate = addPendingForm.barcode || stockData?.matchedBarcode || stockData?.scannedBarcode || '';
+    if (!candidate || !candidate.trim() || !stockData?.pendingTagsList) return null;
+    return stockData.pendingTagsList.find(t => 
+      (t.status === 'active' || !t.status) && isBarcodeDuplicate(t.barcode, candidate)
+    );
+  }, [addPendingForm.barcode, stockData]);
 
   // PWA Install / Shortcut State
   const [deferredPrompt, setDeferredPrompt] = useState(null);
@@ -387,14 +398,27 @@ export default function StaffStockCheckerPage({
     setShowAddPendingModal(true);
   };
 
-  const handleSubmitPendingTag = async (e) => {
+    const handleSubmitPendingTag = async (e) => {
     e?.preventDefault();
     if (!stockData || isSubmittingPending) return;
+
+    const candidateBarcode = addPendingForm.barcode || stockData.matchedBarcode || stockData.scannedBarcode || '';
+
+    // Quick client check against active pending tags of current article
+    if (candidateBarcode && Array.isArray(stockData.pendingTagsList)) {
+      const activeExisting = stockData.pendingTagsList.find(t => 
+        (t.status === 'active' || !t.status) && isBarcodeDuplicate(t.barcode, candidateBarcode)
+      );
+      if (activeExisting) {
+        alert(`Duplicate Barcode: Barcode "${candidateBarcode}" is already registered on the active pending rack! Duplicate tags cannot be added.`);
+        return;
+      }
+    }
 
     setIsSubmittingPending(true);
     try {
       const payload = {
-        barcode: addPendingForm.barcode || stockData.matchedBarcode || stockData.scannedBarcode || '',
+        barcode: candidateBarcode,
         articleNo: stockData.articleNo,
         articleName: stockData.itemName,
         size: addPendingForm.size || 'Standard',
@@ -420,6 +444,12 @@ export default function StaffStockCheckerPage({
         alert(res.data?.error || 'Could not save pending tag');
       }
     } catch (err) {
+      // If backend rejected as duplicate (409), alert user and do NOT bypass into Firestore
+      if (err.response?.status === 409 || err.response?.data?.duplicate) {
+        alert(err.response?.data?.error || 'Duplicate Barcode: A pending tag with this barcode already exists in the active rack!');
+        return;
+      }
+
       console.warn('Backend pending tags endpoint note:', err.message);
       // Fallback for Phone Link direct to Firestore
       try {
@@ -433,9 +463,19 @@ export default function StaffStockCheckerPage({
             const data = ptagSnap.data();
             currentTags = Array.isArray(data) ? data : (data.tags || []);
           }
+
+          // Check duplicate in Firestore before saving
+          const isDupInCloud = currentTags.some(t => 
+            t.status === 'active' && isBarcodeDuplicate(t.barcode, candidateBarcode)
+          );
+          if (isDupInCloud) {
+            alert(`Duplicate Barcode: Barcode "${candidateBarcode}" is already registered on the active pending rack in Cloud!`);
+            return;
+          }
+
           const newTag = {
             id: 'ptag_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
-            barcode: addPendingForm.barcode || stockData.matchedBarcode || stockData.scannedBarcode || '',
+            barcode: candidateBarcode,
             articleNo: stockData.articleNo,
             articleName: stockData.itemName,
             size: addPendingForm.size || 'Standard',
@@ -2161,6 +2201,19 @@ export default function StaffStockCheckerPage({
                 />
               </div>
 
+              {/* Duplicate Barcode Warning Banner */}
+              {duplicateStaffPendingTag && (
+                <div className="p-3 rounded-2xl bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-start gap-2 shadow-sm animate-in fade-in">
+                  <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold">⚠️ Barcode Already on Pending Rack</span>
+                    <p className="mt-0.5 text-[11px] leading-relaxed text-amber-800">
+                      A pending tag with barcode <span className="font-mono font-bold">{duplicateStaffPendingTag.barcode}</span> ({duplicateStaffPendingTag.color} - {duplicateStaffPendingTag.size}) already exists on the active rack. Duplicate tags cannot be added.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               {/* Note / Reason Chips */}
               <div className="space-y-1.5">
                 <label className="text-[11px] font-bold text-[#4A4036]">Reason / Note</label>
@@ -2192,11 +2245,12 @@ export default function StaffStockCheckerPage({
               <div className="flex items-center gap-2 pt-2">
                 <button
                   type="submit"
-                  disabled={isSubmittingPending}
-                  className="flex-1 py-3 rounded-xl bg-[#B45309] hover:bg-[#92400E] disabled:opacity-50 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-98 transition-all"
+                  disabled={isSubmittingPending || Boolean(duplicateStaffPendingTag)}
+                  className="flex-1 py-3 rounded-xl bg-[#B45309] hover:bg-[#92400E] disabled:opacity-40 disabled:cursor-not-allowed text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-98 transition-all"
+                  title={duplicateStaffPendingTag ? "Cannot add duplicate barcode" : "Register Pending Tag"}
                 >
                   {isSubmittingPending ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                  <span>{isSubmittingPending ? 'Registering...' : 'Register Pending Tag'}</span>
+                  <span>{duplicateStaffPendingTag ? 'Duplicate Barcode' : (isSubmittingPending ? 'Registering...' : 'Register Pending Tag')}</span>
                 </button>
                 <button
                   type="button"

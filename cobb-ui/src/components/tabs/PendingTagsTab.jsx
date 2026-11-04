@@ -40,6 +40,31 @@ const API_BASE = window.location.protocol === 'app:' || window.location.hostname
   : window.location.origin;
 
 // Common retail discount presets for B1G2 single-piece sales
+// --- Barcode Normalization & Duplication Prevention Helpers ---
+export function normalizeBarcode(val) {
+  if (!val) return '';
+  return String(val).trim().toUpperCase();
+}
+
+export function cleanBarcodeDigits(val) {
+  const norm = normalizeBarcode(val).replace(/[\s\-_]/g, '');
+  if (/^0+$/.test(norm)) return '0';
+  return norm.replace(/^0+/, '');
+}
+
+export function isBarcodeDuplicate(b1, b2) {
+  const s1 = normalizeBarcode(b1);
+  const s2 = normalizeBarcode(b2);
+  if (!s1 || !s2) return false;
+  if (s1 === s2) return true;
+
+  const c1 = cleanBarcodeDigits(b1);
+  const c2 = cleanBarcodeDigits(b2);
+  if (c1 && c2 && c1 === c2) return true;
+
+  return false;
+}
+
 const DISCOUNT_PRESETS = [
   { label: 'Flat 50%', value: 50 },
   { label: '60% Off', value: 60 },
@@ -90,6 +115,16 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
   const [scanQuery, setScanQuery] = useState('');
   const [isSearchingBarcode, setIsSearchingBarcode] = useState(false);
   const [barcodeMatchError, setBarcodeMatchError] = useState('');
+
+  // Real-time detection of duplicate active tag in Add Modal
+  const duplicateActiveTag = useMemo(() => {
+    const candidate = form.barcode || form.articleNo;
+    if (!candidate || !candidate.trim()) return null;
+    return tags.find(t =>
+      t.status === 'active' && isBarcodeDuplicate(t.barcode, candidate)
+    );
+  }, [form.barcode, form.articleNo, tags]);
+
 
   const targetStoreId = (!activeStore || activeStore === 'ALL' || activeStore === 'STORE_01')
     ? 'DEMO_STORE_001'
@@ -342,13 +377,23 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
     }));
   };
 
-  // --- Submit New Pending Tag ---
+    // --- Submit New Pending Tag ---
   const handleAddTag = async (e) => {
     e.preventDefault();
     if (!form.barcode && !form.articleNo) {
       showToastMsg('Barcode or Article No is required!', 'error');
       return;
     }
+
+    const candidate = form.barcode || form.articleNo;
+    const existingDup = tags.find(t => 
+      t.status === 'active' && isBarcodeDuplicate(t.barcode, candidate)
+    );
+    if (existingDup) {
+      showToastMsg(`Duplicate Barcode: Tag #${existingDup.id} (${existingDup.barcode}) is already on the pending rack!`, 'error');
+      return;
+    }
+
     try {
       const payload = {
         ...form,
@@ -365,11 +410,28 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
           fetchTags();
         }
       } catch (apiErr) {
-        // Fallback directly to Cloud Firestore (for Phone Link)
+        // If backend specifically returned 409 or duplicate error, display error and DO NOT write to Firestore
+        if (apiErr.response?.status === 409 || apiErr.response?.data?.duplicate) {
+          const errMsg = apiErr.response?.data?.error || 'A pending tag with this barcode already exists on the rack!';
+          showToastMsg(errMsg, 'error');
+          return;
+        }
+
+        // Fallback directly to Cloud Firestore (for Phone Link offline / network error)
         if (db) {
           const docRef = doc(db, 'stores', targetStoreId, 'data', 'pending_tags');
           const snap = await getDoc(docRef);
           const curTags = snap.exists() ? (snap.data().tags || []) : [];
+
+          // Verify no active duplicate in Firestore
+          const cloudDup = curTags.find(t => 
+            t.status === 'active' && isBarcodeDuplicate(t.barcode, candidate)
+          );
+          if (cloudDup) {
+            showToastMsg(`Duplicate Barcode: Tag #${cloudDup.id} (${cloudDup.barcode}) is already active in Cloud!`, 'error');
+            return;
+          }
+
           const now = new Date();
           const newEntry = {
             id: 'ptag_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
@@ -382,6 +444,8 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
           await setDoc(docRef, { tags: updated, lastUpdated: now.toISOString() }, { merge: true });
           setTags(updated);
           showToastMsg('Pending Tag saved to Cloud Firestore!', 'success');
+        } else {
+          throw apiErr;
         }
       }
 
@@ -403,7 +467,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
         notes: ''
       });
     } catch (err) {
-      showToastMsg('Failed to save pending tag: ' + err.message, 'error');
+      showToastMsg('Failed to save pending tag: ' + (err.response?.data?.error || err.message), 'error');
     }
   };
 
@@ -1598,6 +1662,24 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                 </div>
               </div>
 
+              {/* Real-time duplicate barcode banner */}
+              {duplicateActiveTag && (
+                <div className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-300 dark:border-rose-800 text-rose-800 dark:text-rose-200 text-xs flex items-start gap-2.5 animate-in fade-in shadow-sm">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
+                  <div>
+                    <div className="font-bold text-rose-700 dark:text-rose-300 flex items-center gap-1.5">
+                      <span>⚠️ Barcode Already on Pending Rack</span>
+                      <span className="text-[10px] px-1.5 py-0.2 rounded bg-rose-200 dark:bg-rose-900 text-rose-900 dark:text-rose-100 font-mono">
+                        #{duplicateActiveTag.id}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-[11px] leading-relaxed text-rose-600 dark:text-rose-300">
+                      Item <strong>{duplicateActiveTag.articleName || duplicateActiveTag.articleNo || 'Garment'}</strong> (MRP ₹{duplicateActiveTag.mrp}, {duplicateActiveTag.size}) is already registered as an active pending tag with barcode <span className="font-mono font-bold">{duplicateActiveTag.barcode}</span>. Duplicate barcodes cannot be added until this tag is billed or voided.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-1">
                 <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">Article Name</label>
                 <input
@@ -1758,11 +1840,13 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                   Cancel
                 </button>
                 <button
-                  type="submit"
-                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-rose-500 to-amber-500 hover:from-rose-600 hover:to-amber-600 text-white text-xs font-bold shadow-lg shadow-rose-500/20 transition-all active:scale-95"
-                >
-                  Save Pending Tag
-                </button>
+                    type="submit"
+                    disabled={Boolean(duplicateActiveTag)}
+                    className="px-5 py-2 rounded-xl bg-gradient-to-r from-rose-500 to-amber-500 hover:from-rose-600 hover:to-amber-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold shadow-lg shadow-rose-500/20 transition-all active:scale-95"
+                    title={duplicateActiveTag ? "Cannot add duplicate barcode" : "Save Pending Tag"}
+                  >
+                    {duplicateActiveTag ? 'Duplicate Barcode' : 'Save Pending Tag'}
+                  </button>
               </div>
             </form>
           </div>

@@ -57,6 +57,32 @@ function generateId() {
     return 'ptag_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
 }
 
+// --- Barcode Normalization & Duplication Prevention Helpers ---
+function normalizeBarcode(val) {
+    if (!val) return '';
+    return String(val).trim().toUpperCase();
+}
+
+function cleanBarcodeDigits(val) {
+    const norm = normalizeBarcode(val).replace(/[\s\-_]/g, '');
+    if (/^0+$/.test(norm)) return '0';
+    return norm.replace(/^0+/, '');
+}
+
+function isBarcodeDuplicate(b1, b2) {
+    const s1 = normalizeBarcode(b1);
+    const s2 = normalizeBarcode(b2);
+    if (!s1 || !s2) return false;
+    if (s1 === s2) return true;
+
+    const c1 = cleanBarcodeDigits(b1);
+    const c2 = cleanBarcodeDigits(b2);
+    if (c1 && c2 && c1 === c2) return true;
+
+    return false;
+}
+
+
 // --- Automatic Billed Detection against SQL Server ---
 // Checks if any active pending tag barcodes have been billed in CMD01106 / CMM01106
 async function checkAndResolveBilledTags(tags) {
@@ -198,11 +224,26 @@ router.post('/add', async (req, res) => {
             notes = ''
         } = req.body;
 
-        if (!barcode && !articleNo) {
+        const candidateBarcode = String(barcode || articleNo || '').trim();
+        if (!candidateBarcode) {
             return res.status(400).json({ success: false, error: 'Barcode or Article No is required' });
         }
 
         const tags = readTags();
+
+        // Duplication prevention: Reject if an active tag already has this or similar barcode
+        const duplicateTag = tags.find(t => 
+            t.status === 'active' && isBarcodeDuplicate(t.barcode, candidateBarcode)
+        );
+
+        if (duplicateTag) {
+            return res.status(409).json({
+                success: false,
+                duplicate: true,
+                error: `Duplicate Barcode: An active pending tag with barcode "${duplicateTag.barcode}" (${duplicateTag.articleName || 'Item'}, ₹${duplicateTag.mrp || 0}) is already on the pending rack! (Tag #${duplicateTag.id}). Similar or duplicate barcode cannot be added.`,
+                existingTag: duplicateTag
+            });
+        }
         const now = new Date();
 
         const numMrp = parseFloat(mrp) || 0;
@@ -336,5 +377,8 @@ router.get('/combos', (req, res) => {
 
 router.readTags = readTags;
 router.writeTags = writeTags;
+router.isBarcodeDuplicate = isBarcodeDuplicate;
+router.cleanBarcodeDigits = cleanBarcodeDigits;
+router.normalizeBarcode = normalizeBarcode;
 
 module.exports = router;
