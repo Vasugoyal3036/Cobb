@@ -1,6 +1,191 @@
 import JsBarcode from 'jsbarcode';
 
 /**
+ * Standard Cobb Apparel Categories with retail presets
+ */
+export const COBB_CATEGORIES = [
+  {
+    id: 'casual_shirt',
+    name: 'CASUAL SHIRT',
+    shortCode: 'CS',
+    section: 'MENSWEAR',
+    defaultSizes: ['38 (S)', '39 (M)', '40 (L)', '42 (XL)', '44 (XXL)'],
+    defaultMrp: 2799,
+    promo: 'BUY 1 GET 2 FREE',
+    type: 'tops'
+  },
+  {
+    id: 'formal_shirt',
+    name: 'FORMAL SHIRT',
+    shortCode: 'FS',
+    section: 'MENSWEAR',
+    defaultSizes: ['38 (S)', '39 (M)', '40 (L)', '42 (XL)', '44 (XXL)'],
+    defaultMrp: 2499,
+    promo: 'BUY 1 GET 2 FREE',
+    type: 'tops'
+  },
+  {
+    id: 'denim',
+    name: 'DENIM / JEANS',
+    shortCode: 'DN',
+    section: 'MENSWEAR',
+    defaultSizes: ['28', '30', '32', '34', '36', '38', '40'],
+    defaultMrp: 3199,
+    promo: 'BUY 1 GET 2 FREE',
+    type: 'bottoms'
+  },
+  {
+    id: 'casual_trouser',
+    name: 'CASUAL TROUSER',
+    shortCode: 'CT',
+    section: 'MENSWEAR',
+    defaultSizes: ['30', '32', '34', '36', '38', '40'],
+    defaultMrp: 2499,
+    promo: 'BUY 1 GET 2 FREE',
+    type: 'bottoms'
+  },
+  {
+    id: 'formal_trouser',
+    name: 'FORMAL TROUSER',
+    shortCode: 'FT',
+    section: 'MENSWEAR',
+    defaultSizes: ['30', '32', '34', '36', '38', '40'],
+    defaultMrp: 2699,
+    promo: 'BUY 1 GET 2 FREE',
+    type: 'bottoms'
+  },
+  {
+    id: 'tshirt_half',
+    name: 'T-SHIRT HALF SL',
+    shortCode: 'TH',
+    section: 'MENSWEAR-SM',
+    defaultSizes: ['S', 'M', 'L', 'XL', '2XL'],
+    defaultMrp: 1299,
+    promo: 'BUY 1 GET 2 FREE',
+    type: 'alpha'
+  },
+  {
+    id: 'tshirt_full',
+    name: 'T-SHIRT FULL SL',
+    shortCode: 'TF',
+    section: 'MENSWEAR-WN',
+    defaultSizes: ['M', 'L', 'XL', '2XL'],
+    defaultMrp: 1699,
+    promo: 'BUY 1 GET 2 FREE',
+    type: 'alpha'
+  },
+  {
+    id: 'polo_tshirt',
+    name: 'POLO T-SHIRT',
+    shortCode: 'PT',
+    section: 'MENSWEAR-SM',
+    defaultSizes: ['M', 'L', 'XL', '2XL'],
+    defaultMrp: 1599,
+    promo: 'BUY 1 GET 2 FREE',
+    type: 'alpha'
+  },
+  {
+    id: 'blazer',
+    name: 'BLAZER',
+    shortCode: 'BZ',
+    section: 'MENSWEAR-WN',
+    defaultSizes: ['36', '38', '40', '42', '44', '46'],
+    defaultMrp: 5999,
+    promo: 'FLAT 50% OFF',
+    type: 'tops'
+  },
+  {
+    id: 'suit_blazer',
+    name: 'SUIT / BLAZER',
+    shortCode: 'ST',
+    section: 'MENSWEAR-WN',
+    defaultSizes: ['38', '40', '42', '44'],
+    defaultMrp: 6999,
+    promo: 'FLAT 50% OFF',
+    type: 'tops'
+  },
+  {
+    id: 'jacket',
+    name: 'WINTER JACKET',
+    shortCode: 'JK',
+    section: 'MENSWEAR-WN',
+    defaultSizes: ['M', 'L', 'XL', '2XL'],
+    defaultMrp: 3999,
+    promo: 'FLAT 50% OFF',
+    type: 'alpha'
+  },
+  {
+    id: 'sweatshirt',
+    name: 'SWEATSHIRT / HOODIE',
+    shortCode: 'SW',
+    section: 'MENSWEAR-WN',
+    defaultSizes: ['M', 'L', 'XL', '2XL'],
+    defaultMrp: 2499,
+    promo: 'BUY 1 GET 2 FREE',
+    type: 'alpha'
+  },
+  {
+    id: 'lower',
+    name: 'LOWER / TRACK PANT',
+    shortCode: 'LW',
+    section: 'MENSWEAR',
+    defaultSizes: ['M', 'L', 'XL', '2XL'],
+    defaultMrp: 1999,
+    promo: 'BUY 1 GET 2 FREE',
+    type: 'alpha'
+  },
+  {
+    id: 'shorts',
+    name: 'SHORTS / BERMUDA',
+    shortCode: 'SH',
+    section: 'MENSWEAR-SM',
+    defaultSizes: ['30', '32', '34', '36', '38'],
+    defaultMrp: 1599,
+    promo: 'BUY 1 GET 2 FREE',
+    type: 'bottoms'
+  },
+  {
+    id: 'accessories',
+    name: 'ACCESSORIES',
+    shortCode: 'AC',
+    section: 'ACCESSORIES',
+    defaultSizes: ['FREE'],
+    defaultMrp: 999,
+    promo: 'FLAT 50% OFF',
+    type: 'free'
+  }
+];
+
+/**
+ * Standard Cobb Retail MRP presets
+ */
+export const MRP_PRESETS = [
+  999, 1299, 1499, 1699, 1799, 1899, 1999, 2199, 2299, 2499, 2699, 2799, 2999, 3199, 3499, 3999, 4999, 5999, 6999
+];
+
+/**
+ * Standard Cobb Retail Promo Presets
+ */
+export const PROMO_PRESETS = [
+  'BUY 1 GET 2 FREE',
+  'BUY 2 GET 50% OFF',
+  'FLAT 50% OFF',
+  'FLAT 60% OFF',
+  'SPECIAL STORE DEAL'
+];
+
+/**
+ * Auto-generate a scannable 10-digit Cobb standard barcode
+ * Example: 0082 + 2 digits MRP mod + 4 random digits = 10 digits (Standard Cobb format)
+ */
+export function generateQuickTagBarcode(categoryName = '', mrp = 1999, seed = null) {
+  const cleanMrp = Math.abs(parseInt(mrp, 10)) || 1999;
+  const mrpSuffix = String(cleanMrp % 100).padStart(2, '0');
+  const rand4 = seed ? String(seed).padStart(4, '0').slice(-4) : Math.floor(1000 + Math.random() * 9000);
+  return `0082${mrpSuffix}${rand4}`;
+}
+
+/**
  * Generate a scannable SVG barcode string using JsBarcode
  */
 export function generateBarcodeSvg(barcode, options = {}) {
@@ -13,7 +198,7 @@ export function generateBarcodeSvg(barcode, options = {}) {
       JsBarcode(svg, code, {
         format: options.format || 'CODE128',
         width: options.width || 1.8,
-        height: options.height || 42,
+        height: options.height || 40,
         displayValue: options.displayValue !== false,
         fontSize: options.fontSize || 12,
         font: 'monospace',
@@ -33,30 +218,120 @@ export function generateBarcodeSvg(barcode, options = {}) {
 }
 
 /**
+ * Render single garment tag card HTML
+ */
+function renderSingleTagCard(tag, widthMm, barcodeSvg, nowStr, mfgDateStr) {
+  const mrpFormatted = Number(tag.mrp || 0).toLocaleString('en-IN');
+  const soldFormatted = tag.soldPrice ? Number(tag.soldPrice).toLocaleString('en-IN') : null;
+  const categoryName = tag.category || tag.articleName || 'MENSWEAR';
+  const articleNo = tag.articleNo || 'COBB-ART';
+  const color = tag.color || 'STANDARD';
+  const size = tag.size || 'FREE';
+  const section = tag.section || 'APPAREL';
+  const promo = tag.promo || 'BUY 1 GET 2 FREE';
+
+  return `
+    <div class="tag-card">
+      <!-- Tag fastener hole punch marker -->
+      <div class="hole-punch"></div>
+      <h1 class="brand-title">COBB APPARELS</h1>
+      <div class="brand-sub">GOYAL - HOUSE OF FASHION • PUNDRI</div>
+
+      <div class="divider"></div>
+
+      <!-- Prominent Category / Commodity Banner -->
+      <div class="category-block">
+        <div class="category-eyebrow">COMMODITY / ITEM</div>
+        <div class="category-title">${categoryName}</div>
+      </div>
+
+      <!-- Article & Specs Metadata -->
+      <div class="article-info">
+        <div style="display:flex; justify-content:space-between;">
+          <span><strong>ART:</strong> ${articleNo}</span>
+          <span><strong>COL:</strong> ${color}</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; margin-top:1px;">
+          <span><strong>SEC:</strong> ${section}</span>
+          <span><strong>QTY:</strong> 1 N</span>
+        </div>
+      </div>
+
+      <!-- Oversized High-Visibility Size Box -->
+      <div class="size-box">
+        SIZE: ${size}
+      </div>
+
+      <!-- Scannable Code 128 / EAN Barcode -->
+      <div class="barcode-container">
+        ${barcodeSvg}
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- Pricing & Promotion Block -->
+      <div class="price-block">
+        <div class="mrp-label">MAXIMUM RETAIL PRICE</div>
+        <div class="mrp-value">₹${mrpFormatted}</div>
+        <div class="tax-sub">(INCLUSIVE OF ALL TAXES)</div>
+
+        <div class="promo-pill">${promo}</div>
+        ${soldFormatted ? `<div class="deal-pill">Single Pc Deal: ₹${soldFormatted}</div>` : ''}
+
+        <div class="statutory-row">
+          <span>Pkd: ${mfgDateStr}</span>
+          <span>Consumer Care: Pundri</span>
+        </div>
+      </div>
+
+      <div class="double-divider"></div>
+
+      <!-- Authorized Store Replacement Tag Footer -->
+      <div class="footer-note">
+        COBB APPARELS PVT. LTD.<br/>
+        * REPLACEMENT GARMENT PRICE TAG *<br/>
+        Printed: ${nowStr}
+      </div>
+    </div>
+  `;
+}
+
+/**
  * Render complete printable HTML for a 58mm or 80mm replacement garment tag
+ * Supports copies option (e.g. { copies: 2 })
  */
 export function renderThermalTagHtml(tag, options = {}) {
   const widthMm = options.paperSize === '80mm' ? 80 : 58;
   const printableMm = widthMm === 80 ? 74 : 52;
+  const copies = Math.max(1, parseInt(options.copies, 10) || 1);
+
   const barcodeSvg = generateBarcodeSvg(tag.barcode, {
     width: widthMm === 80 ? 2.1 : 1.7,
     height: widthMm === 80 ? 46 : 38
   });
 
-  const nowStr = new Date().toLocaleString('en-IN', {
+  const now = new Date();
+  const nowStr = now.toLocaleString('en-IN', {
     dateStyle: 'medium',
     timeStyle: 'short'
   });
+  const mfgDateStr = now.toLocaleString('en-IN', {
+    month: 'short',
+    year: 'numeric'
+  });
 
-  const mrpFormatted = Number(tag.mrp || 0).toLocaleString('en-IN');
-  const soldFormatted = tag.soldPrice ? Number(tag.soldPrice).toLocaleString('en-IN') : null;
+  const cardsHtml = Array.from({ length: copies }, (_, idx) => `
+    <div class="tag-page ${idx < copies - 1 ? 'page-break' : ''}">
+      ${renderSingleTagCard(tag, widthMm, barcodeSvg, nowStr, mfgDateStr)}
+    </div>
+  `).join('\n');
 
   return `
     <!DOCTYPE html>
     <html>
       <head>
         <meta charset="utf-8" />
-        <title>Replacement Garment Tag - ${tag.barcode || tag.articleNo}</title>
+        <title>Replacement Garment Tag - ${tag.category || tag.articleNo || tag.barcode}</title>
         <style>
           @page {
             size: ${widthMm}mm auto;
@@ -75,6 +350,13 @@ export function renderThermalTagHtml(tag, options = {}) {
             line-height: 1.25;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
+          }
+          .tag-page {
+            width: 100%;
+          }
+          .page-break {
+            page-break-after: always;
+            margin-bottom: 8px;
           }
           .tag-card {
             border: 1.5px solid #000;
@@ -111,6 +393,27 @@ export function renderThermalTagHtml(tag, options = {}) {
           .double-divider {
             border-top: 2px solid #000;
             margin: 4px 0;
+          }
+          .category-block {
+            background: #f1f5f9;
+            border: 1px solid #000;
+            border-radius: 4px;
+            padding: 3px 2px;
+            margin-bottom: 4px;
+          }
+          .category-eyebrow {
+            font-size: 8px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: #444;
+          }
+          .category-title {
+            font-size: 13px;
+            font-weight: 900;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: #000;
           }
           .article-info {
             font-size: 11px;
@@ -150,7 +453,7 @@ export function renderThermalTagHtml(tag, options = {}) {
             letter-spacing: 0.5px;
           }
           .mrp-value {
-            font-size: 18px;
+            font-size: 19px;
             font-weight: 900;
             letter-spacing: -0.5px;
           }
@@ -168,56 +471,31 @@ export function renderThermalTagHtml(tag, options = {}) {
             text-transform: uppercase;
             margin-top: 3px;
           }
+          .deal-pill {
+            font-size: 10px;
+            font-weight: 800;
+            margin-top: 2px;
+          }
+          .statutory-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 8px;
+            font-weight: 700;
+            color: #333;
+            margin-top: 3px;
+            padding: 0 2px;
+          }
           .footer-note {
             font-size: 8px;
             color: #333;
             margin-top: 4px;
             text-align: center;
+            line-height: 1.2;
           }
         </style>
       </head>
       <body>
-        <div class="tag-card">
-          <div class="hole-punch"></div>
-          <h1 class="brand-title">COBB APPARELS</h1>
-          <div class="brand-sub">GOYAL - HOUSE OF FASHION • PUNDRI</div>
-
-          <div class="divider"></div>
-
-          <div class="article-info">
-            <div><strong>ART:</strong> ${tag.articleNo || 'COBB-ART'}</div>
-            <div><strong>ITEM:</strong> ${tag.articleName || 'Garment'}</div>
-            <div style="display:flex; justify-content:space-between; margin-top:1px;">
-              <span><strong>COL:</strong> ${tag.color || 'Standard'}</span>
-              <span><strong>SEC:</strong> ${tag.section || 'Apparel'}</span>
-            </div>
-          </div>
-
-          <div class="size-box">
-            SIZE: ${tag.size || 'FREE'}
-          </div>
-
-          <div class="barcode-container">
-            ${barcodeSvg}
-          </div>
-
-          <div class="divider"></div>
-
-          <div class="price-block">
-            <div class="mrp-label">Maximum Retail Price</div>
-            <div class="mrp-value">₹${mrpFormatted}</div>
-            <div class="tax-sub">(Inclusive of all taxes)</div>
-            <div class="promo-pill">BUY 1 GET 2 FREE / 50% OFF</div>
-            ${soldFormatted ? `<div style="font-size:10px; font-weight:800; margin-top:2px;">Single Pc Deal: ₹${soldFormatted}</div>` : ''}
-          </div>
-
-          <div class="double-divider"></div>
-
-          <div class="footer-note">
-            REPLACEMENT GARMENT PRICE TAG<br/>
-            Printed: ${nowStr}
-          </div>
-        </div>
+        ${cardsHtml}
       </body>
     </html>
   `;
@@ -280,4 +558,3 @@ export function triggerThermalTagPrint(tag, options = {}) {
 
   return false;
 }
-

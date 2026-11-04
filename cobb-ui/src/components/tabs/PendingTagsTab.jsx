@@ -729,6 +729,15 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
           </button>
 
           <button
+            onClick={() => setThermalTagModalData({ isQuickCategoryMrp: true })}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold shadow-lg shadow-blue-500/25 transition-all active:scale-95"
+            title="Print replacement price tag for any garment by Category and MRP"
+          >
+            <Printer className="w-4 h-4" />
+            <span>Print Any Tag (Cat + MRP)</span>
+          </button>
+
+          <button
             onClick={() => setShowAddModal(true)}
             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-rose-500 to-amber-500 hover:from-rose-600 hover:to-amber-600 text-white text-xs font-bold shadow-lg shadow-rose-500/25 transition-all active:scale-95"
           >

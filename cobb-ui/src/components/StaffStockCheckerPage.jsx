@@ -1326,6 +1326,20 @@ export default function StaffStockCheckerPage({
             </div>
           </form>
         </div>
+          {/* Quick Category + MRP Tag Maker Action */}
+          <div className="flex items-center justify-between gap-2 px-1 text-xs">
+            <span className="text-[11px] text-[#6B5E51] font-medium">
+              Missing or torn price tag on garment?
+            </span>
+            <button
+              type="button"
+              onClick={() => setThermalTagModalData({ isQuickCategoryMrp: true })}
+              className="px-2.5 py-1 rounded-xl bg-[#FFFDF9] hover:bg-[#FAF6F0] border border-[#D5C9B7] text-[#B45309] font-black text-[11px] flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>Print Tag (Cat + MRP)</span>
+            </button>
+          </div>
 
         {/* --- Pending Tag Success Toast --- */}
         {pendingSuccessMsg && (
@@ -1367,6 +1381,16 @@ export default function StaffStockCheckerPage({
             <div>
               <div className="font-bold">Article / Barcode Not Found</div>
               <p className="text-[11px] opacity-90 mt-0.5">{errorMsg}</p>
+              <div className="mt-2.5 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setThermalTagModalData({ isQuickCategoryMrp: true, barcode: query })}
+                  className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Print Replacement Tag (Category + MRP)</span>
+                </button>
+              </div>
             </div>
           </div>
         )}
