@@ -132,11 +132,45 @@ describe('PendingTagsTab - Duplicate Barcode Prevention', () => {
 
       // Real-time duplicate warning banner should appear
       await waitFor(() => {
-        expect(screen.getByText(/Barcode Already on Pending Rack/i)).toBeDefined();
+        expect(screen.getByText(/This tag has already been added in the tab/i)).toBeDefined();
         expect(screen.getByText(/#ptag_001/i)).toBeDefined();
       });
 
       // The save button should be disabled
+      const saveBtn = screen.getByRole('button', { name: /Duplicate Barcode/i });
+      expect(saveBtn.disabled).toBe(true);
+    });
+
+    it('shows "This tag has already been added in the tab" when scanned in quick search', async () => {
+      render(<PendingTagsTab />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Cobb Linen Shirt White')).toBeDefined();
+      });
+
+      // Open Add Pending Tag Modal
+      fireEvent.click(screen.getByRole('button', { name: /Add Pending Tag/i }));
+
+      const scanInput = screen.getByPlaceholderText(/Scan barcode/i);
+      // Scan or type the existing active tag's barcode
+      fireEvent.change(scanInput, { target: { value: '0080727340' } });
+
+      // Click Find
+      const findBtn = screen.getByRole('button', { name: /Find/i });
+      fireEvent.click(findBtn);
+
+      await waitFor(() => {
+        // Must show 'This tag has already been added in the tab'
+        expect(screen.getAllByText(/This tag has already been added in the tab/i).length).toBeGreaterThan(0);
+        // Must NOT show 'No product found matching'
+        expect(screen.queryByText(/No product found matching/i)).toBeNull();
+      });
+
+      // Form should be auto-populated with that tag's details
+      const barcodeField = screen.getByPlaceholderText('Barcode / SKU');
+      expect(barcodeField.value).toBe('0080727340');
+
+      // Submit button is disabled
       const saveBtn = screen.getByRole('button', { name: /Duplicate Barcode/i });
       expect(saveBtn.disabled).toBe(true);
     });
@@ -156,7 +190,7 @@ describe('PendingTagsTab - Duplicate Barcode Prevention', () => {
       fireEvent.change(barcodeInput, { target: { value: '9988776655' } });
 
       // No warning banner
-      expect(screen.queryByText(/Barcode Already on Pending Rack/i)).toBeNull();
+      expect(screen.queryByText(/This tag has already been added in the tab/i)).toBeNull();
 
       // Save button is enabled
       const saveBtn = screen.getByRole('button', { name: /Save Pending Tag/i });

@@ -118,12 +118,12 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
 
   // Real-time detection of duplicate active tag in Add Modal
   const duplicateActiveTag = useMemo(() => {
-    const candidate = form.barcode || form.articleNo;
-    if (!candidate || !candidate.trim()) return null;
+    const candidate = (form.barcode || scanQuery || form.articleNo || '').trim();
+    if (!candidate) return null;
     return tags.find(t =>
       t.status === 'active' && isBarcodeDuplicate(t.barcode, candidate)
     );
-  }, [form.barcode, form.articleNo, tags]);
+  }, [form.barcode, scanQuery, form.articleNo, tags]);
 
 
   const targetStoreId = (!activeStore || activeStore === 'ALL' || activeStore === 'STORE_01')
@@ -314,12 +314,38 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
     };
   }, [targetStoreId]);
 
-  // --- Barcode / Article Fast Lookup ---
+    // --- Barcode / Article Fast Lookup ---
   const handleQuickLookup = async (code) => {
     const q = (code || scanQuery).trim();
     if (!q) return;
     setIsSearchingBarcode(true);
     setBarcodeMatchError('');
+
+    // 1. Check if this tag has ALREADY been added to the Pending Tags tab!
+    const existingActive = tags.find(t => 
+      t.status === 'active' && isBarcodeDuplicate(t.barcode, q)
+    );
+
+    if (existingActive) {
+      setForm(prev => ({
+        ...prev,
+        barcode: existingActive.barcode || q,
+        articleNo: existingActive.articleNo || '',
+        articleName: existingActive.articleName || 'Apparel Item',
+        size: existingActive.size || 'Free',
+        color: existingActive.color || 'Standard',
+        section: existingActive.section || 'Men Apparel',
+        mrp: existingActive.mrp || 0,
+        discountPercent: existingActive.discountPercent || 60,
+        soldPrice: existingActive.soldPrice || 0,
+        salesperson: existingActive.salesperson || 'Cashier'
+      }));
+      setBarcodeMatchError(`This tag has already been added in the tab (Tag #${existingActive.id} • ${existingActive.articleName || 'Item'} • MRP ₹${existingActive.mrp} • Size ${existingActive.size})`);
+      showToastMsg(`This tag has already been added in the tab! (Tag #${existingActive.id})`, 'error');
+      setIsSearchingBarcode(false);
+      return;
+    }
+
     try {
       const res = await axios.get(`${API_BASE}/api/inventory/quick-scan?q=${encodeURIComponent(q)}`);
       if (res.data?.success && res.data.variants && res.data.variants.length > 0) {
@@ -341,10 +367,21 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
         }));
         showToastMsg(`Found: ${exact.itemName} (MRP ₹${mrpVal})`, 'success');
       } else {
-        setBarcodeMatchError(`No product found matching "${q}". You can enter details manually.`);
+        // Fallback check against tags in case it was added under another status
+        const existingInTags = tags.find(t => isBarcodeDuplicate(t.barcode, q));
+        if (existingInTags) {
+          setBarcodeMatchError(`This tag has already been added in the tab (Tag #${existingInTags.id} • ${existingInTags.articleName || 'Item'} • Status: ${existingInTags.status})`);
+        } else {
+          setBarcodeMatchError(`No product found matching "${q}". You can enter details manually.`);
+        }
       }
     } catch (err) {
-      setBarcodeMatchError('Quick scan lookup timed out. Enter details manually.');
+      const existingInTags = tags.find(t => isBarcodeDuplicate(t.barcode, q));
+      if (existingInTags) {
+        setBarcodeMatchError(`This tag has already been added in the tab (Tag #${existingInTags.id} • ${existingInTags.articleName || 'Item'} • Status: ${existingInTags.status})`);
+      } else {
+        setBarcodeMatchError('Quick scan lookup timed out. Enter details manually.');
+      }
     } finally {
       setIsSearchingBarcode(false);
     }
@@ -1613,7 +1650,21 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                     type="text"
                     placeholder="Scan barcode (e.g. 0079734971)..."
                     value={scanQuery}
-                    onChange={(e) => setScanQuery(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setScanQuery(val);
+                      const trimmed = val.trim();
+                      if (trimmed) {
+                        const match = tags.find(t => t.status === 'active' && isBarcodeDuplicate(t.barcode, trimmed));
+                        if (match) {
+                          setBarcodeMatchError(`This tag has already been added in the tab (Tag #${match.id} • ${match.articleName || 'Item'} • MRP ₹${match.mrp} • Size ${match.size})`);
+                        } else if (barcodeMatchError && barcodeMatchError.includes('already been added in the tab')) {
+                          setBarcodeMatchError('');
+                        }
+                      } else {
+                        setBarcodeMatchError('');
+                      }
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault();
@@ -1633,7 +1684,16 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                   </button>
                 </div>
                 {barcodeMatchError && (
-                  <p className="text-[11px] text-amber-500 mt-1">{barcodeMatchError}</p>
+                  <div className={`mt-2 p-2.5 rounded-xl text-xs flex items-center gap-2 ${
+                    barcodeMatchError.includes('already been added in the tab')
+                      ? 'bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-300 dark:border-rose-800 font-bold shadow-sm'
+                      : 'text-amber-500'
+                  }`}>
+                    {barcodeMatchError.includes('already been added in the tab') && (
+                      <AlertTriangle className="w-4 h-4 text-rose-600 dark:text-rose-400 shrink-0" />
+                    )}
+                    <span>{barcodeMatchError}</span>
+                  </div>
                 )}
               </div>
 
@@ -1668,7 +1728,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                   <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
                   <div>
                     <div className="font-bold text-rose-700 dark:text-rose-300 flex items-center gap-1.5">
-                      <span>⚠️ Barcode Already on Pending Rack</span>
+                      <span>⚠️ This tag has already been added in the tab</span>
                       <span className="text-[10px] px-1.5 py-0.2 rounded bg-rose-200 dark:bg-rose-900 text-rose-900 dark:text-rose-100 font-mono">
                         #{duplicateActiveTag.id}
                       </span>
