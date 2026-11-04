@@ -32,6 +32,7 @@ import {
   List,
   LayoutGrid
 } from 'lucide-react';
+import ThermalTagModal from '../ThermalTagModal';
 import { db } from '../../utils/firebase';
 import { doc, onSnapshot, setDoc, getDoc } from 'firebase/firestore';
 
@@ -91,7 +92,8 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
   const [sortBy, setSortBy] = useState('newest'); // 'low_to_high' | 'high_to_low' | 'sold_asc' | 'sold_desc' | 'discount_desc' | 'discount_asc' | 'newest' | 'oldest'
   const [viewMode, setViewMode] = useState('list'); // 'list' | 'grid'
   const [selectedMrpFilter, setSelectedMrpFilter] = useState(null); // null means All MRPs
-  const [tripletBreakdownModal, setTripletBreakdownModal] = useState(null); // B1G2 Triplet discount review modal
+  const [tripletBreakdownModal, setTripletBreakdownModal] = useState(null);
+  const [thermalTagModalData, setThermalTagModalData] = useState(null); // B1G2 Triplet discount review modal
   const [showAddModal, setShowAddModal] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
   const [toast, setToast] = useState(null);
@@ -574,57 +576,9 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
     setTimeout(() => setCopiedId(null), 2500);
   };
 
-  // --- Print 58mm/80mm Tag Slip ---
+    // --- Print 58mm/80mm Thermal Garment Tag ---
   const handlePrintSlip = (tag) => {
-    const printWindow = window.open('', '_blank', 'width=380,height=520');
-    if (!printWindow) {
-      alert('Please allow popups to print tag slips.');
-      return;
-    }
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Pending Tag Slip - ${tag.barcode}</title>
-        <style>
-          @page { size: 58mm auto; margin: 0; }
-          body { font-family: monospace; font-size: 11px; margin: 6px; padding: 0; color: #000; }
-          .header { text-align: center; border-bottom: 1px dashed #000; padding-bottom: 4px; margin-bottom: 6px; }
-          .title { font-size: 13px; font-weight: bold; }
-          .barcode { font-size: 14px; font-weight: bold; letter-spacing: 2px; text-align: center; margin: 6px 0; border: 1px solid #000; padding: 4px; }
-          .row { display: flex; justify-content: space-between; margin: 2px 0; }
-          .bold { font-weight: bold; }
-          .footer { border-top: 1px dashed #000; margin-top: 8px; padding-top: 4px; text-align: center; font-size: 9px; }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <div class="title">COBB APPARELS (PUNDRI)</div>
-          <div>PENDING TAG / B1G2 HOLD</div>
-          <div>${new Date(tag.createdAt).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })}</div>
-        </div>
-        <div class="barcode">${tag.barcode}</div>
-        <div class="row"><span class="bold">Article:</span><span>${tag.articleName || tag.articleNo}</span></div>
-        <div class="row"><span>Size/Color:</span><span>${tag.size} / ${tag.color}</span></div>
-        <div class="row"><span class="bold">Original MRP:</span><span class="bold">₹${Number(tag.mrp || 0).toLocaleString('en-IN')}</span></div>
-        <div class="row"><span>Discount Sold:</span><span class="bold">-${tag.discountPercent}%</span></div>
-        <div class="row"><span class="bold">Realized / Paid:</span><span class="bold">₹${Number(tag.soldPrice || 0).toLocaleString('en-IN')}</span></div>
-        ${tag.customerPhone ? `<div class="row"><span>Cust:</span><span>${tag.customerPhone}</span></div>` : ''}
-        ${tag.salesperson ? `<div class="row"><span>Staff:</span><span>${tag.salesperson}</span></div>` : ''}
-        <div class="footer">
-          <div>Keep tag safely at counter.</div>
-          <div>Auto-clears when billed in B1G2 combo.</div>
-        </div>
-      </body>
-      </html>
-    `;
-    printWindow.document.write(html);
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => {
-      printWindow.print();
-      printWindow.close();
-    }, 400);
+    setThermalTagModalData(tag);
   };
 
   // --- Filtering & Sorting ---
@@ -1612,6 +1566,18 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
             <X className="w-4 h-4" />
           </button>
         </div>
+      )}
+
+            {/* --- THERMAL GARMENT REPLACEMENT TAG MODAL --- */}
+      {thermalTagModalData && (
+        <ThermalTagModal
+          isOpen={Boolean(thermalTagModalData)}
+          onClose={() => setThermalTagModalData(null)}
+          tagData={thermalTagModalData}
+          onPrintSuccess={(pt) => {
+            showToastMsg(`Replacement tag printed for #${pt.barcode}`, 'success');
+          }}
+        />
       )}
 
       {/* --- ADD PENDING TAG MODAL --- */}

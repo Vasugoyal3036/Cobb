@@ -31,7 +31,8 @@ import {
   ChevronDown,
   Download,
   Percent,
-  Coffee
+  Coffee,
+  Printer
 } from 'lucide-react';
 import {
   fetchTodayTeaRecord,
@@ -43,6 +44,7 @@ import {
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { playSound } from '../utils/sound';
 import { isBarcodeDuplicate } from './tabs/PendingTagsTab';
+import ThermalTagModal from './ThermalTagModal';
 import { getColorDot } from './GunScannerModal';
 import {
   isNativeBarcodeDetectorSupported,
@@ -188,6 +190,7 @@ export default function StaffStockCheckerPage({
   const [showPendingListModal, setShowPendingListModal] = useState(false);
   const [selectedPendingSize, setSelectedPendingSize] = useState(null);
   const [showAddPendingModal, setShowAddPendingModal] = useState(false);
+  const [thermalTagData, setThermalTagData] = useState(null);
   const [isSubmittingPending, setIsSubmittingPending] = useState(false);
 
   const [pendingSuccessMsg, setPendingSuccessMsg] = useState('');
@@ -1514,16 +1517,27 @@ export default function StaffStockCheckerPage({
                 <div className="flex items-center justify-between gap-2 pt-1">
                   <span className="text-[10px] text-[#6B5E51] flex items-center gap-1">
                     <Tag className="w-3 h-3 text-[#B45309]" />
-                    <span>Have a piece with missing/torn tag?</span>
+                    <span>Torn tag on floor?</span>
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => handleOpenAddPendingTag()}
-                    className="px-2.5 py-1 rounded-xl bg-[#FFFDF9] hover:bg-[#FAF6F0] border border-[#D8CEBC] text-[#78350F] text-[11px] font-bold flex items-center gap-1 transition-all active:scale-95 shadow-sm"
-                  >
-                    <Plus className="w-3 h-3 text-[#B45309]" />
-                    <span>Add Pending Tag</span>
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleOpenThermalTag()}
+                      className="px-2.5 py-1 rounded-xl bg-[#B45309] hover:bg-[#92400E] text-[#231F1C] text-[11px] font-black flex items-center gap-1 transition-all active:scale-95 shadow-sm"
+                      title="Print replacement price tag for this garment"
+                    >
+                      <Printer className="w-3 h-3" />
+                      <span>Print Tag</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenAddPendingTag()}
+                      className="px-2.5 py-1 rounded-xl bg-[#FFFDF9] hover:bg-[#FAF6F0] border border-[#D8CEBC] text-[#78350F] text-[11px] font-bold flex items-center gap-1 transition-all active:scale-95 shadow-sm"
+                    >
+                      <Plus className="w-3 h-3 text-[#B45309]" />
+                      <span>Add Pending Tag</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1759,7 +1773,15 @@ export default function StaffStockCheckerPage({
                                     : (sz.stock <= 2 ? 'text-[#B45309]' : 'text-[#1B5E20]')
                                 }`}>
                                   {sz.stock} available
-                                </span>
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenThermalTag(sz.size, colorGroup.color)}
+                                    className="p-1.5 rounded-lg border border-[#D5C9B7] hover:bg-[#FAF6F0] text-[#7A6E61] hover:text-[#231F1C] transition-all"
+                                    title={`Print replacement tag for ${sz.size}`}
+                                  >
+                                    <Printer className="w-3 h-3" />
+                                  </button>
                               </div>
                             </div>
                           );
@@ -2116,6 +2138,15 @@ export default function StaffStockCheckerPage({
             </div>
           </div>
         </div>
+      )}
+
+            {/* --- Thermal Replacement Garment Tag Modal --- */}
+      {thermalTagData && (
+        <ThermalTagModal
+          isOpen={Boolean(thermalTagData)}
+          onClose={() => setThermalTagData(null)}
+          tagData={thermalTagData}
+        />
       )}
 
       {/* --- Add / Report Pending Tag Modal --- */}
