@@ -112,8 +112,9 @@ export default function StaffStockCheckerPage({
   activeStore = 'DEMO_STORE_001',
   darkMode = true
 }) {
-  // --- Salesman Tea Expense State ---
-  const [activeMainTab, setActiveMainTab] = useState('stock'); // 'stock' | 'tea'
+  // --- Active Tab & Salesman State ---
+  const [activeMainTab, setActiveMainTab] = useState('stock'); // 'stock' | 'defect'
+  const [defectManualInput, setDefectManualInput] = useState('');
   const [teaRecord, setTeaRecord] = useState(null);
   const [activeSalesman, setActiveSalesman] = useState(() => {
     try {
@@ -1144,7 +1145,7 @@ export default function StaffStockCheckerPage({
 
       {/* --- Main Mobile Content Container --- */}
       <main className="flex-1 max-w-lg w-full mx-auto p-4 pb-28 space-y-4">
-        {/* --- Primary Mode Switcher: Stock Checker vs Chai Tracker --- */}
+        {/* --- Primary Mode Switcher: Stock Checker vs Damage Bin --- */}
         <div className="flex bg-[#E8E1D3] p-1 rounded-2xl border border-[#D5C9B7] shadow-inner">
           <button
             type="button"
@@ -1160,234 +1161,172 @@ export default function StaffStockCheckerPage({
           </button>
           <button
             type="button"
-            onClick={() => setActiveMainTab('tea')}
+            onClick={() => setActiveMainTab('defect')}
             className={`flex-1 py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition-all ${
-              activeMainTab === 'tea'
-                ? 'bg-[#FFFDF9] text-[#231F1C] shadow-sm border border-[#DCD3C4]'
+              activeMainTab === 'defect'
+                ? 'bg-rose-50 text-rose-900 shadow-sm border border-rose-300'
                 : 'text-[#6B5E51] hover:text-[#231F1C]'
             }`}
           >
-            <Coffee className="w-3.5 h-3.5 text-[#B45309]" />
-            <span>Daily Chai (Tea)</span>
-            {todayTeaTotalCups > 0 && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]">
-                {todayTeaTotalCups} ☕
+            <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />
+            <span>Damage Bin (Defect)</span>
+            {quarantinedDamages.length > 0 && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white shadow-sm">
+                {quarantinedDamages.length} 🔒
               </span>
             )}
           </button>
         </div>
 
         {/* ======================================================== */}
-        {/* --- TEA (CHAI) EXPENSE VIEW --- */}
+        {/* --- DEFECT & DAMAGE QUARANTINE DESK VIEW --- */}
         {/* ======================================================== */}
-        {activeMainTab === 'tea' && (
+        {activeMainTab === 'defect' && (
           <div className="space-y-4 animate-in fade-in duration-150">
             {/* Header Hero Banner */}
-            <div className="p-4 rounded-3xl bg-gradient-to-br from-[#FFFDF9] via-[#FAF6F0] to-[#F5ECE0] border border-[#DCD3C4] shadow-sm">
+            <div className="p-4 rounded-3xl bg-gradient-to-br from-rose-950/30 via-red-900/20 to-amber-950/15 border border-rose-300/40 dark:border-rose-800/40 shadow-sm">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-[#B45309] to-[#D97706] text-[#FFFDF9] flex items-center justify-center font-black shadow-sm">
-                    <Coffee className="w-5 h-5" />
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-rose-600 to-red-500 text-white flex items-center justify-center font-black shadow-md shadow-rose-600/30">
+                    <ShieldAlert className="w-5 h-5" />
                   </div>
                   <div>
-                    <h2 className="font-black text-sm tracking-tight text-[#231F1C]">Salesman Tea (Chai) Log</h2>
-                    <p className="text-[11px] font-semibold text-[#6B5E51]">
-                      ₹{teaRecord?.ratePerCup || 10} / cup • Live Synced with Admin Panel
+                    <h2 className="font-black text-sm tracking-tight text-[#231F1C] dark:text-white flex items-center gap-2">
+                      <span>Damage Bin & Quarantine Desk</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-black bg-rose-500 text-white uppercase">
+                        Locked
+                      </span>
+                    </h2>
+                    <p className="text-[11px] font-semibold text-[#6B5E51] dark:text-slate-300">
+                      Staff can report defects • Contact Admin/Owner to release
                     </p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-[10px] uppercase font-bold text-[#8C7E70] block">Store Total Today</span>
-                  <span className="text-sm font-black font-mono text-[#B45309]">
-                    {todayTeaTotalCups} Cups • ₹{todayTeaTotalAmount}
+                  <span className="text-[10px] uppercase font-bold text-[#8C7E70] dark:text-slate-400 block">Total Quarantined</span>
+                  <span className="text-sm font-black font-mono text-rose-600 dark:text-rose-400">
+                    {quarantinedDamages.length} Pieces
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Step 1: Select Your Salesman Name */}
-            <div className="p-4 rounded-3xl bg-[#FFFDF9] border border-[#DCD3C4] shadow-sm space-y-2.5">
+            {/* Primary Action Card: Scan Defect (Camera) or Quick Search */}
+            <div className="p-4 rounded-3xl bg-[#FFFDF9] dark:bg-slate-900 border border-[#DCD3C4] dark:border-slate-800 shadow-sm space-y-3">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-black uppercase tracking-wider text-[#6B5E51]">
-                  1. Select Your Name
+                <label className="text-xs font-black uppercase tracking-wider text-[#6B5E51] dark:text-slate-300 flex items-center gap-1.5">
+                  <Camera className="w-3.5 h-3.5 text-rose-500" />
+                  <span>1. Scan Defective Garment</span>
                 </label>
-                <span className="text-[10px] font-semibold text-[#8C7E70]">
-                  Active: <strong className="text-[#B45309]">{activeSalesman}</strong>
+                <span className="text-[10px] font-semibold text-[#8C7E70] dark:text-slate-400">
+                  Reporter: <strong className="text-rose-600">{activeSalesman}</strong>
                 </span>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {allSalesmenList.map((name) => {
-                  const isSelected = activeSalesman === name;
-                  const staffTea = teaRecord?.salesmen?.[name] || { cups: 0, amount: 0 };
-                  return (
-                    <button
-                      key={name}
-                      type="button"
-                      onClick={() => handleSelectSalesman(name)}
-                      className={`p-2.5 rounded-2xl border text-left transition-all active:scale-95 flex items-center justify-between ${
-                        isSelected
-                          ? 'bg-[#FEF3C7] border-[#B45309] text-[#92400E] shadow-sm ring-1 ring-[#B45309]/30'
-                          : 'bg-[#FAF6F0] border-[#E5DCCF] text-[#4A4036] hover:bg-[#F3ECE0]'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 truncate">
-                        <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-black shrink-0 ${
-                          isSelected ? 'bg-[#B45309] text-[#FFFDF9]' : 'bg-[#E5DCCF] text-[#6B5E51]'
-                        }`}>
-                          {name.charAt(0)}
-                        </span>
-                        <span className="font-bold text-xs truncate">{name}</span>
-                      </div>
-                      <span className="text-[11px] font-mono font-bold shrink-0 ml-1">
-                        {staffTea.cups > 0 ? `${staffTea.cups} ☕` : '0'}
-                      </span>
-                    </button>
-                  );
-                })}
+              {/* Big Touch-Friendly Camera Button */}
+              <button
+                type="button"
+                onClick={handleStartDefectScan}
+                className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-rose-600 to-red-500 hover:from-rose-500 hover:to-red-600 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-rose-600/30 active:scale-98 transition-all cursor-pointer"
+              >
+                <Camera className="w-5 h-5" />
+                <span>Scan Defect with Camera</span>
+              </button>
+
+              {/* Manual Barcode Input Row */}
+              <div className="pt-1">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Or enter barcode / article no..."
+                    value={defectManualInput}
+                    onChange={(e) => setDefectManualInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && defectManualInput.trim()) {
+                        setDefectModalData({ barcode: defectManualInput.trim() });
+                        setDefectManualInput('');
+                      }
+                    }}
+                    className="flex-1 px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
+                  />
+                  <button
+                    type="button"
+                    disabled={!defectManualInput.trim()}
+                    onClick={() => {
+                      if (defectManualInput.trim()) {
+                        setDefectModalData({ barcode: defectManualInput.trim() });
+                        setDefectManualInput('');
+                      }
+                    }}
+                    className="px-4 py-2.5 rounded-xl bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 font-bold text-xs disabled:opacity-40 transition-all cursor-pointer"
+                  >
+                    Report
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Step 2: Personal Tea Counter for Selected Salesman */}
-            <div className="p-5 rounded-3xl bg-[#FFFDF9] border-2 border-[#DCD3C4] shadow-md space-y-4 text-center">
-              <div>
-                <span className="inline-block px-3 py-1 rounded-full text-xs font-black bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A] uppercase tracking-wide">
-                  ☕ {activeSalesman}'s Tea Today
-                </span>
-                <div className="mt-3 flex items-baseline justify-center gap-2">
-                  <span className="text-5xl font-black font-mono text-[#231F1C]">
-                    {currentSalesmanTea.cups}
-                  </span>
-                  <span className="text-lg font-bold text-[#6B5E51]">
-                    {currentSalesmanTea.cups === 1 ? 'Cup' : 'Cups'}
-                  </span>
-                  <span className="text-base font-black font-mono text-[#B45309] ml-1">
-                    (₹{currentSalesmanTea.amount || currentSalesmanTea.cups * (teaRecord?.ratePerCup || 10)})
-                  </span>
-                </div>
-                <p className="text-xs text-[#8C7E70] mt-1 flex items-center justify-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#15803D] animate-pulse"></span>
-                  <span>Instant live sync to counter & admin panel</span>
-                </p>
-              </div>
-
-              {/* Success Message Banner */}
-              {teaSuccessMsg && (
-                <div className="p-2.5 rounded-2xl bg-[#E8F5E9] border border-[#86EFAC] text-[#15803D] text-xs font-black flex items-center justify-center gap-1.5 animate-in fade-in">
-                  <CheckCircle2 className="w-4 h-4 shrink-0" />
-                  <span>{teaSuccessMsg}</span>
-                </div>
-              )}
-
-              {/* Quick Stepper Action Buttons */}
-              <div className="grid grid-cols-3 gap-2.5 pt-1">
-                <button
-                  type="button"
-                  disabled={teaLogging || currentSalesmanTea.cups <= 0}
-                  onClick={() => handleLogSalesmanTea(-1, 'Correction (-1)')}
-                  className="py-3 px-2 rounded-2xl border border-[#DCD3C4] bg-[#FAF6F0] hover:bg-[#EAE2D3] active:scale-95 disabled:opacity-40 disabled:pointer-events-none text-xs font-black text-[#6B5E51] transition-all flex items-center justify-center gap-1 shadow-sm"
-                >
-                  <span>- 1 Cup</span>
-                </button>
-
-                <button
-                  type="button"
-                  disabled={teaLogging}
-                  onClick={() => handleLogSalesmanTea(1, 'Tea Break (+1)')}
-                  className="py-3 px-2 rounded-2xl bg-gradient-to-r from-[#B45309] to-[#D97706] text-[#FFFDF9] hover:from-[#92400E] hover:to-[#B45309] active:scale-95 disabled:opacity-50 text-xs font-black transition-all flex items-center justify-center gap-1.5 shadow-md col-span-1"
-                >
-                  <Coffee className="w-4 h-4 shrink-0" />
-                  <span>+1 Chai ☕</span>
-                </button>
-
-                <button
-                  type="button"
-                  disabled={teaLogging}
-                  onClick={() => handleLogSalesmanTea(2, 'Tea Break (+2)')}
-                  className="py-3 px-2 rounded-2xl border-2 border-[#B45309]/30 bg-[#FEF3C7] text-[#92400E] hover:bg-[#FDE68A] active:scale-95 disabled:opacity-50 text-xs font-black transition-all flex items-center justify-center gap-1 shadow-sm"
-                >
-                  <span>+2 Chai ☕</span>
-                </button>
-              </div>
-
-              {/* Optional Quick Note Input */}
-              <div className="pt-2">
-                <input
-                  type="text"
-                  value={teaNote}
-                  onChange={(e) => setTeaNote(e.target.value)}
-                  placeholder="Add note (e.g. Morning tea, Client tea) • Optional"
-                  className="w-full px-3 py-2 text-xs rounded-xl bg-[#FAF6F0] border border-[#DCD3C4] text-[#231F1C] placeholder-[#8C7E70] focus:outline-none focus:ring-1 focus:ring-[#B45309]"
-                />
-              </div>
-            </div>
-
-            {/* Step 3: Store Tea Summary Board (All Salesmen) */}
-            <div className="p-4 rounded-3xl bg-[#FFFDF9] border border-[#DCD3C4] shadow-sm space-y-3">
+            {/* Quarantined Damage Bin Garments List */}
+            <div className="p-4 rounded-3xl bg-[#FFFDF9] dark:bg-slate-900 border border-[#DCD3C4] dark:border-slate-800 shadow-sm space-y-3">
               <div className="flex items-center justify-between">
-                <h3 className="text-xs font-black uppercase tracking-wider text-[#6B5E51]">
-                  Today's Store Tea Ledger
+                <h3 className="text-xs font-black uppercase tracking-wider text-[#6B5E51] dark:text-slate-300 flex items-center gap-1.5">
+                  <ShieldAlert className="w-3.5 h-3.5 text-rose-500" />
+                  <span>Currently Quarantined Garments ({quarantinedDamages.length})</span>
                 </h3>
-                <span className="text-xs font-black font-mono text-[#B45309]">
-                  Total: {todayTeaTotalCups} Cups • ₹{todayTeaTotalAmount}
-                </span>
+                <span className="text-[10px] text-rose-600 font-bold">🔒 Locked from Sales</span>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                {allSalesmenList.map((name) => {
-                  const s = teaRecord?.salesmen?.[name] || { cups: 0, amount: 0 };
-                  const isCurrent = activeSalesman === name;
-                  return (
+              {quarantinedDamages.length === 0 ? (
+                <div className="p-6 text-center space-y-2 border border-dashed border-emerald-300 dark:border-emerald-800 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20">
+                  <CheckCircle2 className="w-8 h-8 text-emerald-600 dark:text-emerald-400 mx-auto" />
+                  <div className="text-xs font-black text-emerald-800 dark:text-emerald-300">
+                    Damage Bin is Empty!
+                  </div>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    No defective garments reported. All floor stock is clean for sale.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-[380px] overflow-y-auto pr-1">
+                  {quarantinedDamages.map((item) => (
                     <div
-                      key={name}
-                      className={`p-3 rounded-2xl border flex items-center justify-between ${
-                        s.cups > 0
-                          ? 'bg-[#FEF3C7]/40 border-[#FDE68A]'
-                          : 'bg-[#FAF6F0] border-[#E5DCCF]'
-                      } ${isCurrent ? 'ring-1 ring-[#B45309]' : ''}`}
+                      key={item.id || item.barcode}
+                      className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-center justify-between"
                     >
-                      <div>
-                        <p className="font-bold text-xs text-[#231F1C]">{name}</p>
-                        <p className="text-[10px] text-[#8C7E70]">₹{s.amount || s.cups * 10}</p>
-                      </div>
-                      <span className="text-base font-black font-mono text-[#B45309]">
-                        {s.cups} <span className="text-[10px] font-normal text-[#6B5E51]">cups</span>
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Step 4: Today's Timestamped Log History */}
-            {todayTeaLogs.length > 0 && (
-              <div className="p-4 rounded-3xl bg-[#FFFDF9] border border-[#DCD3C4] shadow-sm space-y-2">
-                <h3 className="text-xs font-black uppercase tracking-wider text-[#6B5E51]">
-                  Today's Floor Tea Logs
-                </h3>
-                <div className="divide-y divide-[#E5DCCF] max-h-48 overflow-y-auto">
-                  {todayTeaLogs.slice(0, 8).map((log) => (
-                    <div key={log.id} className="py-2 flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full bg-[#FAF6F0] text-[#B45309] flex items-center justify-center text-[10px] font-bold">
-                          ☕
-                        </span>
-                        <div>
-                          <p className="font-bold text-[#231F1C]">
-                            {log.salesman}{' '}
-                            <span className="text-[11px] font-semibold text-[#B45309]">
-                              ({log.cupsAdded > 0 ? `+${log.cupsAdded}` : log.cupsAdded} cup)
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-black text-xs text-slate-900 dark:text-white">
+                            {item.articleNo || item.barcode}
+                          </span>
+                          <span className="px-2 py-0.5 rounded-md font-black text-[10px] bg-rose-100 text-rose-800 border border-rose-200">
+                            Size {item.size}
+                          </span>
+                          {item.color && (
+                            <span className="text-[10px] text-slate-500 font-medium">
+                              {item.color}
                             </span>
-                          </p>
-                          {log.note && <p className="text-[10px] text-[#8C7E70]">{log.note}</p>}
+                          )}
+                        </div>
+                        <div className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">
+                          {item.articleName || 'Cobb Garment'} • Defect: <strong className="text-rose-600">{item.defectDesc || item.defectType}</strong>
+                        </div>
+                        <div className="text-[10px] text-slate-400">
+                          Reported by {item.reportedBy || 'Staff'} • {item.date || 'Today'}
                         </div>
                       </div>
-                      <span className="text-[10px] font-mono text-[#8C7E70]">{log.time}</span>
+                      <div className="text-right shrink-0 ml-2">
+                        <div className="text-xs font-mono font-black text-rose-600">
+                          ₹{item.mrp || 0}
+                        </div>
+                        <span className="inline-block mt-1 px-1.5 py-0.5 rounded text-[9px] font-black bg-rose-100 text-rose-700 border border-rose-300">
+                          🔒 Quarantined
+                        </span>
+                      </div>
                     </div>
                   ))}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         )}
 
@@ -2462,6 +2401,9 @@ export default function StaffStockCheckerPage({
           onOpenScanner={() => {
             handleStartDefectScan();
           }}
+          onScanNext={() => {
+            handleStartDefectScan();
+          }}
         />
       )}
 
@@ -2719,36 +2661,37 @@ export default function StaffStockCheckerPage({
           <span className="text-[11px] font-black">Check Stock</span>
         </button>
 
-        {/* Tab 2: Report Defect */}
+        {/* Tab 2: Damage Bin (Defect Desk) */}
         <button
           type="button"
-          onClick={() => handleOpenReportDefect()}
-          className="flex-1 py-2 px-2.5 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer active:scale-95 bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100"
-        >
-          <ShieldAlert className="w-4 h-4 text-rose-600" />
-          <span className="text-[11px] font-black">Report Defect</span>
-        </button>
-
-        {/* Tab 3: Daily Chai Counter */}
-        <button
-          type="button"
-          aria-label="Floor Chai Counter"
-          onClick={() => setActiveMainTab('tea')}
+          aria-label="Damage Bin Desk"
+          onClick={() => setActiveMainTab('defect')}
           className={`flex-1 py-2 px-2.5 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer active:scale-95 ${
-            activeMainTab === 'tea'
-              ? 'bg-[#B45309] text-white shadow-md'
+            activeMainTab === 'defect'
+              ? 'bg-rose-600 text-white shadow-md'
               : 'text-[#6B5E51] hover:bg-[#F5ECE0]'
           }`}
         >
           <div className="relative">
-            <Coffee className="w-4 h-4" />
-            {todayTeaTotalCups > 0 && (
-              <span className="absolute -top-1.5 -right-3 px-1 py-0.2 rounded-full text-[9px] font-black bg-amber-200 text-amber-900">
-                {todayTeaTotalCups}
+            <ShieldAlert className="w-4 h-4" />
+            {quarantinedDamages.length > 0 && (
+              <span className="absolute -top-1.5 -right-3 px-1 py-0.2 rounded-full text-[9px] font-black bg-rose-500 text-white">
+                {quarantinedDamages.length}
               </span>
             )}
           </div>
-          <span className="text-[11px] font-black">Chai Counter</span>
+          <span className="text-[11px] font-black">Damage Bin</span>
+        </button>
+
+        {/* Tab 3: Fast Camera Scan Defect */}
+        <button
+          type="button"
+          aria-label="Scan Defect"
+          onClick={handleStartDefectScan}
+          className="flex-1 py-2 px-2.5 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer active:scale-95 bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100"
+        >
+          <Camera className="w-4 h-4 text-rose-600" />
+          <span className="text-[11px] font-black">Scan Defect</span>
         </button>
       </nav>
     </div>

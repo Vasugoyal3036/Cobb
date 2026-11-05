@@ -12,7 +12,10 @@ import {
   RefreshCw,
   Scissors,
   CheckCircle2,
-  FileText
+  FileText,
+  ChevronDown,
+  ChevronUp,
+  Plus
 } from 'lucide-react';
 import axios from 'axios';
 import { db } from '../utils/firebase';
@@ -34,13 +37,9 @@ export default function ReportDefectModal({
   reportedBy: propReportedBy = '',
   initialPrintSlip,
   onQuarantineSuccess,
-  onOpenScanner
+  onOpenScanner,
+  onScanNext
 }) {
-  const isMobileDevice = typeof window !== 'undefined' && (
-    'ontouchstart' in window ||
-    (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0)
-  );
-
   const API_BASE = propApiBase || (
     typeof window !== 'undefined' && (window.location.protocol === 'app:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
       ? 'http://localhost:5000'
@@ -64,12 +63,16 @@ export default function ReportDefectModal({
   const [printSlipOnSubmit, setPrintSlipOnSubmit] = useState(
     initialPrintSlip !== undefined ? initialPrintSlip : true
   );
+  const [showOptionalDetails, setShowOptionalDetails] = useState(false);
+  const [quarantinedItem, setQuarantinedItem] = useState(null);
+  const [countdown, setCountdown] = useState(3);
   const [loading, setLoading] = useState(false);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
   const photoInputRef = useRef(null);
+  const timerRef = useRef(null);
 
   const targetStoreId = (!activeStore || activeStore === 'ALL' || activeStore === 'STORE_01')
     ? 'DEMO_STORE_001'
@@ -77,18 +80,22 @@ export default function ReportDefectModal({
 
   // Initialize data on modal open
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      setQuarantinedItem(null);
+      setErrorMsg('');
+      setSuccessMsg('');
+      if (timerRef.current) clearInterval(timerRef.current);
+      return;
+    }
 
     setErrorMsg('');
     setSuccessMsg('');
+    setQuarantinedItem(null);
+    setShowOptionalDetails(false);
 
     if (propReportedBy) {
       setReportedBy(propReportedBy);
     }
-    if (!isOpen) return;
-
-    setErrorMsg('');
-    setSuccessMsg('');
 
     const code = (initialBarcode || initialArticle?.scannedBarcode || initialArticle?.barcode || '').trim();
     setBarcode(code);
@@ -101,12 +108,31 @@ export default function ReportDefectModal({
       setColor(initialArticle.color || 'Standard');
       setMrp(Number(initialArticle.mrp || 1999));
     } else if (code) {
-      // Auto-lookup barcode if article was not provided
       fetchItemDetails(code);
     }
   }, [isOpen, initialBarcode, initialArticle]);
 
-  // Lookup barcode details from API or Firestore
+  // Auto-countdown after successful quarantine
+  useEffect(() => {
+    if (!quarantinedItem) return;
+    setCountdown(3);
+    timerRef.current = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timerRef.current);
+          onClose();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [quarantinedItem]);
+
+  // Lookup barcode details from API
   const fetchItemDetails = async (code) => {
     if (!code) return;
     setLookupLoading(true);
@@ -122,19 +148,13 @@ export default function ReportDefectModal({
         setMrp(Number(item.mrp || 1999));
       }
     } catch (e) {
-      console.warn('Quick scan lookup failed, fallback to basic fields', e.message);
+      console.warn('Quick scan lookup fallback', e.message);
     } finally {
       setLookupLoading(false);
     }
   };
 
   if (!isOpen) return null;
-
-  // Barcode SVG for preview
-  const barcodeSvgHtml = generateBarcodeSvg(barcode, {
-    width: 1.6,
-    height: 34
-  });
 
   // Handle Photo Capture / Upload
   const handlePhotoChange = (e) => {
@@ -153,7 +173,7 @@ export default function ReportDefectModal({
     reader.readAsDataURL(file);
   };
 
-  // Submit and Quarantine Garment
+  // Submit and Quarantine Garment (2-Tap Flow)
   const handleSubmitQuarantine = async (e) => {
     if (e) e.preventDefault();
 
@@ -174,7 +194,7 @@ export default function ReportDefectModal({
       color: color.trim() || 'STANDARD',
       mrp: Number(mrp) || 0,
       defectType,
-      defectDesc: defectDesc.trim(),
+      defectDesc: defectDesc.trim() || (DEFECT_TYPES.find(d => d.id === defectType)?.label || defectType),
       severity,
       actionPlan: severity === 'minor' ? 'local_repair' : 'rtv_vendor',
       photo: photoPreview || null,
@@ -248,24 +268,27 @@ export default function ReportDefectModal({
         }
       }
 
-      setSuccessMsg(`Item #${payload.articleNo} (${payload.size}) QUARANTINED in Damage Bin!`);
+      const finalRecord = createdDamage || {
+        ...payload,
+        status: 'quarantine',
+        reportedAt: new Date().toISOString()
+      };
 
-      // Optionally print thermal quarantine slip (desktop only by default)
-      if (printSlipOnSubmit && createdDamage) {
+      setSuccessMsg(`Garment #${payload.articleNo} (${payload.size}) QUARANTINED!`);
+      setQuarantinedItem(finalRecord);
+
+      // Print slip on desktop POS if requested
+      if (printSlipOnSubmit && finalRecord) {
         try {
-          triggerDamageSlipPrint(createdDamage, { paperSize: '58mm' });
+          triggerDamageSlipPrint(finalRecord, { paperSize: '58mm' });
         } catch (printErr) {
           console.warn('Could not auto-print damage slip:', printErr);
         }
       }
 
       if (onQuarantineSuccess) {
-        onQuarantineSuccess(createdDamage || payload);
+        onQuarantineSuccess(finalRecord);
       }
-
-      setTimeout(() => {
-        onClose();
-      }, 1500);
     } catch (err) {
       console.error('Quarantine error:', err);
       setErrorMsg(err.response?.data?.error || err.message || 'Failed to quarantine damaged item');
@@ -277,8 +300,8 @@ export default function ReportDefectModal({
   const selectedDefectInfo = DEFECT_TYPES.find(d => d.id === defectType) || DEFECT_TYPES[0];
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-150">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl max-w-xl w-full flex flex-col overflow-hidden max-h-[94vh]">
+    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl max-w-lg w-full flex flex-col overflow-hidden max-h-[92vh]">
         {/* Modal Header */}
         <div className="px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-r from-rose-950/40 via-red-900/30 to-amber-950/20 flex items-center justify-between text-white">
           <div className="flex items-center gap-2.5">
@@ -293,7 +316,7 @@ export default function ReportDefectModal({
                 </span>
               </h3>
               <p className="text-[11px] text-slate-300">
-                Removes item from sales floor & blocks accidental POS billing
+                Instantly locks piece from POS billing & removes from floor
               </p>
             </div>
           </div>
@@ -305,326 +328,311 @@ export default function ReportDefectModal({
           </button>
         </div>
 
-        {/* Modal Body */}
-        <form onSubmit={handleSubmitQuarantine} className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-4 text-xs">
-          {/* Status Banners */}
-          {errorMsg && (
-            <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 font-bold text-xs flex items-center gap-2 animate-in fade-in">
-              <AlertTriangle className="w-4 h-4 shrink-0" />
-              <span>{errorMsg}</span>
+        {/* Modal Body: Success Screen vs Clean Form */}
+        {quarantinedItem ? (
+          /* --- High-Speed Success Card with 'Scan Next' Batching --- */
+          <div className="p-6 text-center space-y-4 animate-in zoom-in-95 duration-150">
+            <div className="w-16 h-16 rounded-3xl bg-emerald-100 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 mx-auto flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-lg shadow-emerald-500/20">
+              <CheckCircle2 className="w-8 h-8" />
             </div>
-          )}
-
-          {successMsg && (
-            <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-bold text-xs flex items-center gap-2 animate-in fade-in">
-              <CheckCircle2 className="w-4 h-4 shrink-0" />
-              <span>{successMsg}</span>
-            </div>
-          )}
-
-          {/* 1. Barcode & Live Camera Trigger */}
-          <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-[11px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <Tag className="w-3.5 h-3.5 text-rose-500" />
-                <span>1. Scanned Barcode / Article</span>
-              </label>
-              {onOpenScanner && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    onClose();
-                    onOpenScanner();
-                  }}
-                  className="px-2 py-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 text-[10px] font-bold flex items-center gap-1 transition-all"
-                >
-                  <Camera className="w-3 h-3" />
-                  <span>Scan with Camera</span>
-                </button>
-              )}
+            <div>
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-700 border border-rose-300 uppercase tracking-wider">
+                🔒 Quarantined in Damage Bin
+              </span>
+              <h2 className="text-lg font-black text-slate-900 dark:text-white mt-1.5">
+                Garment Successfully Locked!
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
+                Item <strong className="text-slate-800 dark:text-slate-200">#{quarantinedItem.articleNo}</strong> (Size: {quarantinedItem.size}) is blocked from POS billing.
+              </p>
             </div>
 
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="Scan or enter barcode (e.g. 0082...)"
-                value={barcode}
-                onChange={(e) => {
-                  setBarcode(e.target.value);
-                  if (e.target.value.length >= 8) {
-                    fetchItemDetails(e.target.value);
-                  }
-                }}
-                className="flex-1 px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 font-mono text-xs font-bold text-slate-900 dark:text-white"
-                required
-              />
+            <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-left text-xs space-y-1">
+              <div className="flex justify-between font-bold">
+                <span className="text-slate-500">Defect Reason:</span>
+                <span className="text-rose-600 dark:text-rose-400">{quarantinedItem.defectDesc || quarantinedItem.defectType}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Reported By:</span>
+                <span className="font-semibold text-slate-800 dark:text-slate-200">{quarantinedItem.reportedBy || reportedBy}</span>
+              </div>
+            </div>
+
+            <div className="flex gap-2.5 pt-2">
               <button
                 type="button"
-                onClick={() => fetchItemDetails(barcode)}
-                disabled={lookupLoading || !barcode}
-                className="px-3 py-2 rounded-xl bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1 transition-all disabled:opacity-50"
+                onClick={() => {
+                  onClose();
+                  if (onScanNext) {
+                    onScanNext();
+                  } else if (onOpenScanner) {
+                    onOpenScanner();
+                  }
+                }}
+                className="flex-1 py-3 px-4 rounded-2xl bg-gradient-to-r from-rose-600 to-red-500 text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-md shadow-rose-600/30 active:scale-95 transition-all"
               >
-                {lookupLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : 'Lookup'}
+                <Camera className="w-4 h-4" />
+                <span>Scan Next Piece</span>
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="py-3 px-5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs hover:bg-slate-200 active:scale-95 transition-all"
+              >
+                Done ({countdown}s)
               </button>
             </div>
+          </div>
+        ) : (
+          /* --- Streamlined 2-Tap Quarantine Form --- */
+          <form onSubmit={handleSubmitQuarantine} className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-3.5 text-xs">
+            {/* Status Banners */}
+            {errorMsg && (
+              <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 font-bold text-xs flex items-center gap-2 animate-in fade-in">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <span>{errorMsg}</span>
+              </div>
+            )}
 
-            {/* Scannable Barcode SVG Preview */}
-            {barcode && (
-              <div className="pt-1 flex items-center justify-between">
-                <div
-                  className="bg-white p-1 rounded-md border border-slate-200 overflow-hidden"
-                  dangerouslySetInnerHTML={{ __html: barcodeSvgHtml }}
-                />
-                <div className="text-right">
-                  <div className="text-[10px] text-slate-400">Article Code</div>
-                  <div className="font-mono font-bold text-xs text-slate-700 dark:text-slate-300">
-                    {articleNo || '—'}
+            {/* 1. Scanned Barcode Input & Garment Summary */}
+            <div className="p-3.5 rounded-2xl bg-gradient-to-br from-rose-50/50 via-slate-50 to-amber-50/30 dark:from-rose-950/20 dark:via-slate-800/60 dark:to-slate-800/40 border border-rose-200/60 dark:border-rose-900/40 space-y-2.5">
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    placeholder="Scan or enter barcode"
+                    value={barcode}
+                    onChange={(e) => {
+                      setBarcode(e.target.value);
+                      if (e.target.value.length >= 8) {
+                        fetchItemDetails(e.target.value);
+                      }
+                    }}
+                    className="w-full pl-8 pr-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 font-mono text-xs font-bold text-slate-900 dark:text-white"
+                    required
+                  />
+                  <Tag className="w-3.5 h-3.5 text-rose-500 absolute left-2.5 top-2.5" />
+                </div>
+                {onOpenScanner && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onClose();
+                      onOpenScanner();
+                    }}
+                    className="px-3 py-2 rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 font-bold text-xs flex items-center gap-1.5 transition-all"
+                  >
+                    <Camera className="w-3.5 h-3.5" />
+                    <span>Scan</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Garment Details Preview Card */}
+              <div className="flex items-center justify-between pt-1">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-mono font-black text-sm text-slate-900 dark:text-white">
+                      {articleNo || barcode || 'COBB APPAREL'}
+                    </span>
+                    <span className="px-2 py-0.5 rounded-lg font-black text-[11px] bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                      Size {size || 'M'}
+                    </span>
+                    {color && (
+                      <span className="text-[11px] text-slate-600 dark:text-slate-400 font-bold">
+                        {color}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
+                    {articleName || 'Cobb Menswear'} • {category || 'APPAREL'}
+                  </div>
+                </div>
+                <div className="text-right shrink-0 ml-3">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">MRP</div>
+                  <div className="text-base font-black font-mono text-rose-600 dark:text-rose-400">
+                    ₹{mrp}
                   </div>
                 </div>
               </div>
-            )}
-          </div>
-
-          {/* 2. Garment Details */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <div>
-              <label className="text-[10px] font-bold text-slate-500">Category / Item</label>
-              <input
-                type="text"
-                value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                placeholder="e.g. SHIRT, DENIM"
-                className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold uppercase"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] font-bold text-slate-500">Size</label>
-              <input
-                type="text"
-                value={size}
-                onChange={(e) => setSize(e.target.value)}
-                placeholder="e.g. 40 or 32"
-                className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold uppercase"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] font-bold text-slate-500">Color</label>
-              <input
-                type="text"
-                value={color}
-                onChange={(e) => setColor(e.target.value)}
-                placeholder="e.g. NAVY, BLACK"
-                className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] font-bold text-slate-500">MRP (₹)</label>
-              <input
-                type="number"
-                value={mrp}
-                onChange={(e) => setMrp(Number(e.target.value))}
-                className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-black text-rose-600 dark:text-rose-400"
-              />
-            </div>
-          </div>
-
-          {/* 3. Defect Category 1-Tap Chips */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="text-[11px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-                <span>2. Select Defect Reason</span>
-              </label>
-              <span className="text-[10px] text-rose-500 font-bold">{selectedDefectInfo.label}</span>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-              {DEFECT_TYPES.map((dt) => {
-                const isSelected = defectType === dt.id;
-                return (
-                  <button
-                    key={dt.id}
-                    type="button"
-                    onClick={() => {
-                      setDefectType(dt.id);
-                      if (!defectDesc) {
-                        setDefectDesc(dt.label);
-                      }
-                    }}
-                    className={`p-2 rounded-xl text-left transition-all flex items-start gap-2 ${
-                      isSelected
-                        ? 'bg-rose-500 text-white shadow-md shadow-rose-500/25 scale-101 font-bold'
-                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-rose-400'
-                    }`}
-                  >
-                    <span className="text-base">{dt.icon}</span>
-                    <div className="leading-tight">
-                      <div className="text-[11px] font-bold">{dt.label}</div>
-                      <div className={`text-[9px] ${isSelected ? 'text-white/80' : 'text-slate-400'}`}>
-                        {dt.hindi}
+            {/* 2. Defect Reason Selection (Tap 1) */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
+                  <span>Select Defect Reason (Tap 1)</span>
+                </label>
+                <span className="text-[11px] font-black text-rose-600 dark:text-rose-400">
+                  {selectedDefectInfo?.label}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                {DEFECT_TYPES.map((dt) => {
+                  const isSelected = defectType === dt.id;
+                  return (
+                    <button
+                      key={dt.id}
+                      type="button"
+                      onClick={() => {
+                        setDefectType(dt.id);
+                        if (!defectDesc || DEFECT_TYPES.some(d => d.label === defectDesc)) {
+                          setDefectDesc(dt.label);
+                        }
+                      }}
+                      className={`p-3 rounded-2xl text-left transition-all flex items-center gap-2.5 active:scale-95 cursor-pointer ${
+                        isSelected
+                          ? 'bg-gradient-to-r from-rose-600 to-red-500 text-white shadow-md shadow-rose-600/30 ring-2 ring-rose-400 scale-[1.02]'
+                          : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-rose-400'
+                      }`}
+                    >
+                      <span className="text-xl shrink-0">{dt.icon}</span>
+                      <div className="truncate">
+                        <div className="text-xs font-black truncate">{dt.label}</div>
+                        <div className={`text-[10px] font-medium truncate ${isSelected ? 'text-white/90' : 'text-slate-400'}`}>
+                          {dt.hindi}
+                        </div>
                       </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* 4. Defect Description & Quick Tags */}
-          <div>
-            <label className="text-[10px] font-bold text-slate-500 mb-1 block">
-              Specific Defect Details / Note
-            </label>
-            <input
-              type="text"
-              placeholder="e.g. Left runner broken, 2-inch tear near side seam, grease spot"
-              value={defectDesc}
-              onChange={(e) => setDefectDesc(e.target.value)}
-              className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold"
-            />
-            <div className="mt-1 flex flex-wrap gap-1 text-[10px]">
-              {['Broken Runner', 'Open Stitch', 'Dye Stain', 'Button Missing', 'Box Cut', 'Loose Buckle'].map((tag) => (
-                <button
-                  key={tag}
-                  type="button"
-                  onClick={() => setDefectDesc(tag)}
-                  className="px-2 py-0.5 rounded-md bg-slate-200/80 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-rose-100 hover:text-rose-700 transition-all font-medium"
-                >
-                  {tag}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* 5. Severity & Action Plan */}
-          <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div>
-              <div className="text-[11px] font-black uppercase text-slate-700 dark:text-slate-300">
-                Action Plan & Routing
+                      {isSelected && <Check className="w-4 h-4 ml-auto shrink-0" />}
+                    </button>
+                  );
+                })}
               </div>
-              <div className="text-[10px] text-slate-400">How should this piece be handled?</div>
             </div>
 
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setSeverity('minor');
-                  setActionPlan('local_repair');
-                }}
-                className={`px-3 py-1.5 rounded-xl font-bold text-[11px] flex items-center gap-1.5 transition-all ${
-                  severity === 'minor'
-                    ? 'bg-amber-500 text-slate-950 font-black shadow-sm'
-                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
-                }`}
-              >
-                <Scissors className="w-3.5 h-3.5" />
-                <span>Store Tailor Repair</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setSeverity('major');
-                  setActionPlan('rtv_vendor');
-                }}
-                className={`px-3 py-1.5 rounded-xl font-bold text-[11px] flex items-center gap-1.5 transition-all ${
-                  severity === 'major'
-                    ? 'bg-rose-600 text-white font-black shadow-sm'
-                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
-                }`}
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>Vendor Return (Cobb HO)</span>
-              </button>
-            </div>
-          </div>
-
-          {/* 6. Photo of Defect (Optional Phone Snap) */}
-          <div className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700 space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="text-[11px] font-black uppercase text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <Camera className="w-3.5 h-3.5 text-blue-500" />
-                <span>Attach Photo of Defect (Optional)</span>
+            {/* 3. Action Plan & Routing: Store Tailor vs Vendor RTV */}
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <Scissors className="w-3.5 h-3.5 text-amber-500" />
+                <span>Action Plan & Routing</span>
               </label>
-              <input
-                ref={photoInputRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handlePhotoChange}
-                className="hidden"
-              />
-              <button
-                type="button"
-                onClick={() => photoInputRef.current?.click()}
-                className="px-2.5 py-1 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-bold flex items-center gap-1 shadow-sm transition-all"
-              >
-                <Camera className="w-3 h-3" />
-                <span>Take Photo</span>
-              </button>
-            </div>
-
-            {photoPreview ? (
-              <div className="relative inline-block mt-1">
-                <img
-                  src={photoPreview}
-                  alt="Defect"
-                  className="w-24 h-24 object-cover rounded-xl border-2 border-rose-500 shadow-md"
-                />
+              <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => setPhotoPreview(null)}
-                  className="absolute -top-1.5 -right-1.5 p-1 rounded-full bg-rose-600 text-white shadow hover:bg-rose-700"
+                  onClick={() => {
+                    setSeverity('minor');
+                    setActionPlan('local_repair');
+                  }}
+                  className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    severity === 'minor'
+                      ? 'bg-amber-500 text-slate-950 font-black shadow-sm ring-1 ring-amber-600'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                  }`}
                 >
-                  <Trash2 className="w-3 h-3" />
+                  <Scissors className="w-3.5 h-3.5" />
+                  <span>Store Tailor Repair</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSeverity('major');
+                    setActionPlan('rtv_vendor');
+                  }}
+                  className={`py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    severity === 'major'
+                      ? 'bg-rose-600 text-white font-black shadow-sm ring-1 ring-rose-700'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                  }`}
+                >
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  <span>Vendor RTV Return</span>
                 </button>
               </div>
-            ) : (
-              <p className="text-[10px] text-slate-400">
-                Tap "Take Photo" to snap the torn stitch, zipper, or stain with phone camera
-              </p>
-            )}
-          </div>
+            </div>
 
-          {/* 7. Auto-Print Checkbox */}
-          <div className="flex items-center gap-2 pt-1">
-            <input
-              type="checkbox"
-              id="printSlipCheckbox"
-              checked={printSlipOnSubmit}
-              onChange={(e) => setPrintSlipOnSubmit(e.target.checked)}
-              className="w-4 h-4 rounded text-rose-600 focus:ring-rose-500 border-slate-300"
-            />
-            <label htmlFor="printSlipCheckbox" className="text-[11px] font-bold text-slate-600 dark:text-slate-300 flex items-center gap-1">
-              <Printer className="w-3.5 h-3.5 text-rose-500" />
-              <span>Print 58mm Thermal "QUARANTINE" label to staple on garment</span>
-            </label>
-          </div>
-        </form>
+            {/* 4. Collapsible Drawer: Add Note / Photo (Optional) */}
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-slate-50/50 dark:bg-slate-800/30">
+              <button
+                type="button"
+                onClick={() => setShowOptionalDetails(!showOptionalDetails)}
+                className="w-full px-3 py-2 flex items-center justify-between text-[11px] font-bold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all"
+              >
+                <span className="flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5 text-slate-400" />
+                  <span>{showOptionalDetails ? 'Hide Additional Details' : 'Add Note / Photo Proof (Optional)'}</span>
+                </span>
+                <span className="flex items-center gap-1 text-[10px] text-slate-400 font-normal">
+                  {photoPreview ? '📷 Photo Attached • ' : ''}
+                  {showOptionalDetails ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                </span>
+              </button>
 
-        {/* Modal Footer */}
-        <div className="p-3.5 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 flex items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold text-xs transition-all"
-          >
-            Cancel
-          </button>
+              {showOptionalDetails && (
+                <div className="p-3 bg-white dark:bg-slate-900 space-y-2.5 border-t border-slate-200 dark:border-slate-800 animate-in fade-in text-xs">
+                  {/* Defect Description */}
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 mb-1 block">Specific Note</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Left runner broken, 2-inch tear near side seam"
+                      value={defectDesc}
+                      onChange={(e) => setDefectDesc(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold"
+                    />
+                  </div>
 
-          <button
-            type="button"
-            onClick={handleSubmitQuarantine}
-            disabled={loading || lookupLoading}
-            className="px-5 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-white font-black text-xs flex items-center gap-2 shadow-lg shadow-rose-600/30 active:scale-95 transition-all disabled:opacity-50"
-          >
-            <ShieldAlert className="w-4 h-4" />
-            <span>{loading ? 'Quarantining...' : 'Quarantine & Save'}</span>
-          </button>
-        </div>
+                  {/* Photo Proof */}
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 mb-1 block">Garment Photo Proof</label>
+                    {photoPreview ? (
+                      <div className="relative inline-block rounded-xl overflow-hidden border border-slate-300 dark:border-slate-700">
+                        <img src={photoPreview} alt="Defect proof" className="w-32 h-24 object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => setPhotoPreview(null)}
+                          className="absolute top-1 right-1 p-1 rounded-full bg-rose-600 text-white shadow"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => photoInputRef.current?.click()}
+                        className="py-2 px-3 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 hover:border-rose-400 text-slate-600 dark:text-slate-400 font-bold text-[11px] flex items-center gap-1.5 transition-all"
+                      >
+                        <Camera className="w-3.5 h-3.5 text-rose-500" />
+                        <span>Take Photo with Camera</span>
+                      </button>
+                    )}
+                    <input
+                      ref={photoInputRef}
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={handlePhotoChange}
+                      className="hidden"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 5. Sticky 2nd Tap: Big Red Quarantine Button */}
+            <div className="pt-1">
+              <button
+                type="submit"
+                disabled={loading || (!barcode && !articleNo)}
+                className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-rose-600 via-red-600 to-rose-700 hover:from-rose-500 hover:to-red-600 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-rose-600/30 active:scale-[0.98] transition-all disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+              >
+                {loading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Quarantining Garment...</span>
+                  </>
+                ) : (
+                  <>
+                    <ShieldAlert className="w-4 h-4" />
+                    <span>Quarantine & Save Garment</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        )}
       </div>
     </div>
   );
 }
-

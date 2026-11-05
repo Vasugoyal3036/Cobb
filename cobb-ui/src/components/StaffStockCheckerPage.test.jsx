@@ -511,112 +511,42 @@ describe('StaffStockCheckerPage [Floor Mobile Stock Checker]', () => {
     expect(submitBtn.disabled).toBe(true);
   });
 
-  it('switches to Daily Chai tab and displays salesman tea logging interface', async () => {
-    axios.get.mockResolvedValueOnce({
-      data: {
-        success: true,
-        record: {
-          date: new Date().toISOString().split('T')[0],
-          ratePerCup: 10,
-          totalCups: 0,
-          totalAmount: 0,
-          salesmen: {
-            Vikas: { name: 'Vikas', cups: 0, amount: 0 },
-            Pawan: { name: 'Pawan', cups: 0, amount: 0 },
-            Simran: { name: 'Simran', cups: 0, amount: 0 },
-            Akhil: { name: 'Akhil', cups: 0, amount: 0 }
-          },
-          logs: []
-        }
-      }
-    });
-
+  it('switches to Damage Bin tab and displays defect quarantine desk', async () => {
     render(<StaffStockCheckerPage API_BASE="http://localhost:5000" onClose={vi.fn()} />);
 
-    // Click on Daily Chai (Tea) tab
-    const teaTab = screen.getByRole('button', { name: /Daily Chai/i });
-    fireEvent.click(teaTab);
+    // Click on Damage Bin (Defect) tab
+    const defectTab = screen.getByRole('button', { name: /Damage Bin \(Defect\)/i });
+    fireEvent.click(defectTab);
 
-    expect(screen.getByText(/Salesman Tea \(Chai\) Log/i)).toBeDefined();
-    expect(screen.getAllByText(/Vikas/i).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/Pawan/i).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/Simran/i).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByRole('button', { name: /\+1 Chai ☕/i })).toBeDefined();
+    expect(screen.getByText(/Damage Bin & Quarantine Desk/i)).toBeDefined();
+    expect(screen.getByText(/Scan Defective Garment/i)).toBeDefined();
+    expect(screen.getByRole('button', { name: /Scan Defect with Camera/i })).toBeDefined();
+    expect(screen.getByPlaceholderText(/Or enter barcode \/ article no/i)).toBeDefined();
   });
 
-  it('allows salesman to switch their active name and log tea', async () => {
-    axios.get.mockResolvedValue({
-      data: {
-        success: true,
-        record: {
-          date: new Date().toISOString().split('T')[0],
-          ratePerCup: 10,
-          totalCups: 0,
-          totalAmount: 0,
-          salesmen: {
-            Vikas: { name: 'Vikas', cups: 0, amount: 0 },
-            Pawan: { name: 'Pawan', cups: 0, amount: 0 },
-            Simran: { name: 'Simran', cups: 0, amount: 0 },
-            Akhil: { name: 'Akhil', cups: 0, amount: 0 }
-          },
-          logs: []
-        }
-      }
-    });
-
-    axios.post.mockResolvedValue({
-      data: {
-        success: true,
-        record: {
-          date: new Date().toISOString().split('T')[0],
-          ratePerCup: 10,
-          totalCups: 1,
-          totalAmount: 10,
-          salesmen: {
-            Vikas: { name: 'Vikas', cups: 0, amount: 0 },
-            Pawan: { name: 'Pawan', cups: 1, amount: 10, lastLogged: new Date().toISOString() },
-            Simran: { name: 'Simran', cups: 0, amount: 0 },
-            Akhil: { name: 'Akhil', cups: 0, amount: 0 }
-          },
-          logs: [
-            {
-              id: 'tea_test_1',
-              salesman: 'Pawan',
-              cupsAdded: 1,
-              totalCupsForDay: 1,
-              ratePerCup: 10,
-              amount: 10,
-              time: '12:00 PM',
-              timestamp: new Date().toISOString(),
-              note: 'Tea Break (+1)'
-            }
-          ]
-        }
-      }
-    });
-
+  it('allows floor staff to manually enter barcode and open defect modal from damage bin desk', async () => {
     render(<StaffStockCheckerPage API_BASE="http://localhost:5000" onClose={vi.fn()} />);
 
-    // Switch to Chai tab
-    fireEvent.click(screen.getByRole('button', { name: /Daily Chai/i }));
+    // Switch to Damage Bin tab
+    fireEvent.click(screen.getByRole('button', { name: /Damage Bin \(Defect\)/i }));
 
-    // Select Pawan
-    const pawanBtns = screen.getAllByText(/Pawan/i);
-    fireEvent.click(pawanBtns[0]);
+    const manualInput = screen.getByPlaceholderText(/Or enter barcode \/ article no/i);
+    fireEvent.change(manualInput, { target: { value: '0082109999' } });
 
-    // Click +1 Chai
-    const plusChaiBtn = screen.getByRole('button', { name: /\+1 Chai ☕/i });
-    fireEvent.click(plusChaiBtn);
+    const reportBtn = screen.getByRole('button', { name: /Report/i });
+    fireEvent.click(reportBtn);
 
+    // Verify ReportDefectModal opened with entered barcode
     await waitFor(() => {
-      expect(screen.getByText(/Logged \+1 tea for Pawan!/i)).toBeDefined();
+      expect(screen.getByText(/Report Defective \/ Damaged Garment/i)).toBeDefined();
+      expect(screen.getByDisplayValue('0082109999')).toBeDefined();
     });
   });
 
   it('handles clicking Scan Defect button without crashing and opens defect flow', () => {
     render(<StaffStockCheckerPage onClose={vi.fn()} />);
 
-    const scanDefectBtn = screen.getByRole('button', { name: /Scan Defect/i });
+    const scanDefectBtn = screen.getAllByRole('button', { name: /Scan Defect/i })[0];
     expect(scanDefectBtn).toBeDefined();
 
     fireEvent.click(scanDefectBtn);
@@ -625,16 +555,16 @@ describe('StaffStockCheckerPage [Floor Mobile Stock Checker]', () => {
     expect(screen.getByText(/DEFECT SCANNER ACTIVE/i)).toBeDefined();
   });
 
-  it('opens Report Defect form directly from the bottom navigation tab', () => {
+  it('opens Damage Bin desk directly from the bottom navigation tab', () => {
     render(<StaffStockCheckerPage onClose={vi.fn()} />);
 
-    const bottomDefectBtn = screen.getByRole('button', { name: /Report Defect/i });
-    expect(bottomDefectBtn).toBeDefined();
+    const bottomDefectTab = screen.getByRole('button', { name: /Damage Bin Desk/i });
+    expect(bottomDefectTab).toBeDefined();
 
-    fireEvent.click(bottomDefectBtn);
+    fireEvent.click(bottomDefectTab);
 
-    // Verify ReportDefectModal opens
-    expect(screen.getByText(/Report Defective \/ Damaged Garment/i)).toBeDefined();
-    expect(screen.getAllByText(/Quarantine/i).length).toBeGreaterThan(0);
+    // Verify Damage Bin desk view opens
+    expect(screen.getByText(/Damage Bin & Quarantine Desk/i)).toBeDefined();
+    expect(screen.getByRole('button', { name: /Scan Defect with Camera/i })).toBeDefined();
   });
 });
