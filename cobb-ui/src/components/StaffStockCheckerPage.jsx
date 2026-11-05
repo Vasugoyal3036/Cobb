@@ -193,6 +193,8 @@ export default function StaffStockCheckerPage({
   const [selectedPendingSize, setSelectedPendingSize] = useState(null);
   const [showAddPendingModal, setShowAddPendingModal] = useState(false);
   const [thermalTagData, setThermalTagData] = useState(null);
+  const [defectModalData, setDefectModalData] = useState(null);
+  const [scannerMode, setScannerMode] = useState('lookup'); // 'lookup' | 'defect'
   const [isSubmittingPending, setIsSubmittingPending] = useState(false);
 
   const [pendingSuccessMsg, setPendingSuccessMsg] = useState('');
@@ -524,6 +526,72 @@ export default function StaffStockCheckerPage({
       setCopiedBarcode(bcode);
       setTimeout(() => setCopiedBarcode(null), 2000);
     } catch {}
+  };
+
+  // Open Thermal Tag Modal
+  const handleOpenThermalTag = (sizeVal = null, colorVal = null) => {
+    if (!stockData) {
+      setThermalTagData({ isQuickCategoryMrp: true });
+      return;
+    }
+    const targetSize = sizeVal || selectedSizeFilter || 'Standard';
+    const targetColor = colorVal || activeColor || 'Standard';
+
+    let targetBarcode = stockData.scannedBarcode || stockData.articleNo;
+    const colorGrp = (stockData.colorGroups || []).find(cg => cg.color === targetColor);
+    if (colorGrp) {
+      const szObj = (colorGrp.sizes || []).find(s => s.size === targetSize);
+      if (szObj?.barcode) targetBarcode = szObj.barcode;
+    }
+
+    setThermalTagData({
+      barcode: targetBarcode,
+      articleNo: stockData.articleNo,
+      articleName: stockData.itemName,
+      section: stockData.sectionName || 'Apparel',
+      size: targetSize,
+      color: targetColor,
+      mrp: Number(stockData.mrp) || 1999
+    });
+  };
+
+  // Open Report Defect Modal
+  const handleOpenReportDefect = (sizeVal = null, colorVal = null) => {
+    if (!stockData) {
+      setDefectModalData({ barcode: query || '' });
+      return;
+    }
+    const targetSize = sizeVal || selectedSizeFilter || 'Standard';
+    const targetColor = colorVal || activeColor || 'Standard';
+
+    let targetBarcode = stockData.scannedBarcode || stockData.articleNo;
+    const colorGrp = (stockData.colorGroups || []).find(cg => cg.color === targetColor);
+    if (colorGrp) {
+      const szObj = (colorGrp.sizes || []).find(s => s.size === targetSize);
+      if (szObj?.barcode) targetBarcode = szObj.barcode;
+    }
+
+    setDefectModalData({
+      barcode: targetBarcode,
+      articleNo: stockData.articleNo,
+      itemName: stockData.itemName,
+      category: stockData.sectionName || 'Apparel',
+      size: targetSize,
+      color: targetColor,
+      mrp: Number(stockData.mrp) || 1999
+    });
+  };
+
+  // Start Defect Camera Scan with graceful fallback to modal
+  const handleStartDefectScan = () => {
+    setScannerMode('defect');
+    try {
+      startCamera().catch(() => {
+        setDefectModalData({ barcode: query || '' });
+      });
+    } catch {
+      setDefectModalData({ barcode: query || '' });
+    }
   };
 
   // Clean Stop of Camera, RAF loops and OCR worker
@@ -1341,10 +1409,7 @@ export default function StaffStockCheckerPage({
             <div className="flex items-center gap-1.5">
               <button
                 type="button"
-                onClick={() => {
-                  setScannerMode('defect');
-                  startCamera();
-                }}
+                onClick={handleStartDefectScan}
                 className="px-2.5 py-1 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400 font-bold text-[11px] flex items-center gap-1 shadow-sm active:scale-95 transition-all"
                 title="Open camera to scan a defective garment barcode directly"
               >
@@ -1919,12 +1984,18 @@ export default function StaffStockCheckerPage({
           {/* Camera Viewfinder Header */}
           <div className="px-4 py-3 bg-slate-900/90 backdrop-blur-md border-b border-[#EFE9DF] flex items-center justify-between z-10">
             <div className="flex items-center gap-2">
-              <Camera className="w-4 h-4 text-amber-400" />
+              <Camera className={`w-4 h-4 ${scannerMode === 'defect' ? 'text-rose-500' : 'text-amber-400'}`} />
               <div>
-                <span className="text-xs font-bold text-[#231F1C] block">Fast Barcode + Number Reader</span>
-                <span className="text-[10px] text-emerald-400 flex items-center gap-1 font-semibold">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>Dual Scan Active (60 FPS + OCR)</span>
+                <span className="text-xs font-bold text-white block">
+                  {scannerMode === 'defect' ? '⚠️ DEFECT SCANNER ACTIVE' : 'Fast Barcode + Number Reader'}
+                </span>
+                <span className={`text-[10px] flex items-center gap-1 font-semibold ${
+                  scannerMode === 'defect' ? 'text-rose-400' : 'text-emerald-400'
+                }`}>
+                  <span className={`w-1.5 h-1.5 rounded-full animate-pulse ${
+                    scannerMode === 'defect' ? 'bg-rose-500' : 'bg-emerald-400'
+                  }`} />
+                  <span>{scannerMode === 'defect' ? 'Point at tag to quarantine damaged item' : 'Dual Scan Active (60 FPS + OCR)'}</span>
                 </span>
               </div>
             </div>
@@ -2208,6 +2279,26 @@ export default function StaffStockCheckerPage({
           isOpen={Boolean(thermalTagData)}
           onClose={() => setThermalTagData(null)}
           tagData={thermalTagData}
+        />
+      )}
+
+      {/* --- Report Defect & Damage Modal --- */}
+      {defectModalData && (
+        <ReportDefectModal
+          isOpen={Boolean(defectModalData)}
+          onClose={() => setDefectModalData(null)}
+          initialBarcode={defectModalData?.barcode || ''}
+          initialArticle={defectModalData}
+          onQuarantineSuccess={(d) => {
+            setPendingSuccessMsg(`Garment #${d.articleNo} (${d.size}) quarantined in Damage Bin!`);
+            setTimeout(() => setPendingSuccessMsg(''), 4000);
+            if (stockData?.articleNo) {
+              handleLookup(stockData.articleNo);
+            }
+          }}
+          onOpenScanner={() => {
+            handleStartDefectScan();
+          }}
         />
       )}
 

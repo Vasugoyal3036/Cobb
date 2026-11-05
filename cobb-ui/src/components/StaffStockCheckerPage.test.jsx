@@ -612,4 +612,16 @@ describe('StaffStockCheckerPage [Floor Mobile Stock Checker]', () => {
       expect(screen.getByText(/Logged \+1 tea for Pawan!/i)).toBeDefined();
     });
   });
+
+  it('handles clicking Scan Defect button without crashing and opens defect flow', () => {
+    render(<StaffStockCheckerPage onClose={vi.fn()} />);
+
+    const scanDefectBtn = screen.getByRole('button', { name: /Scan Defect/i });
+    expect(scanDefectBtn).toBeDefined();
+
+    fireEvent.click(scanDefectBtn);
+
+    // Verify camera overlay opens in Defect Mode
+    expect(screen.getByText(/DEFECT SCANNER ACTIVE/i)).toBeDefined();
+  });
 });
