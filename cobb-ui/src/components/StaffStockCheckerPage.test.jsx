@@ -624,4 +624,17 @@ describe('StaffStockCheckerPage [Floor Mobile Stock Checker]', () => {
     // Verify camera overlay opens in Defect Mode
     expect(screen.getByText(/DEFECT SCANNER ACTIVE/i)).toBeDefined();
   });
+
+  it('opens Report Defect form directly from the bottom navigation tab', () => {
+    render(<StaffStockCheckerPage onClose={vi.fn()} />);
+
+    const bottomDefectBtn = screen.getByRole('button', { name: /Report Defect/i });
+    expect(bottomDefectBtn).toBeDefined();
+
+    fireEvent.click(bottomDefectBtn);
+
+    // Verify ReportDefectModal opens
+    expect(screen.getByText(/Report Defective \/ Damaged Garment/i)).toBeDefined();
+    expect(screen.getAllByText(/Quarantine/i).length).toBeGreaterThan(0);
+  });
 });

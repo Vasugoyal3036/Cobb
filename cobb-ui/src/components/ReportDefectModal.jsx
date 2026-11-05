@@ -23,8 +23,6 @@ import {
   triggerDamageSlipPrint
 } from '../utils/thermalTagPrinter';
 
-const API_BASE = 'http://localhost:5000';
-
 export default function ReportDefectModal({
   isOpen,
   onClose,
@@ -32,9 +30,23 @@ export default function ReportDefectModal({
   initialArticle = null,
   activeStore = 'DEMO_STORE_001',
   userRole = 'staff',
+  API_BASE: propApiBase = '',
+  reportedBy: propReportedBy = '',
+  initialPrintSlip,
   onQuarantineSuccess,
   onOpenScanner
 }) {
+  const isMobileDevice = typeof window !== 'undefined' && (
+    'ontouchstart' in window ||
+    (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0)
+  );
+
+  const API_BASE = propApiBase || (
+    typeof window !== 'undefined' && (window.location.protocol === 'app:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+      ? 'http://localhost:5000'
+      : (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5000')
+  );
+
   const [barcode, setBarcode] = useState('');
   const [articleNo, setArticleNo] = useState('');
   const [articleName, setArticleName] = useState('');
@@ -46,10 +58,12 @@ export default function ReportDefectModal({
   const [defectDesc, setDefectDesc] = useState('');
   const [severity, setSeverity] = useState('major'); // 'minor' | 'major'
   const [actionPlan, setActionPlan] = useState('rtv_vendor'); // 'local_repair' | 'rtv_vendor'
-  const [reportedBy, setReportedBy] = useState('Floor Staff');
+  const [reportedBy, setReportedBy] = useState(propReportedBy || 'Floor Staff');
   const [source, setSource] = useState('Floor Mobile Scan');
   const [photoPreview, setPhotoPreview] = useState(null);
-  const [printSlipOnSubmit, setPrintSlipOnSubmit] = useState(true);
+  const [printSlipOnSubmit, setPrintSlipOnSubmit] = useState(
+    initialPrintSlip !== undefined ? initialPrintSlip : true
+  );
   const [loading, setLoading] = useState(false);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -63,6 +77,14 @@ export default function ReportDefectModal({
 
   // Initialize data on modal open
   useEffect(() => {
+    if (!isOpen) return;
+
+    setErrorMsg('');
+    setSuccessMsg('');
+
+    if (propReportedBy) {
+      setReportedBy(propReportedBy);
+    }
     if (!isOpen) return;
 
     setErrorMsg('');
@@ -170,6 +192,21 @@ export default function ReportDefectModal({
         });
         if (res.data?.success) {
           createdDamage = res.data.damage;
+          // Background sync to Firestore for Phone Link
+          if (db) {
+            try {
+              const docRef = doc(db, 'stores', targetStoreId, 'data', 'damage_records');
+              getDoc(docRef).then(snap => {
+                const curList = snap.exists() ? (snap.data().damages || []) : [];
+                const updated = [createdDamage, ...curList.filter(d => d.id !== createdDamage.id)];
+                setDoc(docRef, {
+                  damages: updated.slice(-500),
+                  quarantinedCount: updated.filter(d => d.status === 'quarantine').length,
+                  lastUpdated: new Date().toISOString()
+                }, { merge: true }).catch(() => {});
+              }).catch(() => {});
+            } catch (e) {}
+          }
         }
       } catch (apiErr) {
         if (apiErr.response?.status === 409) {
@@ -183,6 +220,13 @@ export default function ReportDefectModal({
           const docRef = doc(db, 'stores', targetStoreId, 'data', 'damage_records');
           const snap = await getDoc(docRef);
           const curList = snap.exists() ? (snap.data().damages || []) : [];
+
+          const cleanBc = (payload.barcode || '').trim().toUpperCase();
+          if (cleanBc && curList.some(d => d.status === 'quarantine' && (d.barcode || '').trim().toUpperCase() === cleanBc)) {
+            setErrorMsg(`Item with barcode ${cleanBc} is ALREADY quarantined in Damage Bin!`);
+            setLoading(false);
+            return;
+          }
 
           const now = new Date();
           createdDamage = {
@@ -206,7 +250,7 @@ export default function ReportDefectModal({
 
       setSuccessMsg(`Item #${payload.articleNo} (${payload.size}) QUARANTINED in Damage Bin!`);
 
-      // Optionally print thermal quarantine slip
+      // Optionally print thermal quarantine slip (desktop only by default)
       if (printSlipOnSubmit && createdDamage) {
         try {
           triggerDamageSlipPrint(createdDamage, { paperSize: '58mm' });

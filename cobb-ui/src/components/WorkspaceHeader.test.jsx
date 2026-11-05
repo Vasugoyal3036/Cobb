@@ -101,3 +101,4 @@ describe('WorkspaceHeader [Clean 4-Workspace Navigation & Theme Engine]', () => 
     expect(setSimplifiedMode).toHaveBeenCalled();
   });
 });
+

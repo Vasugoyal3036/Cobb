@@ -195,7 +195,9 @@ export default function StaffStockCheckerPage({
   const [thermalTagData, setThermalTagData] = useState(null);
   const [defectModalData, setDefectModalData] = useState(null);
   const [scannerMode, setScannerMode] = useState('lookup'); // 'lookup' | 'defect'
+  const scannerModeRef = useRef('lookup');
   const [quarantineInfo, setQuarantineInfo] = useState(null); // Quarantined damage record (staff read-only)
+  const [quarantinedDamages, setQuarantinedDamages] = useState([]);
   const [isSubmittingPending, setIsSubmittingPending] = useState(false);
 
   const [pendingSuccessMsg, setPendingSuccessMsg] = useState('');
@@ -332,6 +334,32 @@ export default function StaffStockCheckerPage({
       return updated;
     });
   }, []);
+
+  // Subscribe to live Damage Bin records for real-time quarantined size flags
+  useEffect(() => {
+    let unsub = null;
+    let isMounted = true;
+    (async () => {
+      try {
+        const { db } = await import('../utils/firebase');
+        if (db && isMounted) {
+          const { doc, onSnapshot } = await import('firebase/firestore');
+          const dRef = doc(db, 'stores', activeStore || 'DEMO_STORE_001', 'data', 'damage_records');
+          unsub = onSnapshot(dRef, snap => {
+            if (snap.exists() && isMounted) {
+              const dl = snap.data()?.damages || [];
+              setQuarantinedDamages(dl.filter(d => d.status === 'quarantine'));
+            }
+          }, () => {});
+        }
+      } catch (e) {}
+    })();
+
+    return () => {
+      isMounted = false;
+      if (unsub) unsub();
+    };
+  }, [activeStore]);
 
   // Quick Damage & Defect Quarantine Status Check
   const checkDamageQuarantine = useCallback(async (code) => {
@@ -601,6 +629,8 @@ export default function StaffStockCheckerPage({
 
   // Open Report Defect Modal
   const handleOpenReportDefect = (sizeVal = null, colorVal = null) => {
+    scannerModeRef.current = 'lookup';
+    setScannerMode('lookup');
     if (!stockData) {
       setDefectModalData({ barcode: query || '' });
       return;
@@ -628,6 +658,7 @@ export default function StaffStockCheckerPage({
 
   // Start Defect Camera Scan with graceful fallback to modal
   const handleStartDefectScan = () => {
+    scannerModeRef.current = 'defect';
     setScannerMode('defect');
     try {
       startCamera().catch(() => {
@@ -687,9 +718,11 @@ export default function StaffStockCheckerPage({
     } catch {}
 
     setQuery(code);
-    if (scannerMode === 'defect') {
-      setDefectModalData({ barcode: code });
+    const isDefect = scannerModeRef.current === 'defect' || scannerMode === 'defect';
+    if (isDefect) {
+      scannerModeRef.current = 'lookup';
       setScannerMode('lookup');
+      setDefectModalData({ barcode: code });
     } else {
       handleLookup(code);
     }
@@ -698,7 +731,7 @@ export default function StaffStockCheckerPage({
       setDetectedBadge(null);
       isCodeResolvedRef.current = false;
     }, 1500);
-  }, [stopCamera, handleLookup]);
+  }, [stopCamera, handleLookup, scannerMode]);
 
   // Instant Manual Trigger for Number OCR
   const handleTriggerOcrCapture = useCallback(async () => {
@@ -950,27 +983,45 @@ export default function StaffStockCheckerPage({
   const allAvailableSizes = useMemo(() => {
     if (!stockData?.colors) return [];
     const sizeMap = {};
+    const artNoClean = String(stockData.articleNo || '').trim().toUpperCase();
+    const barcodeClean = String(stockData.scannedBarcode || stockData.matchedBarcode || '').trim().toUpperCase();
+
+    // Check damages matching this article or scanned barcode
+    const matchedDamages = (quarantinedDamages || []).filter(d => {
+      const dArt = String(d.articleNo || '').trim().toUpperCase();
+      const dBc = String(d.barcode || '').trim().toUpperCase();
+      return (dArt && dArt === artNoClean) || (dBc && (dBc === barcodeClean || dBc === artNoClean));
+    });
+
     stockData.colors.forEach(c => {
       (c.sizes || []).forEach(sz => {
         const stock = Math.max(0, Number(sz.stock || 0));
         const pending = Math.max(0, Number(sz.pendingTagsCount || sz.pendingStock || 0));
-        if (stock > 0 || pending > 0) {
-          const sName = String(sz.size || '').trim();
+        const sName = String(sz.size || '').trim();
+        const sNameClean = sName.toUpperCase();
+
+        const quarantinedForThisSize = matchedDamages.filter(d =>
+          String(d.size || '').trim().toUpperCase() === sNameClean
+        ).length;
+
+        if (stock > 0 || pending > 0 || quarantinedForThisSize > 0) {
           if (!sizeMap[sName]) {
             sizeMap[sName] = {
               size: sName,
               totalStock: 0,
               totalPendingTags: 0,
+              quarantinedCount: 0,
               sizeOrder: sz.sizeOrder || 99
             };
           }
           sizeMap[sName].totalStock += stock;
           sizeMap[sName].totalPendingTags += pending;
+          sizeMap[sName].quarantinedCount += quarantinedForThisSize;
         }
       });
     });
     return sortSizesNaturally(Object.values(sizeMap));
-  }, [stockData]);
+  }, [stockData, quarantinedDamages]);
 
   // Filtered color list based on selectedColorFilter AND selectedSizeFilter
   const displayedColors = useMemo(() => {
@@ -1790,7 +1841,15 @@ export default function StaffStockCheckerPage({
                           <button
                             key={sz.size}
                             type="button"
-                            onClick={() => setSelectedSizeFilter(isSelected ? 'ALL' : sz.size)}
+                            onClick={() => {
+                              setSelectedSizeFilter(isSelected ? 'ALL' : sz.size);
+                              if (sz.quarantinedCount > 0) {
+                                const matchedDmg = (quarantinedDamages || []).find(d =>
+                                  String(d.size || '').trim().toUpperCase() === String(sz.size).trim().toUpperCase()
+                                );
+                                if (matchedDmg) setQuarantineInfo(matchedDmg);
+                              }
+                            }}
                             className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
                               isSelected
                                 ? 'bg-[#B45309] text-[#231F1C] font-black shadow-sm'
@@ -1804,6 +1863,12 @@ export default function StaffStockCheckerPage({
                             {sz.totalPendingTags > 0 && (
                               <span className="text-[9px] px-1 py-0.2 rounded font-black bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]" title={`${sz.totalPendingTags} in Pending Tags`}>
                                 🏷️ {sz.totalPendingTags}
+                              </span>
+                            )}
+                            {sz.quarantinedCount > 0 && (
+                              <span className="text-[9px] px-1.5 py-0.5 rounded font-black bg-rose-100 text-rose-700 border border-rose-300 flex items-center gap-0.5" title={`${sz.quarantinedCount} piece(s) quarantined in Damage Bin`}>
+                                <span>🔒</span>
+                                <span>Damaged</span>
                               </span>
                             )}
                           </button>
@@ -2375,9 +2440,17 @@ export default function StaffStockCheckerPage({
       {defectModalData && (
         <ReportDefectModal
           isOpen={Boolean(defectModalData)}
-          onClose={() => setDefectModalData(null)}
+          onClose={() => {
+            setDefectModalData(null);
+            scannerModeRef.current = 'lookup';
+            setScannerMode('lookup');
+          }}
           initialBarcode={defectModalData?.barcode || ''}
           initialArticle={defectModalData}
+          activeStore={activeStore}
+          API_BASE={API_BASE}
+          reportedBy={activeSalesman || 'Floor Staff'}
+          initialPrintSlip={false}
           onQuarantineSuccess={(d) => {
             setQuarantineInfo(d);
             setPendingSuccessMsg(`Garment #${d.articleNo} (${d.size}) quarantined in Damage Bin!`);
