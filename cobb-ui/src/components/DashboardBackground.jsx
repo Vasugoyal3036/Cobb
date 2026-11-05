@@ -3,6 +3,26 @@ import React from 'react';
 const NOISE_SVG = `url("data:image/svg+xml,%3Csvg viewBox='0 0 512 512' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`;
 
 export default function DashboardBackground({ theme }) {
+  if (theme === 'paper') {
+    return (
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 bg-[#FAF6F0]" />
+    );
+  }
+
+  if (theme === 'contrast') {
+    return (
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 bg-[#000000]" />
+    );
+  }
+
+  if (theme === 'modern') {
+    return (
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 bg-[#0b0e17]">
+        <div className="absolute inset-0 bg-gradient-to-b from-blue-950/10 via-transparent to-black/30" />
+      </div>
+    );
+  }
+
   if (theme === 'mesh-gradient') {
     return (
       <div className="absolute inset-0 overflow-hidden pointer-events-none z-0 bg-[#050505]">
@@ -76,6 +96,50 @@ export default function DashboardBackground({ theme }) {
 }
 
 export function getThemeCardCSS(theme) {
+  if (theme === 'paper') {
+    return `
+      body, .dark-mode, .light-mode {
+        background-color: #FAF6F0 !important;
+        color: #2D241E !important;
+      }
+      .bg-white, [class*="bg-slate-900"], [class*="bg-slate-950"],
+      [class*="bg-gray-900"], [class*="bg-gray-950"],
+      .rounded-2xl.border, .rounded-xl.border,
+      [class*="rounded-2xl"][class*="border"], [class*="rounded-xl"][class*="border"] {
+        background-color: #FFFDF9 !important;
+        border-color: #E2D9CC !important;
+        color: #2D241E !important;
+        box-shadow: 0 1px 3px rgba(45, 36, 30, 0.05) !important;
+      }
+    `;
+  }
+  if (theme === 'contrast') {
+    return `
+      body, .dark-mode {
+        background-color: #000000 !important;
+        color: #FFFFFF !important;
+      }
+      .bg-white, [class*="bg-slate-900"], [class*="bg-slate-950"],
+      [class*="bg-gray-900"], [class*="bg-gray-950"],
+      .rounded-2xl.border, .rounded-xl.border,
+      [class*="rounded-2xl"][class*="border"], [class*="rounded-xl"][class*="border"] {
+        background-color: #000000 !important;
+        border: 2px solid #FFFFFF !important;
+        color: #FFFFFF !important;
+        box-shadow: none !important;
+      }
+    `;
+  }
+  if (theme === 'modern') {
+    return `
+      .dark-mode .bg-white, .dark-mode [class*="bg-slate-900"], .dark-mode [class*="bg-slate-950"],
+      .dark-mode .rounded-2xl.border, .dark-mode .rounded-xl.border {
+        background-color: #0f141f !important;
+        border-color: rgba(255, 255, 255, 0.08) !important;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4) !important;
+      }
+    `;
+  }
   if (theme === 'neon-accents') {
     return `
       .dark-mode .bg-white, .dark-mode [class*="bg-slate-900"], .dark-mode [class*="bg-slate-950"],
@@ -161,6 +225,9 @@ export function getThemeCardCSS(theme) {
 }
 
 export const THEMES = [
+  { key: 'modern',        label: '⚡ Modern Retail', color: '#0f172a', accent: '#3b82f6' },
+  { key: 'paper',         label: '📜 Paper / Linen', color: '#f5efeb', accent: '#b45309' },
+  { key: 'contrast',      label: '🔳 High-Contrast', color: '#000000', accent: '#ffffff' },
   { key: 'noise-grain',   label: 'Noise Grain',    color: '#0a4055', accent: '#3c1458' },
   { key: 'mesh-gradient', label: 'Mesh Gradient',  color: '#312e81', accent: '#9f1239' },
   { key: 'aurora',        label: 'Aurora',          color: '#1e0545', accent: '#0c4a6e' },

@@ -1092,7 +1092,7 @@ export default function StaffStockCheckerPage({
       </header>
 
       {/* --- Main Mobile Content Container --- */}
-      <main className="flex-1 max-w-lg w-full mx-auto p-4 space-y-4">
+      <main className="flex-1 max-w-lg w-full mx-auto p-4 pb-28 space-y-4">
         {/* --- Primary Mode Switcher: Stock Checker vs Chai Tracker --- */}
         <div className="flex bg-[#E8E1D3] p-1 rounded-2xl border border-[#D5C9B7] shadow-inner">
           <button
@@ -2629,6 +2629,55 @@ export default function StaffStockCheckerPage({
           </div>
         </div>
       )}
+
+      {/* --- Thumb-Friendly Floor Mobile Bottom Bar --- */}
+      <nav aria-label="Floor Staff Navigation" className="fixed bottom-0 inset-x-0 z-40 bg-[#FFFDF9]/95 border-t border-[#DCD3C4] backdrop-blur-md px-3 py-2 flex items-center justify-around gap-2 shadow-lg">
+        {/* Tab 1: Check Stock */}
+        <button
+          type="button"
+          onClick={() => setActiveMainTab('stock')}
+          className={`flex-1 py-2 px-2.5 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer active:scale-95 ${
+            activeMainTab === 'stock'
+              ? 'bg-[#B45309] text-white shadow-md'
+              : 'text-[#6B5E51] hover:bg-[#F5ECE0]'
+          }`}
+        >
+          <Search className="w-4 h-4" />
+          <span className="text-[11px] font-black">Check Stock</span>
+        </button>
+
+        {/* Tab 2: Report Defect */}
+        <button
+          type="button"
+          onClick={() => handleOpenReportDefect()}
+          className="flex-1 py-2 px-2.5 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer active:scale-95 bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100"
+        >
+          <ShieldAlert className="w-4 h-4 text-rose-600" />
+          <span className="text-[11px] font-black">Report Defect</span>
+        </button>
+
+        {/* Tab 3: Daily Chai Counter */}
+        <button
+          type="button"
+          aria-label="Floor Chai Counter"
+          onClick={() => setActiveMainTab('tea')}
+          className={`flex-1 py-2 px-2.5 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer active:scale-95 ${
+            activeMainTab === 'tea'
+              ? 'bg-[#B45309] text-white shadow-md'
+              : 'text-[#6B5E51] hover:bg-[#F5ECE0]'
+          }`}
+        >
+          <div className="relative">
+            <Coffee className="w-4 h-4" />
+            {todayTeaTotalCups > 0 && (
+              <span className="absolute -top-1.5 -right-3 px-1 py-0.2 rounded-full text-[9px] font-black bg-amber-200 text-amber-900">
+                {todayTeaTotalCups}
+              </span>
+            )}
+          </div>
+          <span className="text-[11px] font-black">Chai Counter</span>
+        </button>
+      </nav>
     </div>
   );
 }

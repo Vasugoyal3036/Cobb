@@ -84,7 +84,7 @@ const DISCOUNT_PRESETS = [
   { label: '70% Off', value: 70 }
 ];
 
-export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001', setActiveTab, onOpenSpeedBilling }) {
+export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001', setActiveTab, onOpenSpeedBilling, initialSubDesk = 'tags' }) {
   const [tags, setTags] = useState([]);
   const [selectedTagIds, setSelectedTagIds] = useState([]);
   const [summary, setSummary] = useState({
@@ -139,7 +139,10 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
   }, [form.barcode, scanQuery, form.articleNo, tags]);
 
   // --- Admin Damage & Defect Desk State ---
-  const [subDesk, setSubDesk] = useState('tags'); // 'tags' | 'damages'
+  const [subDesk, setSubDesk] = useState(initialSubDesk || 'tags'); // 'tags' | 'damages'
+  useEffect(() => {
+    if (initialSubDesk) setSubDesk(initialSubDesk);
+  }, [initialSubDesk]);
   const [damages, setDamages] = useState([]);
   const [damagesSummary, setDamagesSummary] = useState({
     totalCount: 0,

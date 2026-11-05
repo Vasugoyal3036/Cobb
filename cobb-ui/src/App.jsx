@@ -30,6 +30,7 @@ const GunScannerModal = lazy(() => import('./components/GunScannerModal'));
 const CustomerFeedbackPage = lazy(() => import('./components/CustomerFeedbackPage'));
 const StaffStockCheckerPage = lazy(() => import('./components/StaffStockCheckerPage'));
 const OwnerHubTab = lazy(() => import('./components/tabs/OwnerHubTab'));
+const StoreSummaryLanding = lazy(() => import('./components/StoreSummaryLanding'));
 
 import { fetchWithOfflineFallback, subscribeToData } from './utils/offlineDb';
 
@@ -49,7 +50,7 @@ import {
   triggerTestEodSummaryAlert
 } from './utils/checkoutNotifications';
 import { subscribeToSystemWatchdog } from './utils/systemWatchdog';
-import { useAuth, ROLE_PERMISSIONS } from './context/AuthContext';
+import { useAuth, ROLE_PERMISSIONS, AVAILABLE_STORES } from './context/AuthContext';
 import { hasConfig } from './utils/firebase';
 import axios from 'axios';
 import {
@@ -730,8 +731,9 @@ const TabFallback = () => (
 );
 
 export default function App() {
-  const { user, role, activeStore, switchStore, switchRole } = useAuth();
+  const { user, role, activeStore, switchStore, switchRole, AVAILABLE_STORES: dynamicStores } = useAuth();
   const currentRole = role || user?.role || 'owner';
+  const storeList = dynamicStores || AVAILABLE_STORES || [];
   const [showSetup, setShowSetup] = useState(false);
 
   useEffect(() => {
@@ -745,11 +747,27 @@ export default function App() {
   let [dormant, setDormant] = useState(() => getLocalCache('dormant', [])); if (!Array.isArray(dormant)) dormant = [];
 
   const [darkMode, setDarkMode] = useState(true);
-  const [dashTheme, setDashTheme] = useState(() => localStorage.getItem('dashTheme') || 'noise-grain');
+  const [dashTheme, setDashTheme] = useState(() => localStorage.getItem('dashTheme') || 'modern');
 
   useEffect(() => {
     localStorage.setItem('dashTheme', dashTheme);
   }, [dashTheme]);
+
+  const [simplifiedMode, setSimplifiedMode] = useState(() => {
+    try {
+      return localStorage.getItem('cobb_simplified_mode') !== 'false';
+    } catch (e) {
+      return true;
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('cobb_simplified_mode', String(simplifiedMode));
+    } catch (e) {}
+  }, [simplifiedMode]);
+
+  const [pendingTagsInitialSubDesk, setPendingTagsInitialSubDesk] = useState('tags');
 
   useEffect(() => {
     localStorage.setItem('theme', darkMode ? 'dark' : 'light');
@@ -2997,6 +3015,9 @@ export default function App() {
         dormant={dormant}
         openCustomerCard={openCustomerCard}
         toggleBillExpansion={toggleBillExpansion}
+        simplifiedMode={simplifiedMode}
+        setSimplifiedMode={setSimplifiedMode}
+        onSwitchSubDesk={(sd) => setPendingTagsInitialSubDesk(sd)}
       >
 
         {/* Dynamic Views */}
@@ -3007,7 +3028,23 @@ export default function App() {
           <Suspense fallback={<TabFallback />}>
             {/* 1. COMMAND CENTER */}
             {['dashboard', 'pnl', 'gst', 'analytics', 'monthly', 'topmovers', 'sizematrix', 'broadcast', 'wardrobe', 'retention'].includes(activeTab) && (
-              <DashboardTab {...appState} />
+              activeTab === 'dashboard' && simplifiedMode ? (
+                <StoreSummaryLanding
+                  activeStore={activeStore}
+                  AVAILABLE_STORES={storeList}
+                  liveBills={liveBills}
+                  onNavigate={(workspaceId, tabId) => {
+                    if (workspaceId === 'stock' && tabId === 'damages') {
+                      setPendingTagsInitialSubDesk('damages');
+                      setActiveTab('pending_tags');
+                    } else {
+                      setActiveTab(tabId);
+                    }
+                  }}
+                />
+              ) : (
+                <DashboardTab {...appState} />
+              )
             )}
 
             {/* 4. DEAD STOCK WITH AI OUTFIT MATCHER */}
@@ -3109,6 +3146,7 @@ export default function App() {
                 darkMode={darkMode}
                 activeStore={activeStore}
                 setActiveTab={setActiveTab}
+                initialSubDesk={pendingTagsInitialSubDesk}
                 onOpenSpeedBilling={(data) => {
                   setSpeedBillingInitialData(data);
                   setActiveTab('speed_billing');
