@@ -52,7 +52,7 @@ export default function ReportDefectModal({
   const [category, setCategory] = useState('APPAREL');
   const [size, setSize] = useState('M');
   const [color, setColor] = useState('Standard');
-  const [mrp, setMrp] = useState(1999);
+  const [mrp, setMrp] = useState(0);
   const [defectType, setDefectType] = useState('ZIPPER');
   const [defectDesc, setDefectDesc] = useState('');
   const [severity, setSeverity] = useState('major'); // 'minor' | 'major'
@@ -100,15 +100,42 @@ export default function ReportDefectModal({
     const code = (initialBarcode || initialArticle?.scannedBarcode || initialArticle?.barcode || '').trim();
     setBarcode(code);
 
-    if (initialArticle) {
-      setArticleNo(initialArticle.articleNo || code || 'COBB-ART');
+    const hasCompleteDetails = Boolean(
+      initialArticle &&
+      initialArticle.articleNo &&
+      initialArticle.articleNo !== code &&
+      Number(initialArticle.mrp) > 0
+    );
+
+    if (hasCompleteDetails) {
+      setArticleNo(initialArticle.articleNo);
       setArticleName(initialArticle.itemName || initialArticle.articleName || 'Cobb Apparel');
-      setCategory(initialArticle.sectionName || initialArticle.category || 'MENSWEAR');
-      setSize(initialArticle.size || 'M');
-      setColor(initialArticle.color || 'Standard');
-      setMrp(Number(initialArticle.mrp || 1999));
-    } else if (code) {
-      fetchItemDetails(code);
+      setCategory(initialArticle.sectionName || initialArticle.category || 'APPAREL');
+      setSize(initialArticle.size || initialArticle.matchedSize || 'M');
+      setColor(initialArticle.color || initialArticle.matchedColor || 'Standard');
+      setMrp(Number(initialArticle.mrp));
+    } else {
+      if (initialArticle) {
+        setArticleNo(initialArticle.articleNo || code || 'COBB-ART');
+        if (initialArticle.itemName || initialArticle.articleName) {
+          setArticleName(initialArticle.itemName || initialArticle.articleName);
+        }
+        if (initialArticle.sectionName || initialArticle.category) {
+          setCategory(initialArticle.sectionName || initialArticle.category);
+        }
+        if (initialArticle.size || initialArticle.matchedSize) {
+          setSize(initialArticle.size || initialArticle.matchedSize);
+        }
+        if (initialArticle.color || initialArticle.matchedColor) {
+          setColor(initialArticle.color || initialArticle.matchedColor);
+        }
+        if (Number(initialArticle.mrp) > 0) {
+          setMrp(Number(initialArticle.mrp));
+        }
+      }
+      if (code) {
+        fetchItemDetails(code);
+      }
     }
   }, [isOpen, initialBarcode, initialArticle]);
 
@@ -132,23 +159,159 @@ export default function ReportDefectModal({
     };
   }, [quarantinedItem]);
 
-  // Lookup barcode details from API
+  // Lookup barcode details from API or Cloud Firestore
   const fetchItemDetails = async (code) => {
     if (!code) return;
+    const cleanCode = String(code).trim();
+    if (!cleanCode) return;
     setLookupLoading(true);
+
     try {
-      const res = await axios.get(`${API_BASE}/api/inventory/quick-scan?q=${encodeURIComponent(code)}`);
-      if (res.data?.success && Array.isArray(res.data.variants) && res.data.variants.length > 0) {
-        const item = res.data.variants.find(v => v.barcode === code) || res.data.variants[0];
-        setArticleNo(item.articleNo || code);
-        setArticleName(item.itemName || 'Cobb Apparel');
-        setCategory(item.sectionName || 'MENSWEAR');
-        setSize(item.size || 'M');
-        setColor(item.color || 'Standard');
-        setMrp(Number(item.mrp || 1999));
+      let foundData = null;
+
+      // 1. Primary: /api/staff/stock-check?q=...
+      try {
+        const staffRes = await axios.get(`${API_BASE}/api/staff/stock-check?q=${encodeURIComponent(cleanCode)}`, { timeout: 4500 });
+        if (staffRes.data?.success) {
+          foundData = staffRes.data;
+        }
+      } catch (err1) {
+        // Fall through
+      }
+
+      // 2. Secondary: /api/inventory/quick-scan?q=...
+      if (!foundData) {
+        try {
+          const quickRes = await axios.get(`${API_BASE}/api/inventory/quick-scan?q=${encodeURIComponent(cleanCode)}`, { timeout: 4500 });
+          if (quickRes.data?.success) {
+            foundData = quickRes.data;
+          }
+        } catch (err2) {
+          // Fall through
+        }
+      }
+
+      if (foundData) {
+        const matchedVariant = Array.isArray(foundData.variants)
+          ? (foundData.variants.find(v => String(v.barcode || '').trim().toLowerCase() === cleanCode.toLowerCase()) || foundData.variants[0])
+          : null;
+
+        const resolvedArtNo = foundData.articleNo || matchedVariant?.articleNo || cleanCode;
+        const resolvedName = foundData.itemName || matchedVariant?.itemName || 'Cobb Apparel';
+        const resolvedCategory = foundData.sectionName || foundData.subSectionName || matchedVariant?.sectionName || 'APPAREL';
+        const resolvedSize = foundData.matchedSize || matchedVariant?.size || (foundData.sizes?.[0]?.size) || 'Standard';
+        const resolvedColor = foundData.matchedColor || matchedVariant?.color || (foundData.colors?.[0]?.color) || 'Standard';
+        const resolvedMrp = Number(foundData.mrp || matchedVariant?.mrp || 0);
+
+        setArticleNo(resolvedArtNo);
+        setArticleName(resolvedName);
+        setCategory(resolvedCategory);
+        if (resolvedSize) setSize(resolvedSize);
+        if (resolvedColor) setColor(resolvedColor);
+        if (resolvedMrp > 0) {
+          setMrp(resolvedMrp);
+        }
+        return;
+      }
+
+      // 3. Direct Firestore Fallback for Phone Link
+      if (db) {
+        try {
+          const invRef = doc(db, 'stores', targetStoreId, 'data', 'inventory');
+          const invSnap = await getDoc(invRef);
+          let items = [];
+          if (invSnap.exists()) {
+            const data = invSnap.data();
+            items = Array.isArray(data) ? data : (data.items || []);
+          }
+
+          if (items.length === 0) {
+            const masterSnap = await getDoc(doc(db, 'stores', targetStoreId, 'data', 'inventory_master'));
+            if (masterSnap.exists()) {
+              const mData = masterSnap.data();
+              items = Array.isArray(mData) ? mData : (mData.items || []);
+            }
+          }
+
+          const qLower = cleanCode.toLowerCase();
+          const match = items.find(it => {
+            const sku = String(it.SKU || it.barcode || '').trim().toLowerCase();
+            const art = String(it.ArticleNo || it.articleNo || '').trim().toLowerCase();
+            return sku === qLower || art === qLower;
+          }) || items.find(it => {
+            const sku = String(it.SKU || it.barcode || '').trim().toLowerCase();
+            const art = String(it.ArticleNo || it.articleNo || '').trim().toLowerCase();
+            return (sku && sku.includes(qLower)) || (art && art.startsWith(qLower));
+          });
+
+          if (match) {
+            setArticleNo(match.ArticleNo || match.articleNo || cleanCode);
+            setArticleName(match.ItemName || match.itemName || match.ProductType || 'Cobb Apparel');
+            setCategory(match.ProductType || match.sectionName || 'APPAREL');
+            setSize(match.Size || match.size || 'M');
+            setColor(match.Color || match.color || 'Standard');
+            const foundMrp = Number(match.MRP || match.mrp || 0);
+            if (foundMrp > 0) {
+              setMrp(foundMrp);
+            }
+            return;
+          }
+
+          // Check live bills
+          const liveSnap = await getDoc(doc(db, 'stores', targetStoreId, 'data', 'sales_live'));
+          if (liveSnap.exists()) {
+            const lData = liveSnap.data();
+            const bills = Array.isArray(lData) ? lData : (lData.items || []);
+            let liveItem = null;
+            for (const b of bills) {
+              if (Array.isArray(b.Items)) {
+                liveItem = b.Items.find(bi => {
+                  const bc = String(bi.Barcode || '').trim().toLowerCase();
+                  const an = String(bi.ArticleNo || '').trim().toLowerCase();
+                  return bc === qLower || an === qLower;
+                });
+                if (liveItem) break;
+              }
+            }
+            if (liveItem) {
+              setArticleNo(liveItem.ArticleNo || cleanCode);
+              setArticleName(liveItem.ArticleName || 'Cobb Apparel');
+              setCategory(liveItem.Category || 'APPAREL');
+              setSize(liveItem.Size || 'M');
+              setColor(liveItem.Color || 'Standard');
+              const foundMrp = Number(liveItem.MRP || liveItem.NetPrice || 0);
+              if (foundMrp > 0) {
+                setMrp(foundMrp);
+              }
+              return;
+            }
+          }
+
+          // Check pending_tags
+          const ptagSnap = await getDoc(doc(db, 'stores', targetStoreId, 'data', 'pending_tags'));
+          if (ptagSnap.exists()) {
+            const pData = ptagSnap.data();
+            const tags = Array.isArray(pData) ? pData : (pData.tags || pData.items || []);
+            const pt = tags.find(t => String(t.barcode || '').trim().toLowerCase() === qLower);
+            if (pt) {
+              setArticleNo(pt.articleNo || cleanCode);
+              setArticleName(pt.articleName || 'Cobb Apparel');
+              setCategory(pt.section || 'APPAREL');
+              setSize(pt.size || 'M');
+              setColor(pt.color || 'Standard');
+              const foundMrp = Number(pt.mrp || pt.billedMRP || 0);
+              if (foundMrp > 0) {
+                setMrp(foundMrp);
+              }
+              return;
+            }
+          }
+        } catch (fsErr) {
+          console.warn('Direct Firestore inventory lookup note:', fsErr.message);
+        }
       }
     } catch (e) {
-      console.warn('Quick scan lookup fallback', e.message);
+      console.warn('Garment lookup note:', e.message);
     } finally {
       setLookupLoading(false);
     }
@@ -435,9 +598,15 @@ export default function ReportDefectModal({
                     <span className="font-mono font-black text-sm text-slate-900 dark:text-white">
                       {articleNo || barcode || 'COBB APPAREL'}
                     </span>
-                    <span className="px-2 py-0.5 rounded-lg font-black text-[11px] bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
-                      Size {size || 'M'}
-                    </span>
+                    {size ? (
+                      <span className="px-2 py-0.5 rounded-lg font-black text-[11px] bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                        Size {size}
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-lg font-bold text-[10px] bg-slate-100 dark:bg-slate-800 text-slate-500">
+                        {lookupLoading ? 'Loading Size...' : 'Size Standard'}
+                      </span>
+                    )}
                     {color && (
                       <span className="text-[11px] text-slate-600 dark:text-slate-400 font-bold">
                         {color}
@@ -445,14 +614,29 @@ export default function ReportDefectModal({
                     )}
                   </div>
                   <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                    {articleName || 'Cobb Menswear'} • {category || 'APPAREL'}
+                    {lookupLoading ? 'Verifying garment in store catalog...' : `${articleName || 'Cobb Apparel'} • ${category || 'APPAREL'}`}
                   </div>
                 </div>
                 <div className="text-right shrink-0 ml-3">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">MRP</div>
-                  <div className="text-base font-black font-mono text-rose-600 dark:text-rose-400">
-                    ₹{mrp}
-                  </div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">MRP (₹)</div>
+                  {lookupLoading ? (
+                    <div className="flex items-center gap-1 text-xs text-rose-500 font-bold justify-end">
+                      <RefreshCw className="w-3 h-3 animate-spin" />
+                      <span>Fetching...</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-end gap-0.5">
+                      <span className="text-sm font-bold text-rose-600 dark:text-rose-400">₹</span>
+                      <input
+                        type="number"
+                        value={mrp || ''}
+                        onChange={(e) => setMrp(Number(e.target.value))}
+                        placeholder="0"
+                        className="w-20 px-1 py-0.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-black font-mono text-rose-600 dark:text-rose-400 text-right focus:outline-none focus:ring-1 focus:ring-rose-500"
+                        title="Edit MRP if required"
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

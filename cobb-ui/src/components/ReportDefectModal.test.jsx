@@ -119,4 +119,42 @@ describe('ReportDefectModal - Garment Defect & Damage Quarantine', () => {
       expect(onQuarantineSuccess).toHaveBeenCalled();
     });
   });
+
+  it('auto-fills exact item details (e.g. Lower with MRP 3999) when barcode is scanned by camera without prefilled MRP', async () => {
+    axios.get.mockResolvedValueOnce({
+      data: {
+        success: true,
+        articleNo: 'LOW-TRACK-01',
+        itemName: 'LOWER / TRACK PANT',
+        sectionName: 'MENSWEAR-WN',
+        matchedSize: '34 (L)',
+        matchedColor: 'NAVY',
+        mrp: 3999,
+        variants: [
+          {
+            barcode: '0082993311',
+            articleNo: 'LOW-TRACK-01',
+            size: '34 (L)',
+            color: 'NAVY',
+            mrp: 3999
+          }
+        ]
+      }
+    });
+
+    render(
+      <ReportDefectModal
+        isOpen={true}
+        initialBarcode="0082993311"
+        initialArticle={{ barcode: '0082993311' }}
+        onClose={vi.fn()}
+      />
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('LOW-TRACK-01')).toBeDefined();
+      expect(screen.getByText(/Size 34 \(L\)/i)).toBeDefined();
+      expect(screen.getByDisplayValue('3999')).toBeDefined();
+    });
+  });
 });

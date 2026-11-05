@@ -723,7 +723,29 @@ export default function StaffStockCheckerPage({
     if (isDefect) {
       scannerModeRef.current = 'lookup';
       setScannerMode('lookup');
-      setDefectModalData({ barcode: code });
+
+      // If stockData already contains verified details for this item, pre-fill it
+      let matchedData = null;
+      if (stockData) {
+        const matchesCurrent = stockData.matchedBarcode === code || 
+          stockData.scannedBarcode === code || 
+          stockData.articleNo === code ||
+          (stockData.variants || []).some(v => v.barcode === code);
+        if (matchesCurrent) {
+          const v = (stockData.variants || []).find(it => it.barcode === code);
+          matchedData = {
+            barcode: code,
+            articleNo: stockData.articleNo,
+            itemName: stockData.itemName,
+            sectionName: stockData.sectionName || stockData.subSectionName,
+            size: v?.size || stockData.matchedSize || 'Standard',
+            color: v?.color || stockData.matchedColor || 'Standard',
+            mrp: Number(v?.mrp || stockData.mrp || 0)
+          };
+        }
+      }
+
+      setDefectModalData(matchedData || { barcode: code });
     } else {
       handleLookup(code);
     }
