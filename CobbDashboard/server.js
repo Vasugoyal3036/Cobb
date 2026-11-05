@@ -56,6 +56,9 @@ app.use('/api/alterations', alterationsRouter);
 const pendingTagsRouter = require('./routes/pending_tags');
 app.use('/api/pending-tags', pendingTagsRouter);
 
+const damagesRouter = require('./routes/damages');
+app.use('/api/damages', damagesRouter);
+
 const GlobalNodeCache = require('node-cache');
 const globalApiCache = new GlobalNodeCache({ stdTTL: 180 }); // Default fallback
 app.locals.globalApiCache = globalApiCache;

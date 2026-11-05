@@ -30,9 +30,11 @@ import {
   ArrowDown,
   ArrowUpDown,
   List,
-  LayoutGrid
+  LayoutGrid,
+  ShieldAlert
 } from 'lucide-react';
 import ThermalTagModal from '../ThermalTagModal';
+import ReportDefectModal from '../ReportDefectModal';
 import { db } from '../../utils/firebase';
 import { doc, onSnapshot, setDoc, getDoc } from 'firebase/firestore';
 
@@ -95,6 +97,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
   const [tripletBreakdownModal, setTripletBreakdownModal] = useState(null);
   const [thermalTagModalData, setThermalTagModalData] = useState(null); // B1G2 Triplet discount review modal
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showDefectModal, setShowDefectModal] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
   const [toast, setToast] = useState(null);
 
@@ -735,6 +738,15 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
           >
             <Printer className="w-4 h-4" />
             <span>Print Any Tag (Cat + MRP)</span>
+          </button>
+
+          <button
+            onClick={() => setShowDefectModal(true)}
+            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white text-xs font-bold shadow-lg shadow-red-500/25 transition-all active:scale-95"
+            title="Quarantine a damaged or defective garment"
+          >
+            <ShieldAlert className="w-4 h-4" />
+            <span>Report Damage</span>
           </button>
 
           <button
@@ -1585,6 +1597,17 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
           tagData={thermalTagModalData}
           onPrintSuccess={(pt) => {
             showToastMsg(`Replacement tag printed for #${pt.barcode}`, 'success');
+          }}
+        />
+      )}
+
+      {/* --- REPORT DEFECT & DAMAGE MODAL --- */}
+      {showDefectModal && (
+        <ReportDefectModal
+          isOpen={showDefectModal}
+          onClose={() => setShowDefectModal(false)}
+          onQuarantineSuccess={(d) => {
+            showToastMsg(`Garment #${d.articleNo} (${d.size}) quarantined in Damage Bin!`, 'success');
           }}
         />
       )}

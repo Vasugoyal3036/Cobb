@@ -527,6 +527,17 @@ export default function SpeedBillingModal({
       return;
     }
 
+    // Check if barcode is quarantined as defective
+    try {
+      const dmgCheck = await axios.get(`${API_BASE}/api/damages/check/${encodeURIComponent(q)}`, { timeout: 1200 });
+      if (dmgCheck.data?.isQuarantined) {
+        playScanErrorBeep();
+        const d = dmgCheck.data.damage || {};
+        alert(`⚠️ ITEM QUARANTINED AS DEFECTIVE!\nBarcode ${q} was quarantined on ${d.date || 'recently'} (${d.defectType || 'Damage'}: ${d.defectDesc || 'Defective'}).\nThis piece cannot be billed to a customer.`);
+        return;
+      }
+    } catch {}
+
     // 1. Instant check in QUICK_CATALOG for instant response
     const quickMatch = QUICK_CATALOG.find(
       it => it.barcode.toLowerCase() === q.toLowerCase() || it.name.toLowerCase().includes(q.toLowerCase())

@@ -32,7 +32,8 @@ import {
   Download,
   Percent,
   Coffee,
-  Printer
+  Printer,
+  ShieldAlert
 } from 'lucide-react';
 import {
   fetchTodayTeaRecord,
@@ -45,6 +46,7 @@ import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { playSound } from '../utils/sound';
 import { isBarcodeDuplicate } from './tabs/PendingTagsTab';
 import ThermalTagModal from './ThermalTagModal';
+import ReportDefectModal from './ReportDefectModal';
 import { getColorDot } from './GunScannerModal';
 import {
   isNativeBarcodeDetectorSupported,
@@ -573,7 +575,12 @@ export default function StaffStockCheckerPage({
     } catch {}
 
     setQuery(code);
-    handleLookup(code);
+    if (scannerMode === 'defect') {
+      setDefectModalData({ barcode: code });
+      setScannerMode('lookup');
+    } else {
+      handleLookup(code);
+    }
 
     setTimeout(() => {
       setDetectedBadge(null);
@@ -1331,14 +1338,28 @@ export default function StaffStockCheckerPage({
             <span className="text-[11px] text-[#6B5E51] font-medium">
               Missing or torn price tag on garment?
             </span>
-            <button
-              type="button"
-              onClick={() => setThermalTagModalData({ isQuickCategoryMrp: true })}
-              className="px-2.5 py-1 rounded-xl bg-[#FFFDF9] hover:bg-[#FAF6F0] border border-[#D5C9B7] text-[#B45309] font-black text-[11px] flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span>Print Tag (Cat + MRP)</span>
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setScannerMode('defect');
+                  startCamera();
+                }}
+                className="px-2.5 py-1 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400 font-bold text-[11px] flex items-center gap-1 shadow-sm active:scale-95 transition-all"
+                title="Open camera to scan a defective garment barcode directly"
+              >
+                <Camera className="w-3.5 h-3.5 text-rose-600" />
+                <span>Scan Defect</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setThermalTagModalData({ isQuickCategoryMrp: true })}
+                className="px-2.5 py-1 rounded-xl bg-[#FFFDF9] hover:bg-[#FAF6F0] border border-[#D5C9B7] text-[#B45309] font-black text-[11px] flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>Print Tag</span>
+              </button>
+            </div>
           </div>
 
         {/* --- Pending Tag Success Toast --- */}
@@ -1552,6 +1573,15 @@ export default function StaffStockCheckerPage({
                     >
                       <Printer className="w-3 h-3" />
                       <span>Print Tag</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenReportDefect()}
+                      className="px-2.5 py-1 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-[11px] font-bold flex items-center gap-1 transition-all active:scale-95 shadow-sm"
+                      title="Quarantine damaged or defective garment"
+                    >
+                      <ShieldAlert className="w-3 h-3 text-rose-600" />
+                      <span>Report Damage</span>
                     </button>
                     <button
                       type="button"
@@ -1805,6 +1835,14 @@ export default function StaffStockCheckerPage({
                                     title={`Print replacement tag for ${sz.size}`}
                                   >
                                     <Printer className="w-3 h-3" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenReportDefect(sz.size, colorGroup.color)}
+                                    className="p-1.5 rounded-lg border border-rose-200 hover:bg-rose-50 text-rose-600 transition-all"
+                                    title={`Report damage for ${sz.size}`}
+                                  >
+                                    <ShieldAlert className="w-3 h-3" />
                                   </button>
                               </div>
                             </div>

@@ -166,6 +166,19 @@ export const MRP_PRESETS = [
 /**
  * Standard Cobb Retail Promo Presets
  */
+
+/**
+ * Standard Garment Defect Types
+ */
+export const DEFECT_TYPES = [
+  { id: 'ZIPPER', label: 'Zipper / Runner Break', icon: '⚡', hindi: 'Chain / Runner Tooti' },
+  { id: 'STITCH_TEAR', label: 'Stitch Tear / Seam Open', icon: '✂️', hindi: 'Silai Khuli / Cut' },
+  { id: 'STAIN', label: 'Fabric Stain / Spot', icon: '🎨', hindi: 'Daag / Rang Fika' },
+  { id: 'MISSING_BUTTON', label: 'Missing Button / Snap', icon: '🔘', hindi: 'Button Toota / Gayab' },
+  { id: 'TRANSIT_DAMAGE', label: 'Carton / Box Damage', icon: '📦', hindi: 'Gatta Geela / Transit' },
+  { id: 'OTHER', label: 'Other Defect', icon: '⚠️', hindi: 'Anya Defect' }
+];
+
 export const PROMO_PRESETS = [
   'BUY 1 GET 2 FREE',
   'BUY 2 GET 50% OFF',
@@ -542,6 +555,229 @@ export function triggerThermalTagPrint(tag, options = {}) {
   }
 
   // Window popup fallback (for popout / Android / iOS)
+  if (typeof window !== 'undefined') {
+    const printWindow = window.open('', '_blank', 'width=380,height=580');
+    if (printWindow) {
+      printWindow.document.write(html);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+      }, 400);
+      return true;
+    }
+  }
+
+  return false;
+}
+
+
+/**
+ * Render thermal print HTML for a Quarantined Damaged Garment
+ */
+export function renderDamageSlipHtml(damage, options = {}) {
+  const widthMm = options.paperSize === '80mm' ? 80 : 58;
+  const printableMm = widthMm === 80 ? 74 : 52;
+
+  const barcodeSvg = generateBarcodeSvg(damage.barcode, {
+    width: widthMm === 80 ? 2.0 : 1.6,
+    height: widthMm === 80 ? 40 : 34
+  });
+
+  const now = new Date();
+  const nowStr = now.toLocaleString('en-IN', {
+    dateStyle: 'medium',
+    timeStyle: 'short'
+  });
+
+  const mrpFormatted = Number(damage.mrp || 0).toLocaleString('en-IN');
+  const defectObj = DEFECT_TYPES.find(d => d.id === damage.defectType) || { label: damage.defectType || 'DEFECT' };
+
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>DAMAGE QUARANTINE SLIP - ${damage.barcode || damage.articleNo}</title>
+        <style>
+          @page {
+            size: ${widthMm}mm auto;
+            margin: 0;
+          }
+          * {
+            box-sizing: border-box;
+          }
+          body {
+            margin: 0;
+            padding: 4px 6px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, monospace, sans-serif;
+            color: #000;
+            background: #fff;
+            width: ${printableMm}mm;
+            line-height: 1.25;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          .tag-card {
+            border: 2px solid #000;
+            border-radius: 6px;
+            padding: 6px 4px;
+            text-align: center;
+          }
+          .hole-punch {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border: 1.5px solid #000;
+            border-radius: 50%;
+            margin-bottom: 2px;
+          }
+          .warning-banner {
+            background: #000;
+            color: #fff;
+            padding: 3px 2px;
+            font-size: 11px;
+            font-weight: 900;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            border-radius: 3px;
+          }
+          .brand-title {
+            font-size: 11px;
+            font-weight: 800;
+            margin-top: 3px;
+            text-transform: uppercase;
+          }
+          .divider {
+            border-top: 1px dashed #000;
+            margin: 4px 0;
+          }
+          .double-divider {
+            border-top: 2px solid #000;
+            margin: 4px 0;
+          }
+          .defect-banner {
+            background: #fee2e2;
+            border: 1px solid #dc2626;
+            color: #991b1b;
+            padding: 3px 2px;
+            border-radius: 4px;
+            margin: 3px 0;
+            font-weight: 900;
+            font-size: 11px;
+            text-transform: uppercase;
+          }
+          .info-table {
+            font-size: 10px;
+            font-weight: 700;
+            text-align: left;
+            padding: 0 2px;
+            line-height: 1.3;
+          }
+          .barcode-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 3px 0;
+          }
+          .barcode-container svg {
+            max-width: 100%;
+            height: auto;
+          }
+          .footer-note {
+            font-size: 8px;
+            color: #222;
+            margin-top: 4px;
+            text-align: center;
+            line-height: 1.2;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="tag-card">
+          <div class="hole-punch"></div>
+          <div class="warning-banner">⚠️ DEFECT QUARANTINE</div>
+          <div class="brand-title">COBB APPARELS • PUNDRI</div>
+
+          <div class="divider"></div>
+
+          <div class="defect-banner">
+            ${defectObj.label}
+          </div>
+
+          <div class="info-table">
+            ${damage.defectDesc ? `<div><strong>ISSUE:</strong> ${damage.defectDesc}</div>` : ''}
+            <div><strong>ART:</strong> ${damage.articleNo || 'COBB-ART'}</div>
+            <div><strong>ITEM:</strong> ${damage.articleName || damage.category || 'Garment'}</div>
+            <div style="display:flex; justify-content:space-between;">
+              <span><strong>SIZE:</strong> ${damage.size || 'FREE'}</span>
+              <span><strong>COL:</strong> ${damage.color || 'STD'}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; margin-top:2px;">
+              <span><strong>MRP:</strong> ₹${mrpFormatted}</span>
+              <span><strong>ACTION:</strong> ${damage.severity === 'minor' ? 'TAILOR REPAIR' : 'VENDOR RTV'}</span>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="barcode-container">
+            ${barcodeSvg}
+          </div>
+
+          <div class="double-divider"></div>
+
+          <div class="footer-note">
+            DO NOT PUT ON SALES FLOOR • QUARANTINED<br/>
+            Reported: ${nowStr} by ${damage.reportedBy || 'Staff'}<br/>
+            * GOYAL - HOUSE OF FASHION *
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+}
+
+/**
+ * Triggers thermal print of the damage quarantine slip
+ */
+export function triggerDamageSlipPrint(damage, options = {}) {
+  const html = renderDamageSlipHtml(damage, options);
+
+  if (typeof document !== 'undefined') {
+    try {
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = '0';
+      document.body.appendChild(iframe);
+
+      const doc = iframe.contentWindow.document;
+      doc.open();
+      doc.write(html);
+      doc.close();
+
+      iframe.contentWindow.focus();
+      setTimeout(() => {
+        try {
+          iframe.contentWindow.print();
+        } catch (e) {
+          console.warn('Iframe print error, falling back to window:', e);
+        }
+        setTimeout(() => {
+          if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+        }, 3000);
+      }, 350);
+      return true;
+    } catch (err) {
+      console.warn('Iframe print creation error:', err);
+    }
+  }
+
   if (typeof window !== 'undefined') {
     const printWindow = window.open('', '_blank', 'width=380,height=580');
     if (printWindow) {
