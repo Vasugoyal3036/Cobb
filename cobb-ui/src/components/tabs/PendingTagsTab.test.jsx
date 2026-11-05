@@ -87,19 +87,54 @@ describe('PendingTagsTab - Duplicate Barcode Prevention', () => {
 
     beforeEach(() => {
       vi.clearAllMocks();
-      axios.get.mockResolvedValue({
-        data: {
-          success: true,
-          tags: mockTags,
-          summary: {
-            activeCount: 1,
-            billedCount: 1,
-            activeMrpValue: 2999,
-            activeRealizedValue: 1200,
-            avgDiscountPct: '60.0',
-            billedTodayCount: 0
-          }
+      axios.get.mockImplementation((url) => {
+        if (typeof url === 'string' && url.includes('/api/damages')) {
+          return Promise.resolve({
+            data: {
+              success: true,
+              damages: [
+                {
+                  id: 'dmg_001',
+                  barcode: '8901234567890',
+                  articleNo: 'CFS-0192',
+                  articleName: 'Cobb Linen Shirt White',
+                  size: '40',
+                  color: 'White',
+                  mrp: 2999,
+                  defectType: 'STITCH_TEAR',
+                  defectDesc: 'Torn side seam',
+                  severity: 'minor',
+                  actionPlan: 'local_repair',
+                  status: 'quarantine',
+                  reportedBy: 'Vikas',
+                  date: '2026-11-05'
+                }
+              ],
+              summary: {
+                totalCount: 1,
+                quarantinedCount: 1,
+                quarantinedMrp: 2999,
+                dispatchedCount: 0,
+                settledCount: 0,
+                repairedCount: 0
+              }
+            }
+          });
         }
+        return Promise.resolve({
+          data: {
+            success: true,
+            tags: mockTags,
+            summary: {
+              activeCount: 1,
+              billedCount: 1,
+              activeMrpValue: 2999,
+              activeRealizedValue: 1200,
+              avgDiscountPct: '60.0',
+              billedTodayCount: 0
+            }
+          }
+        });
       });
     });
 
@@ -195,6 +230,26 @@ describe('PendingTagsTab - Duplicate Barcode Prevention', () => {
       // Save button is enabled
       const saveBtn = screen.getByRole('button', { name: /Save Pending Tag/i });
       expect(saveBtn.disabled).toBe(false);
+    });
+
+    it('switches to Damage & Quarantine Desk and renders admin vault controls', async () => {
+      render(<PendingTagsTab />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/Damage & Quarantine Desk/i)).toBeDefined();
+      });
+
+      // Click sub-desk switcher to switch to Damage & Quarantine Desk
+      const damageDeskBtn = screen.getByRole('button', { name: /Damage & Quarantine Desk/i });
+      fireEvent.click(damageDeskBtn);
+
+      await waitFor(() => {
+        expect(screen.getByText(/Role-Based Defect Vault/i)).toBeDefined();
+        expect(screen.getByText('Quarantined in Bin')).toBeDefined();
+        expect(screen.getByText(/Store Tailor Fix/i)).toBeDefined();
+        expect(screen.getByText(/Torn side seam/i)).toBeDefined();
+        expect(screen.getByRole('button', { name: /Restock/i })).toBeDefined();
+      });
     });
   });
 });

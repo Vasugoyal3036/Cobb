@@ -31,6 +31,7 @@ export default function ReportDefectModal({
   initialBarcode = '',
   initialArticle = null,
   activeStore = 'DEMO_STORE_001',
+  userRole = 'staff',
   onQuarantineSuccess,
   onOpenScanner
 }) {
@@ -164,7 +165,9 @@ export default function ReportDefectModal({
 
       // 1. Try local Express API
       try {
-        const res = await axios.post(`${API_BASE}/api/damages/report`, payload);
+        const res = await axios.post(`${API_BASE}/api/damages/report`, payload, {
+          headers: { 'x-user-role': userRole || 'staff' }
+        });
         if (res.data?.success) {
           createdDamage = res.data.damage;
         }

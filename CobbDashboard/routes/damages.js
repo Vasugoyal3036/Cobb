@@ -2,8 +2,48 @@ const express = require('express');
 const router = express.Router();
 const fs = require('fs');
 const path = require('path');
+const jwt = require('jsonwebtoken');
 
 const DAMAGES_FILE = path.join(__dirname, '..', 'damage_records.json');
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_for_local_dev';
+const ADMIN_ROLES = ['admin', 'owner', 'manager'];
+
+/**
+ * RBAC Middleware: Protects defect resolution, deletion, restock, and RTV dispatch.
+ * Floor staff can ONLY report/quarantine defects. Only Admin, Owner, or Manager
+ * have authority to release, restock, settle, or remove defect records.
+ */
+function requireAdminRole(req, res, next) {
+    let role = (
+        req.headers['x-user-role'] ||
+        req.body?.userRole ||
+        req.query?.userRole ||
+        ''
+    ).toString().toLowerCase().trim();
+
+    const authHeader = req.headers['authorization'];
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+        const token = authHeader.split(' ')[1];
+        try {
+            const decoded = jwt.verify(token, JWT_SECRET);
+            if (decoded && decoded.role) {
+                role = decoded.role.toLowerCase().trim();
+                req.user = decoded;
+            }
+        } catch (e) {
+            // Token verification failed or expired
+        }
+    }
+
+    if (ADMIN_ROLES.includes(role)) {
+        return next();
+    }
+
+    return res.status(403).json({
+        success: false,
+        error: 'Access Denied: Floor staff cannot remove or resolve items from quarantine. Only Store Admin, Owner, or Manager can release, repair, or delete defect records from the Admin Panel.'
+    });
+}
 
 // --- Firestore Cloud Sync Initialization (for Phone Link) ---
 let firestoreDb = null;
@@ -212,8 +252,9 @@ router.post('/report', (req, res) => {
 /**
  * POST /api/damages/repair-restock
  * Store tailor repaired item (e.g. replaced button) -> restore to active rack inventory
+ * [ADMIN/OWNER ONLY] Floor staff cannot resolve or un-quarantine
  */
-router.post('/repair-restock', (req, res) => {
+router.post('/repair-restock', requireAdminRole, (req, res) => {
     try {
         const { id, repairNotes, repairedBy } = req.body;
         if (!id) return res.status(400).json({ success: false, error: 'Damage ID required' });
@@ -225,7 +266,7 @@ router.post('/repair-restock', (req, res) => {
         all[idx].status = 'repaired';
         all[idx].repairedAt = new Date().toISOString();
         all[idx].repairNotes = repairNotes || 'Repaired in-store and restored to sales rack';
-        all[idx].repairedBy = repairedBy || 'Store Master';
+        all[idx].repairedBy = repairedBy || (req.user ? req.user.name : 'Store Admin');
 
         writeDamages(all);
         res.json({ success: true, message: 'Garment repaired and cleared for sales rack', damage: all[idx] });
@@ -237,8 +278,9 @@ router.post('/repair-restock', (req, res) => {
 /**
  * POST /api/damages/create-rtv-batch
  * Groups selected quarantined pieces into an RTV dispatch parcel for Cobb HO
+ * [ADMIN/OWNER ONLY] Floor staff cannot dispatch RTV batches
  */
-router.post('/create-rtv-batch', (req, res) => {
+router.post('/create-rtv-batch', requireAdminRole, (req, res) => {
     try {
         const { itemIds, transportName, destination } = req.body;
         if (!Array.isArray(itemIds) || itemIds.length === 0) {
@@ -258,6 +300,7 @@ router.post('/create-rtv-batch', (req, res) => {
                 d.dispatchedAt = nowIso;
                 d.transportName = transportName || 'Self / Courier';
                 d.destination = destination || 'Cobb Head Office / Factory';
+                d.dispatchedBy = req.user ? req.user.name : 'Store Admin';
                 updatedCount++;
             }
         });
@@ -277,8 +320,9 @@ router.post('/create-rtv-batch', (req, res) => {
 /**
  * POST /api/damages/settle
  * Cobb HO issued Credit Note
+ * [ADMIN/OWNER ONLY] Floor staff cannot settle claims
  */
-router.post('/settle', (req, res) => {
+router.post('/settle', requireAdminRole, (req, res) => {
     try {
         const { id, creditNoteNo, settledAmount, notes } = req.body;
         if (!id) return res.status(400).json({ success: false, error: 'Damage ID required' });
@@ -292,6 +336,7 @@ router.post('/settle', (req, res) => {
         all[idx].creditNoteNo = creditNoteNo || 'CN-DIRECT';
         all[idx].settledAmount = Number(settledAmount) || all[idx].mrp;
         all[idx].settleNotes = notes || '';
+        all[idx].settledBy = req.user ? req.user.name : 'Store Admin';
 
         writeDamages(all);
         res.json({ success: true, message: 'Damage claim settled via Credit Note', damage: all[idx] });
@@ -302,14 +347,15 @@ router.post('/settle', (req, res) => {
 
 /**
  * DELETE /api/damages/:id
+ * [ADMIN/OWNER ONLY] Floor staff cannot delete defect records
  */
-router.delete('/:id', (req, res) => {
+router.delete('/:id', requireAdminRole, (req, res) => {
     try {
         const { id } = req.params;
         const all = readDamages();
         const filtered = all.filter(d => d.id !== id);
         writeDamages(filtered);
-        res.json({ success: true, message: 'Damage record removed' });
+        res.json({ success: true, message: 'Damage record removed by Store Admin' });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
     }

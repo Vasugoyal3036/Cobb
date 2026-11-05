@@ -31,12 +31,20 @@ import {
   ArrowUpDown,
   List,
   LayoutGrid,
-  ShieldAlert
+  ShieldAlert,
+  Truck,
+  Scissors,
+  Lock,
+  ExternalLink,
+  Eye,
+  FileCheck
 } from 'lucide-react';
 import ThermalTagModal from '../ThermalTagModal';
 import ReportDefectModal from '../ReportDefectModal';
 import { db } from '../../utils/firebase';
 import { doc, onSnapshot, setDoc, getDoc } from 'firebase/firestore';
+import { useAuth } from '../../context/AuthContext';
+import { triggerDamageSlipPrint, DEFECT_TYPES } from '../../utils/thermalTagPrinter';
 
 const API_BASE = window.location.protocol === 'app:' || window.location.hostname === 'localhost'
   ? 'http://localhost:5000'
@@ -129,6 +137,37 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
       t.status === 'active' && isBarcodeDuplicate(t.barcode, candidate)
     );
   }, [form.barcode, scanQuery, form.articleNo, tags]);
+
+  // --- Admin Damage & Defect Desk State ---
+  const [subDesk, setSubDesk] = useState('tags'); // 'tags' | 'damages'
+  const [damages, setDamages] = useState([]);
+  const [damagesSummary, setDamagesSummary] = useState({
+    totalCount: 0,
+    quarantinedCount: 0,
+    quarantinedMrp: 0,
+    dispatchedCount: 0,
+    settledCount: 0,
+    repairedCount: 0
+  });
+  const [damagesFilter, setDamagesFilter] = useState('quarantine'); // 'quarantine' | 'all' | 'repaired' | 'dispatched_rtv' | 'settled'
+  const [damagesSeverityFilter, setDamagesSeverityFilter] = useState('all'); // 'all' | 'minor' | 'major'
+  const [damagesSearch, setDamagesSearch] = useState('');
+  const [selectedDamageIds, setSelectedDamageIds] = useState([]);
+  const [rtvBatchModal, setRtvBatchModal] = useState({ isOpen: false, itemIds: [], transportName: '', destination: 'Cobb Head Office / Factory' });
+  const [repairNotesModal, setRepairNotesModal] = useState({ isOpen: false, damage: null, notes: '' });
+  const [settleModal, setSettleModal] = useState({ isOpen: false, damage: null, creditNoteNo: '', settledAmount: '', notes: '' });
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState(null);
+
+  // Authenticated Role (Admin, Owner, Manager have mutation rights)
+  let currentRole = 'owner';
+  let currentUser = null;
+  try {
+    const auth = useAuth();
+    if (auth) {
+      currentRole = auth.role || auth.user?.role || 'owner';
+      currentUser = auth.user;
+    }
+  } catch (e) {}
 
 
   const targetStoreId = (!activeStore || activeStore === 'ALL' || activeStore === 'STORE_01')
@@ -318,6 +357,229 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
       if (unsubscribe) unsubscribe();
     };
   }, [targetStoreId]);
+
+  // --- 3. Fetch Damage Records (Admin Quarantine Desk) ---
+  const fetchDamages = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API_BASE}/api/damages`);
+      if (res.data?.success) {
+        setDamages(res.data.damages || []);
+        if (res.data.summary) setDamagesSummary(res.data.summary);
+      }
+    } catch (e) {
+      console.warn('[PendingTagsTab] Damages API note:', e.message);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchDamages();
+  }, [fetchDamages]);
+
+  // Cloud Firestore listener for real-time damage sync (Phone Link)
+  useEffect(() => {
+    let unsub = null;
+    if (db) {
+      try {
+        const docRef = doc(db, 'stores', targetStoreId, 'data', 'damage_records');
+        unsub = onSnapshot(docRef, (snap) => {
+          if (snap.exists()) {
+            const data = snap.data();
+            if (Array.isArray(data.damages)) {
+              setDamages(data.damages);
+              const all = data.damages;
+              const quarantined = all.filter(d => d.status === 'quarantine');
+              const quarantinedMrp = quarantined.reduce((sum, d) => sum + (Number(d.mrp) || 0), 0);
+              setDamagesSummary({
+                totalCount: all.length,
+                quarantinedCount: quarantined.length,
+                quarantinedMrp,
+                dispatchedCount: all.filter(d => d.status === 'dispatched_rtv').length,
+                settledCount: all.filter(d => d.status === 'settled').length,
+                repairedCount: all.filter(d => d.status === 'repaired').length
+              });
+            }
+          }
+        }, (err) => {
+          console.warn('[PendingTagsTab] Damage Cloud sync note:', err.message);
+        });
+      } catch (err) {}
+    }
+    return () => { if (unsub) unsub(); };
+  }, [targetStoreId]);
+
+  // Admin exclusive damage actions (requires owner/admin role)
+  const handleRepairRestock = async (id, notes = '') => {
+    if (!id) return;
+    try {
+      const res = await axios.post(`${API_BASE}/api/damages/repair-restock`, {
+        id,
+        repairNotes: notes || 'Repaired in-house by tailor and cleared for sales rack',
+        repairedBy: currentUser?.name || 'Store Admin'
+      }, {
+        headers: { 'x-user-role': currentRole }
+      });
+      if (res.data?.success) {
+        showToastMsg('Garment tailor-repaired & restored to sales rack inventory!', 'success');
+        setRepairNotesModal({ isOpen: false, damage: null, notes: '' });
+        fetchDamages();
+      }
+    } catch (err) {
+      if (db) {
+        try {
+          const docRef = doc(db, 'stores', targetStoreId, 'data', 'damage_records');
+          const snap = await getDoc(docRef);
+          if (snap.exists()) {
+            const list = snap.data()?.damages || [];
+            const idx = list.findIndex(d => d.id === id);
+            if (idx !== -1) {
+              list[idx].status = 'repaired';
+              list[idx].repairedAt = new Date().toISOString();
+              list[idx].repairNotes = notes || 'Repaired in-house by tailor';
+              list[idx].repairedBy = currentUser?.name || 'Store Admin';
+              await setDoc(docRef, {
+                damages: list,
+                quarantinedCount: list.filter(d => d.status === 'quarantine').length,
+                lastUpdated: new Date().toISOString()
+              }, { merge: true });
+              showToastMsg('Garment tailor-repaired & restored to sales rack!', 'success');
+              setRepairNotesModal({ isOpen: false, damage: null, notes: '' });
+              return;
+            }
+          }
+        } catch (fbErr) {}
+      }
+      showToastMsg('Restock failed: ' + (err.response?.data?.error || err.message), 'error');
+    }
+  };
+
+  const handleCreateRtvBatch = async (itemIds, transportName, destination) => {
+    if (!itemIds || itemIds.length === 0) return;
+    try {
+      const res = await axios.post(`${API_BASE}/api/damages/create-rtv-batch`, {
+        itemIds,
+        transportName: transportName || 'Self / Courier',
+        destination: destination || 'Cobb Head Office / Factory'
+      }, {
+        headers: { 'x-user-role': currentRole }
+      });
+      if (res.data?.success) {
+        showToastMsg(`RTV Batch ${res.data.rtvBatchNo} created for ${res.data.updatedCount} items!`, 'success');
+        setSelectedDamageIds([]);
+        setRtvBatchModal({ isOpen: false, itemIds: [], transportName: '', destination: 'Cobb Head Office / Factory' });
+        fetchDamages();
+      }
+    } catch (err) {
+      if (db) {
+        try {
+          const docRef = doc(db, 'stores', targetStoreId, 'data', 'damage_records');
+          const snap = await getDoc(docRef);
+          if (snap.exists()) {
+            const list = snap.data()?.damages || [];
+            const rtvBatchNo = 'RTV-' + Date.now().toString().slice(-6);
+            const nowIso = new Date().toISOString();
+            let count = 0;
+            list.forEach(d => {
+              if (itemIds.includes(d.id) && d.status === 'quarantine') {
+                d.status = 'dispatched_rtv';
+                d.rtvBatchNo = rtvBatchNo;
+                d.dispatchedAt = nowIso;
+                d.transportName = transportName || 'Self / Courier';
+                d.destination = destination || 'Cobb Head Office / Factory';
+                count++;
+              }
+            });
+            await setDoc(docRef, {
+              damages: list,
+              quarantinedCount: list.filter(d => d.status === 'quarantine').length,
+              lastUpdated: nowIso
+            }, { merge: true });
+            showToastMsg(`RTV Batch ${rtvBatchNo} created for ${count} items!`, 'success');
+            setSelectedDamageIds([]);
+            setRtvBatchModal({ isOpen: false, itemIds: [], transportName: '', destination: 'Cobb Head Office / Factory' });
+            return;
+          }
+        } catch (fbErr) {}
+      }
+      showToastMsg('RTV Dispatch failed: ' + (err.response?.data?.error || err.message), 'error');
+    }
+  };
+
+  const handleSettleCreditNote = async (id, creditNoteNo, settledAmount, notes) => {
+    if (!id) return;
+    try {
+      const res = await axios.post(`${API_BASE}/api/damages/settle`, {
+        id,
+        creditNoteNo,
+        settledAmount,
+        notes
+      }, {
+        headers: { 'x-user-role': currentRole }
+      });
+      if (res.data?.success) {
+        showToastMsg(`Claim settled via Credit Note #${creditNoteNo}!`, 'success');
+        setSettleModal({ isOpen: false, damage: null, creditNoteNo: '', settledAmount: '', notes: '' });
+        fetchDamages();
+      }
+    } catch (err) {
+      showToastMsg('Settlement failed: ' + (err.response?.data?.error || err.message), 'error');
+    }
+  };
+
+  const handleDeleteDamage = async (id) => {
+    if (!window.confirm('Are you sure you want to permanently delete this defect record? Only Store Admin has authority to discard records.')) return;
+    try {
+      const res = await axios.delete(`${API_BASE}/api/damages/${id}`, {
+        headers: { 'x-user-role': currentRole }
+      });
+      if (res.data?.success) {
+        showToastMsg('Defect record removed by Store Admin', 'success');
+        fetchDamages();
+      }
+    } catch (err) {
+      if (db) {
+        try {
+          const docRef = doc(db, 'stores', targetStoreId, 'data', 'damage_records');
+          const snap = await getDoc(docRef);
+          if (snap.exists()) {
+            const list = (snap.data()?.damages || []).filter(d => d.id !== id);
+            await setDoc(docRef, {
+              damages: list,
+              quarantinedCount: list.filter(d => d.status === 'quarantine').length,
+              lastUpdated: new Date().toISOString()
+            }, { merge: true });
+            showToastMsg('Defect record removed by Store Admin', 'success');
+            return;
+          }
+        } catch (fbErr) {}
+      }
+      showToastMsg('Delete failed: ' + (err.response?.data?.error || err.message), 'error');
+    }
+  };
+
+  const toggleSelectDamage = (id) => {
+    setSelectedDamageIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  const filteredDamages = useMemo(() => {
+    return damages.filter(d => {
+      if (damagesFilter !== 'all' && d.status !== damagesFilter) return false;
+      if (damagesSeverityFilter !== 'all' && d.severity !== damagesSeverityFilter) return false;
+      if (damagesSearch) {
+        const q = damagesSearch.toLowerCase().trim();
+        const b = (d.barcode || '').toLowerCase();
+        const art = (d.articleNo || '').toLowerCase();
+        const desc = (d.defectDesc || '').toLowerCase();
+        const by = (d.reportedBy || '').toLowerCase();
+        const typ = (d.defectType || '').toLowerCase();
+        if (!b.includes(q) && !art.includes(q) && !desc.includes(q) && !by.includes(q) && !typ.includes(q)) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }, [damages, damagesFilter, damagesSeverityFilter, damagesSearch]);
 
     // --- Barcode / Article Fast Lookup ---
   const handleQuickLookup = async (code) => {
@@ -706,58 +968,138 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
       {/* Top Banner & Title Bar */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-rose-950/40 border border-slate-700/60 shadow-xl text-white">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <div className="p-2 rounded-lg bg-rose-500/20 text-rose-400 border border-rose-500/30">
-              <Tag className="w-6 h-6" />
+          <div className="flex flex-wrap items-center gap-2.5 mb-2">
+            <div className={`p-2 rounded-lg border ${
+              subDesk === 'damages'
+                ? 'bg-red-500/20 text-red-400 border-red-500/30'
+                : 'bg-rose-500/20 text-rose-400 border-rose-500/30'
+            }`}>
+              {subDesk === 'damages' ? <ShieldAlert className="w-6 h-6 text-red-400" /> : <Tag className="w-6 h-6" />}
             </div>
-            <h1 className="text-2xl font-black tracking-tight">Pending Tag Desk</h1>
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-              B1G2 Single-Piece Manager
+            <h1 className="text-2xl font-black tracking-tight">
+              {subDesk === 'damages' ? 'Damage & Quarantine Desk' : 'Pending Tag Desk'}
+            </h1>
+            <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
+              subDesk === 'damages'
+                ? 'bg-red-500/20 text-red-300 border-red-500/30'
+                : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+            }`}>
+              {subDesk === 'damages' ? 'Store Admin Exclusive Control' : 'B1G2 Single-Piece Manager'}
             </span>
+
+            {/* Sub-Desk Switcher */}
+            <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-800/80 border border-slate-700/80 ml-2">
+              <button
+                type="button"
+                onClick={() => setSubDesk('tags')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
+                  subDesk === 'tags'
+                    ? 'bg-rose-600 text-white shadow-md shadow-rose-500/25'
+                    : 'text-slate-300 hover:text-white'
+                }`}
+              >
+                <Tag className="w-3.5 h-3.5" />
+                <span>🏷️ B1G2 Pending Tags</span>
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-extrabold bg-white/20 text-white">
+                  {summary.activeCount}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setSubDesk('damages')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${
+                  subDesk === 'damages'
+                    ? 'bg-red-600 text-white shadow-md shadow-red-500/25'
+                    : 'text-slate-300 hover:text-white'
+                }`}
+              >
+                <ShieldAlert className="w-3.5 h-3.5" />
+                <span>⚠️ Damage & Quarantine Desk</span>
+                {damagesSummary.quarantinedCount > 0 ? (
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-extrabold bg-white text-red-700 animate-pulse">
+                    {damagesSummary.quarantinedCount}
+                  </span>
+                ) : (
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-extrabold bg-white/20 text-white">
+                    0
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
           <p className="text-xs text-slate-300">
-            Track single pieces sold at custom discount percentages under the Buy 1 Get 2 Free scheme. Auto-clears when billed into POS!
+            {subDesk === 'damages'
+              ? 'Quarantined defective apparel vault. Only Store Admin has authority to tailor-restock, RTV-dispatch to Cobb HO, or discard records.'
+              : 'Track single pieces sold at custom discount percentages under the Buy 1 Get 2 Free scheme. Auto-clears when billed into POS!'}
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => fetchTags(true)}
-            disabled={refreshing}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-600/60 text-xs font-semibold text-slate-200 transition-all active:scale-95 disabled:opacity-50"
-            title="Auto-checks against live POS billing database"
-          >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-rose-400' : ''}`} />
-            <span>{refreshing ? 'Checking POS...' : 'Sync with POS'}</span>
-          </button>
+        <div className="flex items-center gap-2.5 flex-wrap">
+          {subDesk === 'tags' ? (
+            <>
+              <button
+                onClick={() => fetchTags(true)}
+                disabled={refreshing}
+                className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-600/60 text-xs font-semibold text-slate-200 transition-all active:scale-95 disabled:opacity-50"
+                title="Auto-checks against live POS billing database"
+              >
+                <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-rose-400' : ''}`} />
+                <span>{refreshing ? 'Checking POS...' : 'Sync with POS'}</span>
+              </button>
 
-          <button
-            onClick={() => setThermalTagModalData({ isQuickCategoryMrp: true })}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold shadow-lg shadow-blue-500/25 transition-all active:scale-95"
-            title="Print replacement price tag for any garment by Category and MRP"
-          >
-            <Printer className="w-4 h-4" />
-            <span>Print Any Tag (Cat + MRP)</span>
-          </button>
+              <button
+                onClick={() => setThermalTagModalData({ isQuickCategoryMrp: true })}
+                className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold shadow-lg shadow-blue-500/25 transition-all active:scale-95"
+                title="Print replacement price tag for any garment by Category and MRP"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Print Any Tag (Cat + MRP)</span>
+              </button>
 
-          <button
-            onClick={() => setShowDefectModal(true)}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white text-xs font-bold shadow-lg shadow-red-500/25 transition-all active:scale-95"
-            title="Quarantine a damaged or defective garment"
-          >
-            <ShieldAlert className="w-4 h-4" />
-            <span>Report Damage</span>
-          </button>
+              <button
+                onClick={() => setShowDefectModal(true)}
+                className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white text-xs font-bold shadow-lg shadow-red-500/25 transition-all active:scale-95"
+                title="Quarantine a damaged or defective garment"
+              >
+                <ShieldAlert className="w-4 h-4" />
+                <span>Report Damage</span>
+              </button>
 
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-rose-500 to-amber-500 hover:from-rose-600 hover:to-amber-600 text-white text-xs font-bold shadow-lg shadow-rose-500/25 transition-all active:scale-95"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add Pending Tag</span>
-          </button>
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-rose-500 to-amber-500 hover:from-rose-600 hover:to-amber-600 text-white text-xs font-bold shadow-lg shadow-rose-500/25 transition-all active:scale-95"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add Pending Tag</span>
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => fetchDamages()}
+                className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 border border-slate-600/60 text-xs font-semibold text-slate-200 transition-all active:scale-95"
+                title="Sync damage records from server"
+              >
+                <RefreshCw className="w-4 h-4" />
+                <span>Sync Damages</span>
+              </button>
+
+              <button
+                onClick={() => setShowDefectModal(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white text-xs font-bold shadow-lg shadow-red-500/25 transition-all active:scale-95"
+                title="Quarantine a damaged or defective garment"
+              >
+                <ShieldAlert className="w-4 h-4" />
+                <span>+ Quarantine Garment</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
+
+      {subDesk === 'tags' && (
+        <div className="space-y-6">
 
       {/* Bento Metric Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3.5">
@@ -1588,6 +1930,420 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
           </button>
         </div>
       )}
+      </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* ⚠️ ADMIN DAMAGE & QUARANTINE DESK VIEW */}
+      {/* ========================================================================= */}
+      {subDesk === 'damages' && (
+        <div className="space-y-6">
+          {/* Top Admin Notice */}
+          <div className="p-3.5 rounded-2xl bg-gradient-to-r from-red-950/80 via-slate-900 to-amber-950/40 border border-red-500/40 text-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-lg">
+            <div className="flex items-center gap-2.5">
+              <div className="p-1.5 rounded-lg bg-red-500/20 text-red-400 border border-red-500/30">
+                <Lock className="w-4 h-4" />
+              </div>
+              <div>
+                <span className="font-extrabold text-red-300 uppercase tracking-wide mr-2">
+                  🔒 Role-Based Defect Vault:
+                </span>
+                <span className="text-slate-300">
+                  Floor staff are restricted to reporting defects via mobile camera scan. Only Store Admin, Owner, or Manager can un-quarantine, tailor-repair, dispatch RTV batches, or delete defect records.
+                </span>
+              </div>
+            </div>
+            <span className="px-2.5 py-1 rounded-lg bg-slate-800 border border-slate-700 text-[11px] font-bold text-amber-300 shrink-0">
+              Active Desk Role: {currentRole?.toUpperCase()}
+            </span>
+          </div>
+
+          {/* Bento Metric Cards for Damages */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3.5">
+            {/* Quarantined in Store Bin */}
+            <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-red-300 dark:border-red-900/60 shadow-sm relative overflow-hidden">
+              <div className="flex items-center justify-between text-xs text-red-600 dark:text-red-400 font-bold mb-1">
+                <span>Quarantined in Bin</span>
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                </span>
+              </div>
+              <div className="text-2xl font-black text-red-600 dark:text-red-400">
+                {damagesSummary.quarantinedCount}
+              </div>
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+                ₹{Number(damagesSummary.quarantinedMrp || 0).toLocaleString('en-IN')} MRP Value
+              </div>
+            </div>
+
+            {/* Minor Defect (Store Tailor) */}
+            <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+              <div className="text-xs text-amber-600 dark:text-amber-400 font-bold mb-1">Store Tailor Fix</div>
+              <div className="text-2xl font-black text-amber-600 dark:text-amber-400">
+                {damages.filter(d => d.status === 'quarantine' && (d.severity === 'minor' || d.actionPlan === 'local_repair')).length}
+              </div>
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Minor zipper/stitch defects</div>
+            </div>
+
+            {/* Major Defect (Cobb HO RTV) */}
+            <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+              <div className="text-xs text-purple-600 dark:text-purple-400 font-bold mb-1">Pending RTV Return</div>
+              <div className="text-2xl font-black text-purple-600 dark:text-purple-400">
+                {damages.filter(d => d.status === 'quarantine' && (d.severity === 'major' || d.actionPlan === 'rtv_vendor')).length}
+              </div>
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Awaiting factory dispatch</div>
+            </div>
+
+            {/* Dispatched to Cobb HO */}
+            <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+              <div className="text-xs text-indigo-600 dark:text-indigo-400 font-bold mb-1">Dispatched to HO</div>
+              <div className="text-2xl font-black text-indigo-600 dark:text-indigo-400">
+                {damagesSummary.dispatchedCount}
+              </div>
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">In transit / at factory</div>
+            </div>
+
+            {/* Settled Claims */}
+            <div className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm">
+              <div className="text-xs text-emerald-600 dark:text-emerald-400 font-bold mb-1">Settled Claims</div>
+              <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+                {damagesSummary.settledCount}
+              </div>
+              <div className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Credit note issued by HO</div>
+            </div>
+          </div>
+
+          {/* Search, Filter, and Bulk Dispatch Bar */}
+          <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+            {/* Search Input */}
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search defective article, barcode, defect reason, or reporter..."
+                value={damagesSearch}
+                onChange={(e) => setDamagesSearch(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/50"
+              />
+              {damagesSearch && (
+                <button
+                  type="button"
+                  onClick={() => setDamagesSearch('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Status Pills */}
+            <div className="flex items-center gap-1 overflow-x-auto pb-1 md:pb-0">
+              {[
+                { id: 'quarantine', label: 'Quarantined', count: damagesSummary.quarantinedCount, color: 'text-red-500' },
+                { id: 'all', label: 'All Records', count: damagesSummary.totalCount, color: 'text-slate-400' },
+                { id: 'repaired', label: 'Repaired', count: damagesSummary.repairedCount, color: 'text-emerald-500' },
+                { id: 'dispatched_rtv', label: 'Dispatched RTV', count: damagesSummary.dispatchedCount, color: 'text-indigo-500' },
+                { id: 'settled', label: 'Settled', count: damagesSummary.settledCount, color: 'text-cyan-500' }
+              ].map(f => (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => setDamagesFilter(f.id)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 ${
+                    damagesFilter === f.id
+                      ? 'bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 shadow-sm'
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }`}
+                >
+                  <span>{f.label}</span>
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full bg-slate-200 dark:bg-slate-700/80 ${f.color}`}>
+                    {f.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {/* Bulk Action: Dispatch to Cobb HO */}
+            {selectedDamageIds.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setRtvBatchModal({
+                  isOpen: true,
+                  itemIds: selectedDamageIds,
+                  transportName: 'DTDC / Transport',
+                  destination: 'Cobb Head Office / Factory'
+                })}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-bold shadow-lg shadow-indigo-500/25 flex items-center gap-2 transition-all active:scale-95 shrink-0"
+              >
+                <Truck className="w-4 h-4" />
+                <span>Dispatch RTV Batch ({selectedDamageIds.length})</span>
+              </button>
+            )}
+          </div>
+
+          {/* Quarantined Records List / Cards */}
+          {filteredDamages.length === 0 ? (
+            <div className="p-12 text-center rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+              <ShieldAlert className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+              <h3 className="text-base font-bold text-slate-800 dark:text-slate-200">
+                No Damaged Garments in this View
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 max-w-md mx-auto mt-1">
+                {damagesFilter === 'quarantine'
+                  ? 'Great news! There are currently no defective pieces quarantined in the store damage bin.'
+                  : 'Try selecting a different status filter or clear your search query.'}
+              </p>
+              <button
+                type="button"
+                onClick={() => setShowDefectModal(true)}
+                className="mt-4 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow transition-all"
+              >
+                + Quarantine a Defective Garment
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredDamages.map(d => {
+                const isSelected = selectedDamageIds.includes(d.id);
+                const isQuarantine = d.status === 'quarantine';
+                const isRepaired = d.status === 'repaired';
+                const isDispatched = d.status === 'dispatched_rtv';
+                const isSettled = d.status === 'settled';
+
+                return (
+                  <div
+                    key={d.id}
+                    className={`rounded-2xl border transition-all duration-200 overflow-hidden flex flex-col justify-between ${
+                      isSelected
+                        ? 'ring-2 ring-indigo-500 border-indigo-500 bg-indigo-50/20 dark:bg-indigo-950/20'
+                        : isQuarantine
+                        ? 'bg-white dark:bg-slate-900 border-red-200 dark:border-red-950/60 shadow-sm hover:border-red-400'
+                        : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm opacity-90'
+                    }`}
+                  >
+                    {/* Card Top: Details & Photo */}
+                    <div className="p-4 space-y-3">
+                      <div className="flex items-start justify-between gap-3">
+                        {/* Checkbox for RTV batch */}
+                        {isQuarantine && (
+                          <button
+                            type="button"
+                            onClick={() => toggleSelectDamage(d.id)}
+                            className="text-slate-400 hover:text-indigo-600 transition-colors mt-0.5"
+                          >
+                            {isSelected ? (
+                              <CheckSquare className="w-5 h-5 text-indigo-600 dark:text-indigo-400 fill-current" />
+                            ) : (
+                              <Square className="w-5 h-5" />
+                            )}
+                          </button>
+                        )}
+
+                        {/* Article Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-mono text-sm font-black text-slate-900 dark:text-white truncate">
+                              #{d.articleNo}
+                            </span>
+                            <span className="px-2 py-0.5 rounded text-[10px] font-extrabold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                              {d.size}
+                            </span>
+                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                              {d.color}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                            {d.articleName}
+                          </p>
+                          <div className="flex items-center gap-2 text-[11px] font-mono text-slate-400 mt-1">
+                            <span>{d.barcode}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard?.writeText(d.barcode);
+                                showToastMsg('Barcode copied!', 'success');
+                              }}
+                              className="hover:text-white"
+                              title="Copy Barcode"
+                            >
+                              <Copy className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Photo Thumbnail */}
+                        {d.photo ? (
+                          <button
+                            type="button"
+                            onClick={() => setPhotoPreviewUrl(d.photo)}
+                            className="w-14 h-14 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 relative group shrink-0"
+                            title="Click to zoom defect photo"
+                          >
+                            <img src={d.photo} alt="Defect" className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
+                            <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity">
+                              <Eye className="w-4 h-4" />
+                            </div>
+                          </button>
+                        ) : (
+                          <div className="text-right shrink-0">
+                            <span className="text-sm font-black text-slate-900 dark:text-white">
+                              ₹{Number(d.mrp || 0).toLocaleString('en-IN')}
+                            </span>
+                            <span className="block text-[10px] text-slate-400">MRP</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Defect Reasons & Description */}
+                      <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 space-y-1.5">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-wide bg-red-500/15 text-red-600 dark:text-red-400 border border-red-500/30">
+                            {DEFECT_TYPES[d.defectType]?.label || d.defectType?.replace('_', ' ')}
+                          </span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            d.severity === 'minor'
+                              ? 'bg-amber-500/15 text-amber-500 border border-amber-500/30'
+                              : 'bg-purple-500/15 text-purple-400 border border-purple-500/30'
+                          }`}>
+                            {d.severity === 'minor' ? '🪡 Minor (Tailor)' : '🚚 Major (RTV)'}
+                          </span>
+                        </div>
+                        {d.defectDesc && (
+                          <p className="text-xs text-slate-700 dark:text-slate-300 leading-snug">
+                            "{d.defectDesc}"
+                          </p>
+                        )}
+                        <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-slate-200/60 dark:border-slate-700/60">
+                          <span>Reported by: <strong className="text-slate-600 dark:text-slate-300">{d.reportedBy || 'Staff'}</strong></span>
+                          <span>{d.date || (d.reportedAt ? new Date(d.reportedAt).toLocaleDateString() : '')}</span>
+                        </div>
+                      </div>
+
+                      {/* Status Badges & Resolution Meta */}
+                      {isQuarantine && (
+                        <div className="p-2 rounded-xl bg-red-500/10 border border-red-500/30 text-[11px] font-bold text-red-600 dark:text-red-400 flex items-center justify-between">
+                          <span className="flex items-center gap-1.5">
+                            <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
+                            <span>Quarantined in Damage Bin</span>
+                          </span>
+                          <span className="text-[10px] text-red-400/80">POS Billing Blocked</span>
+                        </div>
+                      )}
+
+                      {isRepaired && (
+                        <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-xs text-emerald-400 space-y-1">
+                          <div className="flex items-center gap-1.5 font-bold">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                            <span>Restocked by Tailor</span>
+                          </div>
+                          {d.repairNotes && <p className="text-[11px] text-emerald-300/80">"{d.repairNotes}"</p>}
+                        </div>
+                      )}
+
+                      {isDispatched && (
+                        <div className="p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-xs text-indigo-400 space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold flex items-center gap-1.5">
+                              <Truck className="w-3.5 h-3.5" />
+                              <span>{d.rtvBatchNo}</span>
+                            </span>
+                            <span className="text-[10px]">{d.transportName || 'Courier'}</span>
+                          </div>
+                          <p className="text-[10px] text-indigo-300/80">Dispatched to Cobb HO</p>
+                        </div>
+                      )}
+
+                      {isSettled && (
+                        <div className="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-xs text-cyan-400 space-y-1">
+                          <div className="flex items-center justify-between font-bold">
+                            <span>CN: #{d.creditNoteNo}</span>
+                            <span>₹{Number(d.settledAmount || 0).toLocaleString('en-IN')}</span>
+                          </div>
+                          <p className="text-[10px] text-cyan-300/80">Settled via Credit Note</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Card Bottom: Admin Exclusive Action Dock */}
+                    <div className="p-3 bg-slate-50 dark:bg-slate-800/40 border-t border-slate-200 dark:border-slate-800/80 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => triggerDamageSlipPrint(d, { paperSize: '58mm' })}
+                          className="px-2.5 py-1.5 rounded-lg bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 text-xs font-bold flex items-center gap-1 transition-all active:scale-95"
+                          title="Print 2-inch ESC/POS thermal slip to tape on polybag"
+                        >
+                          <Printer className="w-3 h-3" />
+                          <span>Slip</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteDamage(d.id)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-500/15 transition-all"
+                          title="[ADMIN ONLY] Permanently delete defect record"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        {isQuarantine && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setRepairNotesModal({ isOpen: true, damage: d, notes: '' })}
+                              className="px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1 shadow-sm transition-all active:scale-95"
+                              title="[ADMIN ONLY] Approve tailor repair and restore garment to sales rack"
+                            >
+                              <Scissors className="w-3 h-3" />
+                              <span>Restock</span>
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setRtvBatchModal({
+                                isOpen: true,
+                                itemIds: [d.id],
+                                transportName: 'DTDC Courier',
+                                destination: 'Cobb Head Office / Factory'
+                              })}
+                              className="px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-1 shadow-sm transition-all active:scale-95"
+                              title="[ADMIN ONLY] Dispatch garment to Cobb HO via RTV"
+                            >
+                              <Truck className="w-3 h-3" />
+                              <span>RTV Return</span>
+                            </button>
+                          </>
+                        )}
+
+                        {isDispatched && (
+                          <button
+                            type="button"
+                            onClick={() => setSettleModal({
+                              isOpen: true,
+                              damage: d,
+                              creditNoteNo: 'CN-' + Math.floor(100000 + Math.random() * 900000),
+                              settledAmount: String(d.mrp || 0),
+                              notes: ''
+                            })}
+                            className="px-2.5 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-bold flex items-center gap-1 shadow-sm transition-all active:scale-95"
+                            title="[ADMIN ONLY] Record Credit Note received from HO"
+                          >
+                            <FileCheck className="w-3 h-3" />
+                            <span>Settle CN</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
             {/* --- THERMAL GARMENT REPLACEMENT TAG MODAL --- */}
       {thermalTagModalData && (
@@ -1606,8 +2362,10 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
         <ReportDefectModal
           isOpen={showDefectModal}
           onClose={() => setShowDefectModal(false)}
+          userRole={currentRole}
           onQuarantineSuccess={(d) => {
             showToastMsg(`Garment #${d.articleNo} (${d.size}) quarantined in Damage Bin!`, 'success');
+            fetchDamages();
           }}
         />
       )}
@@ -2189,6 +2947,269 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                   <span>Open in Speed Billing</span>
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- ADMIN TAILOR REPAIR & RESTOCK MODAL --- */}
+      {repairNotesModal.isOpen && repairNotesModal.damage && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 space-y-4 shadow-2xl animate-in zoom-in-95">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                  <Scissors className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900 dark:text-white">
+                    Tailor Repair & Restock
+                  </h3>
+                  <p className="text-xs text-slate-500">Restore garment to active sales rack</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRepairNotesModal({ isOpen: false, damage: null, notes: '' })}
+                className="text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs space-y-1">
+              <p className="font-bold text-slate-900 dark:text-white">
+                Article #{repairNotesModal.damage.articleNo} ({repairNotesModal.damage.size})
+              </p>
+              <p className="text-slate-500">Defect: {repairNotesModal.damage.defectType} — {repairNotesModal.damage.defectDesc}</p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                Tailor Work Notes
+              </label>
+              <textarea
+                rows={3}
+                value={repairNotesModal.notes}
+                onChange={(e) => setRepairNotesModal(prev => ({ ...prev, notes: e.target.value }))}
+                placeholder="e.g. In-house tailor stitched seam, replaced missing button, and pressed..."
+                className="w-full p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+              />
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setRepairNotesModal({ isOpen: false, damage: null, notes: '' })}
+                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold hover:bg-slate-200 dark:hover:bg-slate-700"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleRepairRestock(repairNotesModal.damage.id, repairNotesModal.notes)}
+                className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-lg shadow-emerald-500/25 flex items-center gap-1.5"
+              >
+                <Check className="w-4 h-4" />
+                <span>Confirm Restock to Rack</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- ADMIN RTV BATCH DISPATCH MODAL --- */}
+      {rtvBatchModal.isOpen && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 space-y-4 shadow-2xl animate-in zoom-in-95">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30">
+                  <Truck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900 dark:text-white">
+                    Dispatch RTV Return Batch
+                  </h3>
+                  <p className="text-xs text-slate-500">Return damaged pieces to Cobb HO / Factory</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRtvBatchModal({ isOpen: false, itemIds: [], transportName: '', destination: '' })}
+                className="text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 text-xs space-y-1">
+              <p className="font-extrabold text-indigo-700 dark:text-indigo-300">
+                📦 {rtvBatchModal.itemIds.length} Defective Garment(s) Selected
+              </p>
+              <p className="text-indigo-600/80 dark:text-indigo-400/80 text-[11px]">
+                These pieces will be bundled into an official RTV parcel for Head Office credit claim.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Courier / Transport Name
+                </label>
+                <input
+                  type="text"
+                  value={rtvBatchModal.transportName}
+                  onChange={(e) => setRtvBatchModal(prev => ({ ...prev, transportName: e.target.value }))}
+                  placeholder="e.g. DTDC Air / Self Handover / Delhivery"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Destination Address / Warehouse
+                </label>
+                <input
+                  type="text"
+                  value={rtvBatchModal.destination}
+                  onChange={(e) => setRtvBatchModal(prev => ({ ...prev, destination: e.target.value }))}
+                  placeholder="Cobb Head Office / Factory, Gurugram"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setRtvBatchModal({ isOpen: false, itemIds: [], transportName: '', destination: '' })}
+                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold hover:bg-slate-200 dark:hover:bg-slate-700"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleCreateRtvBatch(rtvBatchModal.itemIds, rtvBatchModal.transportName, rtvBatchModal.destination)}
+                className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-lg shadow-indigo-500/25 flex items-center gap-1.5"
+              >
+                <Truck className="w-4 h-4" />
+                <span>Create RTV Dispatch</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- ADMIN CREDIT NOTE SETTLEMENT MODAL --- */}
+      {settleModal.isOpen && settleModal.damage && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 space-y-4 shadow-2xl animate-in zoom-in-95">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+                  <FileCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900 dark:text-white">
+                    Settle via Credit Note
+                  </h3>
+                  <p className="text-xs text-slate-500">Record reimbursement from Cobb HO</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSettleModal({ isOpen: false, damage: null, creditNoteNo: '', settledAmount: '', notes: '' })}
+                className="text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Credit Note Number
+                </label>
+                <input
+                  type="text"
+                  value={settleModal.creditNoteNo}
+                  onChange={(e) => setSettleModal(prev => ({ ...prev, creditNoteNo: e.target.value }))}
+                  placeholder="CN-98210"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Settled Amount (₹)
+                </label>
+                <input
+                  type="number"
+                  value={settleModal.settledAmount}
+                  onChange={(e) => setSettleModal(prev => ({ ...prev, settledAmount: e.target.value }))}
+                  placeholder="1999"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  Settlement Remarks
+                </label>
+                <input
+                  type="text"
+                  value={settleModal.notes}
+                  onChange={(e) => setSettleModal(prev => ({ ...prev, notes: e.target.value }))}
+                  placeholder="100% factory defect credit passed by HO"
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-xs text-slate-900 dark:text-white"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setSettleModal({ isOpen: false, damage: null, creditNoteNo: '', settledAmount: '', notes: '' })}
+                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-semibold hover:bg-slate-200 dark:hover:bg-slate-700"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSettleCreditNote(
+                  settleModal.damage.id,
+                  settleModal.creditNoteNo,
+                  settleModal.settledAmount,
+                  settleModal.notes
+                )}
+                className="px-5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-bold shadow-lg shadow-cyan-500/25 flex items-center gap-1.5"
+              >
+                <Check className="w-4 h-4" />
+                <span>Confirm Settlement</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- PHOTO ZOOM MODAL --- */}
+      {photoPreviewUrl && (
+        <div
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 cursor-pointer"
+          onClick={() => setPhotoPreviewUrl(null)}
+        >
+          <div className="relative max-w-lg w-full bg-slate-900 rounded-2xl overflow-hidden border border-slate-700 shadow-2xl p-2" onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              onClick={() => setPhotoPreviewUrl(null)}
+              className="absolute top-4 right-4 z-10 p-2 rounded-full bg-black/60 text-white hover:bg-black/90 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <img src={photoPreviewUrl} alt="Defect High Res" className="w-full h-auto rounded-xl max-h-[80vh] object-contain" />
+            <div className="p-3 text-center text-xs text-slate-300 font-medium">
+              Defect photo captured on floor staff mobile camera
             </div>
           </div>
         </div>

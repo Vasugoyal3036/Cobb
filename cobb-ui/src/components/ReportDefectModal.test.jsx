@@ -108,6 +108,11 @@ describe('ReportDefectModal - Garment Defect & Damage Quarantine', () => {
         expect.objectContaining({
           barcode: '0082107519',
           articleNo: 'FSRF2602CR'
+        }),
+        expect.objectContaining({
+          headers: expect.objectContaining({
+            'x-user-role': 'staff'
+          })
         })
       );
       expect(thermalPrinter.triggerDamageSlipPrint).toHaveBeenCalled();

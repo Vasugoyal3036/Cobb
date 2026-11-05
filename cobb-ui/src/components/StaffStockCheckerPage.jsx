@@ -195,6 +195,7 @@ export default function StaffStockCheckerPage({
   const [thermalTagData, setThermalTagData] = useState(null);
   const [defectModalData, setDefectModalData] = useState(null);
   const [scannerMode, setScannerMode] = useState('lookup'); // 'lookup' | 'defect'
+  const [quarantineInfo, setQuarantineInfo] = useState(null); // Quarantined damage record (staff read-only)
   const [isSubmittingPending, setIsSubmittingPending] = useState(false);
 
   const [pendingSuccessMsg, setPendingSuccessMsg] = useState('');
@@ -332,6 +333,44 @@ export default function StaffStockCheckerPage({
     });
   }, []);
 
+  // Quick Damage & Defect Quarantine Status Check
+  const checkDamageQuarantine = useCallback(async (code) => {
+    if (!code) {
+      setQuarantineInfo(null);
+      return;
+    }
+    try {
+      const endpoint = API_BASE ? `${API_BASE}/api/damages/check/${encodeURIComponent(code)}` : `/api/damages/check/${encodeURIComponent(code)}`;
+      const res = await axios.get(endpoint, { timeout: 3500 });
+      if (res.data?.isQuarantined && res.data?.damage) {
+        setQuarantineInfo(res.data.damage);
+        return;
+      }
+      setQuarantineInfo(null);
+    } catch (e) {
+      // Cloud Firestore fallback check for Phone Link
+      try {
+        const { db } = await import('../utils/firebase');
+        if (db) {
+          const { doc, getDoc } = await import('firebase/firestore');
+          const dRef = doc(db, 'stores', activeStore || 'DEMO_STORE_001', 'data', 'damage_records');
+          const dSnap = await getDoc(dRef);
+          if (dSnap.exists()) {
+            const dl = dSnap.data()?.damages || [];
+            const normC = String(code).trim().toUpperCase();
+            const match = dl.find(d => d.status === 'quarantine' && (
+              String(d.barcode || '').trim().toUpperCase() === normC ||
+              String(d.articleNo || '').trim().toUpperCase() === normC
+            ));
+            setQuarantineInfo(match || null);
+            return;
+          }
+        }
+      } catch (fbErr) {}
+      setQuarantineInfo(null);
+    }
+  }, [API_BASE, activeStore]);
+
   // Main Stock Lookup Function
   const handleLookup = useCallback(async (searchQuery) => {
     const q = String(searchQuery || query || '').trim();
@@ -339,6 +378,7 @@ export default function StaffStockCheckerPage({
 
     setLoading(true);
     setErrorMsg('');
+    setQuarantineInfo(null);
 
     try {
       const endpoint = API_BASE
@@ -352,6 +392,8 @@ export default function StaffStockCheckerPage({
         setSelectedColorFilter('ALL');
         setSelectedSizeFilter('ALL');
         saveToRecentScans(res.data);
+        const codeToCheck = res.data?.scannedBarcode || res.data?.matchedBarcode || q;
+        checkDamageQuarantine(codeToCheck);
 
         // Haptic feedback & audio
         try {
@@ -375,6 +417,8 @@ export default function StaffStockCheckerPage({
         if (fallbackRes.data && fallbackRes.data.success) {
           setStockData(fallbackRes.data);
           saveToRecentScans(fallbackRes.data);
+          const codeToCheck = fallbackRes.data?.scannedBarcode || fallbackRes.data?.matchedBarcode || q;
+          checkDamageQuarantine(codeToCheck);
           return;
         }
       } catch {}
@@ -384,7 +428,7 @@ export default function StaffStockCheckerPage({
     } finally {
       setLoading(false);
     }
-  }, [query, API_BASE, saveToRecentScans]);
+  }, [query, API_BASE, saveToRecentScans, checkDamageQuarantine]);
 
   // Fast Floor Actions for Pending Tags
   const handleOpenAddPendingTag = (prefillColor = '', prefillSize = '') => {
@@ -1604,6 +1648,41 @@ export default function StaffStockCheckerPage({
                 </div>
               )}
 
+              {/* Quarantined Damage Bin Banner (Floor Staff Locked) */}
+              {quarantineInfo && (
+                <div className="mt-3 p-3.5 rounded-2xl bg-gradient-to-r from-red-950/90 to-rose-950/90 border-2 border-red-500/70 shadow-lg text-white">
+                  <div className="flex items-start gap-2.5">
+                    <div className="p-2 rounded-xl bg-red-600/30 text-red-400 border border-red-500/50 mt-0.5">
+                      <ShieldAlert className="w-5 h-5 text-red-400 animate-pulse" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-red-600 text-white shadow-sm">
+                          🔒 QUARANTINED IN DAMAGE BIN
+                        </span>
+                        <span className="text-[10px] font-bold text-red-300">
+                          STAFF LOCKED (READ-ONLY)
+                        </span>
+                      </div>
+                      <p className="text-xs font-bold text-red-100 mt-1">
+                        Defect: <span className="text-white font-extrabold">{quarantineInfo.defectType?.replace('_', ' ')}</span>
+                        {quarantineInfo.defectDesc && ` — "${quarantineInfo.defectDesc}"`}
+                      </p>
+                      <p className="text-[11px] text-red-300/90 mt-0.5">
+                        Reported by <span className="font-semibold text-white">{quarantineInfo.reportedBy || 'Floor Staff'}</span>
+                        {quarantineInfo.reportedAt && ` • ${new Date(quarantineInfo.reportedAt).toLocaleDateString()}`}
+                      </p>
+                      <div className="mt-2 p-2 rounded-lg bg-amber-500/15 border border-amber-500/30 text-[10px] text-amber-200 flex items-center gap-1.5 leading-snug">
+                        <span>🔒</span>
+                        <span>
+                          Floor staff cannot remove this article from defect. Only Store Admin / Owner can approve repair or return from the Admin Panel.
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Pending Tags Notice & Fast Report Button */}
               <div className="mt-3 pt-2.5 border-t border-[#EFE9DF] space-y-2">
                 {stockData.totalPendingTags > 0 ? (
@@ -1639,15 +1718,25 @@ export default function StaffStockCheckerPage({
                       <Printer className="w-3 h-3" />
                       <span>Print Tag</span>
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => handleOpenReportDefect()}
-                      className="px-2.5 py-1 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-[11px] font-bold flex items-center gap-1 transition-all active:scale-95 shadow-sm"
-                      title="Quarantine damaged or defective garment"
-                    >
-                      <ShieldAlert className="w-3 h-3 text-rose-600" />
-                      <span>Report Damage</span>
-                    </button>
+                    {quarantineInfo ? (
+                      <span
+                        className="px-2.5 py-1 rounded-xl bg-red-950/40 border border-red-500/40 text-red-300 text-[11px] font-bold flex items-center gap-1 cursor-not-allowed"
+                        title="Item is already quarantined in Damage Bin. Staff cannot remove or re-report."
+                      >
+                        <ShieldAlert className="w-3 h-3 text-red-400" />
+                        <span>Already in Defect Bin</span>
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenReportDefect()}
+                        className="px-2.5 py-1 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-[11px] font-bold flex items-center gap-1 transition-all active:scale-95 shadow-sm"
+                        title="Quarantine damaged or defective garment"
+                      >
+                        <ShieldAlert className="w-3 h-3 text-rose-600" />
+                        <span>Report Damage</span>
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => handleOpenAddPendingTag()}
@@ -2290,6 +2379,7 @@ export default function StaffStockCheckerPage({
           initialBarcode={defectModalData?.barcode || ''}
           initialArticle={defectModalData}
           onQuarantineSuccess={(d) => {
+            setQuarantineInfo(d);
             setPendingSuccessMsg(`Garment #${d.articleNo} (${d.size}) quarantined in Damage Bin!`);
             setTimeout(() => setPendingSuccessMsg(''), 4000);
             if (stockData?.articleNo) {
