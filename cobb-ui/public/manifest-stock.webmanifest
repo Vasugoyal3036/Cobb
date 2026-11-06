@@ -4,7 +4,7 @@
   "description": "Floor Staff Garment & Size Stock Checker",
   "start_url": "/#stock",
   "scope": "/",
-  "id": "/stock-checker",
+  "id": "/stock-checker-v2",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#09090C",
@@ -12,34 +12,27 @@
   "categories": ["business", "productivity"],
   "icons": [
     {
-      "src": "/goyal-icon-192.png",
+      "src": "/goyal-icon-192.png?v=20261106_GH",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/goyal-icon-512.png",
+      "src": "/goyal-icon-512.png?v=20261106_GH",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/goyal-icon-1024.png",
+      "src": "/goyal-icon-1024.png?v=20261106_GH",
       "sizes": "1024x1024",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/ors-logo.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/ors-squircle.jpg",
-      "sizes": "512x512",
-      "type": "image/jpeg",
-      "purpose": "any"
+      "src": "/favicon.ico?v=20261106_GH",
+      "sizes": "32x32 48x48 64x64",
+      "type": "image/x-icon"
     }
   ]
 }

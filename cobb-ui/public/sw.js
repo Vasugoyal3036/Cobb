@@ -1,17 +1,17 @@
-const CACHE_NAME = 'cobb-crm-cache-v10';
+const CACHE_NAME = 'cobb-crm-cache-v11';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
-  '/goyal-icon-192.png',
-  '/goyal-icon-512.png',
-  '/apple-touch-icon.png',
-  '/ors-logo.png',
-  '/ors-squircle.jpg',
-  '/favicon.svg',
-  '/manifest.webmanifest',
-  '/manifest.json',
-  '/manifest-stock.json',
-  '/manifest-stock.webmanifest'
+  '/goyal-icon-192.png?v=20261106_GH',
+  '/goyal-icon-512.png?v=20261106_GH',
+  '/goyal-icon-1024.png?v=20261106_GH',
+  '/apple-touch-icon.png?v=20261106_GH',
+  '/favicon.ico?v=20261106_GH',
+  '/favicon.svg?v=20261106_GH',
+  '/manifest.webmanifest?v=20261106_GH',
+  '/manifest.json?v=20261106_GH',
+  '/manifest-stock.json?v=20261106_GH',
+  '/manifest-stock.webmanifest?v=20261106_GH'
 ];
 
 self.addEventListener('install', (event) => {

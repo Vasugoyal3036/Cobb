@@ -57,14 +57,14 @@ function y() {
 	_ &&= (console.log("[Electron] Stopping backend server..."), _.kill(), null);
 }
 function b() {
-	let t = s.join(process.env.VITE_PUBLIC, "ors-logo.png"), n = s.join(process.env.VITE_PUBLIC, "favicon.svg"), r = l.existsSync(t) ? t : n;
+	let t = s.join(process.env.VITE_PUBLIC, "app.ico"), n = s.join(process.env.VITE_PUBLIC, "goyal-icon-512.png"), r = s.join(process.env.VITE_PUBLIC, "ors-logo.png"), i = l.existsSync(t) ? t : l.existsSync(n) ? n : r;
 	g = new e({
 		title: "Goyal - House Of Fashion | Retail POS & Chain OS",
 		width: 1280,
 		height: 800,
 		minWidth: 1024,
 		minHeight: 768,
-		icon: l.existsSync(r) ? r : void 0,
+		icon: l.existsSync(i) ? i : void 0,
 		webPreferences: {
 			preload: s.join(f, "preload.js"),
 			nodeIntegration: !0,

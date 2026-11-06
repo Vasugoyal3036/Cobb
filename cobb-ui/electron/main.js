@@ -82,9 +82,10 @@ function stopBackendServer() {
 }
 
 function createWindow() {
-  const iconCandidate = path.join(process.env.VITE_PUBLIC, 'ors-logo.png');
-  const iconFallback = path.join(process.env.VITE_PUBLIC, 'favicon.svg');
-  const iconPath = fs.existsSync(iconCandidate) ? iconCandidate : iconFallback;
+  const iconIco = path.join(process.env.VITE_PUBLIC, 'app.ico');
+  const iconPng = path.join(process.env.VITE_PUBLIC, 'goyal-icon-512.png');
+  const iconLegacy = path.join(process.env.VITE_PUBLIC, 'ors-logo.png');
+  const iconPath = fs.existsSync(iconIco) ? iconIco : (fs.existsSync(iconPng) ? iconPng : iconLegacy);
   win = new BrowserWindow({
     title: 'Goyal - House Of Fashion | Retail POS & Chain OS',
     width: 1280,
