@@ -2513,10 +2513,13 @@ export default function App() {
   const isStaffStockPage = typeof window !== 'undefined' && (
     window.location.pathname.includes('/stock') ||
     window.location.pathname.includes('/checker') ||
+    window.location.pathname.includes('/staff') ||
     window.location.search.includes('stock') ||
     window.location.search.includes('checker') ||
+    window.location.search.includes('staff') ||
     window.location.hash.includes('stock') ||
-    window.location.hash.includes('checker')
+    window.location.hash.includes('checker') ||
+    window.location.hash.includes('staff')
   );
 
   if (isStaffStockPage) {
@@ -2526,6 +2529,27 @@ export default function App() {
           API_BASE={API_BASE}
           activeStore={activeStore}
           darkMode={darkMode}
+          onClose={() => { window.location.href = '/'; }}
+        />
+      </Suspense>
+    );
+  }
+
+  // Direct Owner Swiss Boutique Hub (For store owners on mobile/desktop)
+  const isOwnerHubPage = typeof window !== 'undefined' && (
+    window.location.pathname.includes('/owner') ||
+    window.location.search.includes('owner') ||
+    window.location.hash.includes('owner')
+  );
+
+  if (isOwnerHubPage) {
+    return (
+      <Suspense fallback={<div className="min-h-screen bg-black flex items-center justify-center text-amber-400 font-bold">Loading Cobb Owner Desk...</div>}>
+        <OwnerHubTab
+          API_BASE={API_BASE}
+          activeStore={activeStore}
+          darkMode={darkMode}
+          isStandaloneMobile={true}
           onClose={() => { window.location.href = '/'; }}
         />
       </Suspense>

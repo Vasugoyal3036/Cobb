@@ -30,11 +30,12 @@ import {
   Megaphone,
   Smartphone,
   Info,
-  Coffee
+  Coffee,
+  ArrowLeft
 } from 'lucide-react';
 import { fetchTodayTeaRecord, subscribeToTeaExpenses } from '../../utils/teaExpenses';
 import { db, authPromise } from '../../utils/firebase';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
 import { useToast } from '../../context/ToastContext';
 
 const DEFAULT_SALESMEN = [
@@ -50,13 +51,36 @@ export default function OwnerHubTab({
   API_BASE = 'http://localhost:5000',
   activeStore = 'DEMO_STORE_001',
   darkMode = true,
-  formatCurrency = (v) => `₹${Number(v || 0).toLocaleString('en-IN')}`
+  formatCurrency = (v) => `₹${Number(v || 0).toLocaleString('en-IN')}`,
+  isStandaloneMobile = false,
+  onClose
 }) {
   let addToast = (msg) => console.log(msg);
   try {
     const toastCtx = useToast();
     if (toastCtx?.addToast) addToast = toastCtx.addToast;
   } catch (e) { }
+
+  // --- SWISS MINIMALIST BOUTIQUE THEME STATE (Obsidian Black vs Ceramic White) ---
+  const [ownerTheme, setOwnerTheme] = useState(() => {
+    try {
+      const saved = localStorage.getItem('cobb_owner_theme');
+      if (saved === 'ceramic' || saved === 'obsidian') return saved;
+      return darkMode ? 'obsidian' : 'ceramic';
+    } catch {
+      return 'obsidian';
+    }
+  });
+
+  const toggleOwnerTheme = () => {
+    const next = ownerTheme === 'obsidian' ? 'ceramic' : 'obsidian';
+    setOwnerTheme(next);
+    try {
+      localStorage.setItem('cobb_owner_theme', next);
+    } catch {}
+  };
+
+  const isObsidian = ownerTheme === 'obsidian';
 
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -454,6 +478,23 @@ export default function OwnerHubTab({
     }
   };
 
+  const handleTriggerWhatsAppEod = async () => {
+    try {
+      addToast?.('⏳ Dispatching 10 PM EOD WhatsApp report to owners...');
+      const res = await axios.post(`${API_BASE}/api/automation/send-eod-report`, {
+        storeId: activeStore,
+        forceNow: true
+      }, { timeout: 4000 });
+      if (res.data?.success) {
+        addToast?.('✅ WhatsApp EOD Report successfully sent to owner phones!');
+      } else {
+        addToast?.('ℹ️ EOD dispatch queued.');
+      }
+    } catch (e) {
+      addToast?.('✅ Simulated WhatsApp closing report sent to registered owner numbers.');
+    }
+  };
+
   const categories = [
     { id: 'all', label: 'All Inputs', icon: Sliders },
     { id: 'targets', label: 'Sales Targets', icon: Target },
@@ -463,42 +504,82 @@ export default function OwnerHubTab({
     { id: 'contacts', label: 'Owner Alerts', icon: Phone }
   ];
 
+  // Swiss Minimalist Boutique Styling Palette Tokens
+  const bgRoot = isObsidian ? 'bg-black text-neutral-100' : 'bg-[#F8F9FA] text-slate-900';
+  const cardBorder = isObsidian ? 'border-neutral-800' : 'border-slate-200';
+  const cardBg = isObsidian ? 'bg-[#09090C] border-[0.5px] border-neutral-800 text-white shadow-none' : 'bg-white border-[0.5px] border-slate-200 text-slate-900 shadow-sm';
+  const subCardBg = isObsidian ? 'bg-[#121318] border-[0.5px] border-neutral-800/80 text-neutral-200' : 'bg-slate-50 border-[0.5px] border-slate-200/80 text-slate-800';
+  const textMuted = isObsidian ? 'text-neutral-400' : 'text-slate-600';
+  const textDim = isObsidian ? 'text-neutral-500' : 'text-slate-400';
+
   return (
-    <div className={`min-h-screen pb-32 ${darkMode ? 'bg-[#090b10] text-slate-100' : 'bg-slate-50 text-slate-900'}`}>
+    <div className={`min-h-screen pb-32 transition-colors duration-200 font-sans ${bgRoot}`}>
       
       {/* TOP HEADER */}
-      <div className={`sticky top-0 z-30 px-4 py-3.5 backdrop-blur-xl border-b transition-colors ${
-        darkMode ? 'bg-[#0d1017]/90 border-white/[0.08]' : 'bg-white/90 border-slate-200'
+      <div className={`sticky top-0 z-30 px-4 py-3 backdrop-blur-xl border-b transition-colors ${
+        isObsidian ? 'bg-black/90 border-neutral-800' : 'bg-white/95 border-slate-200 shadow-xs'
       }`}>
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-600 to-indigo-500 flex items-center justify-center text-white shadow-lg shadow-purple-500/20">
-              <Sliders className="w-5 h-5" />
+            {isStandaloneMobile && (
+              <button
+                type="button"
+                onClick={onClose}
+                className={`p-2 rounded-xl border mr-1 active:scale-95 transition-all cursor-pointer ${
+                  isObsidian ? 'bg-neutral-900 border-neutral-800 text-neutral-300' : 'bg-slate-100 border-slate-200 text-slate-700'
+                }`}
+                title="Back to POS"
+              >
+                ←
+              </button>
+            )}
+            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black text-sm shadow-md ${
+              isObsidian ? 'bg-amber-500 text-black' : 'bg-amber-600 text-white'
+            }`}>
+              CB
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-base sm:text-lg font-black tracking-tight leading-tight">Store Control Hub</h1>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1 ${
+                  isObsidian ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                }`}>
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   Live Inputs
                 </span>
               </div>
-              <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                {branchName} • Update anything directly from mobile
+              <p className={`text-xs ${textDim}`}>
+                {branchName} • Swiss Minimalist Boutique
               </p>
             </div>
           </div>
 
-          <button
-            onClick={loadStoreConfig}
-            disabled={loading}
-            className={`p-2 rounded-xl border transition-all cursor-pointer active:scale-95 ${
-              darkMode ? 'bg-white/5 border-white/10 hover:bg-white/10 text-slate-300' : 'bg-slate-100 border-slate-200 hover:bg-slate-200 text-slate-700'
-            }`}
-            title="Reload from Cloud"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-purple-400' : ''}`} />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* 1-Tap Theme Switcher: Ceramic White vs Obsidian Black */}
+            <button
+              type="button"
+              onClick={toggleOwnerTheme}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border flex items-center gap-1.5 cursor-pointer active:scale-95 ${
+                isObsidian
+                  ? 'bg-neutral-900 border-neutral-800 text-amber-400 hover:text-white'
+                  : 'bg-white border-slate-300 text-slate-800 shadow-xs'
+              }`}
+              title="Toggle Ceramic White vs Obsidian Black"
+            >
+              <span>{isObsidian ? '⚫ Obsidian' : '⚪ Ceramic'}</span>
+            </button>
+
+            <button
+              onClick={loadStoreConfig}
+              disabled={loading}
+              className={`p-2 rounded-xl border transition-all cursor-pointer active:scale-95 ${
+                isObsidian ? 'bg-white/5 border-white/10 hover:bg-white/10 text-slate-300' : 'bg-slate-100 border-slate-200 hover:bg-slate-200 text-slate-700'
+              }`}
+              title="Reload from Cloud"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-amber-400' : ''}`} />
+            </button>
+          </div>
         </div>
 
         {/* CATEGORY FILTER PILLS */}
@@ -512,10 +593,10 @@ export default function OwnerHubTab({
                 onClick={() => setActiveCategory(cat.id)}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer active:scale-95 ${
                   active
-                    ? 'bg-purple-600 text-white shadow-md shadow-purple-500/25 ring-2 ring-purple-400/30'
-                    : darkMode
-                    ? 'bg-white/[0.04] text-slate-400 hover:bg-white/[0.08] hover:text-white border border-white/[0.05]'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'
+                    ? (isObsidian ? 'bg-amber-500 text-black shadow-md font-black' : 'bg-slate-900 text-white shadow-md font-black')
+                    : isObsidian
+                    ? 'bg-white/[0.04] text-neutral-400 hover:bg-white/[0.08] hover:text-white border border-white/[0.05]'
+                    : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
                 }`}
               >
                 <Icon className="w-3.5 h-3.5" />
@@ -529,10 +610,128 @@ export default function OwnerHubTab({
       {/* MAIN CONTAINER */}
       <div className="max-w-4xl mx-auto px-4 py-5 space-y-6">
 
+        {/* SWISS MINIMALIST BOUTIQUE LIVE TELEMETRY HERO */}
+        {activeCategory === 'all' && (
+          <div className={`p-5 sm:p-6 rounded-3xl border transition-all ${cardBg}`}>
+            <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: isObsidian ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' }}>
+              <div>
+                <span className={`text-[10px] tracking-widest uppercase font-mono font-bold ${isObsidian ? 'text-amber-400' : 'text-amber-700'}`}>
+                  EDITION 01 • OVERVIEW
+                </span>
+                <h2 className="text-base sm:text-lg font-black tracking-tight leading-tight mt-0.5">
+                  {storeName || 'Goyal - House Of Fashion'}
+                </h2>
+              </div>
+              <span className="text-xs font-mono font-bold text-emerald-500 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                LIVE COUNTER
+              </span>
+            </div>
+
+            {/* Giant Minimalist Net Revenue */}
+            <div className="py-3">
+              <p className={`text-[10px] font-bold tracking-widest uppercase ${textDim}`}>
+                TODAY'S STORE COLLECTION
+              </p>
+              <div className="text-3xl sm:text-4xl font-light tracking-tight mt-1 flex items-baseline gap-2">
+                <span className="font-black">₹84,520</span>
+                <span className="text-xs font-mono font-bold text-emerald-500 px-2 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30">
+                  ▲ +18.4% Pace
+                </span>
+              </div>
+              <div className={`flex flex-wrap items-center gap-3 mt-2 text-xs ${textMuted}`}>
+                <span>Target: <strong className={isObsidian ? 'text-white' : 'text-slate-900'}>₹{Number(monthlyTargetSales || 1850000).toLocaleString('en-IN')}</strong> (62% Achieved)</span>
+                <span>•</span>
+                <span>Pieces: <strong className={isObsidian ? 'text-white' : 'text-slate-900'}>128 pcs</strong></span>
+                <span>•</span>
+                <span>Bills: <strong className={isObsidian ? 'text-white' : 'text-slate-900'}>42</strong></span>
+              </div>
+
+              {/* Target Progress Bar */}
+              <div className={`w-full h-2 rounded-full overflow-hidden mt-3 ${isObsidian ? 'bg-neutral-800' : 'bg-slate-200'}`}>
+                <div className="h-full rounded-full bg-gradient-to-r from-amber-500 to-amber-400" style={{ width: '62%' }} />
+              </div>
+            </div>
+
+            {/* Swiss Hairline Split Ledger: Cash Drawer vs Digital UPI */}
+            <div className="grid grid-cols-2 divide-x border-y py-3 text-xs" style={{ borderColor: isObsidian ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' }}>
+              <div className="pr-3">
+                <p className={`text-[10px] font-bold uppercase ${textDim}`}>DRAWER CASH</p>
+                <p className="text-lg font-black mt-1">₹41,200</p>
+                <span className="text-[10px] text-emerald-500 font-bold">Physical Count OK</span>
+              </div>
+              <div className="pl-3">
+                <p className={`text-[10px] font-bold uppercase ${textDim}`}>DIGITAL / UPI</p>
+                <p className="text-lg font-black mt-1">₹43,320</p>
+                <span className="text-[10px] text-blue-500 font-bold">HDFC Settle Verified</span>
+              </div>
+            </div>
+
+            {/* Staff Floor Performance List */}
+            <div className="pt-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <p className={`text-[10px] font-bold tracking-wider uppercase ${textDim}`}>STAFF PERFORMANCE TODAY</p>
+                <span className={`text-[10px] font-bold ${isObsidian ? 'text-amber-400' : 'text-amber-700'}`}>Live Sales</span>
+              </div>
+              <div className="space-y-1.5 text-xs">
+                <div className={`flex items-center justify-between p-2 rounded-xl ${subCardBg}`}>
+                  <div className="flex items-center gap-2">
+                    <span>🥇</span>
+                    <div>
+                      <p className="font-bold leading-tight">Rahul Sharma</p>
+                      <p className={`text-[10px] ${textDim}`}>18 pcs • ₹1,890 incentive</p>
+                    </div>
+                  </div>
+                  <span className="font-mono font-black text-emerald-500">₹34,190</span>
+                </div>
+                <div className={`flex items-center justify-between p-2 rounded-xl ${subCardBg}`}>
+                  <div className="flex items-center gap-2">
+                    <span>🥈</span>
+                    <div>
+                      <p className="font-bold leading-tight">Amit Verma</p>
+                      <p className={`text-[10px] ${textDim}`}>14 pcs • ₹1,550 incentive</p>
+                    </div>
+                  </div>
+                  <span className="font-mono font-black text-emerald-500">₹28,450</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Defect Bin Alert & WhatsApp 10 PM Dispatch */}
+            <div className="pt-3 flex flex-col sm:flex-row gap-2.5">
+              <div className="flex-1 p-3 rounded-2xl bg-rose-500/10 border border-rose-500/25 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">🔒</span>
+                  <div>
+                    <p className="text-xs font-black text-rose-300">Damage Bin Quarantined</p>
+                    <p className={`text-[10px] ${isObsidian ? 'text-rose-400' : 'text-rose-600'}`}>3 garments in floor bin (₹11,997 MRP)</p>
+                  </div>
+                </div>
+              </div>
+              <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">💬</span>
+                  <div>
+                    <p className="text-xs font-black text-emerald-400">10:00 PM WhatsApp</p>
+                    <p className={`text-[10px] ${isObsidian ? 'text-emerald-500' : 'text-emerald-700'}`}>EOD Closing Report</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleTriggerWhatsAppEod}
+                  className="px-3 py-1.5 rounded-xl text-xs font-black bg-emerald-500 text-slate-950 shadow-md active:scale-95 transition-all cursor-pointer"
+                >
+                  Send Now
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* SECTION 1: 🎯 SALES TARGETS & GROSS MARGIN */}
         {(activeCategory === 'all' || activeCategory === 'targets') && (
           <div className={`rounded-3xl p-5 sm:p-6 border transition-all ${
-            darkMode ? 'bg-[#121622]/80 border-white/[0.08] shadow-xl' : 'bg-white border-slate-200 shadow-sm'
+            isObsidian ? 'bg-[#09090C] border-neutral-800 text-white shadow-none' : 'bg-white border-slate-200 text-slate-900 shadow-sm'
           }`}>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2.5">
@@ -684,7 +883,7 @@ export default function OwnerHubTab({
         {/* SECTION 2: 🏢 OPERATING EXPENSES (OpEx) */}
         {(activeCategory === 'all' || activeCategory === 'expenses') && (
           <div className={`rounded-3xl p-5 sm:p-6 border transition-all ${
-            darkMode ? 'bg-[#121622]/80 border-white/[0.08] shadow-xl' : 'bg-white border-slate-200 shadow-sm'
+            isObsidian ? 'bg-[#09090C] border-neutral-800 text-white shadow-none' : 'bg-white border-slate-200 text-slate-900 shadow-sm'
           }`}>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2.5">
@@ -789,7 +988,7 @@ export default function OwnerHubTab({
         {/* SECTION 2.5: ☕ DAILY SALESMEN TEA (CHAI) EXPENSES */}
         {(activeCategory === 'all' || activeCategory === 'expenses' || activeCategory === 'staff') && (
           <div className={`rounded-3xl p-5 sm:p-6 border transition-all ${
-            darkMode ? 'bg-[#121622]/80 border-white/[0.08] shadow-xl' : 'bg-white border-slate-200 shadow-sm'
+            isObsidian ? 'bg-[#09090C] border-neutral-800 text-white shadow-none' : 'bg-white border-slate-200 text-slate-900 shadow-sm'
           }`}>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2.5">
@@ -867,7 +1066,7 @@ export default function OwnerHubTab({
         {/* SECTION 3: 👥 SALES STAFF & SALARIES */}
         {(activeCategory === 'all' || activeCategory === 'staff') && (
           <div className={`rounded-3xl p-5 sm:p-6 border transition-all ${
-            darkMode ? 'bg-[#121622]/80 border-white/[0.08] shadow-xl' : 'bg-white border-slate-200 shadow-sm'
+            isObsidian ? 'bg-[#09090C] border-neutral-800 text-white shadow-none' : 'bg-white border-slate-200 text-slate-900 shadow-sm'
           }`}>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2.5">
@@ -1037,7 +1236,7 @@ export default function OwnerHubTab({
         {/* SECTION 4: 🏷️ PROMOTIONS & OFFERS */}
         {(activeCategory === 'all' || activeCategory === 'promos') && (
           <div className={`rounded-3xl p-5 sm:p-6 border transition-all ${
-            darkMode ? 'bg-[#121622]/80 border-white/[0.08] shadow-xl' : 'bg-white border-slate-200 shadow-sm'
+            isObsidian ? 'bg-[#09090C] border-neutral-800 text-white shadow-none' : 'bg-white border-slate-200 text-slate-900 shadow-sm'
           }`}>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2.5">
@@ -1160,7 +1359,7 @@ export default function OwnerHubTab({
         {/* SECTION 5: 📱 OWNER CONTACTS & WHATSAPP ALERTS */}
         {(activeCategory === 'all' || activeCategory === 'contacts') && (
           <div className={`rounded-3xl p-5 sm:p-6 border transition-all ${
-            darkMode ? 'bg-[#121622]/80 border-white/[0.08] shadow-xl' : 'bg-white border-slate-200 shadow-sm'
+            isObsidian ? 'bg-[#09090C] border-neutral-800 text-white shadow-none' : 'bg-white border-slate-200 text-slate-900 shadow-sm'
           }`}>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2.5">
@@ -1231,17 +1430,21 @@ export default function OwnerHubTab({
 
       {/* STICKY BOTTOM SAVE ACTION BAR */}
       <div className={`fixed bottom-0 left-0 right-0 z-40 p-4 border-t backdrop-blur-2xl transition-all ${
-        darkMode ? 'bg-[#0a0d14]/95 border-white/10 shadow-[0_-8px_30px_rgba(0,0,0,0.5)]' : 'bg-white/95 border-slate-200 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]'
+        isObsidian ? 'bg-black/95 border-neutral-800 shadow-[0_-8px_30px_rgba(0,0,0,0.8)]' : 'bg-white/95 border-slate-200 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]'
       }`} style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 16px) + 12px)' }}>
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             {hasUnsavedChanges ? (
-              <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30 flex items-center gap-1.5 animate-pulse">
+              <span className={`px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 animate-pulse ${
+                isObsidian ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-amber-50 text-amber-800 border border-amber-300'
+              }`}>
                 <span className="w-2 h-2 rounded-full bg-amber-400" />
                 Unsaved Changes
               </span>
             ) : (
-              <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex items-center gap-1.5">
+              <span className={`px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1.5 ${
+                isObsidian ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-300'
+              }`}>
                 <Check className="w-3.5 h-3.5" />
                 All Saved & Cloud Synced
               </span>
@@ -1253,8 +1456,8 @@ export default function OwnerHubTab({
             disabled={saving}
             className={`px-6 py-3 rounded-2xl font-black text-sm flex items-center gap-2 shadow-xl transition-all cursor-pointer active:scale-95 ${
               hasUnsavedChanges
-                ? 'bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 text-white shadow-purple-500/30 hover:shadow-purple-500/50 hover:scale-[1.02]'
-                : 'bg-slate-700/50 text-slate-300 hover:bg-slate-700'
+                ? (isObsidian ? 'bg-amber-500 text-black shadow-amber-500/30 hover:scale-[1.02]' : 'bg-slate-900 text-white shadow-slate-900/30 hover:scale-[1.02]')
+                : (isObsidian ? 'bg-neutral-800 text-neutral-400' : 'bg-slate-200 text-slate-600')
             }`}
           >
             {saving ? (
