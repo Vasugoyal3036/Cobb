@@ -3,7 +3,6 @@ import RolePinModal from './RolePinModal';
 import axios from 'axios';
 import OrsLogo from './OrsLogo';
 import PwaInstallBanner from './PwaInstallBanner';
-import WorkspaceHeader from './WorkspaceHeader';
 
 // Lazy-loaded heavy administrative and DevOps modals to minimize bundle size
 const SetupWizardModal = lazy(() => import('./SetupWizardModal'));
@@ -185,8 +184,6 @@ const Layout = ({
   dormant = [],
   openCustomerCard,
   toggleBillExpansion,
-  simplifiedMode = true,
-  setSimplifiedMode,
   onSwitchSubDesk
 }) => {
 
@@ -356,7 +353,7 @@ const Layout = ({
       )}
 
       {/* Sidebar Navigation - Glassmorphism Floating Theme */}
-      <div className={`fixed lg:static inset-y-0 left-0 lg:my-4 lg:ml-4 lg:mr-2 lg:h-[calc(100vh-32px)] lg:rounded-[2rem] flex flex-col z-40 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isMobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0'} ${simplifiedMode ? 'lg:hidden' : (isLeftSidebarCollapsed ? 'w-[80px]' : 'w-[85vw] max-w-xs lg:w-64')} ${darkMode ? 'bg-[#0d111a] lg:bg-white/[0.03] backdrop-blur-xl border-r lg:border border-white/[0.08] shadow-[0_8px_32px_0_rgba(0,0,0,0.6)]' : 'bg-white lg:bg-white/80 backdrop-blur-xl border-r lg:border border-slate-200/50 shadow-[0_8px_30px_rgb(0,0,0,0.06)]'}`}>
+      <div className={`fixed lg:static inset-y-0 left-0 lg:my-4 lg:ml-4 lg:mr-2 lg:h-[calc(100vh-32px)] lg:rounded-[2rem] flex flex-col z-40 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isMobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0'} ${isLeftSidebarCollapsed ? 'w-[80px]' : 'w-[85vw] max-w-xs lg:w-64'} ${darkMode ? 'bg-[#0d111a] lg:bg-white/[0.03] backdrop-blur-xl border-r lg:border border-white/[0.08] shadow-[0_8px_32px_0_rgba(0,0,0,0.6)]' : 'bg-white lg:bg-white/80 backdrop-blur-xl border-r lg:border border-slate-200/50 shadow-[0_8px_30px_rgb(0,0,0,0.06)]'}`}>
         <div className={`p-4 lg:p-5 pb-3 flex items-center border-b transition-all duration-500 pt-safe ${isLeftSidebarCollapsed ? 'justify-center px-2' : 'justify-between'} ${darkMode ? 'border-white/[0.06]' : 'border-slate-100'}`}>
           <div className="flex items-center gap-2.5">
             <OrsLogo size={38} />
@@ -634,23 +631,6 @@ const Layout = ({
           </div>
         </header>
 
-        {/* Top 4-Workspace Navigation Header (Desktop & Mobile) */}
-        {activeTab !== 'stock_checker' && (
-          <WorkspaceHeader
-            activeTab={activeTab}
-            onSelectTab={setActiveTab}
-            darkMode={darkMode}
-            setDarkMode={setDarkMode}
-            dashTheme={dashTheme}
-            setDashTheme={setDashTheme}
-            simplifiedMode={simplifiedMode}
-            setSimplifiedMode={setSimplifiedMode}
-            onDayClose={handleGenerateEodReport}
-            activeStoreName={AVAILABLE_STORES.find(s => s.id === activeStore)?.name || 'Goyal - House Of Fashion'}
-            currentRole={currentRole}
-            onSwitchSubDesk={onSwitchSubDesk}
-          />
-        )}
 
         <div className={
           ['copilot', 'transit', 'vip', 'dormant', 'inventory', 'reorder', 'loyalty', 'smart_bundles', 'stock_checker'].includes(activeTab)

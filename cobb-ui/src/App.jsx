@@ -30,7 +30,6 @@ const GunScannerModal = lazy(() => import('./components/GunScannerModal'));
 const CustomerFeedbackPage = lazy(() => import('./components/CustomerFeedbackPage'));
 const StaffStockCheckerPage = lazy(() => import('./components/StaffStockCheckerPage'));
 const OwnerHubTab = lazy(() => import('./components/tabs/OwnerHubTab'));
-const StoreSummaryLanding = lazy(() => import('./components/StoreSummaryLanding'));
 
 import { fetchWithOfflineFallback, subscribeToData } from './utils/offlineDb';
 
@@ -752,20 +751,6 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('dashTheme', dashTheme);
   }, [dashTheme]);
-
-  const [simplifiedMode, setSimplifiedMode] = useState(() => {
-    try {
-      return localStorage.getItem('cobb_simplified_mode') !== 'false';
-    } catch (e) {
-      return true;
-    }
-  });
-
-  useEffect(() => {
-    try {
-      localStorage.setItem('cobb_simplified_mode', String(simplifiedMode));
-    } catch (e) {}
-  }, [simplifiedMode]);
 
   const [pendingTagsInitialSubDesk, setPendingTagsInitialSubDesk] = useState('tags');
 
@@ -3015,36 +3000,15 @@ export default function App() {
         dormant={dormant}
         openCustomerCard={openCustomerCard}
         toggleBillExpansion={toggleBillExpansion}
-        simplifiedMode={simplifiedMode}
-        setSimplifiedMode={setSimplifiedMode}
         onSwitchSubDesk={(sd) => setPendingTagsInitialSubDesk(sd)}
       >
-
-        {/* Dynamic Views */}
-
 
         {/* Dynamic Views */}
         <div>
           <Suspense fallback={<TabFallback />}>
             {/* 1. COMMAND CENTER */}
             {['dashboard', 'pnl', 'gst', 'analytics', 'monthly', 'topmovers', 'sizematrix', 'broadcast', 'wardrobe', 'retention'].includes(activeTab) && (
-              activeTab === 'dashboard' && simplifiedMode ? (
-                <StoreSummaryLanding
-                  activeStore={activeStore}
-                  AVAILABLE_STORES={storeList}
-                  liveBills={liveBills}
-                  onNavigate={(workspaceId, tabId) => {
-                    if (workspaceId === 'stock' && tabId === 'damages') {
-                      setPendingTagsInitialSubDesk('damages');
-                      setActiveTab('pending_tags');
-                    } else {
-                      setActiveTab(tabId);
-                    }
-                  }}
-                />
-              ) : (
-                <DashboardTab {...appState} />
-              )
+              <DashboardTab {...appState} />
             )}
 
             {/* 4. DEAD STOCK WITH AI OUTFIT MATCHER */}
