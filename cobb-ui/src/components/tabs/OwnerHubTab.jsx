@@ -37,6 +37,7 @@ import { fetchTodayTeaRecord, subscribeToTeaExpenses } from '../../utils/teaExpe
 import { db, authPromise } from '../../utils/firebase';
 import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
 import { useToast } from '../../context/ToastContext';
+import OrsLogo from '../OrsLogo';
 
 const DEFAULT_SALESMEN = [
   { id: '2800003', empCode: '2800003', name: 'Vikas', salary: 15000, mtdSales: 0, isActive: true },
@@ -533,10 +534,8 @@ export default function OwnerHubTab({
                 ←
               </button>
             )}
-            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black text-sm shadow-md ${
-              isObsidian ? 'bg-amber-500 text-black' : 'bg-amber-600 text-white'
-            }`}>
-              CB
+            <div className="shrink-0">
+              <OrsLogo size={38} showGlow={isObsidian} />
             </div>
             <div>
               <div className="flex items-center gap-2">

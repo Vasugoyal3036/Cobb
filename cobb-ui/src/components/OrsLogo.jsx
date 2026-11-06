@@ -1,163 +1,118 @@
 import React from 'react';
 
 /**
- * Modern, background-free vector logo for ORS.
- * Pure glowing neon-glass text "ORS" on a completely transparent background.
- * 100% vector sharpness at any size.
+ * Goyal House Of Fashion — Luxury Architectural Monogram Logo
+ * Architectural 'G' integrated with a bespoke clothes hanger in brushed brass gold.
  */
-export default function OrsLogo({ size = 44, className = '', showGlow = true }) {
+export default function OrsLogo({ size = 44, className = '', showGlow = true, showWordmark = false }) {
   const uniqueId = React.useId().replace(/:/g, '');
 
+  if (showWordmark) {
+    return (
+      <svg
+        width={size * 1.25}
+        height={size * 1.15}
+        viewBox="0 0 200 180"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        className={`shrink-0 select-none overflow-visible ${className}`}
+        style={{
+          filter: showGlow
+            ? 'drop-shadow(0 0 14px rgba(245, 158, 11, 0.45)) drop-shadow(0 0 28px rgba(217, 119, 6, 0.25))'
+            : 'none'
+        }}
+      >
+        <defs>
+          <linearGradient id={`goyalGold-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#FFF2A3" />
+            <stop offset="25%" stopColor="#F59E0B" />
+            <stop offset="65%" stopColor="#D97706" />
+            <stop offset="90%" stopColor="#B45309" />
+            <stop offset="100%" stopColor="#78350F" />
+          </linearGradient>
+          <radialGradient id={`backlight-${uniqueId}`} cx="50%" cy="45%" r="45%">
+            <stop offset="0%" stopColor="#F59E0B" stopOpacity="0.3" />
+            <stop offset="100%" stopColor="#F59E0B" stopOpacity="0" />
+          </radialGradient>
+        </defs>
+
+        {/* Ambient Backlight Halo */}
+        <circle cx="100" cy="55" r="50" fill={`url(#backlight-${uniqueId})`} />
+
+        {/* G + Hanger Emblem */}
+        <g transform="translate(10, 5)">
+          <path d="M 100 35 C 100 24 108 20 114 24 C 119 28 116 34 112 36 C 109 37 108 40 108 43" 
+                fill="none" stroke={`url(#goyalGold-${uniqueId})`} strokeWidth="3" strokeLinecap="round" />
+          <polygon points="108,43 112,49 104,49" fill={`url(#goyalGold-${uniqueId})`} />
+          <path d="M 45 78 C 65 65 92 52 108 49 C 116 52 126 55 135 58 L 134 62 C 124 59 116 56 108 53 C 90 57 66 69 44 82 Z" 
+                fill={`url(#goyalGold-${uniqueId})`} />
+          <path d="M 125 35 L 125 24 C 114 16 95 15 80 23 C 62 32 54 52 57 71 C 60 88 74 100 95 101 C 114 101 126 91 127 75 L 98 75 L 98 68 L 134 68 L 134 105 L 126 105 L 126 95 C 120 102 110 107 95 107 C 70 107 51 92 48 70 C 44 48 56 25 78 14 C 98 4 122 8 132 18 L 125 35 Z" 
+                fill={`url(#goyalGold-${uniqueId})`} />
+          <rect x="119" y="62" width="13" height="42" fill={`url(#goyalGold-${uniqueId})`} />
+          <rect x="117" y="102" width="17" height="3" fill={`url(#goyalGold-${uniqueId})`} />
+        </g>
+
+        {/* Wordmark Typography: G O Y Λ L */}
+        <g fill={`url(#goyalGold-${uniqueId})`} transform="translate(10, 132)">
+          <path d="M 22 14 C 18 14 14 11 14 7 C 14 3 18 0 22 0 C 26 0 29 2 30 5 L 28 6 C 27 3.5 25 2 22 2 C 19 2 16.5 4.5 16.5 7 C 16.5 9.5 19 12 22 12 C 24.5 12 26.5 10.5 27 9 L 22 9 L 22 7.5 L 29 7.5 L 29 13 C 27 13.8 24.5 14 22 14 Z" />
+          <ellipse cx="50" cy="7" rx="7" ry="7" fill="none" stroke={`url(#goyalGold-${uniqueId})`} strokeWidth="2.2" />
+          <path d="M 72 0 L 76.5 6.5 L 81 0 L 83.5 0 L 78 7.5 L 78 14 L 75 14 L 75 7.5 L 69.5 0 Z" />
+          <path d="M 103 0 L 109 14 L 106 14 L 103 6.5 L 100 14 L 97 14 L 103 0 Z" />
+          <path d="M 125 0 L 127.5 0 L 127.5 11.5 L 136 11.5 L 136 14 L 125 14 Z" />
+        </g>
+
+        {/* HOUSE OF FASHION */}
+        <text x="100" y="162" textAnchor="middle" fontSize="7" fontWeight="700" letterSpacing="4.5" fill={`url(#goyalGold-${uniqueId})`} fontFamily="sans-serif">
+          HOUSE OF FASHION
+        </text>
+        <line x1="88" y1="170" x2="112" y2="170" stroke={`url(#goyalGold-${uniqueId})`} strokeWidth="1.2" strokeLinecap="round" />
+      </svg>
+    );
+  }
+
+  // Pure Emblem Form for Compact / Icon usage (Square 100x100 ViewBox)
   return (
     <svg
       width={size}
       height={size}
-      viewBox="0 0 100 70"
+      viewBox="0 0 100 100"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
       className={`shrink-0 select-none overflow-visible ${className}`}
       style={{
-        filter: showGlow ? 'drop-shadow(0 0 10px rgba(0,245,255,0.45)) drop-shadow(0 0 20px rgba(139,92,246,0.35))' : 'none'
+        filter: showGlow
+          ? 'drop-shadow(0 0 10px rgba(245, 158, 11, 0.45)) drop-shadow(0 0 20px rgba(217, 119, 6, 0.25))'
+          : 'none'
       }}
     >
       <defs>
-        {/* Continuous Neon Gradient across O -> R -> S */}
-        <linearGradient id={`orsGrad-${uniqueId}`} x1="0%" y1="20%" x2="100%" y2="80%">
-          <stop offset="0%" stopColor="#00f5ff" />
-          <stop offset="25%" stopColor="#38bdf8" />
-          <stop offset="55%" stopColor="#6366f1" />
-          <stop offset="85%" stopColor="#a855f7" />
-          <stop offset="100%" stopColor="#ec4899" />
+        <linearGradient id={`goyalGold-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#FFF2A3" />
+          <stop offset="25%" stopColor="#F59E0B" />
+          <stop offset="65%" stopColor="#D97706" />
+          <stop offset="90%" stopColor="#B45309" />
+          <stop offset="100%" stopColor="#78350F" />
         </linearGradient>
-
-        {/* Specular Core Light (3D Glass Tube shine) */}
-        <linearGradient id={`specular-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="50%">
-          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.95" />
-          <stop offset="50%" stopColor="#e0f2fe" stopOpacity="0.5" />
-          <stop offset="100%" stopColor="#ffffff" stopOpacity="0.9" />
-        </linearGradient>
-
-        {/* Secondary Cyber Ribbon Gradient */}
-        <linearGradient id={`cyanRibbon-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#00f5ff" />
-          <stop offset="100%" stopColor="#3b82f6" />
-        </linearGradient>
-
-        <linearGradient id={`purpleRibbon-${uniqueId}`} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#c084fc" />
-          <stop offset="100%" stopColor="#6366f1" />
-        </linearGradient>
+        <radialGradient id={`backlight-${uniqueId}`} cx="50%" cy="50%" r="48%">
+          <stop offset="0%" stopColor="#F59E0B" stopOpacity="0.25" />
+          <stop offset="100%" stopColor="#F59E0B" stopOpacity="0" />
+        </radialGradient>
       </defs>
 
-      <g>
-        {/* ================= LETTER O ================= */}
-        {/* Glow Underlay */}
-        <ellipse
-          cx="22"
-          cy="35"
-          rx="15"
-          ry="19"
-          fill="none"
-          stroke="#00f5ff"
-          strokeWidth="7"
-          opacity="0.35"
-        />
-        {/* Main Neon Tube */}
-        <ellipse
-          cx="22"
-          cy="35"
-          rx="15"
-          ry="19"
-          fill="none"
-          stroke={`url(#cyanRibbon-${uniqueId})`}
-          strokeWidth="5.5"
-        />
-        {/* Specular Highlight */}
-        <ellipse
-          cx="22"
-          cy="35"
-          rx="15"
-          ry="19"
-          fill="none"
-          stroke={`url(#specular-${uniqueId})`}
-          strokeWidth="1.4"
-          strokeDasharray="16 35"
-          strokeDashoffset="12"
-        />
+      {/* Ambient Backlight Halo */}
+      <circle cx="50" cy="50" r="46" fill={`url(#backlight-${uniqueId})`} />
 
-        {/* ================= LETTER R ================= */}
-        {/* Glow Underlay */}
-        <path
-          d="M 43 54 L 43 16 L 57 16 C 64.5 16 69.5 20 69.5 27 C 69.5 33.5 64.5 37.5 57 37.5 L 43 37.5 M 55.5 37.5 L 68 54"
-          fill="none"
-          stroke="#6366f1"
-          strokeWidth="7"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          opacity="0.35"
-        />
-        {/* Main Neon Tube */}
-        <path
-          d="M 43 54 L 43 16 L 57 16 C 64.5 16 69.5 20 69.5 27 C 69.5 33.5 64.5 37.5 57 37.5 L 43 37.5 M 55.5 37.5 L 68 54"
-          fill="none"
-          stroke={`url(#orsGrad-${uniqueId})`}
-          strokeWidth="5.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        {/* Specular Highlight */}
-        <path
-          d="M 43 53 L 43 17 L 57 17 C 63.5 17 68 20.5 68 27 C 68 32.5 63.5 36.5 57 36.5 L 43 36.5 M 56 37.5 L 67 53"
-          fill="none"
-          stroke={`url(#specular-${uniqueId})`}
-          strokeWidth="1.3"
-          strokeLinecap="round"
-        />
-
-        {/* Connecting Fluid Flow Ribbon from R to S */}
-        <path
-          d="M 36 35 C 38 48 42 54 44 54"
-          fill="none"
-          stroke={`url(#cyanRibbon-${uniqueId})`}
-          strokeWidth="2.5"
-          opacity="0.6"
-        />
-
-        {/* ================= LETTER S ================= */}
-        {/* Glow Underlay */}
-        <path
-          d="M 91 22.5 C 88 18 82.5 15.5 76 15.5 C 68 15.5 63 20.5 63 26.5 C 63 34 71 37 78.5 40 C 86 43 90 46.5 90 53 C 90 60 84 64.5 75 64.5 C 67 64.5 61.5 60.5 59 55"
-          fill="none"
-          stroke="#c084fc"
-          strokeWidth="7"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          opacity="0.35"
-        />
-        {/* Main Neon Tube */}
-        <path
-          d="M 91 22.5 C 88 18 82.5 15.5 76 15.5 C 68 15.5 63 20.5 63 26.5 C 63 34 71 37 78.5 40 C 86 43 90 46.5 90 53 C 90 60 84 64.5 75 64.5 C 67 64.5 61.5 60.5 59 55"
-          fill="none"
-          stroke={`url(#purpleRibbon-${uniqueId})`}
-          strokeWidth="5.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-        {/* Specular Highlight */}
-        <path
-          d="M 90 23 C 87.5 19 82.5 17 76 17 C 69 17 64.5 21 64.5 26.5 C 64.5 33 71.5 36 78.5 39 C 85.5 42 88.5 45.5 88.5 53 C 88.5 58.5 83.5 63 75 63 C 68 63 63 59.5 60.5 55"
-          fill="none"
-          stroke={`url(#specular-${uniqueId})`}
-          strokeWidth="1.3"
-          strokeLinecap="round"
-        />
-
-        {/* Dynamic Star Sparks */}
-        <circle cx="57" cy="27" r="1.5" fill="#ffffff" />
-        <circle cx="57" cy="27" r="3.5" fill="#00f5ff" opacity="0.6" />
-        
-        <circle cx="76" cy="15.5" r="1" fill="#ffffff" />
-        <circle cx="76" cy="15.5" r="2.5" fill="#ec4899" opacity="0.5" />
+      {/* G + Hanger Emblem Scaled to Fit 100x100 */}
+      <g transform="translate(-27, -2) scale(0.86)">
+        <path d="M 100 35 C 100 24 108 20 114 24 C 119 28 116 34 112 36 C 109 37 108 40 108 43" 
+              fill="none" stroke={`url(#goyalGold-${uniqueId})`} strokeWidth="3.2" strokeLinecap="round" />
+        <polygon points="108,43 112,49 104,49" fill={`url(#goyalGold-${uniqueId})`} />
+        <path d="M 45 78 C 65 65 92 52 108 49 C 116 52 126 55 135 58 L 134 62 C 124 59 116 56 108 53 C 90 57 66 69 44 82 Z" 
+              fill={`url(#goyalGold-${uniqueId})`} />
+        <path d="M 125 35 L 125 24 C 114 16 95 15 80 23 C 62 32 54 52 57 71 C 60 88 74 100 95 101 C 114 101 126 91 127 75 L 98 75 L 98 68 L 134 68 L 134 105 L 126 105 L 126 95 C 120 102 110 107 95 107 C 70 107 51 92 48 70 C 44 48 56 25 78 14 C 98 4 122 8 132 18 L 125 35 Z" 
+              fill={`url(#goyalGold-${uniqueId})`} />
+        <rect x="119" y="62" width="13" height="42" fill={`url(#goyalGold-${uniqueId})`} />
+        <rect x="117" y="102" width="17" height="3" fill={`url(#goyalGold-${uniqueId})`} />
       </g>
     </svg>
   );

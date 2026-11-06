@@ -48,6 +48,7 @@ import { isBarcodeDuplicate } from './tabs/PendingTagsTab';
 import ThermalTagModal from './ThermalTagModal';
 import ReportDefectModal from './ReportDefectModal';
 import { getColorDot } from './GunScannerModal';
+import OrsLogo from './OrsLogo';
 import {
   isNativeBarcodeDetectorSupported,
   getNativeBarcodeDetector,
@@ -112,6 +113,27 @@ export default function StaffStockCheckerPage({
   activeStore = 'DEMO_STORE_001',
   darkMode = true
 }) {
+  // --- SWISS MINIMALIST BOUTIQUE THEME STATE (Obsidian Black vs Ceramic White) ---
+  const [staffTheme, setStaffTheme] = useState(() => {
+    try {
+      const saved = localStorage.getItem('cobb_staff_theme') || localStorage.getItem('cobb_owner_theme');
+      if (saved === 'ceramic' || saved === 'obsidian') return saved;
+      return darkMode ? 'obsidian' : 'ceramic';
+    } catch {
+      return 'obsidian';
+    }
+  });
+
+  const isObsidian = staffTheme === 'obsidian';
+
+  const toggleStaffTheme = () => {
+    const next = isObsidian ? 'ceramic' : 'obsidian';
+    setStaffTheme(next);
+    try {
+      localStorage.setItem('cobb_staff_theme', next);
+    } catch {}
+  };
+
   // --- Active Tab & Salesman State ---
   const [activeMainTab, setActiveMainTab] = useState('stock'); // 'stock' | 'defect'
   const [defectManualInput, setDefectManualInput] = useState('');
@@ -1109,7 +1131,11 @@ export default function StaffStockCheckerPage({
   }, [stockData, selectedColorFilter, selectedSizeFilter]);
 
   return (
-    <div className="min-h-screen bg-[#F4EFE6] text-[#231F1C] flex flex-col font-sans pb-20 selection:bg-[#E0A96D] selection:text-[#231F1C]">
+    <div className={`min-h-screen flex flex-col font-sans pb-20 transition-colors ${
+      isObsidian
+        ? 'bg-[#000000] text-white selection:bg-amber-500 selection:text-black'
+        : 'bg-[#F8F9FA] text-[#111827] selection:bg-amber-100 selection:text-slate-900'
+    }`}>
       {/* Hidden file input for native camera snapshot fallback */}
       <input
         ref={fileInputRef}
@@ -1120,34 +1146,56 @@ export default function StaffStockCheckerPage({
         className="hidden"
       />
 
-      {/* --- Sticky Top Header Bar in Warm Sand --- */}
-      <header className="sticky top-0 z-40 bg-[#ECE5D8]/95 backdrop-blur-md border-b border-[#D8CEBC] px-4 py-3 flex items-center justify-between shadow-sm">
+      {/* --- Sticky Top Header Bar in Swiss Minimalist Boutique --- */}
+      <header className={`sticky top-0 z-40 backdrop-blur-md border-b px-4 py-3 flex items-center justify-between transition-colors ${
+        isObsidian ? 'bg-black/90 border-neutral-800' : 'bg-white/95 border-slate-200 shadow-xs'
+      }`}>
         <div className="flex items-center gap-2.5">
-          <div className="p-2 rounded-xl bg-gradient-to-tr from-[#B45309] to-[#D97706] text-[#231F1C] shadow-sm">
-            <Smartphone className="w-5 h-5" />
+          <div className="shrink-0">
+            <OrsLogo size={36} showGlow={isObsidian} />
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="font-black text-sm tracking-tight text-[#231F1C]">COBB STAFF</span>
-              <span className="px-1.5 py-0.5 rounded text-[10px] font-black bg-[#231F1C] text-[#F4EFE6] uppercase tracking-wider">
+              <span className={`font-black text-sm tracking-tight ${isObsidian ? 'text-white' : 'text-[#111827]'}`}>COBB STAFF</span>
+              <span className={`px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${
+                isObsidian ? 'bg-amber-500 text-black' : 'bg-slate-900 text-white'
+              }`}>
                 Stock Checker
               </span>
             </div>
-            <p className="text-[11px] text-[#6B5E51] font-semibold flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#15803D] animate-pulse"></span>
-              <span>Sizes Grouped by Colour • Linen Atelier</span>
+            <p className={`text-[11px] font-semibold flex items-center gap-1 ${isObsidian ? 'text-neutral-400' : 'text-slate-500'}`}>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>Sizes Grouped by Colour • Swiss Boutique</span>
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
+          {/* 1-Tap Theme Switcher: Ceramic White vs Obsidian Black */}
+          <button
+            type="button"
+            onClick={toggleStaffTheme}
+            className={`px-2.5 py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${
+              isObsidian
+                ? 'bg-neutral-900 border-neutral-800 text-amber-400 hover:text-white'
+                : 'bg-white border-slate-300 text-slate-800 shadow-xs'
+            }`}
+            title="Toggle Ceramic White vs Obsidian Black"
+          >
+            <span>{isObsidian ? '⚫ Obsidian' : '⚪ Ceramic'}</span>
+          </button>
+
           <button
             type="button"
             onClick={handleInstallClick}
-            className="px-2.5 py-1.5 rounded-xl border border-[#D8CEBC] bg-[#FAF6F0] hover:bg-[#EAE2D3] text-xs font-bold text-[#4A4036] flex items-center gap-1.5 transition-all active:scale-95 shadow-sm"
+            className={`px-2.5 py-1.5 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all active:scale-95 shadow-xs cursor-pointer ${
+              isObsidian
+                ? 'bg-neutral-900 border-neutral-800 text-neutral-300 hover:bg-neutral-800'
+                : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+            }`}
             title="Add shortcut to your phone home screen"
           >
-            <Download className="w-3.5 h-3.5 text-[#B45309]" />
+            <Download className="w-3.5 h-3.5 text-amber-500" />
             <span className="hidden sm:inline">Add Shortcut</span>
             <span className="sm:hidden">Shortcut</span>
           </button>
@@ -1155,7 +1203,11 @@ export default function StaffStockCheckerPage({
           {onClose && (
             <button
               onClick={onClose}
-              className="px-3 py-1.5 rounded-xl border border-[#D8CEBC] bg-[#FAF6F0] hover:bg-[#EAE2D3] text-xs font-semibold text-[#4A4036] flex items-center gap-1 transition-all active:scale-95 shadow-sm"
+              className={`px-3 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1 transition-all active:scale-95 shadow-xs cursor-pointer ${
+                isObsidian
+                  ? 'bg-neutral-900 border-neutral-800 text-neutral-300 hover:bg-neutral-800'
+                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+              }`}
               title="Return to Dashboard"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
@@ -1168,29 +1220,31 @@ export default function StaffStockCheckerPage({
       {/* --- Main Mobile Content Container --- */}
       <main className="flex-1 max-w-lg w-full mx-auto p-4 pb-28 space-y-4">
         {/* --- Primary Mode Switcher: Stock Checker vs Damage Bin --- */}
-        <div className="flex bg-[#E8E1D3] p-1 rounded-2xl border border-[#D5C9B7] shadow-inner">
+        <div className={`flex p-1 rounded-2xl border transition-all ${
+          isObsidian ? 'bg-neutral-900/90 border-neutral-800' : 'bg-slate-100 border-slate-200'
+        }`}>
           <button
             type="button"
             onClick={() => setActiveMainTab('stock')}
-            className={`flex-1 py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition-all ${
+            className={`flex-1 py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition-all cursor-pointer ${
               activeMainTab === 'stock'
-                ? 'bg-[#FFFDF9] text-[#231F1C] shadow-sm border border-[#DCD3C4]'
-                : 'text-[#6B5E51] hover:text-[#231F1C]'
+                ? (isObsidian ? 'bg-amber-500 text-black shadow-md' : 'bg-white text-slate-900 shadow-sm border border-slate-200')
+                : (isObsidian ? 'text-neutral-400 hover:text-white' : 'text-slate-600 hover:text-slate-950')
             }`}
           >
-            <Search className="w-3.5 h-3.5 text-[#B45309]" />
+            <Search className="w-3.5 h-3.5" />
             <span>Stock Checker</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveMainTab('defect')}
-            className={`flex-1 py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition-all ${
+            className={`flex-1 py-2 px-3 rounded-xl text-xs font-black flex items-center justify-center gap-2 transition-all cursor-pointer ${
               activeMainTab === 'defect'
-                ? 'bg-rose-50 text-rose-900 shadow-sm border border-rose-300'
-                : 'text-[#6B5E51] hover:text-[#231F1C]'
+                ? 'bg-rose-600 text-white shadow-md'
+                : (isObsidian ? 'text-neutral-400 hover:text-white' : 'text-slate-600 hover:text-slate-950')
             }`}
           >
-            <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />
+            <ShieldAlert className="w-3.5 h-3.5 text-rose-500" />
             <span>Damage Bin (Defect)</span>
             {quarantinedDamages.length > 0 && (
               <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white shadow-sm">
@@ -1206,27 +1260,31 @@ export default function StaffStockCheckerPage({
         {activeMainTab === 'defect' && (
           <div className="space-y-4 animate-in fade-in duration-150">
             {/* Header Hero Banner */}
-            <div className="p-4 rounded-3xl bg-gradient-to-br from-rose-950/30 via-red-900/20 to-amber-950/15 border border-rose-300/40 dark:border-rose-800/40 shadow-sm">
+            <div className={`p-4 rounded-3xl border transition-all ${
+              isObsidian
+                ? 'bg-gradient-to-br from-rose-950/40 via-red-950/20 to-neutral-950 border-rose-900/40 text-white'
+                : 'bg-gradient-to-br from-rose-50 via-red-50/50 to-white border-rose-200 text-slate-900 shadow-xs'
+            }`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-rose-600 to-red-500 text-white flex items-center justify-center font-black shadow-md shadow-rose-600/30">
                     <ShieldAlert className="w-5 h-5" />
                   </div>
                   <div>
-                    <h2 className="font-black text-sm tracking-tight text-[#231F1C] dark:text-white flex items-center gap-2">
+                    <h2 className={`font-black text-sm tracking-tight flex items-center gap-2 ${isObsidian ? 'text-white' : 'text-slate-900'}`}>
                       <span>Damage Bin & Quarantine Desk</span>
                       <span className="text-[10px] px-2 py-0.5 rounded-full font-black bg-rose-500 text-white uppercase">
                         Locked
                       </span>
                     </h2>
-                    <p className="text-[11px] font-semibold text-[#6B5E51] dark:text-slate-300">
+                    <p className={`text-[11px] font-semibold ${isObsidian ? 'text-neutral-400' : 'text-slate-500'}`}>
                       Staff can report defects • Contact Admin/Owner to release
                     </p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-[10px] uppercase font-bold text-[#8C7E70] dark:text-slate-400 block">Total Quarantined</span>
-                  <span className="text-sm font-black font-mono text-rose-600 dark:text-rose-400">
+                  <span className={`text-[10px] uppercase font-bold block ${isObsidian ? 'text-neutral-500' : 'text-slate-400'}`}>Total Quarantined</span>
+                  <span className="text-sm font-black font-mono text-rose-500">
                     {quarantinedDamages.length} Pieces
                   </span>
                 </div>
@@ -1234,14 +1292,16 @@ export default function StaffStockCheckerPage({
             </div>
 
             {/* Primary Action Card: Scan Defect (Camera) or Quick Search */}
-            <div className="p-4 rounded-3xl bg-[#FFFDF9] dark:bg-slate-900 border border-[#DCD3C4] dark:border-slate-800 shadow-sm space-y-3">
+            <div className={`p-4 rounded-3xl border transition-all space-y-3 ${
+              isObsidian ? 'bg-[#09090C] border-neutral-800 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-xs'
+            }`}>
               <div className="flex items-center justify-between">
-                <label className="text-xs font-black uppercase tracking-wider text-[#6B5E51] dark:text-slate-300 flex items-center gap-1.5">
+                <label className={`text-xs font-black uppercase tracking-wider flex items-center gap-1.5 ${isObsidian ? 'text-neutral-300' : 'text-slate-600'}`}>
                   <Camera className="w-3.5 h-3.5 text-rose-500" />
                   <span>1. Scan Defective Garment</span>
                 </label>
-                <span className="text-[10px] font-semibold text-[#8C7E70] dark:text-slate-400">
-                  Reporter: <strong className="text-rose-600">{activeSalesman}</strong>
+                <span className={`text-[10px] font-semibold ${isObsidian ? 'text-neutral-400' : 'text-slate-500'}`}>
+                  Reporter: <strong className="text-rose-500">{activeSalesman}</strong>
                 </span>
               </div>
 
@@ -1269,7 +1329,11 @@ export default function StaffStockCheckerPage({
                         setDefectManualInput('');
                       }
                     }}
-                    className="flex-1 px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-900 dark:text-white"
+                    className={`flex-1 px-3 py-2.5 rounded-xl border text-xs font-bold outline-none transition-all ${
+                      isObsidian
+                        ? 'bg-neutral-900 border-neutral-800 text-white placeholder-neutral-500 focus:border-amber-400'
+                        : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-amber-600 shadow-xs'
+                    }`}
                   />
                   <button
                     type="button"
@@ -1280,7 +1344,9 @@ export default function StaffStockCheckerPage({
                         setDefectManualInput('');
                       }
                     }}
-                    className="px-4 py-2.5 rounded-xl bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 font-bold text-xs disabled:opacity-40 transition-all cursor-pointer"
+                    className={`px-4 py-2.5 rounded-xl font-bold text-xs disabled:opacity-40 transition-all cursor-pointer ${
+                      isObsidian ? 'bg-white text-black hover:bg-neutral-200' : 'bg-slate-900 text-white hover:bg-slate-800'
+                    }`}
                   >
                     Report
                   </button>
@@ -1289,22 +1355,26 @@ export default function StaffStockCheckerPage({
             </div>
 
             {/* Quarantined Damage Bin Garments List */}
-            <div className="p-4 rounded-3xl bg-[#FFFDF9] dark:bg-slate-900 border border-[#DCD3C4] dark:border-slate-800 shadow-sm space-y-3">
+            <div className={`p-4 rounded-3xl border transition-all space-y-3 ${
+              isObsidian ? 'bg-[#09090C] border-neutral-800 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-xs'
+            }`}>
               <div className="flex items-center justify-between">
-                <h3 className="text-xs font-black uppercase tracking-wider text-[#6B5E51] dark:text-slate-300 flex items-center gap-1.5">
+                <h3 className={`text-xs font-black uppercase tracking-wider flex items-center gap-1.5 ${isObsidian ? 'text-neutral-300' : 'text-slate-600'}`}>
                   <ShieldAlert className="w-3.5 h-3.5 text-rose-500" />
                   <span>Currently Quarantined Garments ({quarantinedDamages.length})</span>
                 </h3>
-                <span className="text-[10px] text-rose-600 font-bold">🔒 Locked from Sales</span>
+                <span className="text-[10px] text-rose-500 font-bold">🔒 Locked from Sales</span>
               </div>
 
               {quarantinedDamages.length === 0 ? (
-                <div className="p-6 text-center space-y-2 border border-dashed border-emerald-300 dark:border-emerald-800 rounded-2xl bg-emerald-50/50 dark:bg-emerald-950/20">
-                  <CheckCircle2 className="w-8 h-8 text-emerald-600 dark:text-emerald-400 mx-auto" />
-                  <div className="text-xs font-black text-emerald-800 dark:text-emerald-300">
+                <div className={`p-6 text-center space-y-2 border border-dashed rounded-2xl ${
+                  isObsidian ? 'bg-emerald-950/20 border-emerald-800/40 text-emerald-300' : 'bg-emerald-50/50 border-emerald-200 text-emerald-800'
+                }`}>
+                  <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto" />
+                  <div className="text-xs font-black">
                     Damage Bin is Empty!
                   </div>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                  <p className={`text-[11px] ${isObsidian ? 'text-neutral-400' : 'text-slate-500'}`}>
                     No defective garments reported. All floor stock is clean for sale.
                   </p>
                 </div>
@@ -1313,34 +1383,36 @@ export default function StaffStockCheckerPage({
                   {quarantinedDamages.map((item) => (
                     <div
                       key={item.id || item.barcode}
-                      className="p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 flex items-center justify-between"
+                      className={`p-3 rounded-2xl border flex items-center justify-between ${
+                        isObsidian ? 'bg-neutral-900/60 border-neutral-800' : 'bg-slate-50 border-slate-200'
+                      }`}
                     >
                       <div className="space-y-0.5">
                         <div className="flex items-center gap-2">
-                          <span className="font-mono font-black text-xs text-slate-900 dark:text-white">
+                          <span className={`font-mono font-black text-xs ${isObsidian ? 'text-white' : 'text-slate-900'}`}>
                             {item.articleNo || item.barcode}
                           </span>
-                          <span className="px-2 py-0.5 rounded-md font-black text-[10px] bg-rose-100 text-rose-800 border border-rose-200">
+                          <span className="px-2 py-0.5 rounded-md font-black text-[10px] bg-rose-500/15 text-rose-400 border border-rose-500/30">
                             Size {item.size}
                           </span>
                           {item.color && (
-                            <span className="text-[10px] text-slate-500 font-medium">
+                            <span className={`text-[10px] font-medium ${isObsidian ? 'text-neutral-400' : 'text-slate-500'}`}>
                               {item.color}
                             </span>
                           )}
                         </div>
-                        <div className="text-[11px] text-slate-600 dark:text-slate-300 font-medium">
-                          {item.articleName || 'Cobb Garment'} • Defect: <strong className="text-rose-600">{item.defectDesc || item.defectType}</strong>
+                        <div className={`text-[11px] font-medium ${isObsidian ? 'text-neutral-300' : 'text-slate-700'}`}>
+                          {item.articleName || 'Cobb Garment'} • Defect: <strong className="text-rose-500">{item.defectDesc || item.defectType}</strong>
                         </div>
-                        <div className="text-[10px] text-slate-400">
+                        <div className={`text-[10px] ${isObsidian ? 'text-neutral-500' : 'text-slate-400'}`}>
                           Reported by {item.reportedBy || 'Staff'} • {item.date || 'Today'}
                         </div>
                       </div>
                       <div className="text-right shrink-0 ml-2">
-                        <div className="text-xs font-mono font-black text-rose-600">
+                        <div className="text-xs font-mono font-black text-rose-500">
                           ₹{item.mrp || 0}
                         </div>
-                        <span className="inline-block mt-1 px-1.5 py-0.5 rounded text-[9px] font-black bg-rose-100 text-rose-700 border border-rose-300">
+                        <span className="inline-block mt-1 px-1.5 py-0.5 rounded text-[9px] font-black bg-rose-500/15 text-rose-400 border border-rose-500/30">
                           🔒 Quarantined
                         </span>
                       </div>
@@ -1359,25 +1431,29 @@ export default function StaffStockCheckerPage({
           <div className="space-y-4">
         {/* Shortcut Banner Tip for Staff */}
         {!isInstalled && !dismissedTip && (
-          <div className="p-3 rounded-2xl bg-[#FFFDF9] border border-[#DCD3C4] flex items-center justify-between gap-3 text-xs shadow-sm">
-            <div className="flex items-center gap-2 text-[#4A4036]">
+          <div className={`p-3 rounded-2xl border flex items-center justify-between gap-3 text-xs shadow-xs ${
+            isObsidian ? 'bg-neutral-900/80 border-neutral-800 text-neutral-200' : 'bg-white border-slate-200 text-slate-800'
+          }`}>
+            <div className="flex items-center gap-2">
               <span className="text-base shrink-0">📲</span>
               <p className="text-[11px] leading-tight">
-                <span className="font-bold text-[#B45309]">Fast Floor Access:</span> Add direct shortcut to your home screen!
+                <span className={`font-bold ${isObsidian ? 'text-amber-400' : 'text-amber-700'}`}>Fast Floor Access:</span> Add direct shortcut to your home screen!
               </p>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               <button
                 type="button"
                 onClick={handleInstallClick}
-                className="px-2.5 py-1 rounded-lg bg-[#B45309] text-[#231F1C] font-black text-[11px] shadow hover:bg-[#92400E] active:scale-95 transition-all"
+                className={`px-2.5 py-1 rounded-lg font-black text-[11px] shadow active:scale-95 transition-all cursor-pointer ${
+                  isObsidian ? 'bg-amber-500 text-black hover:bg-amber-400' : 'bg-slate-900 text-white hover:bg-slate-800'
+                }`}
               >
                 Add Shortcut
               </button>
               <button
                 type="button"
                 onClick={() => setDismissedTip(true)}
-                className="p-1 text-[#8C7E6F] hover:text-[#231F1C]"
+                className={`p-1 cursor-pointer ${isObsidian ? 'text-neutral-400 hover:text-white' : 'text-slate-400 hover:text-slate-700'}`}
                 title="Dismiss"
               >
                 <X className="w-3.5 h-3.5" />
@@ -1385,18 +1461,25 @@ export default function StaffStockCheckerPage({
             </div>
           </div>
         )}
-        {/* --- Camera Scanner Controls & Search Form in Warm Linen --- */}
+
+        {/* --- Camera Scanner Controls & Search Form in Swiss Minimalist Boutique --- */}
         <div className="space-y-3">
           <div className="grid grid-cols-5 gap-2">
             {/* Primary Live Camera Button */}
             <button
               onClick={startCamera}
               disabled={isCameraActive || loading || cameraStarting}
-              className="col-span-4 py-3 px-3 rounded-2xl bg-[#B45309] hover:bg-[#92400E] text-[#231F1C] font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md active:scale-98 transition-all disabled:opacity-50"
+              className={`col-span-4 py-3 px-3 rounded-2xl font-black text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md active:scale-98 transition-all disabled:opacity-50 cursor-pointer ${
+                isObsidian
+                  ? 'bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black'
+                  : 'bg-gradient-to-r from-slate-900 to-slate-800 hover:from-slate-800 hover:to-slate-700 text-white'
+              }`}
             >
               <Camera className="w-4 h-4 fill-current shrink-0" />
               <span>{cameraStarting ? 'Starting Camera...' : 'Open Camera Scanner'}</span>
-              <span className="px-1.5 py-0.2 rounded-full bg-white/20 text-[#231F1C] text-[9.5px] font-black uppercase">
+              <span className={`px-1.5 py-0.2 rounded-full text-[9.5px] font-black uppercase ${
+                isObsidian ? 'bg-black/20 text-black' : 'bg-white/20 text-white'
+              }`}>
                 Dual
               </span>
             </button>
@@ -1406,10 +1489,14 @@ export default function StaffStockCheckerPage({
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={loading}
-              className="col-span-1 p-3 rounded-2xl bg-[#FFFDF9] border border-[#D5C9B7] hover:bg-[#FAF6F0] text-[#4A4036] flex flex-col items-center justify-center transition-all active:scale-95 shadow-sm"
+              className={`col-span-1 p-3 rounded-2xl border flex flex-col items-center justify-center transition-all active:scale-95 shadow-xs cursor-pointer ${
+                isObsidian
+                  ? 'bg-neutral-900 border-neutral-800 hover:bg-neutral-800 text-neutral-300'
+                  : 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700'
+              }`}
               title="Snap photo of tag with phone camera"
             >
-              <ImageIcon className="w-4 h-4 text-[#B45309]" />
+              <ImageIcon className="w-4 h-4 text-amber-500" />
               <span className="text-[9px] font-bold mt-0.5">Photo</span>
             </button>
           </div>
@@ -1422,7 +1509,7 @@ export default function StaffStockCheckerPage({
             }}
             className="relative flex items-center"
           >
-            <div className="absolute left-3.5 text-[#8C7E6F]">
+            <div className={`absolute left-3.5 ${isObsidian ? 'text-neutral-500' : 'text-slate-400'}`}>
               <Barcode className="w-4 h-4" />
             </div>
             <input
@@ -1431,7 +1518,11 @@ export default function StaffStockCheckerPage({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Enter barcode or article no (e.g. 0080... or FSRE...)"
-              className="w-full pl-10 pr-24 py-3 rounded-2xl bg-[#FAF7F2] border border-[#D5C9B7] focus:border-[#B45309] focus:ring-2 focus:ring-[#B45309]/20 text-sm font-semibold placeholder-[#9E9080] text-[#231F1C] transition-all outline-none shadow-sm"
+              className={`w-full pl-10 pr-24 py-3 rounded-2xl border text-sm font-semibold transition-all outline-none shadow-xs ${
+                isObsidian
+                  ? 'bg-neutral-900/80 border-neutral-800 text-white placeholder-neutral-500 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20'
+                  : 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-amber-600 focus:ring-2 focus:ring-amber-500/20'
+              }`}
             />
             <div className="absolute right-2 flex items-center gap-1">
               {query && (
@@ -1441,7 +1532,7 @@ export default function StaffStockCheckerPage({
                     setQuery('');
                     inputRef.current?.focus();
                   }}
-                  className="p-1.5 rounded-lg text-[#8C7E6F] hover:text-[#231F1C]"
+                  className={`p-1.5 rounded-lg cursor-pointer ${isObsidian ? 'text-neutral-400 hover:text-white' : 'text-slate-400 hover:text-slate-900'}`}
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -1449,7 +1540,11 @@ export default function StaffStockCheckerPage({
               <button
                 type="submit"
                 disabled={loading || !query.trim()}
-                className="px-3.5 py-1.5 rounded-xl bg-[#B45309] hover:bg-[#92400E] disabled:opacity-40 text-[#231F1C] font-black text-xs flex items-center gap-1 transition-all active:scale-95 shadow-sm"
+                className={`px-3.5 py-1.5 rounded-xl disabled:opacity-40 font-black text-xs flex items-center gap-1 transition-all active:scale-95 shadow-sm cursor-pointer ${
+                  isObsidian
+                    ? 'bg-amber-500 hover:bg-amber-400 text-black'
+                    : 'bg-slate-900 hover:bg-slate-800 text-white'
+                }`}
               >
                 {loading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
                 <span>Find</span>
@@ -1457,31 +1552,40 @@ export default function StaffStockCheckerPage({
             </div>
           </form>
         </div>
-          {/* Quick Category + MRP Tag Maker Action */}
-          <div className="flex items-center justify-between gap-2 px-1 text-xs">
-            <span className="text-[11px] text-[#6B5E51] font-medium">
-              Missing or torn price tag on garment?
-            </span>
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={handleStartDefectScan}
-                className="px-2.5 py-1 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400 font-bold text-[11px] flex items-center gap-1 shadow-sm active:scale-95 transition-all"
-                title="Open camera to scan a defective garment barcode directly"
-              >
-                <Camera className="w-3.5 h-3.5 text-rose-600" />
-                <span>Scan Defect</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setThermalTagModalData({ isQuickCategoryMrp: true })}
-                className="px-2.5 py-1 rounded-xl bg-[#FFFDF9] hover:bg-[#FAF6F0] border border-[#D5C9B7] text-[#B45309] font-black text-[11px] flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
-              >
-                <Printer className="w-3.5 h-3.5" />
-                <span>Print Tag</span>
-              </button>
-            </div>
+
+        {/* Quick Category + MRP Tag Maker Action */}
+        <div className="flex items-center justify-between gap-2 px-1 text-xs">
+          <span className={`text-[11px] font-medium ${isObsidian ? 'text-neutral-400' : 'text-slate-500'}`}>
+            Missing or torn price tag on garment?
+          </span>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={handleStartDefectScan}
+              className={`px-2.5 py-1 rounded-xl border font-bold text-[11px] flex items-center gap-1 shadow-xs active:scale-95 transition-all cursor-pointer ${
+                isObsidian
+                  ? 'bg-rose-500/10 border-rose-500/30 text-rose-400 hover:bg-rose-500/20'
+                  : 'bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100'
+              }`}
+              title="Open camera to scan a defective garment barcode directly"
+            >
+              <Camera className="w-3.5 h-3.5 text-rose-500" />
+              <span>Scan Defect</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setThermalTagModalData({ isQuickCategoryMrp: true })}
+              className={`px-2.5 py-1 rounded-xl border font-black text-[11px] flex items-center gap-1.5 shadow-xs active:scale-95 transition-all cursor-pointer ${
+                isObsidian
+                  ? 'bg-neutral-900 border-neutral-800 text-amber-400 hover:bg-neutral-800'
+                  : 'bg-white border-slate-200 text-slate-800 hover:bg-slate-100'
+              }`}
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>Print Tag</span>
+            </button>
           </div>
+        </div>
 
         {/* --- Pending Tag Success Toast --- */}
         {pendingSuccessMsg && (
@@ -1539,45 +1643,53 @@ export default function StaffStockCheckerPage({
 
         {/* --- Loading Indicator --- */}
         {loading && (
-          <div className="p-8 rounded-3xl bg-[#FFFDF9] border border-[#DCD3C4] text-center space-y-3 shadow-sm">
+          <div className={`p-8 rounded-3xl border text-center space-y-3 transition-all ${
+            isObsidian ? 'bg-[#09090C] border-neutral-800 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-sm'
+          }`}>
             <RefreshCw className="w-8 h-8 text-amber-500 animate-spin mx-auto" />
-            <div className="text-xs font-bold text-[#231F1C]">Searching Cobb Inventory...</div>
-            <p className="text-[11px] text-[#6B5E51]">Grouping all sizes and colors</p>
+            <div className={`text-xs font-bold ${isObsidian ? 'text-white' : 'text-slate-900'}`}>Searching Cobb Inventory...</div>
+            <p className={`text-[11px] ${isObsidian ? 'text-neutral-400' : 'text-slate-500'}`}>Grouping all sizes and colors</p>
           </div>
         )}
 
         {/* --- Scanned Article Details & Sizes Grouped By Color --- */}
         {stockData && !loading && (
           <div className="space-y-4 animate-in fade-in duration-200">
-            {/* Article Top Bento Summary in Warm Sand & Linen */}
-            <div className="p-4 rounded-3xl bg-[#FFFDF9] border border-[#DCD3C4] shadow-sm relative overflow-hidden space-y-3">
+            {/* Article Top Bento Summary in Swiss Minimalist Boutique */}
+            <div className={`p-4 rounded-3xl border transition-all overflow-hidden space-y-3 ${
+              isObsidian ? 'bg-[#09090C] border-neutral-800 text-white shadow-none' : 'bg-white border-slate-200 text-slate-900 shadow-sm'
+            }`}>
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-mono text-xs font-black text-[#92400E] bg-[#FEF3C7] px-2 py-0.5 rounded-lg border border-[#FDE68A]">
+                    <span className={`font-mono text-xs font-black px-2 py-0.5 rounded-lg border ${
+                      isObsidian ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' : 'bg-amber-50 text-amber-900 border-amber-200'
+                    }`}>
                       #{stockData.articleNo}
                     </span>
                     <button
                       onClick={() => handleCopyBarcode(stockData.articleNo)}
-                      className="p-1 rounded text-[#8C7E6F] hover:text-[#231F1C]"
+                      className={`p-1 rounded cursor-pointer ${isObsidian ? 'text-neutral-400 hover:text-white' : 'text-slate-400 hover:text-slate-900'}`}
                       title="Copy Article No"
                     >
                       {copiedBarcode === stockData.articleNo ? (
-                        <Check className="w-3 h-3 text-[#15803D]" />
+                        <Check className="w-3 h-3 text-emerald-400" />
                       ) : (
                         <Copy className="w-3 h-3" />
                       )}
                     </button>
                     {stockData.mrp > 0 && (
-                      <span className="px-2 py-0.5 rounded-lg text-xs font-black bg-[#EFE9DF] text-[#4A4036] border border-[#DDD4C5]">
+                      <span className={`px-2 py-0.5 rounded-lg text-xs font-black border ${
+                        isObsidian ? 'bg-neutral-800 text-neutral-200 border-neutral-700' : 'bg-slate-100 text-slate-800 border-slate-200'
+                      }`}>
                         ₹{Number(stockData.mrp).toLocaleString('en-IN')}
                       </span>
                     )}
                   </div>
-                  <h2 className="text-base font-black text-[#231F1C] mt-1.5 leading-snug">
+                  <h2 className={`text-base font-black mt-1.5 leading-snug ${isObsidian ? 'text-white' : 'text-slate-900'}`}>
                     {stockData.itemName}
                   </h2>
-                  <p className="text-xs text-[#6B5E51] font-medium mt-0.5">
+                  <p className={`text-xs font-medium mt-0.5 ${isObsidian ? 'text-neutral-400' : 'text-slate-500'}`}>
                     {stockData.sectionName} {stockData.subSectionName ? `• ${stockData.subSectionName}` : ''}
                   </p>
                 </div>
@@ -1586,10 +1698,10 @@ export default function StaffStockCheckerPage({
                 <div className="text-right shrink-0 flex flex-col items-end gap-1.5">
                   <div className={`px-3 py-1.5 rounded-2xl text-xs font-black inline-flex items-center gap-1.5 ${
                     stockData.totalStock > 0
-                      ? 'bg-[#E8F5E9] text-[#1B5E20] border border-[#C8E6C9]'
-                      : 'bg-rose-50 text-rose-800 border border-rose-200'
+                      ? (isObsidian ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-200')
+                      : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
                   }`}>
-                    <span className={`w-2 h-2 rounded-full ${stockData.totalStock > 0 ? 'bg-[#2E7D32]' : 'bg-rose-500'}`} />
+                    <span className={`w-2 h-2 rounded-full ${stockData.totalStock > 0 ? 'bg-emerald-500' : 'bg-rose-500'}`} />
                     <span>{stockData.totalStock} In Stock</span>
                   </div>
 
@@ -1597,15 +1709,19 @@ export default function StaffStockCheckerPage({
                     <button
                       type="button"
                       onClick={() => setShowPendingListModal(true)}
-                      className="px-2.5 py-1 rounded-xl text-[11px] font-black inline-flex items-center gap-1.5 bg-[#FEF3C7] hover:bg-[#FDE68A] text-[#92400E] border border-[#F59E0B] shadow-sm transition-all active:scale-95"
+                      className={`px-2.5 py-1 rounded-xl text-[11px] font-black inline-flex items-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer ${
+                        isObsidian
+                          ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30 hover:bg-amber-500/25'
+                          : 'bg-amber-50 text-amber-800 border border-amber-300 hover:bg-amber-100'
+                      }`}
                       title="View active pending tags for this article"
                     >
-                      <Tag className="w-3 h-3 text-[#B45309] shrink-0" />
+                      <Tag className="w-3 h-3 text-amber-500 shrink-0" />
                       <span>{stockData.totalPendingTags} in Pending Tags</span>
                     </button>
                   )}
 
-                  <div className="text-[10px] text-[#7A6E61] font-bold">
+                  <div className={`text-[10px] font-bold ${isObsidian ? 'text-neutral-400' : 'text-slate-500'}`}>
                     {stockData.colors?.length || 0} Color{(stockData.colors?.length || 0) === 1 ? '' : 's'}
                   </div>
                 </div>
@@ -1613,47 +1729,59 @@ export default function StaffStockCheckerPage({
 
               {/* Instant Offer & Net Deal Price Breakdown */}
               {stockData.mrp > 0 && (
-                <div className="mt-3 pt-2.5 border-t border-[#EFE9DF] space-y-2">
+                <div className="mt-3 pt-2.5 border-t space-y-2" style={{ borderColor: isObsidian ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' }}>
                   <div className="grid grid-cols-3 gap-1.5 text-xs">
                     {/* B1G2 Deal */}
-                    <div className="p-2 rounded-2xl bg-[#FAF6F0] border border-[#E5DDCF] flex flex-col justify-between text-center shadow-sm">
-                      <div className="text-[10px] font-black text-[#92400E] uppercase tracking-tight flex items-center justify-center gap-1">
-                        <Sparkles className="w-2.5 h-2.5 fill-current text-[#B45309] shrink-0" />
+                    <div className={`p-2 rounded-2xl border flex flex-col justify-between text-center transition-all ${
+                      isObsidian ? 'bg-neutral-900/80 border-neutral-800 text-white' : 'bg-amber-50/50 border-amber-200/80 text-amber-950 shadow-xs'
+                    }`}>
+                      <div className={`text-[10px] font-black uppercase tracking-tight flex items-center justify-center gap-1 ${
+                        isObsidian ? 'text-amber-400' : 'text-amber-800'
+                      }`}>
+                        <Sparkles className="w-2.5 h-2.5 fill-current text-amber-500 shrink-0" />
                         <span className="truncate">Buy 1 Get 2</span>
                       </div>
-                      <div className="text-xs sm:text-sm font-black text-[#78350F] my-0.5">
+                      <div className={`text-xs sm:text-sm font-black my-0.5 ${isObsidian ? 'text-amber-300' : 'text-amber-900'}`}>
                         ₹{Math.round(stockData.mrp / 3).toLocaleString('en-IN')}
                       </div>
-                      <div className="text-[9px] text-[#7A6E61] font-medium truncate">/pc net</div>
+                      <div className={`text-[9px] font-medium truncate ${isObsidian ? 'text-neutral-400' : 'text-slate-500'}`}>/pc net</div>
                     </div>
 
                     {/* Flat 50% Deal */}
-                    <div className="p-2 rounded-2xl bg-[#E8F5E9]/60 border border-[#C8E6C9] flex flex-col justify-between text-center shadow-sm">
-                      <div className="text-[10px] font-black text-[#1B5E20] uppercase tracking-tight flex items-center justify-center gap-1">
-                        <Tag className="w-2.5 h-2.5 text-[#2E7D32] shrink-0" />
+                    <div className={`p-2 rounded-2xl border flex flex-col justify-between text-center transition-all ${
+                      isObsidian ? 'bg-neutral-900/80 border-neutral-800 text-white' : 'bg-emerald-50/50 border-emerald-200/80 text-emerald-950 shadow-xs'
+                    }`}>
+                      <div className={`text-[10px] font-black uppercase tracking-tight flex items-center justify-center gap-1 ${
+                        isObsidian ? 'text-emerald-400' : 'text-emerald-800'
+                      }`}>
+                        <Tag className="w-2.5 h-2.5 text-emerald-500 shrink-0" />
                         <span className="truncate">Flat 50% Off</span>
                       </div>
-                      <div className="text-xs sm:text-sm font-black text-[#1B5E20] my-0.5">
+                      <div className={`text-xs sm:text-sm font-black my-0.5 ${isObsidian ? 'text-emerald-300' : 'text-emerald-900'}`}>
                         ₹{Math.round(stockData.mrp * 0.5).toLocaleString('en-IN')}
                       </div>
-                      <div className="text-[9px] text-[#7A6E61] font-medium truncate">net price</div>
+                      <div className={`text-[9px] font-medium truncate ${isObsidian ? 'text-neutral-400' : 'text-slate-500'}`}>net price</div>
                     </div>
 
                     {/* Flat 60% Deal */}
-                    <div className="p-2 rounded-2xl bg-[#FBF0DC] border border-[#E9CCA0] flex flex-col justify-between text-center shadow-sm">
-                      <div className="text-[10px] font-black text-[#78350F] uppercase tracking-tight flex items-center justify-center gap-1">
-                        <Percent className="w-2.5 h-2.5 text-[#B45309] shrink-0" />
+                    <div className={`p-2 rounded-2xl border flex flex-col justify-between text-center transition-all ${
+                      isObsidian ? 'bg-neutral-900/80 border-neutral-800 text-white' : 'bg-blue-50/50 border-blue-200/80 text-blue-950 shadow-xs'
+                    }`}>
+                      <div className={`text-[10px] font-black uppercase tracking-tight flex items-center justify-center gap-1 ${
+                        isObsidian ? 'text-blue-400' : 'text-blue-800'
+                      }`}>
+                        <Percent className="w-2.5 h-2.5 text-blue-500 shrink-0" />
                         <span className="truncate">Flat 60% Off</span>
                       </div>
-                      <div className="text-xs sm:text-sm font-black text-[#78350F] my-0.5">
+                      <div className={`text-xs sm:text-sm font-black my-0.5 ${isObsidian ? 'text-blue-300' : 'text-blue-900'}`}>
                         ₹{Math.round(stockData.mrp * 0.4).toLocaleString('en-IN')}
                       </div>
-                      <div className="text-[9px] text-[#7A6E61] font-medium truncate">net price</div>
+                      <div className={`text-[9px] font-medium truncate ${isObsidian ? 'text-neutral-400' : 'text-slate-500'}`}>net price</div>
                     </div>
                   </div>
 
                   {stockData.scannedBarcode && (
-                    <div className="text-[#8C7E6F] font-mono text-[10px] text-right">
+                    <div className={`font-mono text-[10px] text-right ${isObsidian ? 'text-neutral-500' : 'text-slate-400'}`}>
                       Matched Scanned Code: {stockData.scannedBarcode}
                     </div>
                   )}
@@ -1696,19 +1824,23 @@ export default function StaffStockCheckerPage({
               )}
 
               {/* Pending Tags Notice & Fast Report Button */}
-              <div className="mt-3 pt-2.5 border-t border-[#EFE9DF] space-y-2">
+              <div className="mt-3 pt-2.5 border-t space-y-2" style={{ borderColor: isObsidian ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' }}>
                 {stockData.totalPendingTags > 0 ? (
-                  <div className="p-3 rounded-2xl bg-[#FEF3C7] border border-[#F59E0B] flex items-center justify-between gap-2.5 text-xs shadow-sm">
-                    <div className="flex items-center gap-2 text-[#78350F]">
-                      <AlertTriangle className="w-4 h-4 text-[#B45309] shrink-0" />
+                  <div className={`p-3 rounded-2xl border flex items-center justify-between gap-2.5 text-xs shadow-xs ${
+                    isObsidian ? 'bg-amber-500/10 border-amber-500/25 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-900'
+                  }`}>
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
                       <p className="text-[11px] leading-tight">
-                        <span className="font-bold text-[#78350F]">{stockData.totalPendingTags} piece(s) in Pending Tags</span> (torn / missing tags).
+                        <span className="font-bold">{stockData.totalPendingTags} piece(s) in Pending Tags</span> (torn / missing tags).
                       </p>
                     </div>
                     <button
                       type="button"
                       onClick={() => setShowPendingListModal(true)}
-                      className="px-2.5 py-1 rounded-xl bg-[#231F1C] hover:bg-[#3D352E] text-[#FEF3C7] font-black text-[11px] shrink-0 shadow active:scale-95 transition-all"
+                      className={`px-2.5 py-1 rounded-xl font-black text-[11px] shrink-0 shadow-sm active:scale-95 transition-all cursor-pointer ${
+                        isObsidian ? 'bg-amber-500 text-black hover:bg-amber-400' : 'bg-slate-900 text-white hover:bg-slate-800'
+                      }`}
                     >
                       View Tags
                     </button>
@@ -1716,15 +1848,17 @@ export default function StaffStockCheckerPage({
                 ) : null}
 
                 <div className="flex items-center justify-between gap-2 pt-1">
-                  <span className="text-[10px] text-[#6B5E51] flex items-center gap-1">
-                    <Tag className="w-3 h-3 text-[#B45309]" />
+                  <span className={`text-[10px] flex items-center gap-1 ${isObsidian ? 'text-neutral-400' : 'text-slate-500'}`}>
+                    <Tag className="w-3 h-3 text-amber-500" />
                     <span>Torn tag on floor?</span>
                   </span>
                   <div className="flex items-center gap-1.5">
                     <button
                       type="button"
                       onClick={() => handleOpenThermalTag()}
-                      className="px-2.5 py-1 rounded-xl bg-[#B45309] hover:bg-[#92400E] text-[#231F1C] text-[11px] font-black flex items-center gap-1 transition-all active:scale-95 shadow-sm"
+                      className={`px-2.5 py-1 rounded-xl text-[11px] font-black flex items-center gap-1 transition-all active:scale-95 shadow-sm cursor-pointer ${
+                        isObsidian ? 'bg-neutral-800 text-amber-400 hover:bg-neutral-700' : 'bg-slate-900 text-white hover:bg-slate-800'
+                      }`}
                       title="Print replacement price tag for this garment"
                     >
                       <Printer className="w-3 h-3" />
@@ -1742,19 +1876,23 @@ export default function StaffStockCheckerPage({
                       <button
                         type="button"
                         onClick={() => handleOpenReportDefect()}
-                        className="px-2.5 py-1 rounded-xl bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-[11px] font-bold flex items-center gap-1 transition-all active:scale-95 shadow-sm"
+                        className={`px-2.5 py-1 rounded-xl border text-[11px] font-bold flex items-center gap-1 transition-all active:scale-95 shadow-xs cursor-pointer ${
+                          isObsidian ? 'bg-rose-500/10 border-rose-500/30 text-rose-400 hover:bg-rose-500/20' : 'bg-rose-50 border-rose-200 text-rose-700 hover:bg-rose-100'
+                        }`}
                         title="Quarantine damaged or defective garment"
                       >
-                        <ShieldAlert className="w-3 h-3 text-rose-600" />
+                        <ShieldAlert className="w-3 h-3 text-rose-500" />
                         <span>Report Damage</span>
                       </button>
                     )}
                     <button
                       type="button"
                       onClick={() => handleOpenAddPendingTag()}
-                      className="px-2.5 py-1 rounded-xl bg-[#FFFDF9] hover:bg-[#FAF6F0] border border-[#D8CEBC] text-[#78350F] text-[11px] font-bold flex items-center gap-1 transition-all active:scale-95 shadow-sm"
+                      className={`px-2.5 py-1 rounded-xl border text-[11px] font-bold flex items-center gap-1 transition-all active:scale-95 shadow-xs cursor-pointer ${
+                        isObsidian ? 'bg-neutral-900 border-neutral-800 text-neutral-300 hover:bg-neutral-800' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                      }`}
                     >
-                      <Plus className="w-3 h-3 text-[#B45309]" />
+                      <Plus className="w-3 h-3 text-amber-500" />
                       <span>Add Pending Tag</span>
                     </button>
                   </div>
@@ -1768,8 +1906,10 @@ export default function StaffStockCheckerPage({
                 {/* 1. 1-Tap "Find My Size" Filter Chips */}
                 {allAvailableSizes.length > 0 && (
                   <div className="space-y-1">
-                    <div className="text-[11px] font-bold text-[#6B5E51] uppercase tracking-wider px-1 flex items-center justify-between">
-                      <span className="flex items-center gap-1.5 text-[#B45309]">
+                    <div className={`text-[11px] font-bold uppercase tracking-wider px-1 flex items-center justify-between ${
+                      isObsidian ? 'text-neutral-400' : 'text-slate-500'
+                    }`}>
+                      <span className="flex items-center gap-1.5 text-amber-500">
                         <Tag className="w-3 h-3" />
                         <span>Find Size (All Colours)</span>
                       </span>
@@ -1777,7 +1917,7 @@ export default function StaffStockCheckerPage({
                         <button
                           type="button"
                           onClick={() => setSelectedSizeFilter('ALL')}
-                          className="text-[10px] text-[#B45309] hover:underline font-bold"
+                          className="text-[10px] text-amber-500 hover:underline font-bold cursor-pointer"
                         >
                           Clear Size Filter
                         </button>
@@ -1787,10 +1927,10 @@ export default function StaffStockCheckerPage({
                       <button
                         type="button"
                         onClick={() => setSelectedSizeFilter('ALL')}
-                        className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                        className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                           selectedSizeFilter === 'ALL'
-                            ? 'bg-[#B45309] text-[#231F1C] font-black shadow-sm'
-                            : 'bg-[#FFFDF9] border border-[#DCD3C4] text-[#4A4036] hover:bg-[#FAF6F0]'
+                            ? (isObsidian ? 'bg-amber-500 text-black font-black shadow-sm' : 'bg-slate-900 text-white font-black shadow-sm')
+                            : (isObsidian ? 'bg-neutral-900 border border-neutral-800 text-neutral-300 hover:bg-neutral-800' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50')
                         }`}
                       >
                         All Sizes ({stockData.totalStock})
@@ -1811,23 +1951,27 @@ export default function StaffStockCheckerPage({
                                 if (matchedDmg) setQuarantineInfo(matchedDmg);
                               }
                             }}
-                            className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                            className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                               isSelected
-                                ? 'bg-[#B45309] text-[#231F1C] font-black shadow-sm'
-                                : 'bg-[#FFFDF9] border border-[#DCD3C4] text-[#4A4036] hover:bg-[#FAF6F0]'
+                                ? (isObsidian ? 'bg-amber-500 text-black font-black shadow-sm' : 'bg-slate-900 text-white font-black shadow-sm')
+                                : (isObsidian ? 'bg-neutral-900 border border-neutral-800 text-neutral-300 hover:bg-neutral-800' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50')
                             }`}
                           >
                             <span>{sz.size}</span>
-                            <span className={`text-[10px] px-1 py-0.2 rounded ${isSelected ? 'bg-white/20 text-[#231F1C] font-black' : 'bg-[#EFE9DF] text-[#6B5E51]'}`}>
+                            <span className={`text-[10px] px-1 py-0.2 rounded ${
+                              isSelected
+                                ? (isObsidian ? 'bg-black/20 text-black font-black' : 'bg-white/20 text-white font-black')
+                                : (isObsidian ? 'bg-neutral-800 text-neutral-300' : 'bg-slate-100 text-slate-600')
+                            }`}>
                               {sz.totalStock}
                             </span>
                             {sz.totalPendingTags > 0 && (
-                              <span className="text-[9px] px-1 py-0.2 rounded font-black bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A]" title={`${sz.totalPendingTags} in Pending Tags`}>
+                              <span className="text-[9px] px-1 py-0.2 rounded font-black bg-amber-500/20 text-amber-400 border border-amber-500/30" title={`${sz.totalPendingTags} in Pending Tags`}>
                                 🏷️ {sz.totalPendingTags}
                               </span>
                             )}
                             {sz.quarantinedCount > 0 && (
-                              <span className="text-[9px] px-1.5 py-0.5 rounded font-black bg-rose-100 text-rose-700 border border-rose-300 flex items-center gap-0.5" title={`${sz.quarantinedCount} piece(s) quarantined in Damage Bin`}>
+                              <span className="text-[9px] px-1.5 py-0.5 rounded font-black bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center gap-0.5" title={`${sz.quarantinedCount} piece(s) quarantined in Damage Bin`}>
                                 <span>🔒</span>
                                 <span>Damaged</span>
                               </span>
@@ -1842,7 +1986,9 @@ export default function StaffStockCheckerPage({
                 {/* 2. Quick Colour Filter Chips */}
                 {stockData.colors.length > 1 && (
                   <div className="space-y-1">
-                    <div className="text-[11px] font-bold text-[#6B5E51] uppercase tracking-wider px-1 flex items-center justify-between">
+                    <div className={`text-[11px] font-bold uppercase tracking-wider px-1 flex items-center justify-between ${
+                      isObsidian ? 'text-neutral-400' : 'text-slate-500'
+                    }`}>
                       <span>Filter by Colour</span>
                       <span>{stockData.colors.length} Colours</span>
                     </div>
@@ -1850,10 +1996,10 @@ export default function StaffStockCheckerPage({
                       <button
                         type="button"
                         onClick={() => setSelectedColorFilter('ALL')}
-                        className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                        className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                           selectedColorFilter === 'ALL'
-                            ? 'bg-[#B45309] text-[#231F1C] font-black shadow-sm'
-                            : 'bg-[#FFFDF9] border border-[#DCD3C4] text-[#4A4036] hover:bg-[#FAF6F0]'
+                            ? (isObsidian ? 'bg-amber-500 text-black font-black shadow-sm' : 'bg-slate-900 text-white font-black shadow-sm')
+                            : (isObsidian ? 'bg-neutral-900 border border-neutral-800 text-neutral-300 hover:bg-neutral-800' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50')
                         }`}
                       >
                         All Colours
@@ -1866,10 +2012,10 @@ export default function StaffStockCheckerPage({
                             key={c.color}
                             type="button"
                             onClick={() => setSelectedColorFilter(isSelected ? 'ALL' : c.color)}
-                            className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
+                            className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
                               isSelected
-                                ? 'bg-[#B45309] text-[#231F1C] font-black shadow-sm'
-                                : 'bg-[#FFFDF9] border border-[#DCD3C4] text-[#4A4036] hover:bg-[#FAF6F0]'
+                                ? (isObsidian ? 'bg-amber-500 text-black font-black shadow-sm' : 'bg-slate-900 text-white font-black shadow-sm')
+                                : (isObsidian ? 'bg-neutral-900 border border-neutral-800 text-neutral-300 hover:bg-neutral-800' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50')
                             }`}
                           >
                             <span
@@ -1877,7 +2023,11 @@ export default function StaffStockCheckerPage({
                               style={{ backgroundColor: getColorDot(c.color) }}
                             />
                             <span>{c.color}</span>
-                            <span className={`text-[10px] ${isSelected ? 'text-[#231F1C]/80 font-black' : 'text-[#7A6E61]'}`}>
+                            <span className={`text-[10px] ${
+                              isSelected
+                                ? (isObsidian ? 'text-black/80 font-black' : 'text-white/80 font-black')
+                                : (isObsidian ? 'text-neutral-400' : 'text-slate-500')
+                            }`}>
                               ({c.totalStock})
                             </span>
                           </button>
@@ -1899,23 +2049,29 @@ export default function StaffStockCheckerPage({
                 return (
                   <div
                     key={colorGroup.color}
-                    className={`rounded-2xl border transition-all overflow-hidden shadow-lg ${
+                    className={`rounded-2xl border transition-all overflow-hidden ${
                       isOutOfStock
-                        ? 'bg-[#F7F2E9]/60 border-[#DCD3C4] opacity-70'
-                        : 'bg-[#FFFDF9] border-[#DCD3C4]'
+                        ? (isObsidian ? 'bg-[#09090C]/60 border-neutral-800 opacity-60' : 'bg-slate-50/60 border-slate-200 opacity-70')
+                        : (isObsidian ? 'bg-[#09090C] border-neutral-800' : 'bg-white border-slate-200 shadow-sm')
                     }`}
                   >
                     {/* Colour Header Banner */}
-                    <div className="px-4 py-2.5 bg-[#F7F2E9] border-b border-[#E3DAC9] flex items-center justify-between">
+                    <div className={`px-4 py-2.5 border-b flex items-center justify-between ${
+                      isObsidian ? 'bg-neutral-900/80 border-neutral-800 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+                    }`}>
                       <div className="flex items-center gap-2.5">
                         <span
                           className="w-3.5 h-3.5 rounded-full border border-white/20 shadow-sm shrink-0"
                           style={{ backgroundColor: dotColor }}
                         />
-                        <h3 className="font-black text-sm text-[#231F1C] tracking-wide uppercase flex items-center gap-2">
+                        <h3 className={`font-black text-sm tracking-wide uppercase flex items-center gap-2 ${
+                          isObsidian ? 'text-white' : 'text-slate-900'
+                        }`}>
                           <span>{colorGroup.color}</span>
                           {stockData.matchedColor === colorGroup.color && (
-                            <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-[#FEF3C7] text-[#92400E] border border-[#FDE68A] uppercase tracking-wider">
+                            <span className={`px-1.5 py-0.2 rounded text-[9px] font-black uppercase tracking-wider ${
+                              isObsidian ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-amber-100 text-amber-800 border border-amber-200'
+                            }`}>
                               Scanned Color
                             </span>
                           )}
@@ -1924,8 +2080,8 @@ export default function StaffStockCheckerPage({
 
                       <span className={`px-2.5 py-1 rounded-xl text-xs font-black ${
                         colorGroup.totalStock > 0
-                          ? 'bg-[#E8F5E9] text-[#1B5E20] border border-[#C8E6C9]'
-                          : 'bg-rose-50 text-rose-800 border border-rose-200'
+                          ? (isObsidian ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-200')
+                          : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
                       }`}>
                         {colorGroup.totalStock > 0 ? `${colorGroup.totalStock} available` : '0 available'}
                       </span>
@@ -1933,11 +2089,11 @@ export default function StaffStockCheckerPage({
 
                     {/* Sizes in this Colour (Combined Rows: "38 size  2 available") */}
                     {sortedSizes.length === 0 ? (
-                      <div className="px-4 py-3 text-xs text-slate-500 italic">
+                      <div className={`px-4 py-3 text-xs italic ${isObsidian ? 'text-neutral-500' : 'text-slate-400'}`}>
                         No pieces currently available in this colour (Sold out)
                       </div>
                     ) : (
-                      <div className="divide-y divide-[#EFE9DF]">
+                      <div className={`divide-y ${isObsidian ? 'divide-neutral-800/80' : 'divide-slate-100'}`}>
                         {sortedSizes.map((sz) => {
                           const isExactScannedPiece = stockData.scannedBarcode && (
                             sz.barcode === stockData.scannedBarcode ||
@@ -1950,18 +2106,20 @@ export default function StaffStockCheckerPage({
                               key={sz.size}
                               className={`px-4 py-2.5 flex items-center justify-between transition-colors ${
                                 isExactScannedPiece
-                                  ? 'bg-[#FEF3C7]/60 border-l-4 border-[#B45309]'
-                                  : 'hover:bg-[#FAF6F0]'
+                                  ? (isObsidian ? 'bg-amber-500/15 border-l-4 border-amber-500' : 'bg-amber-50 border-l-4 border-amber-600')
+                                  : (isObsidian ? 'hover:bg-neutral-900/40' : 'hover:bg-slate-50')
                               }`}
                             >
                               {/* Left: Size & Scanned Tag Badge */}
                               <div className="flex items-center gap-2.5">
-                                <span className="text-sm font-black tracking-tight text-[#231F1C]">
+                                <span className={`text-sm font-black tracking-tight ${isObsidian ? 'text-white' : 'text-slate-900'}`}>
                                   {sz.size} size
                                 </span>
 
                                 {isExactScannedPiece && (
-                                  <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-[#B45309] text-[#231F1C] uppercase tracking-wider">
+                                  <span className={`px-1.5 py-0.2 rounded text-[9px] font-black uppercase tracking-wider ${
+                                    isObsidian ? 'bg-amber-500 text-black' : 'bg-slate-900 text-white'
+                                  }`}>
                                     Scanned Tag
                                   </span>
                                 )}
@@ -1970,12 +2128,14 @@ export default function StaffStockCheckerPage({
                                   <button
                                     type="button"
                                     onClick={() => handleCopyBarcode(sz.barcode)}
-                                    className="text-[10px] text-[#7A6E61] hover:text-[#231F1C] font-mono flex items-center gap-0.5 ml-1"
+                                    className={`text-[10px] font-mono flex items-center gap-0.5 ml-1 cursor-pointer ${
+                                      isObsidian ? 'text-neutral-400 hover:text-white' : 'text-slate-400 hover:text-slate-900'
+                                    }`}
                                     title={sz.barcodes?.length > 1 ? `Barcodes: ${sz.barcodes.join(', ')}` : 'Tap to copy barcode'}
                                   >
                                     <span>#{sz.barcode}</span>
                                     {sz.barcodes?.length > 1 && (
-                                      <span className="text-[9px] text-amber-400/80 font-sans">
+                                      <span className="text-[9px] text-amber-500 font-sans">
                                         (+{sz.barcodes.length - 1})
                                       </span>
                                     )}
@@ -1994,36 +2154,46 @@ export default function StaffStockCheckerPage({
                                   <button
                                     type="button"
                                     onClick={() => setSelectedPendingSize(sz)}
-                                    className="px-2 py-0.5 rounded-lg text-[10px] font-black bg-[#FEF3C7] hover:bg-[#FDE68A] text-[#92400E] border border-[#F59E0B] flex items-center gap-1 shadow-sm transition-all active:scale-95"
+                                    className={`px-2 py-0.5 rounded-lg text-[10px] font-black flex items-center gap-1 shadow-sm transition-all active:scale-95 cursor-pointer ${
+                                      isObsidian
+                                        ? 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border border-amber-500/30'
+                                        : 'bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300'
+                                    }`}
                                     title="Tap to see pending tag details for this size"
                                   >
-                                    <AlertTriangle className="w-3 h-3 text-[#B45309] shrink-0" />
+                                    <AlertTriangle className="w-3 h-3 text-amber-500 shrink-0" />
                                     <span>{sz.pendingTagsCount} in Pending Tag</span>
                                   </button>
                                 )}
                                 <span className={`text-xs font-black ${
                                   sz.stock <= 0
-                                    ? 'text-[#8C7E6F]'
-                                    : (sz.stock <= 2 ? 'text-[#B45309]' : 'text-[#1B5E20]')
+                                    ? (isObsidian ? 'text-neutral-500' : 'text-slate-400')
+                                    : (sz.stock <= 2
+                                        ? (isObsidian ? 'text-amber-400' : 'text-amber-700')
+                                        : (isObsidian ? 'text-emerald-400' : 'text-emerald-700'))
                                 }`}>
                                   {sz.stock} available
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleOpenThermalTag(sz.size, colorGroup.color)}
-                                    className="p-1.5 rounded-lg border border-[#D5C9B7] hover:bg-[#FAF6F0] text-[#7A6E61] hover:text-[#231F1C] transition-all"
-                                    title={`Print replacement tag for ${sz.size}`}
-                                  >
-                                    <Printer className="w-3 h-3" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleOpenReportDefect(sz.size, colorGroup.color)}
-                                    className="p-1.5 rounded-lg border border-rose-200 hover:bg-rose-50 text-rose-600 transition-all"
-                                    title={`Report damage for ${sz.size}`}
-                                  >
-                                    <ShieldAlert className="w-3 h-3" />
-                                  </button>
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenThermalTag(sz.size, colorGroup.color)}
+                                  className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
+                                    isObsidian ? 'border-neutral-800 hover:bg-neutral-800 text-neutral-400 hover:text-white' : 'border-slate-200 hover:bg-slate-100 text-slate-500 hover:text-slate-900'
+                                  }`}
+                                  title={`Print replacement tag for ${sz.size}`}
+                                >
+                                  <Printer className="w-3 h-3" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenReportDefect(sz.size, colorGroup.color)}
+                                  className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
+                                    isObsidian ? 'border-rose-900/60 hover:bg-rose-950/40 text-rose-400' : 'border-rose-200 hover:bg-rose-50 text-rose-600'
+                                  }`}
+                                  title={`Report damage for ${sz.size}`}
+                                >
+                                  <ShieldAlert className="w-3 h-3" />
+                                </button>
                               </div>
                             </div>
                           );
@@ -2039,15 +2209,15 @@ export default function StaffStockCheckerPage({
 
         {/* --- Recent Searches / Floor Quick History --- */}
         {recentScans.length > 0 && (
-          <div className="pt-4 border-t border-slate-800 space-y-2.5">
-            <div className="flex items-center justify-between text-xs text-[#6B5E51] px-1">
-              <span className="font-bold uppercase tracking-wider text-[#6B5E51]">Recent Floor Checks</span>
+          <div className="pt-4 border-t space-y-2.5" style={{ borderColor: isObsidian ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' }}>
+            <div className="flex items-center justify-between text-xs px-1">
+              <span className={`font-bold uppercase tracking-wider ${isObsidian ? 'text-neutral-400' : 'text-slate-500'}`}>Recent Floor Checks</span>
               <button
                 onClick={() => {
                   setRecentScans([]);
                   localStorage.removeItem(RECENT_SCANS_KEY);
                 }}
-                className="text-[10px] text-slate-500 hover:text-rose-400 transition-colors"
+                className={`text-[10px] transition-colors cursor-pointer ${isObsidian ? 'text-neutral-500 hover:text-rose-400' : 'text-slate-400 hover:text-rose-600'}`}
               >
                 Clear History
               </button>
@@ -2061,28 +2231,34 @@ export default function StaffStockCheckerPage({
                     setQuery(item.articleNo);
                     handleLookup(item.articleNo);
                   }}
-                  className="w-full p-2.5 rounded-2xl bg-slate-900/60 hover:bg-[#FAF8F5] border border-[#E3DAC9]/80 hover:border-slate-700 text-left flex items-center justify-between transition-all active:scale-98"
+                  className={`w-full p-2.5 rounded-2xl border text-left flex items-center justify-between transition-all active:scale-98 cursor-pointer ${
+                    isObsidian
+                      ? 'bg-neutral-900/60 hover:bg-neutral-900 border-neutral-800 text-white'
+                      : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-900 shadow-xs'
+                  }`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="p-1.5 rounded-lg bg-slate-800 text-amber-400 shrink-0">
+                    <div className={`p-1.5 rounded-lg shrink-0 ${isObsidian ? 'bg-neutral-800 text-amber-400' : 'bg-slate-100 text-amber-600'}`}>
                       <Tag className="w-3.5 h-3.5" />
                     </div>
                     <div className="truncate">
-                      <div className="text-xs font-bold text-[#231F1C] flex items-center gap-2">
+                      <div className={`text-xs font-bold flex items-center gap-2 ${isObsidian ? 'text-white' : 'text-slate-900'}`}>
                         <span>{item.articleNo}</span>
-                        {item.mrp && <span className="text-[#6B5E51] font-normal">₹{item.mrp}</span>}
+                        {item.mrp && <span className={`font-normal ${isObsidian ? 'text-neutral-400' : 'text-slate-500'}`}>₹{item.mrp}</span>}
                       </div>
-                      <div className="text-[11px] text-[#6B5E51] truncate mt-0.5">{item.itemName}</div>
+                      <div className={`text-[11px] truncate mt-0.5 ${isObsidian ? 'text-neutral-400' : 'text-slate-500'}`}>{item.itemName}</div>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
                     <span className={`text-[11px] font-bold ${
-                      item.totalStock > 0 ? 'text-emerald-400' : 'text-rose-400'
+                      item.totalStock > 0
+                        ? (isObsidian ? 'text-emerald-400' : 'text-emerald-600')
+                        : (isObsidian ? 'text-rose-400' : 'text-rose-600')
                     }`}>
                       {item.totalStock > 0 ? `${item.totalStock} in stock` : 'Out of stock'}
                     </span>
-                    <ChevronRight className="w-3.5 h-3.5 text-slate-600" />
+                    <ChevronRight className={`w-3.5 h-3.5 ${isObsidian ? 'text-neutral-600' : 'text-slate-400'}`} />
                   </div>
                 </button>
               ))}
@@ -2244,53 +2420,63 @@ export default function StaffStockCheckerPage({
 
       {/* --- Pending Tag Details Modal (For a specific size) --- */}
       {selectedPendingSize && (
-        <div className="fixed inset-0 z-50 bg-[#231F1C]/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
-          <div className="bg-[#FFFDF9] border border-[#DCD3C4] rounded-3xl max-w-md w-full p-5 space-y-4 shadow-2xl text-[#231F1C] max-h-[85vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-[#EFE9DF] pb-3">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+          <div className={`rounded-3xl max-w-md w-full p-5 space-y-4 shadow-2xl border max-h-[85vh] overflow-y-auto ${
+            isObsidian ? 'bg-[#0D0E12] border-neutral-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+          }`}>
+            <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: isObsidian ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' }}>
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-amber-500 text-slate-950 font-black">
+                <div className="p-2 rounded-xl bg-amber-500 text-black font-black">
                   <Tag className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm text-[#231F1C]">Pending Tag Size Details</h3>
-                  <p className="text-[11px] text-[#6B5E51]">
-                    Size: <strong className="text-amber-300">{selectedPendingSize.size}</strong> • {selectedPendingSize.pendingTagsCount || 1} piece(s) registered
+                  <h3 className={`font-bold text-sm ${isObsidian ? 'text-white' : 'text-slate-900'}`}>Pending Tag Size Details</h3>
+                  <p className={`text-[11px] ${isObsidian ? 'text-neutral-400' : 'text-slate-500'}`}>
+                    Size: <strong className="text-amber-400">{selectedPendingSize.size}</strong> • {selectedPendingSize.pendingTagsCount || 1} piece(s) registered
                   </p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedPendingSize(null)}
-                className="p-1.5 rounded-full hover:bg-slate-800 text-[#6B5E51] hover:text-[#231F1C]"
+                className={`p-1.5 rounded-full cursor-pointer ${isObsidian ? 'hover:bg-neutral-800 text-neutral-400 hover:text-white' : 'hover:bg-slate-100 text-slate-400 hover:text-slate-900'}`}
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="p-3 rounded-2xl bg-amber-950/30 border border-amber-500/30 text-xs text-amber-200/90 leading-relaxed">
+            <div className={`p-3 rounded-2xl border text-xs leading-relaxed ${
+              isObsidian ? 'bg-amber-500/10 border-amber-500/25 text-amber-300' : 'bg-amber-50 border-amber-200 text-amber-900'
+            }`}>
               ⚠️ <strong>Floor Notice:</strong> This piece physically exists in the store without a printed/attached barcode tag. Locate it in the pending tags rack/trial room box.
             </div>
 
             <div className="space-y-2">
               {(selectedPendingSize.pendingTagDetails || []).map((pt, idx) => (
-                <div key={pt.id || idx} className="p-3 rounded-2xl bg-[#FAF8F5] border border-[#E3DAC9] space-y-1.5 text-xs">
+                <div key={pt.id || idx} className={`p-3 rounded-2xl border space-y-1.5 text-xs ${
+                  isObsidian ? 'bg-neutral-900/60 border-neutral-800' : 'bg-slate-50 border-slate-200'
+                }`}>
                   <div className="flex items-center justify-between">
                     <span className="font-mono font-bold text-amber-400">#{pt.barcode || 'NO-BARCODE'}</span>
                     <button
                       type="button"
                       onClick={() => handleCopyBarcode(pt.barcode)}
-                      className="text-[10px] text-[#6B5E51] hover:text-[#231F1C] flex items-center gap-1 font-bold"
+                      className={`text-[10px] flex items-center gap-1 font-bold cursor-pointer ${
+                        isObsidian ? 'text-neutral-400 hover:text-white' : 'text-slate-400 hover:text-slate-900'
+                      }`}
                     >
                       {copiedBarcode === pt.barcode ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
                       <span>{copiedBarcode === pt.barcode ? 'Copied' : 'Copy'}</span>
                     </button>
                   </div>
                   {pt.notes && (
-                    <p className="text-slate-300 text-[11px]">
-                      <span className="text-slate-500 font-medium">Notes:</span> {pt.notes}
+                    <p className={`text-[11px] ${isObsidian ? 'text-neutral-300' : 'text-slate-700'}`}>
+                      <span className={isObsidian ? 'text-neutral-500 font-medium' : 'text-slate-400 font-medium'}>Notes:</span> {pt.notes}
                     </p>
                   )}
-                  <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1 border-t border-slate-800/60">
+                  <div className={`flex items-center justify-between text-[10px] pt-1 border-t ${
+                    isObsidian ? 'text-neutral-500 border-neutral-800' : 'text-slate-400 border-slate-200'
+                  }`}>
                     <span>Added: {pt.createdAt ? new Date(pt.createdAt).toLocaleDateString('en-IN') : 'Recent'}</span>
                     <span className="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 uppercase font-black">Active Tag</span>
                   </div>
@@ -2301,7 +2487,9 @@ export default function StaffStockCheckerPage({
             <button
               type="button"
               onClick={() => setSelectedPendingSize(null)}
-              className="w-full py-2.5 rounded-xl bg-[#EFE9DF] hover:bg-[#E5DDCF] text-[#4A4036] font-bold text-xs transition-all active:scale-98"
+              className={`w-full py-2.5 rounded-xl border font-bold text-xs transition-all active:scale-98 cursor-pointer ${
+                isObsidian ? 'bg-neutral-900 border-neutral-800 text-neutral-300 hover:bg-neutral-800' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
+              }`}
             >
               Close
             </button>
@@ -2311,22 +2499,24 @@ export default function StaffStockCheckerPage({
 
       {/* --- All Pending Tags Modal for this Article --- */}
       {showPendingListModal && stockData && (
-        <div className="fixed inset-0 z-50 bg-[#231F1C]/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
-          <div className="bg-[#FFFDF9] border border-[#DCD3C4] rounded-3xl max-w-md w-full p-5 space-y-4 shadow-2xl text-[#231F1C] max-h-[85vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-[#EFE9DF] pb-3">
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+          <div className={`rounded-3xl max-w-md w-full p-5 space-y-4 shadow-2xl border max-h-[85vh] overflow-y-auto ${
+            isObsidian ? 'bg-[#0D0E12] border-neutral-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+          }`}>
+            <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: isObsidian ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' }}>
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-amber-500 text-slate-950 font-black">
+                <div className="p-2 rounded-xl bg-amber-500 text-black font-black">
                   <Tag className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm text-[#231F1C]">Pending Tags for {stockData.articleNo}</h3>
-                  <p className="text-[11px] text-[#6B5E51]">{stockData.totalPendingTags || 0} active pending piece(s)</p>
+                  <h3 className={`font-bold text-sm ${isObsidian ? 'text-white' : 'text-slate-900'}`}>Pending Tags for {stockData.articleNo}</h3>
+                  <p className={`text-[11px] ${isObsidian ? 'text-neutral-400' : 'text-slate-500'}`}>{stockData.totalPendingTags || 0} active pending piece(s)</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setShowPendingListModal(false)}
-                className="p-1.5 rounded-full hover:bg-slate-800 text-[#6B5E51] hover:text-[#231F1C]"
+                className={`p-1.5 rounded-full cursor-pointer ${isObsidian ? 'hover:bg-neutral-800 text-neutral-400 hover:text-white' : 'hover:bg-slate-100 text-slate-400 hover:text-slate-900'}`}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -2334,29 +2524,37 @@ export default function StaffStockCheckerPage({
 
             <div className="space-y-2">
               {(stockData.pendingTagsList || []).map((t) => (
-                <div key={t.id} className="p-3 rounded-2xl bg-[#FAF8F5] border border-[#E3DAC9] space-y-1.5 text-xs">
+                <div key={t.id} className={`p-3 rounded-2xl border space-y-1.5 text-xs ${
+                  isObsidian ? 'bg-neutral-900/60 border-neutral-800' : 'bg-slate-50 border-slate-200'
+                }`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="font-mono font-bold text-amber-400">#{t.barcode}</span>
-                      <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-bold text-[10px]">
+                      <span className={`px-1.5 py-0.5 rounded font-bold text-[10px] ${
+                        isObsidian ? 'bg-neutral-800 text-neutral-300' : 'bg-slate-200 text-slate-800'
+                      }`}>
                         {t.color} • {t.size}
                       </span>
                     </div>
                     <button
                       type="button"
                       onClick={() => handleCopyBarcode(t.barcode)}
-                      className="text-[10px] text-[#6B5E51] hover:text-[#231F1C] flex items-center gap-1 font-bold"
+                      className={`text-[10px] flex items-center gap-1 font-bold cursor-pointer ${
+                        isObsidian ? 'text-neutral-400 hover:text-white' : 'text-slate-400 hover:text-slate-900'
+                      }`}
                     >
                       {copiedBarcode === t.barcode ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
                       <span>{copiedBarcode === t.barcode ? 'Copied' : 'Copy'}</span>
                     </button>
                   </div>
                   {t.notes && (
-                    <p className="text-slate-300 text-[11px] leading-tight">
-                      <span className="text-slate-500">Reason:</span> {t.notes}
+                    <p className={`text-[11px] leading-tight ${isObsidian ? 'text-neutral-300' : 'text-slate-700'}`}>
+                      <span className={isObsidian ? 'text-neutral-500' : 'text-slate-400'}>Reason:</span> {t.notes}
                     </p>
                   )}
-                  <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1 border-t border-slate-800/60">
+                  <div className={`flex items-center justify-between text-[10px] pt-1 border-t ${
+                    isObsidian ? 'text-neutral-500 border-neutral-800' : 'text-slate-400 border-slate-200'
+                  }`}>
                     <span>By: {t.salesperson || 'Staff'} • {t.createdAt ? new Date(t.createdAt).toLocaleDateString('en-IN') : 'Recent'}</span>
                     <span className="px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-400 uppercase font-black">Active</span>
                   </div>
@@ -2371,7 +2569,9 @@ export default function StaffStockCheckerPage({
                   setShowPendingListModal(false);
                   handleOpenAddPendingTag();
                 }}
-                className="flex-1 py-2.5 rounded-xl bg-[#B45309] hover:bg-[#92400E] text-white font-black text-xs transition-all active:scale-98 flex items-center justify-center gap-1.5 shadow-sm"
+                className={`flex-1 py-2.5 rounded-xl font-black text-xs transition-all active:scale-98 flex items-center justify-center gap-1.5 shadow-sm cursor-pointer ${
+                  isObsidian ? 'bg-amber-500 text-black hover:bg-amber-400' : 'bg-slate-900 text-white hover:bg-slate-800'
+                }`}
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>+ Add Another Tag</span>
@@ -2379,7 +2579,9 @@ export default function StaffStockCheckerPage({
               <button
                 type="button"
                 onClick={() => setShowPendingListModal(false)}
-                className="px-4 py-2.5 rounded-xl bg-[#EFE9DF] hover:bg-[#E5DDCF] text-[#4A4036] font-bold text-xs transition-all active:scale-98"
+                className={`px-4 py-2.5 rounded-xl border font-bold text-xs transition-all active:scale-98 cursor-pointer ${
+                  isObsidian ? 'bg-neutral-900 border-neutral-800 text-neutral-300 hover:bg-neutral-800' : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
+                }`}
               >
                 Close
               </button>
@@ -2431,22 +2633,32 @@ export default function StaffStockCheckerPage({
 
       {/* --- Add / Report Pending Tag Modal --- */}
       {showAddPendingModal && stockData && (
-        <div className="fixed inset-0 z-50 bg-[#231F1C]/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
-          <div className="bg-[#FFFDF9] border border-[#DCD3C4] rounded-3xl max-w-md w-full p-5 space-y-4 shadow-2xl text-[#231F1C] max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-[#EFE9DF] pb-3">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-amber-500 text-slate-950 font-black">
+        <div className={`fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 ${
+          isObsidian ? 'bg-black/80 backdrop-blur-md' : 'bg-black/50 backdrop-blur-sm'
+        }`}>
+          <div className={`rounded-3xl max-w-md w-full p-5 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto border ${
+            isObsidian ? 'bg-[#0E0E12] border-neutral-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+          }`}>
+            <div className={`flex items-center justify-between border-b pb-3 ${
+              isObsidian ? 'border-neutral-800' : 'border-slate-100'
+            }`}>
+              <div className="flex items-center gap-2.5">
+                <div className={`p-2 rounded-xl font-black ${
+                  isObsidian ? 'bg-amber-400 text-black' : 'bg-slate-900 text-amber-300'
+                }`}>
                   <Plus className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm text-[#231F1C]">Report Pending / Missing Tag</h3>
-                  <p className="text-[11px] text-[#6B5E51]">{stockData.articleNo} • {stockData.itemName}</p>
+                  <h3 className={`font-bold text-sm tracking-tight ${isObsidian ? 'text-white' : 'text-slate-900'}`}>Report Pending / Missing Tag</h3>
+                  <p className={`text-[11px] font-mono ${isObsidian ? 'text-neutral-400' : 'text-slate-500'}`}>{stockData.articleNo} • {stockData.itemName}</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setShowAddPendingModal(false)}
-                className="p-1.5 rounded-full hover:bg-slate-800 text-[#6B5E51] hover:text-[#231F1C]"
+                className={`p-1.5 rounded-full transition-colors ${
+                  isObsidian ? 'hover:bg-neutral-800 text-neutral-400 hover:text-white' : 'hover:bg-slate-100 text-slate-400 hover:text-slate-900'
+                }`}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -2455,7 +2667,7 @@ export default function StaffStockCheckerPage({
             <form onSubmit={handleSubmitPendingTag} className="space-y-3.5 text-xs">
               {/* Select Color */}
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-[#4A4036]">Colour</label>
+                <label className={`text-[11px] font-bold uppercase tracking-wider ${isObsidian ? 'text-neutral-400' : 'text-slate-600'}`}>Colour</label>
                 <select
                   value={addPendingForm.color}
                   onChange={(e) => {
@@ -2469,17 +2681,21 @@ export default function StaffStockCheckerPage({
                       barcode: firstSz?.barcode || prev.barcode
                     }));
                   }}
-                  className="w-full px-3 py-2.5 rounded-xl bg-[#FAF7F2] border border-[#D5C9B7] text-[#231F1C] font-bold outline-none focus:border-[#B45309]"
+                  className={`w-full px-3 py-2.5 rounded-xl font-bold outline-none border transition-all ${
+                    isObsidian
+                      ? 'bg-[#14141A] border-neutral-800 text-white focus:border-amber-400'
+                      : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-slate-900'
+                  }`}
                 >
                   {(stockData.colors || []).map(c => (
-                    <option key={c.color} value={c.color}>{c.color}</option>
+                    <option key={c.color} value={c.color} className={isObsidian ? 'bg-[#14141A] text-white' : 'bg-white text-slate-900'}>{c.color}</option>
                   ))}
                 </select>
               </div>
 
               {/* Select Size */}
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-[#4A4036]">Size</label>
+                <label className={`text-[11px] font-bold uppercase tracking-wider ${isObsidian ? 'text-neutral-400' : 'text-slate-600'}`}>Size</label>
                 <select
                   value={addPendingForm.size}
                   onChange={(e) => {
@@ -2492,33 +2708,45 @@ export default function StaffStockCheckerPage({
                       barcode: matchedSz?.barcode || prev.barcode
                     }));
                   }}
-                  className="w-full px-3 py-2.5 rounded-xl bg-[#FAF7F2] border border-[#D5C9B7] text-[#231F1C] font-bold outline-none focus:border-[#B45309]"
+                  className={`w-full px-3 py-2.5 rounded-xl font-bold outline-none border transition-all ${
+                    isObsidian
+                      ? 'bg-[#14141A] border-neutral-800 text-white focus:border-amber-400'
+                      : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-slate-900'
+                  }`}
                 >
                   {allAvailableSizes.map(sz => (
-                    <option key={sz.size} value={sz.size}>{sz.size}</option>
+                    <option key={sz.size} value={sz.size} className={isObsidian ? 'bg-[#14141A] text-white' : 'bg-white text-slate-900'}>{sz.size}</option>
                   ))}
                 </select>
               </div>
 
               {/* Barcode */}
               <div className="space-y-1">
-                <label className="text-[11px] font-bold text-[#4A4036]">Barcode / SKU</label>
+                <label className={`text-[11px] font-bold uppercase tracking-wider ${isObsidian ? 'text-neutral-400' : 'text-slate-600'}`}>Barcode / SKU</label>
                 <input
                   type="text"
                   value={addPendingForm.barcode}
                   onChange={(e) => setAddPendingForm(prev => ({ ...prev, barcode: e.target.value }))}
                   placeholder="Barcode (optional or auto-selected)"
-                  className="w-full px-3 py-2.5 rounded-xl bg-[#FAF7F2] border border-[#D5C9B7] text-[#231F1C] font-mono font-bold outline-none focus:border-[#B45309]"
+                  className={`w-full px-3 py-2.5 rounded-xl font-mono font-bold outline-none border transition-all ${
+                    isObsidian
+                      ? 'bg-[#14141A] border-neutral-800 text-white placeholder-neutral-500 focus:border-amber-400'
+                      : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:border-slate-900'
+                  }`}
                 />
               </div>
 
               {/* Duplicate Barcode Warning Banner */}
               {duplicateStaffPendingTag && (
-                <div className="p-3 rounded-2xl bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-start gap-2 shadow-sm animate-in fade-in">
-                  <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
+                <div className={`p-3 rounded-2xl text-xs flex items-start gap-2.5 border shadow-sm ${
+                  isObsidian
+                    ? 'bg-amber-950/30 border-amber-800/60 text-amber-300'
+                    : 'bg-amber-50 border-amber-300 text-amber-900'
+                }`}>
+                  <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
                   <div>
                     <span className="font-bold">⚠️ Barcode Already on Pending Rack</span>
-                    <p className="mt-0.5 text-[11px] leading-relaxed text-amber-800">
+                    <p className={`mt-0.5 text-[11px] leading-relaxed ${isObsidian ? 'text-amber-200/90' : 'text-amber-800'}`}>
                       A pending tag with barcode <span className="font-mono font-bold">{duplicateStaffPendingTag.barcode}</span> ({duplicateStaffPendingTag.color} - {duplicateStaffPendingTag.size}) already exists on the active rack. Duplicate tags cannot be added.
                     </p>
                   </div>
@@ -2527,17 +2755,21 @@ export default function StaffStockCheckerPage({
 
               {/* Note / Reason Chips */}
               <div className="space-y-1.5">
-                <label className="text-[11px] font-bold text-[#4A4036]">Reason / Note</label>
+                <label className={`text-[11px] font-bold uppercase tracking-wider ${isObsidian ? 'text-neutral-400' : 'text-slate-600'}`}>Reason / Note</label>
                 <div className="flex flex-wrap gap-1.5">
                   {['Tag torn on floor', 'Missing tag in trial room', 'Barcode unreadable', 'Defective tag'].map(preset => (
                     <button
                       key={preset}
                       type="button"
                       onClick={() => setAddPendingForm(prev => ({ ...prev, notes: preset }))}
-                      className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                      className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all border ${
                         addPendingForm.notes === preset
-                          ? 'bg-[#B45309] text-white'
-                          : 'bg-[#FAF7F2] border border-[#D5C9B7] text-[#4A4036] hover:bg-[#EAE2D3]'
+                          ? isObsidian
+                            ? 'bg-amber-400 border-amber-400 text-black shadow-sm'
+                            : 'bg-slate-900 border-slate-900 text-white shadow-sm'
+                          : isObsidian
+                            ? 'bg-[#181820] border-neutral-800 text-neutral-300 hover:bg-neutral-800'
+                            : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
                       }`}
                     >
                       {preset}
@@ -2549,7 +2781,11 @@ export default function StaffStockCheckerPage({
                   value={addPendingForm.notes}
                   onChange={(e) => setAddPendingForm(prev => ({ ...prev, notes: e.target.value }))}
                   placeholder="Enter note or reason"
-                  className="w-full px-3 py-2 rounded-xl bg-[#FAF7F2] border border-[#D5C9B7] text-[#231F1C] text-xs outline-none focus:border-[#B45309] mt-1"
+                  className={`w-full px-3 py-2 rounded-xl text-xs outline-none border transition-all mt-1 ${
+                    isObsidian
+                      ? 'bg-[#14141A] border-neutral-800 text-white placeholder-neutral-500 focus:border-amber-400'
+                      : 'bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus:border-slate-900'
+                  }`}
                 />
               </div>
 
@@ -2557,7 +2793,11 @@ export default function StaffStockCheckerPage({
                 <button
                   type="submit"
                   disabled={isSubmittingPending || Boolean(duplicateStaffPendingTag)}
-                  className="flex-1 py-3 rounded-xl bg-[#B45309] hover:bg-[#92400E] disabled:opacity-40 disabled:cursor-not-allowed text-white font-black text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-98 transition-all"
+                  className={`flex-1 py-3 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed font-black text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-98 transition-all ${
+                    isObsidian
+                      ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-black hover:brightness-110 shadow-amber-500/10'
+                      : 'bg-slate-900 hover:bg-slate-800 text-white'
+                  }`}
                   title={duplicateStaffPendingTag ? "Cannot add duplicate barcode" : "Register Pending Tag"}
                 >
                   {isSubmittingPending ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
@@ -2566,7 +2806,11 @@ export default function StaffStockCheckerPage({
                 <button
                   type="button"
                   onClick={() => setShowAddPendingModal(false)}
-                  className="px-4 py-3 rounded-xl bg-[#EFE9DF] hover:bg-[#E5DDCF] text-[#4A4036] font-bold text-xs"
+                  className={`px-4 py-3 rounded-xl font-bold text-xs transition-colors ${
+                    isObsidian
+                      ? 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                  }`}
                 >
                   Cancel
                 </button>
@@ -2578,53 +2822,71 @@ export default function StaffStockCheckerPage({
 
       {/* Install / Shortcut Guidance Modal */}
       {showInstallGuide && (
-        <div className="fixed inset-0 z-50 bg-[#231F1C]/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
-          <div className="bg-[#FFFDF9] border border-[#DCD3C4] rounded-3xl max-w-md w-full p-5 space-y-4 shadow-2xl text-[#231F1C] max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-[#EFE9DF] pb-3">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-amber-500 text-slate-950 font-black">
+        <div className={`fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 ${
+          isObsidian ? 'bg-black/80 backdrop-blur-md' : 'bg-black/50 backdrop-blur-sm'
+        }`}>
+          <div className={`rounded-3xl max-w-md w-full p-5 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto border ${
+            isObsidian ? 'bg-[#0E0E12] border-neutral-800 text-white' : 'bg-white border-slate-200 text-slate-900'
+          }`}>
+            <div className={`flex items-center justify-between border-b pb-3 ${
+              isObsidian ? 'border-neutral-800' : 'border-slate-100'
+            }`}>
+              <div className="flex items-center gap-2.5">
+                <div className={`p-2 rounded-xl font-black ${
+                  isObsidian ? 'bg-amber-400 text-black' : 'bg-slate-900 text-amber-300'
+                }`}>
                   <Smartphone className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm text-[#231F1C]">Add Stock Checker to Home Screen</h3>
-                  <p className="text-[11px] text-[#6B5E51]">Launch directly in 1-tap from your phone</p>
+                  <h3 className={`font-bold text-sm tracking-tight ${isObsidian ? 'text-white' : 'text-slate-900'}`}>Add Stock Checker to Home Screen</h3>
+                  <p className={`text-[11px] ${isObsidian ? 'text-neutral-400' : 'text-slate-500'}`}>Launch directly in 1-tap from your phone</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setShowInstallGuide(false)}
-                className="p-1.5 rounded-full hover:bg-slate-800 text-[#6B5E51] hover:text-[#231F1C]"
+                className={`p-1.5 rounded-full transition-colors ${
+                  isObsidian ? 'hover:bg-neutral-800 text-neutral-400 hover:text-white' : 'hover:bg-slate-100 text-slate-400 hover:text-slate-900'
+                }`}
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             {/* Direct Link Box with 1-Tap Copy */}
-            <div className="p-3 rounded-2xl bg-[#FAF7F2] border border-[#D5C9B7] space-y-1.5">
+            <div className={`p-3 rounded-2xl border space-y-1.5 ${
+              isObsidian ? 'bg-[#14141A] border-neutral-800' : 'bg-slate-50 border-slate-200'
+            }`}>
               <div className="flex items-center justify-between text-[11px]">
-                <span className="text-[#6B5E51]">Direct Staff Link:</span>
+                <span className={isObsidian ? 'text-neutral-400' : 'text-slate-500'}>Direct Staff Link:</span>
                 <button
                   type="button"
                   onClick={copyDirectStockLink}
-                  className="text-amber-400 font-bold flex items-center gap-1 hover:underline"
+                  className="text-amber-500 dark:text-amber-400 font-bold flex items-center gap-1 hover:underline"
                 >
                   {copiedUrl ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
                   <span>{copiedUrl ? 'Copied!' : 'Copy Link'}</span>
                 </button>
               </div>
-              <p className="font-mono text-xs text-[#B45309] font-bold break-all select-all">
+              <p className={`font-mono text-xs font-bold break-all select-all ${
+                isObsidian ? 'text-amber-400' : 'text-slate-900'
+              }`}>
                 https://cobb-store.web.app/#stock
               </p>
             </div>
 
             {/* Step-by-Step for Chrome & Safari */}
             <div className="space-y-2.5 text-xs">
-              <div className="p-3 rounded-2xl bg-[#FAF8F5] border border-[#E3DAC9] space-y-1">
-                <p className="font-black text-amber-300 flex items-center gap-1.5">
+              <div className={`p-3 rounded-2xl border space-y-1 ${
+                isObsidian ? 'bg-[#14141A] border-neutral-800/80 text-neutral-300' : 'bg-slate-50 border-slate-200 text-slate-700'
+              }`}>
+                <p className="font-black text-amber-500 dark:text-amber-400 flex items-center gap-1.5">
                   <span>🤖</span>
                   <span>Google Chrome (Android)</span>
                 </p>
-                <ol className="list-decimal list-inside space-y-1 text-[#4A4036] text-[11.5px] leading-relaxed">
+                <ol className={`list-decimal list-inside space-y-1 text-[11.5px] leading-relaxed ${
+                  isObsidian ? 'text-neutral-300' : 'text-slate-600'
+                }`}>
                   <li>Tap the <strong>3 dots (⋮)</strong> menu in Chrome at top right.</li>
                   <li>Select <strong>&quot;Add to Home screen&quot;</strong> or <strong>&quot;Install app&quot;</strong>.</li>
                   <li>Tap <strong>&quot;Install / Add&quot;</strong>.</li>
@@ -2632,24 +2894,32 @@ export default function StaffStockCheckerPage({
                 </ol>
               </div>
 
-              <div className="p-3 rounded-2xl bg-[#FAF8F5] border border-[#E3DAC9] space-y-1">
-                <p className="font-black text-rose-300 flex items-center gap-1.5">
+              <div className={`p-3 rounded-2xl border space-y-1 ${
+                isObsidian ? 'bg-[#14141A] border-neutral-800/80 text-neutral-300' : 'bg-slate-50 border-slate-200 text-slate-700'
+              }`}>
+                <p className="font-black text-rose-500 dark:text-rose-400 flex items-center gap-1.5">
                   <span>🍎</span>
                   <span>iPhone / Safari (iOS)</span>
                 </p>
-                <ol className="list-decimal list-inside space-y-1 text-[#4A4036] text-[11.5px] leading-relaxed">
+                <ol className={`list-decimal list-inside space-y-1 text-[11.5px] leading-relaxed ${
+                  isObsidian ? 'text-neutral-300' : 'text-slate-600'
+                }`}>
                   <li>Tap the <strong>Share (📤)</strong> button at the bottom of Safari.</li>
                   <li>Scroll down and tap <strong>&quot;Add to Home Screen&quot; (➕)</strong>.</li>
                   <li>Tap <strong>&quot;Add&quot;</strong> at the top right.</li>
                 </ol>
               </div>
 
-              <div className="p-3 rounded-2xl bg-[#FAF8F5] border border-[#E3DAC9] space-y-1">
-                <p className="font-black text-sky-300 flex items-center gap-1.5">
+              <div className={`p-3 rounded-2xl border space-y-1 ${
+                isObsidian ? 'bg-[#14141A] border-neutral-800/80 text-neutral-300' : 'bg-slate-50 border-slate-200 text-slate-700'
+              }`}>
+                <p className="font-black text-sky-500 dark:text-sky-400 flex items-center gap-1.5">
                   <span>💻</span>
                   <span>Desktop Chrome / Edge</span>
                 </p>
-                <ol className="list-decimal list-inside space-y-1 text-[#4A4036] text-[11.5px] leading-relaxed">
+                <ol className={`list-decimal list-inside space-y-1 text-[11.5px] leading-relaxed ${
+                  isObsidian ? 'text-neutral-300' : 'text-slate-600'
+                }`}>
                   <li>Click the <strong>Install icon</strong> in the right side of the address bar.</li>
                   <li>Or tap <strong>⋮ ➔ Save and share ➔ Create shortcut...</strong></li>
                 </ol>
@@ -2659,7 +2929,11 @@ export default function StaffStockCheckerPage({
             <button
               type="button"
               onClick={() => setShowInstallGuide(false)}
-              className="w-full py-2.5 rounded-xl bg-[#B45309] hover:bg-[#92400E] text-white font-black text-xs transition-all active:scale-98 shadow-sm"
+              className={`w-full py-2.5 rounded-xl font-black text-xs transition-all active:scale-98 shadow-sm ${
+                isObsidian
+                  ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-black hover:brightness-110 shadow-amber-500/10'
+                  : 'bg-slate-900 hover:bg-slate-800 text-white'
+              }`}
             >
               Got It
             </button>
@@ -2668,19 +2942,27 @@ export default function StaffStockCheckerPage({
       )}
 
       {/* --- Thumb-Friendly Floor Mobile Bottom Bar --- */}
-      <nav aria-label="Floor Staff Navigation" className="fixed bottom-0 inset-x-0 z-40 bg-[#FFFDF9]/95 border-t border-[#DCD3C4] backdrop-blur-md px-3 py-2 flex items-center justify-around gap-2 shadow-lg">
+      <nav aria-label="Floor Staff Navigation" className={`fixed bottom-0 inset-x-0 z-40 backdrop-blur-md px-3 py-2 flex items-center justify-around gap-2 ${
+        isObsidian
+          ? 'bg-[#0A0A0E]/95 border-t border-neutral-800 shadow-[0_-4px_20px_rgba(0,0,0,0.8)]'
+          : 'bg-white/95 border-t border-slate-200 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]'
+      }`}>
         {/* Tab 1: Check Stock */}
         <button
           type="button"
           onClick={() => setActiveMainTab('stock')}
           className={`flex-1 py-2 px-2.5 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer active:scale-95 ${
             activeMainTab === 'stock'
-              ? 'bg-[#B45309] text-white shadow-md'
-              : 'text-[#6B5E51] hover:bg-[#F5ECE0]'
+              ? isObsidian
+                ? 'bg-amber-400 text-black font-black shadow-md shadow-amber-400/20'
+                : 'bg-slate-900 text-white font-black shadow-md'
+              : isObsidian
+                ? 'text-neutral-400 hover:bg-neutral-900'
+                : 'text-slate-500 hover:bg-slate-100'
           }`}
         >
           <Search className="w-4 h-4" />
-          <span className="text-[11px] font-black">Check Stock</span>
+          <span className="text-[11px] font-black tracking-tight">Check Stock</span>
         </button>
 
         {/* Tab 2: Damage Bin (Defect Desk) */}
@@ -2690,8 +2972,10 @@ export default function StaffStockCheckerPage({
           onClick={() => setActiveMainTab('defect')}
           className={`flex-1 py-2 px-2.5 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer active:scale-95 ${
             activeMainTab === 'defect'
-              ? 'bg-rose-600 text-white shadow-md'
-              : 'text-[#6B5E51] hover:bg-[#F5ECE0]'
+              ? 'bg-rose-600 text-white shadow-md shadow-rose-600/20'
+              : isObsidian
+                ? 'text-neutral-400 hover:bg-neutral-900'
+                : 'text-slate-500 hover:bg-slate-100'
           }`}
         >
           <div className="relative">
@@ -2702,7 +2986,7 @@ export default function StaffStockCheckerPage({
               </span>
             )}
           </div>
-          <span className="text-[11px] font-black">Damage Bin</span>
+          <span className="text-[11px] font-black tracking-tight">Damage Bin</span>
         </button>
 
         {/* Tab 3: Fast Camera Scan Defect */}
@@ -2710,10 +2994,14 @@ export default function StaffStockCheckerPage({
           type="button"
           aria-label="Scan Defect"
           onClick={handleStartDefectScan}
-          className="flex-1 py-2 px-2.5 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer active:scale-95 bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100"
+          className={`flex-1 py-2 px-2.5 rounded-2xl flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer active:scale-95 border ${
+            isObsidian
+              ? 'bg-rose-950/40 text-rose-300 border-rose-800/60 hover:bg-rose-900/40'
+              : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
+          }`}
         >
-          <Camera className="w-4 h-4 text-rose-600" />
-          <span className="text-[11px] font-black">Scan Defect</span>
+          <Camera className="w-4 h-4 text-rose-500" />
+          <span className="text-[11px] font-black tracking-tight">Scan Defect</span>
         </button>
       </nav>
     </div>
