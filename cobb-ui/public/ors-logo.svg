@@ -1,70 +1,85 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 70" width="100%" height="100%" fill="none">
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <!-- Continuous Neon Gradient across O -> R -> S -->
-    <linearGradient id="orsGrad" x1="0%" y1="20%" x2="100%" y2="80%">
-      <stop offset="0%" stop-color="#00f5ff" />
-      <stop offset="25%" stop-color="#38bdf8" />
-      <stop offset="55%" stop-color="#6366f1" />
-      <stop offset="85%" stop-color="#a855f7" />
-      <stop offset="100%" stop-color="#ec4899" />
+    <!-- Background Gradient -->
+    <radialGradient id="bgGrad" cx="50%" cy="50%" r="70%">
+      <stop offset="0%" stop-color="#16151B" />
+      <stop offset="60%" stop-color="#0A090D" />
+      <stop offset="100%" stop-color="#040406" />
+    </radialGradient>
+
+    <!-- Warm Backlight Glow behind Emblem -->
+    <radialGradient id="backlightGlow" cx="50%" cy="46%" r="42%">
+      <stop offset="0%" stop-color="#F59E0B" stop-opacity="0.45" />
+      <stop offset="45%" stop-color="#D97706" stop-opacity="0.20" />
+      <stop offset="100%" stop-color="#B45309" stop-opacity="0" />
+    </radialGradient>
+
+    <!-- Brushed Brass Gold Gradient -->
+    <linearGradient id="brassGold" x1="15%" y1="10%" x2="85%" y2="90%">
+      <stop offset="0%" stop-color="#FFF8D1" />
+      <stop offset="20%" stop-color="#F5B738" />
+      <stop offset="45%" stop-color="#D97706" />
+      <stop offset="70%" stop-color="#FDE68A" />
+      <stop offset="90%" stop-color="#B45309" />
+      <stop offset="100%" stop-color="#78350F" />
     </linearGradient>
 
-    <!-- Specular Core Light (3D Glass Tube shine) -->
-    <linearGradient id="specular" x1="0%" y1="0%" x2="100%" y2="50%">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.95" />
-      <stop offset="50%" stop-color="#e0f2fe" stop-opacity="0.5" />
-      <stop offset="100%" stop-color="#ffffff" stop-opacity="0.9" />
+    <!-- Outer Rim Accent -->
+    <linearGradient id="rimGold" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F59E0B" stop-opacity="0.5" />
+      <stop offset="50%" stop-color="#78350F" stop-opacity="0.1" />
+      <stop offset="100%" stop-color="#F59E0B" stop-opacity="0.4" />
     </linearGradient>
-
-    <linearGradient id="cyanRibbon" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#00f5ff" />
-      <stop offset="100%" stop-color="#3b82f6" />
-    </linearGradient>
-
-    <linearGradient id="purpleRibbon" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#c084fc" />
-      <stop offset="100%" stop-color="#6366f1" />
-    </linearGradient>
-
-    <filter id="neonGlow" x="-30%" y="-30%" width="160%" height="160%">
-      <feGaussianBlur stdDeviation="3.5" result="blur" />
-      <feMerge>
-        <feMergeNode in="blur" />
-        <feMergeNode in="blur" />
-        <feMergeNode in="SourceGraphic" />
-      </feMerge>
-    </filter>
   </defs>
 
-  <g filter="url(#neonGlow)">
-    <!-- ================= LETTER O ================= -->
-    <ellipse cx="22" cy="35" rx="15" ry="19" fill="none" stroke="#00f5ff" stroke-width="7" opacity="0.4" />
-    <ellipse cx="22" cy="35" rx="15" ry="19" fill="none" stroke="url(#cyanRibbon)" stroke-width="5.5" />
-    <ellipse cx="22" cy="35" rx="15" ry="19" fill="none" stroke="url(#specular)" stroke-width="1.4" stroke-dasharray="16 35" stroke-dashoffset="12" />
+  <!-- Background Layer -->
+  <rect width="1024" height="1024" rx="228" fill="url(#bgGrad)" />
+  <rect width="1020" height="1020" x="2" y="2" rx="226" fill="none" stroke="url(#rimGold)" stroke-width="4" />
 
-    <!-- ================= LETTER R ================= -->
-    <path d="M 43 54 L 43 16 L 57 16 C 64.5 16 69.5 20 69.5 27 C 69.5 33.5 64.5 37.5 57 37.5 L 43 37.5 M 55.5 37.5 L 68 54"
-          fill="none" stroke="#6366f1" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" opacity="0.4" />
-    <path d="M 43 54 L 43 16 L 57 16 C 64.5 16 69.5 20 69.5 27 C 69.5 33.5 64.5 37.5 57 37.5 L 43 37.5 M 55.5 37.5 L 68 54"
-          fill="none" stroke="url(#orsGrad)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" />
-    <path d="M 43 53 L 43 17 L 57 17 C 63.5 17 68 20.5 68 27 C 68 32.5 63.5 36.5 57 36.5 L 43 36.5 M 56 37.5 L 67 53"
-          fill="none" stroke="url(#specular)" stroke-width="1.3" stroke-linecap="round" />
+  <!-- Backlight Halo -->
+  <circle cx="512" cy="460" r="380" fill="url(#backlightGlow)" />
 
-    <!-- Connecting Fluid Flow Ribbon from R to S -->
-    <path d="M 36 35 C 38 48 42 54 44 54" fill="none" stroke="url(#cyanRibbon)" stroke-width="2.5" opacity="0.6" />
+  <!-- Emblem Group (Centered in 1024x1024 canvas, safe zone for maskable icons) -->
+  <g transform="translate(512, 455) scale(6.4)">
+    <!-- Hanger Hook inside G -->
+    <path d="M 0 -22 C 0 -36 10 -40 18 -35 C 24 -30 20 -22 15 -20 C 11 -18 10 -15 10 -11"
+          fill="none" stroke="url(#brassGold)" stroke-width="4.2" stroke-linecap="round" />
+    <!-- Hook Neck joint -->
+    <polygon points="10,-11 15,-4 5,-4" fill="url(#brassGold)" />
 
-    <!-- ================= LETTER S ================= -->
-    <path d="M 91 22.5 C 88 18 82.5 15.5 76 15.5 C 68 15.5 63 20.5 63 26.5 C 63 34 71 37 78.5 40 C 86 43 90 46.5 90 53 C 90 60 84 64.5 75 64.5 C 67 64.5 61.5 60.5 59 55"
-          fill="none" stroke="#c084fc" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" opacity="0.4" />
-    <path d="M 91 22.5 C 88 18 82.5 15.5 76 15.5 C 68 15.5 63 20.5 63 26.5 C 63 34 71 37 78.5 40 C 86 43 90 46.5 90 53 C 90 60 84 64.5 75 64.5 C 67 64.5 61.5 60.5 59 55"
-          fill="none" stroke="url(#purpleRibbon)" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round" />
-    <path d="M 90 23 C 87.5 19 82.5 17 76 17 C 69 17 64.5 21 64.5 26.5 C 64.5 33 71.5 36 78.5 39 C 85.5 42 88.5 45.5 88.5 53 C 88.5 58.5 83.5 63 75 63 C 68 63 63 59.5 60.5 55"
-          fill="none" stroke="url(#specular)" stroke-width="1.3" stroke-linecap="round" />
+    <!-- Hanger Shoulder Cross Bar (slanted, sweeping across waist) -->
+    <path d="M -72 26 C -46 12 -12 -2 10 -4 C 20 -1 32 3 44 7 L 43 12 C 31 8 20 5 10 2 C -12 4 -44 18 -73 31 Z"
+          fill="url(#brassGold)" />
 
-    <!-- Sparks -->
-    <circle cx="57" cy="27" r="1.5" fill="#ffffff" />
-    <circle cx="57" cy="27" r="3.5" fill="#00f5ff" opacity="0.6" />
-    <circle cx="76" cy="15.5" r="1" fill="#ffffff" />
-    <circle cx="76" cy="15.5" r="2.5" fill="#ec4899" opacity="0.5" />
+    <!-- Architectural Serif G Silhouette -->
+    <!-- Outer & Inner curve forming the grand G -->
+    <path d="M 32 -22 L 32 -36 C 18 -46 -6 -47 -26 -37 C -50 -26 -61 0 -57 25 C -53 47 -35 62 -8 63 C 17 63 33 51 34 30 L -3 30 L -3 21 L 43 21 L 43 68 L 33 68 L 33 55 C 25 64 12 70 -7 70 C -39 70 -64 51 -68 23 C -73 -5 -57 -35 -28 -49 C -3 -61 28 -56 41 -43 L 32 -22 Z"
+          fill="url(#brassGold)" />
+
+    <!-- G Cross Stem & Serif Base -->
+    <rect x="23" y="13" width="17" height="55" fill="url(#brassGold)" rx="1" />
+    <rect x="20" y="65" width="23" height="4.5" fill="url(#brassGold)" rx="1" />
   </g>
+
+  <!-- GOYAL Wordmark Typography -->
+  <g fill="url(#brassGold)" transform="translate(512, 840) scale(3.0)">
+    <g transform="translate(-80, 0)">
+      <!-- G -->
+      <path d="M 10 14 C 6 14 2 11 2 7 C 2 3 6 0 10 0 C 14 0 17 2 18 5 L 16 6 C 15 3.5 13 2 10 2 C 7 2 4.5 4.5 4.5 7 C 4.5 9.5 7 12 10 12 C 12.5 12 14.5 10.5 15 9 L 10 9 L 10 7.5 L 17 7.5 L 17 13 C 15 13.8 12.5 14 10 14 Z" />
+      <!-- O -->
+      <ellipse cx="38" cy="7" rx="7" ry="7" fill="none" stroke="url(#brassGold)" stroke-width="2.2" />
+      <!-- Y -->
+      <path d="M 60 0 L 64.5 6.5 L 69 0 L 71.5 0 L 66 7.5 L 66 14 L 63 14 L 63 7.5 L 57.5 0 Z" />
+      <!-- A (Architectural Chevron) -->
+      <path d="M 92 0 L 98 14 L 95 14 L 92 6.5 L 89 14 L 86 14 L 92 0 Z" />
+      <!-- L -->
+      <path d="M 114 0 L 116.5 0 L 116.5 11.5 L 125 11.5 L 125 14 L 114 14 Z" />
+    </g>
+  </g>
+
+  <!-- Subtitle: HOUSE OF FASHION -->
+  <text x="512" y="924" text-anchor="middle" font-size="20" font-weight="700" letter-spacing="14" fill="url(#brassGold)" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif">
+    HOUSE OF FASHION
+  </text>
+  <line x1="432" y1="948" x2="592" y2="948" stroke="url(#brassGold)" stroke-width="3" stroke-linecap="round" />
 </svg>

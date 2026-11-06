@@ -7,15 +7,27 @@
   "id": "/stock-checker",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#020617",
-  "theme_color": "#0f172a",
+  "background_color": "#09090C",
+  "theme_color": "#09090C",
   "categories": ["business", "productivity"],
   "icons": [
     {
-      "src": "/ors-logo.png",
+      "src": "/goyal-icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
+    },
+    {
+      "src": "/goyal-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/goyal-icon-1024.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "/ors-logo.png",
@@ -31,4 +43,3 @@
     }
   ]
 }
-

@@ -7,15 +7,27 @@
   "id": "/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#020617",
-  "theme_color": "#0f172a",
+  "background_color": "#09090C",
+  "theme_color": "#09090C",
   "categories": ["business", "finance", "productivity"],
   "icons": [
     {
-      "src": "/ors-logo.png",
+      "src": "/goyal-icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
+    },
+    {
+      "src": "/goyal-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/goyal-icon-1024.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "/ors-logo.png",
@@ -36,14 +48,14 @@
       "short_name": "Stock Check",
       "description": "Floor Staff Garment & Size Stock Checker",
       "url": "/#stock",
-      "icons": [{ "src": "/ors-logo.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/goyal-icon-192.png", "sizes": "192x192" }]
     },
     {
       "name": "Cobb CRM POS",
       "short_name": "CRM",
       "description": "Open Cobb Store CRM POS",
       "url": "/",
-      "icons": [{ "src": "/ors-logo.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/goyal-icon-192.png", "sizes": "192x192" }]
     }
   ]
 }

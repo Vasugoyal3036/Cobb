@@ -1,7 +1,10 @@
-const CACHE_NAME = 'cobb-crm-cache-v9';
+const CACHE_NAME = 'cobb-crm-cache-v10';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
+  '/goyal-icon-192.png',
+  '/goyal-icon-512.png',
+  '/apple-touch-icon.png',
   '/ors-logo.png',
   '/ors-squircle.jpg',
   '/favicon.svg',
