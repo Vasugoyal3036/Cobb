@@ -232,12 +232,12 @@ export default function StaffStockCheckerPage({
     discountPercent: 60
   });
 
-  // Real-time detection of duplicate active tag in Add Modal
+  // Real-time detection of duplicate or already-billed tag in Add Modal
   const duplicateStaffPendingTag = useMemo(() => {
     const candidate = addPendingForm.barcode || stockData?.matchedBarcode || stockData?.scannedBarcode || '';
     if (!candidate || !candidate.trim() || !stockData?.pendingTagsList) return null;
     return stockData.pendingTagsList.find(t => 
-      (t.status === 'active' || !t.status) && isBarcodeDuplicate(t.barcode, candidate)
+      isBarcodeDuplicate(t.barcode, candidate)
     );
   }, [addPendingForm.barcode, stockData]);
 
@@ -506,12 +506,16 @@ export default function StaffStockCheckerPage({
 
     const candidateBarcode = addPendingForm.barcode || stockData.matchedBarcode || stockData.scannedBarcode || '';
 
-    // Quick client check against active pending tags of current article
+    // Quick client check against pending tags of current article (both active and billed)
     if (candidateBarcode && Array.isArray(stockData.pendingTagsList)) {
-      const activeExisting = stockData.pendingTagsList.find(t => 
-        (t.status === 'active' || !t.status) && isBarcodeDuplicate(t.barcode, candidateBarcode)
+      const existing = stockData.pendingTagsList.find(t => 
+        isBarcodeDuplicate(t.barcode, candidateBarcode)
       );
-      if (activeExisting) {
+      if (existing) {
+        if (existing.status === 'billed') {
+          alert(`Already Billed: Barcode "${candidateBarcode}" was already billed in POS (${existing.billedInBillNo ? 'Bill #' + existing.billedInBillNo : 'Billed'})! Already billed items cannot be re-added as pending tags.`);
+          return;
+        }
         alert(`Duplicate Barcode: Barcode "${candidateBarcode}" is already registered on the active pending rack! Duplicate tags cannot be added.`);
         return;
       }
@@ -546,9 +550,9 @@ export default function StaffStockCheckerPage({
         alert(res.data?.error || 'Could not save pending tag');
       }
     } catch (err) {
-      // If backend rejected as duplicate (409), alert user and do NOT bypass into Firestore
-      if (err.response?.status === 409 || err.response?.data?.duplicate) {
-        alert(err.response?.data?.error || 'Duplicate Barcode: A pending tag with this barcode already exists in the active rack!');
+      // If backend rejected as duplicate (409) or billed, alert user and do NOT bypass into Firestore
+      if (err.response?.status === 409 || err.response?.data?.duplicate || err.response?.data?.billed) {
+        alert(err.response?.data?.error || 'A pending tag with this barcode cannot be added!');
         return;
       }
 
@@ -566,11 +570,15 @@ export default function StaffStockCheckerPage({
             currentTags = Array.isArray(data) ? data : (data.tags || []);
           }
 
-          // Check duplicate in Firestore before saving
-          const isDupInCloud = currentTags.some(t => 
-            t.status === 'active' && isBarcodeDuplicate(t.barcode, candidateBarcode)
+          // Check duplicate or billed in Firestore before saving
+          const cloudExisting = currentTags.find(t => 
+            isBarcodeDuplicate(t.barcode, candidateBarcode)
           );
-          if (isDupInCloud) {
+          if (cloudExisting) {
+            if (cloudExisting.status === 'billed') {
+              alert(`Already Billed: Barcode "${candidateBarcode}" was already billed in POS (${cloudExisting.billedInBillNo ? 'Bill #' + cloudExisting.billedInBillNo : 'Billed'})! Cannot add as pending tag.`);
+              return;
+            }
             alert(`Duplicate Barcode: Barcode "${candidateBarcode}" is already registered on the active pending rack in Cloud!`);
             return;
           }
@@ -2758,18 +2766,26 @@ export default function StaffStockCheckerPage({
                 />
               </div>
 
-              {/* Duplicate Barcode Warning Banner */}
+              {/* Duplicate or Already-Billed Barcode Warning Banner */}
               {duplicateStaffPendingTag && (
                 <div className={`p-3 rounded-2xl text-xs flex items-start gap-2.5 border shadow-sm ${
-                  isObsidian
-                    ? 'bg-amber-950/30 border-amber-800/60 text-amber-300'
-                    : 'bg-amber-50 border-amber-300 text-amber-900'
+                  duplicateStaffPendingTag.status === 'billed'
+                    ? (isObsidian ? 'bg-rose-950/40 border-rose-800/80 text-rose-300' : 'bg-rose-50 border-rose-300 text-rose-900')
+                    : (isObsidian ? 'bg-amber-950/30 border-amber-800/60 text-amber-300' : 'bg-amber-50 border-amber-300 text-amber-900')
                 }`}>
-                  <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+                  <AlertTriangle className={`w-4 h-4 shrink-0 mt-0.5 ${duplicateStaffPendingTag.status === 'billed' ? 'text-rose-500' : 'text-amber-400'}`} />
                   <div>
-                    <span className="font-bold">⚠️ Barcode Already on Pending Rack</span>
-                    <p className={`mt-0.5 text-[11px] leading-relaxed ${isObsidian ? 'text-amber-200/90' : 'text-amber-800'}`}>
-                      A pending tag with barcode <span className="font-mono font-bold">{duplicateStaffPendingTag.barcode}</span> ({duplicateStaffPendingTag.color} - {duplicateStaffPendingTag.size}) already exists on the active rack. Duplicate tags cannot be added.
+                    <span className="font-bold">
+                      {duplicateStaffPendingTag.status === 'billed' ? '🚫 Barcode Already Billed in POS' : '⚠️ Barcode Already on Pending Rack'}
+                    </span>
+                    <p className={`mt-0.5 text-[11px] leading-relaxed ${
+                      duplicateStaffPendingTag.status === 'billed'
+                        ? (isObsidian ? 'text-rose-200/90' : 'text-rose-800')
+                        : (isObsidian ? 'text-amber-200/90' : 'text-amber-800')
+                    }`}>
+                      {duplicateStaffPendingTag.status === 'billed'
+                        ? `Barcode ${duplicateStaffPendingTag.barcode} was already billed in POS (${duplicateStaffPendingTag.billedInBillNo ? 'Bill #' + duplicateStaffPendingTag.billedInBillNo : 'Billed'}). Already billed articles cannot be re-added as pending tags.`
+                        : `A pending tag with barcode ${duplicateStaffPendingTag.barcode} (${duplicateStaffPendingTag.color} - ${duplicateStaffPendingTag.size}) already exists on the active rack. Duplicate tags cannot be added.`}
                     </p>
                   </div>
                 </div>
@@ -2820,10 +2836,20 @@ export default function StaffStockCheckerPage({
                       ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-black hover:brightness-110 shadow-amber-500/10'
                       : 'bg-slate-900 hover:bg-slate-800 text-white'
                   }`}
-                  title={duplicateStaffPendingTag ? "Cannot add duplicate barcode" : "Register Pending Tag"}
+                  title={
+                    duplicateStaffPendingTag?.status === 'billed'
+                      ? 'Already Billed in POS'
+                      : duplicateStaffPendingTag
+                      ? 'Cannot add duplicate barcode'
+                      : 'Register Pending Tag'
+                  }
                 >
                   {isSubmittingPending ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
-                  <span>{duplicateStaffPendingTag ? 'Duplicate Barcode' : (isSubmittingPending ? 'Registering...' : 'Register Pending Tag')}</span>
+                  <span>
+                    {duplicateStaffPendingTag
+                      ? (duplicateStaffPendingTag.status === 'billed' ? 'Already Billed in POS' : 'Duplicate Barcode')
+                      : (isSubmittingPending ? 'Registering...' : 'Register Pending Tag')}
+                  </span>
                 </button>
                 <button
                   type="button"

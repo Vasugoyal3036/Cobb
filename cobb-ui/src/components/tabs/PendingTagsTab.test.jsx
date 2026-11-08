@@ -251,6 +251,30 @@ describe('PendingTagsTab - Duplicate Barcode Prevention', () => {
       expect(saveBtn.disabled).toBe(true);
     }, 15000);
 
+    it('detects already-billed barcode, displays prominent billed warning banner, and disables Save button', async () => {
+      render(<PendingTagsTab />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Cobb Linen Shirt White')).toBeDefined();
+      });
+
+      // Open Add Pending Tag Modal
+      fireEvent.click(screen.getByRole('button', { name: /Add Pending Tag/i }));
+
+      // Type already billed barcode (mockTags[1] is '0090123456' with status: 'billed')
+      const barcodeInput = screen.getByPlaceholderText('Barcode / SKU');
+      fireEvent.change(barcodeInput, { target: { value: '0090123456' } });
+
+      // Prominent red "Already Billed in POS" banner should appear
+      await waitFor(() => {
+        expect(screen.getByText(/Barcode Already Billed in POS/i)).toBeDefined();
+      });
+
+      // Submit button should be disabled with "Already Billed in POS" text
+      const billedBtn = screen.getByRole('button', { name: /Already Billed in POS/i });
+      expect(billedBtn.disabled).toBe(true);
+    });
+
     it('allows non-duplicate barcode and enables Save button', async () => {
       render(<PendingTagsTab />);
 

@@ -775,6 +775,31 @@ app.get('/api/inventory/quick-scan', async (req, res) => {
                 console.warn('[QuickScan single stock query error]', stockErr.message);
             }
 
+            // Fast POS billed check (sub-25ms seek on CMD01106)
+            let billedInfo = null;
+            try {
+                const billReq = createRequest();
+                billReq.input('bc', sql.NVarChar, matched.barcode);
+                const billRes = await billReq.query(`
+                    SELECT TOP 1 
+                        RTRIM(d.PRODUCT_CODE) as barcode,
+                        RTRIM(m.CM_NO) as billNo,
+                        CONVERT(varchar, m.CM_TIME, 126) as billTime,
+                        ISNULL(d.NET, 0) as netAmount
+                    FROM CMD01106 d WITH (NOLOCK)
+                    JOIN CMM01106 m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
+                    WHERE m.CANCELLED = 0 
+                      AND d.QUANTITY > 0
+                      AND d.PRODUCT_CODE = @bc
+                    ORDER BY m.CM_TIME DESC
+                `);
+                if (billRes.recordset && billRes.recordset.length > 0) {
+                    billedInfo = billRes.recordset[0];
+                }
+            } catch (bErr) {
+                console.warn('[QuickScan check billed error]', bErr.message);
+            }
+
             const singleVariant = {
                 barcode: matched.barcode,
                 articleNo: matched.articleNo,
@@ -785,7 +810,9 @@ app.get('/api/inventory/quick-scan', async (req, res) => {
                 size: matched.size,
                 sizeOrder: matched.sizeOrder,
                 mrp: matched.mrp,
-                stock: singleStock
+                stock: singleStock,
+                isBilled: Boolean(billedInfo),
+                billedInfo: billedInfo
             };
 
             const singleResp = {
@@ -798,6 +825,8 @@ app.get('/api/inventory/quick-scan', async (req, res) => {
                 size: matched.size,
                 mrp: matched.mrp,
                 totalStock: singleStock,
+                isBilled: Boolean(billedInfo),
+                billedInfo: billedInfo,
                 sizes: [{ size: matched.size, stock: singleStock, barcode: matched.barcode, sizeOrder: matched.sizeOrder }],
                 colors: [{ color: matched.color, totalStock: singleStock, sizes: [{ size: matched.size, stock: singleStock, barcode: matched.barcode, sizeOrder: matched.sizeOrder }] }],
                 scannedBarcode: query,

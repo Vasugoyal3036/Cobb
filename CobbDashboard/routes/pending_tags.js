@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const fs = require('fs');
 const path = require('path');
-const { sql } = require('../db');
+const { sql, createRequest } = require('../db');
 
 const TAGS_FILE = path.join(__dirname, '..', 'pending_tags.json');
 
@@ -263,18 +263,66 @@ router.post('/add', async (req, res) => {
 
         const tags = readTags();
 
-        // Duplication prevention: Reject if an active tag already has this or similar barcode
-        const duplicateTag = tags.find(t => 
-            t.status === 'active' && isBarcodeDuplicate(t.barcode, candidateBarcode)
-        );
+        // 1. Duplication & Billed Prevention in existing tags
+        const existingTag = tags.find(t => isBarcodeDuplicate(t.barcode, candidateBarcode));
+        if (existingTag) {
+            if (existingTag.status === 'billed') {
+                return res.status(409).json({
+                    success: false,
+                    duplicate: true,
+                    billed: true,
+                    error: `Already Billed: Barcode "${candidateBarcode}" has already been billed in POS (Bill #${existingTag.billedInBillNo || 'POS-BILL'} on ${existingTag.billedAt ? new Date(existingTag.billedAt).toLocaleDateString('en-IN') : 'earlier'})! Billed items cannot be re-added as pending tags.`,
+                    existingTag
+                });
+            }
+            if (existingTag.status === 'active') {
+                return res.status(409).json({
+                    success: false,
+                    duplicate: true,
+                    error: `Duplicate Barcode: An active pending tag with barcode "${existingTag.barcode}" (${existingTag.articleName || 'Item'}, ₹${existingTag.mrp || 0}) is already on the pending rack! (Tag #${existingTag.id}). Similar or duplicate barcode cannot be added.`,
+                    existingTag
+                });
+            }
+        }
 
-        if (duplicateTag) {
-            return res.status(409).json({
-                success: false,
-                duplicate: true,
-                error: `Duplicate Barcode: An active pending tag with barcode "${duplicateTag.barcode}" (${duplicateTag.articleName || 'Item'}, ₹${duplicateTag.mrp || 0}) is already on the pending rack! (Tag #${duplicateTag.id}). Similar or duplicate barcode cannot be added.`,
-                existingTag: duplicateTag
-            });
+        // 2. Duplication & Billed Prevention against live SQL Server POS billing records
+        try {
+            const cleanDigits = candidateBarcode.replace(/^0+/, '') || candidateBarcode;
+            const paddedDigits = candidateBarcode.length < 10 && /^\d+$/.test(candidateBarcode) ? candidateBarcode.padStart(10, '0') : candidateBarcode;
+
+            if (createRequest) {
+                const posReq = createRequest();
+                posReq.input('bc', sql.NVarChar, candidateBarcode);
+                posReq.input('cleanDigits', sql.NVarChar, cleanDigits);
+                posReq.input('paddedDigits', sql.NVarChar, paddedDigits);
+
+                const billedPosRes = await posReq.query(`
+                    SELECT TOP 1 
+                        RTRIM(d.PRODUCT_CODE) as barcode,
+                        RTRIM(m.CM_NO) as billNo,
+                        CONVERT(varchar, m.CM_TIME, 126) as billTime,
+                        ISNULL(d.NET, 0) as netAmount
+                    FROM CMD01106 d WITH (NOLOCK)
+                    JOIN CMM01106 m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
+                    WHERE m.CANCELLED = 0 
+                      AND d.QUANTITY > 0
+                      AND (d.PRODUCT_CODE = @bc OR d.PRODUCT_CODE = @cleanDigits OR d.PRODUCT_CODE = @paddedDigits)
+                    ORDER BY m.CM_TIME DESC
+                `);
+
+                if (billedPosRes.recordset && billedPosRes.recordset.length > 0) {
+                    const billedRow = billedPosRes.recordset[0];
+                    return res.status(409).json({
+                        success: false,
+                        duplicate: true,
+                        billed: true,
+                        error: `Already Billed in POS: Barcode "${candidateBarcode}" was already billed in POS (Bill #${billedRow.billNo} on ${new Date(billedRow.billTime).toLocaleDateString('en-IN')})! Cannot add an already billed item as a pending tag.`,
+                        billedInfo: billedRow
+                    });
+                }
+            }
+        } catch (sqlErr) {
+            console.warn('[PendingTags check SQL POS billed error]', sqlErr.message);
         }
         const now = new Date();
 
