@@ -261,6 +261,23 @@ async function syncEndpointList(items, tierName = 'Sync') {
                     }, { merge: true });
                 }
 
+                if (docName === 'inventory' && Array.isArray(payload.items) && payload.items.length > 3500) {
+                    const part1 = payload.items.slice(0, 3500);
+                    const part2 = payload.items.slice(3500);
+                    await db.collection("stores").doc(STORE_ID).collection("data").doc("inventory").set({
+                        items: part1,
+                        totalStoreStockCount: payload.items.length,
+                        lastUpdated: FieldValue.serverTimestamp()
+                    }, { merge: true });
+                    await db.collection("stores").doc(STORE_ID).collection("data").doc("inventory_master").set({
+                        items: part2,
+                        totalStoreStockCount: payload.items.length,
+                        lastUpdated: FieldValue.serverTimestamp()
+                    }, { merge: true });
+                    lastPayloadHash.set(docName, hash);
+                    continue;
+                }
+
                 await db.collection("stores").doc(STORE_ID).collection("data").doc(docName).set(payload, { merge: true });
                 lastPayloadHash.set(docName, hash);
 

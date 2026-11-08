@@ -229,7 +229,7 @@ axios.get = async (url, config) => {
           return { data: { success: false, message: 'Query is required' }, status: 200, statusText: 'OK' };
         }
 
-        // Fetch inventory document from Firestore
+        // Fetch inventory documents from Firestore (combines Part 1 and Part 2 for full catalog)
         const invDocRef = doc(db, 'stores', targetStore, 'data', 'inventory');
         const invSnap = await getDoc(invDocRef);
         let items = [];
@@ -238,21 +238,24 @@ axios.get = async (url, config) => {
           items = Array.isArray(invData) ? invData : (invData.items || []);
         }
 
-        if (items.length === 0) {
-          try {
-            const masterSnap = await getDoc(doc(db, 'stores', targetStore, 'data', 'inventory_master'));
-            if (masterSnap.exists()) {
-              const mData = masterSnap.data();
-              items = Array.isArray(mData) ? mData : (mData.items || []);
+        try {
+          const masterSnap = await getDoc(doc(db, 'stores', targetStore, 'data', 'inventory_master'));
+          if (masterSnap.exists()) {
+            const mData = masterSnap.data();
+            const masterItems = Array.isArray(mData) ? mData : (mData.items || []);
+            if (masterItems.length > 0) {
+              items = items.concat(masterItems);
             }
-          } catch (e) {}
-        }
+          }
+        } catch (e) {}
 
-        // 1. Match in inventory by exact SKU, barcode, or ArticleNo
+        const qClean = qLower.replace(/^0+/, '');
+        // 1. Match in inventory by exact SKU, barcode, or ArticleNo (with leading zeroes support)
         let matched = items.filter(it => {
           const sku = String(it.SKU || it.barcode || '').trim().toLowerCase();
           const art = String(it.ArticleNo || it.articleNo || '').trim().toLowerCase();
-          return sku === qLower || art === qLower;
+          const skuClean = sku.replace(/^0+/, '');
+          return sku === qLower || art === qLower || (qClean && skuClean === qClean);
         });
 
         // 2. If no exact match, match by prefix or itemName
@@ -261,7 +264,8 @@ axios.get = async (url, config) => {
             const art = String(it.ArticleNo || it.articleNo || '').trim().toLowerCase();
             const name = String(it.ItemName || it.itemName || '').trim().toLowerCase();
             const sku = String(it.SKU || it.barcode || '').trim().toLowerCase();
-            return (art && art.startsWith(qLower)) || (name && name.includes(qLower)) || (sku && sku.includes(qLower));
+            const skuClean = sku.replace(/^0+/, '');
+            return (art && art.startsWith(qLower)) || (name && name.includes(qLower)) || (sku && sku.includes(qLower)) || (qClean && skuClean.includes(qClean));
           });
         }
 
@@ -301,7 +305,8 @@ axios.get = async (url, config) => {
 
         if (matched.length > 0) {
           const targetArticle = matched[0].ArticleNo || matched[0].articleNo;
-          const allVariants = items.filter(it => (it.ArticleNo || it.articleNo) === targetArticle);
+          const targetArticleNorm = String(targetArticle || '').trim().toUpperCase();
+          const allVariants = items.filter(it => String(it.ArticleNo || it.articleNo || '').trim().toUpperCase() === targetArticleNorm);
           const variantsList = allVariants.length > 0 ? allVariants : matched;
           const first = variantsList[0];
           const itemName = first.ItemName || first.itemName || first.ProductType || targetArticle;
@@ -498,7 +503,7 @@ axios.get = async (url, config) => {
               lastSoldDate: null,
               scannedBarcode: rawQ,
               sizes: Object.values(sizeMap),
-              colors: Object.values(colorMap),
+              colors: colors,
               variants: variantsList.map(v => ({
                 barcode: v.SKU || v.barcode || '',
                 articleNo: targetArticle,

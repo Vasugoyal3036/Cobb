@@ -1077,7 +1077,11 @@ export default function StaffStockCheckerPage({
 
     let processed = sourceColors.map(colorGroup => {
       const sizeMap = {};
-      (colorGroup.sizes || []).forEach(item => {
+      const rawSizes = Array.isArray(colorGroup.sizes)
+        ? colorGroup.sizes
+        : (colorGroup.sizeMap ? Object.values(colorGroup.sizeMap) : []);
+
+      rawSizes.forEach(item => {
         const stockQty = Math.max(0, Number(item.stock || 0));
         const pendingCount = Math.max(0, Number(item.pendingTagsCount || item.pendingStock || 0));
         if (stockQty <= 0 && pendingCount <= 0) return;
@@ -1124,7 +1128,7 @@ export default function StaffStockCheckerPage({
 
     // If size filter is active, only show colours that have that size available!
     if (selectedSizeFilter !== 'ALL') {
-      processed = processed.filter(c => c.sizes.length > 0);
+      processed = processed.filter(c => (c.sizes || []).length > 0);
     }
 
     return processed;
@@ -2041,8 +2045,26 @@ export default function StaffStockCheckerPage({
 
             {/* --- SIZES GROUPED BY EACH COLOUR (Clean Combined List Format) --- */}
             <div className="space-y-3">
+              {displayedColors.length === 0 && (
+                <div className={`p-5 rounded-2xl border text-center space-y-2.5 ${
+                  isObsidian ? 'bg-[#09090C] border-neutral-800' : 'bg-white border-slate-200 shadow-sm'
+                }`}>
+                  <p className={`text-xs ${isObsidian ? 'text-neutral-400' : 'text-slate-500'}`}>
+                    No pieces match the selected filter ({selectedSizeFilter !== 'ALL' ? `Size ${selectedSizeFilter}` : selectedColorFilter}).
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedSizeFilter('ALL'); setSelectedColorFilter('ALL'); }}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all active:scale-95 ${
+                      isObsidian ? 'bg-amber-400 text-black' : 'bg-slate-900 text-white'
+                    }`}
+                  >
+                    Show All Sizes & Colours
+                  </button>
+                </div>
+              )}
               {displayedColors.map((colorGroup) => {
-                const sortedSizes = colorGroup.sizes || [];
+                const sortedSizes = Array.isArray(colorGroup.sizes) ? colorGroup.sizes : [];
                 const isOutOfStock = colorGroup.totalStock <= 0 || sortedSizes.length === 0;
                 const dotColor = getColorDot(colorGroup.color);
 

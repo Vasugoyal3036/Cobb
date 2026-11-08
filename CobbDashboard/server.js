@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const { sql, connectDB } = require('./db');
+const { sql, connectDB, getPool, createRequest } = require('./db');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 const { spawn, execSync } = require('child_process');
 const path = require('path');
@@ -669,7 +669,7 @@ app.get('/api/inventory/quick-scan', async (req, res) => {
             return res.json({ success: false, message: 'Query is required' });
         }
 
-        const findReq = new sql.Request();
+        const findReq = createRequest();
         findReq.input('q', sql.NVarChar, query);
         
         const matchRes = await findReq.query(`
@@ -706,7 +706,7 @@ app.get('/api/inventory/quick-scan', async (req, res) => {
         const matchedSection = matchRes.recordset[0].sectionName;
         const matchedSubSection = matchRes.recordset[0].subSectionName;
 
-        const variantReq = new sql.Request();
+        const variantReq = createRequest();
         variantReq.input('art', sql.NVarChar, matchedArticle);
 
         const variantsRes = await variantReq.query(`
@@ -774,7 +774,7 @@ app.get('/api/inventory/quick-scan', async (req, res) => {
         // Query sales velocity
         let salesStats = { soldToday: 0, soldLast7Days: 0, soldLast30Days: 0, lastSoldDate: null };
         try {
-            const statsReq = new sql.Request();
+            const statsReq = createRequest();
             statsReq.input('art', sql.NVarChar, matchedArticle);
             const statsRes = await statsReq.query(`
                 SELECT 
@@ -829,8 +829,13 @@ app.get('/api/staff/stock-check', async (req, res) => {
             return res.json({ success: false, message: 'Barcode or Article No is required' });
         }
 
-        const findReq = new sql.Request();
+        const cleanQ = query.replace(/^0+/, '');
+        const paddedQ = query.length < 10 && /^\d+$/.test(query) ? query.padStart(10, '0') : query;
+
+        const findReq = createRequest();
         findReq.input('q', sql.NVarChar, query);
+        findReq.input('cleanQ', sql.NVarChar, cleanQ);
+        findReq.input('paddedQ', sql.NVarChar, paddedQ);
         
         const matchRes = await findReq.query(`
             SELECT TOP 1 
@@ -848,15 +853,18 @@ app.get('/api/staff/stock-check', async (req, res) => {
                OR s.product_Code = @q 
                OR s.article_no = @q 
                OR s.VENDOR_EAN_NO = @q
+               OR LTRIM(RTRIM(s.product_Code)) = @paddedQ
+               OR LTRIM(RTRIM(s.product_Code)) = @cleanQ
                OR s.article_no LIKE @q + '%'
                OR s.article_name LIKE '%' + @q + '%'
             ORDER BY 
                CASE 
                  WHEN LTRIM(RTRIM(s.product_Code)) = @q THEN 1
-                 WHEN LTRIM(RTRIM(s.article_no)) = @q THEN 2
-                 WHEN LTRIM(RTRIM(s.VENDOR_EAN_NO)) = @q THEN 3
-                 WHEN s.article_no LIKE @q + '%' THEN 4
-                 ELSE 5 
+                 WHEN LTRIM(RTRIM(s.product_Code)) = @paddedQ THEN 2
+                 WHEN LTRIM(RTRIM(s.article_no)) = @q THEN 3
+                 WHEN LTRIM(RTRIM(s.VENDOR_EAN_NO)) = @q THEN 4
+                 WHEN s.article_no LIKE @q + '%' THEN 5
+                 ELSE 6 
                END
         `);
 
@@ -870,7 +878,7 @@ app.get('/api/staff/stock-check', async (req, res) => {
         const matchedSection = matchedRow.sectionName;
         const matchedSubSection = matchedRow.subSectionName;
 
-        const variantReq = new sql.Request();
+        const variantReq = createRequest();
         variantReq.input('art', sql.NVarChar, matchedArticle);
 
         const variantsRes = await variantReq.query(`
@@ -1965,13 +1973,16 @@ app.get('/api/sales/bill/:id/items', async (req, res) => {
 app.get('/api/inventory', async (req, res) => {
     try {
         const result = await sql.query(`
-            SELECT TOP 2000 
+            SELECT TOP 10000 
                 s.product_Code as SKU,
                 s.article_no as ArticleNo,
                 ISNULL(s.article_name, s.section_name) as ItemName,
                 ISNULL(s.section_name, 'Uncategorized') as ProductType,
+                ISNULL(s.sub_section_name, '') as subSectionName,
                 ISNULL(s.para1_name, 'Standard') as Color,
                 ISNULL(s.para2_name, 'Standard') as Size,
+                ISNULL(s.para2_order, 99) as sizeOrder,
+                ISNULL(s.mrp, 0) as MRP,
                 p.quantity_in_stock as CurrentStock
             FROM PMT01106 p WITH (NOLOCK)
             INNER JOIN SKU_NAMES s WITH (NOLOCK) ON p.product_code = s.product_Code

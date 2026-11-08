@@ -137,6 +137,28 @@ async function queryWithReconnect(...args) {
 
 sql.query = queryWithReconnect;
 
+// Wrap sql.Request so that any `new sql.Request()` call without parameters automatically
+// binds to the active currentPool rather than failing with "No connection is specified"
+const OriginalRequest = sql.Request;
+function SafeRequest(parent) {
+    const activeParent = parent || currentPool || sql;
+    return new OriginalRequest(activeParent);
+}
+SafeRequest.prototype = OriginalRequest.prototype;
+sql.Request = SafeRequest;
+
+function getPool() {
+    return currentPool;
+}
+
+function createRequest(parent) {
+    const activeParent = parent || currentPool || sql;
+    if (activeParent && typeof activeParent.request === 'function') {
+        return activeParent.request();
+    }
+    return new sql.Request(activeParent);
+}
+
 /**
  * Tests connection with arbitrary database settings without disturbing the active pool.
  * If successful, retrieves the SQL Server version and database list.
@@ -196,5 +218,7 @@ module.exports = {
     sql,
     connectDB,
     testDatabaseConnection,
-    getDbStatus
+    getDbStatus,
+    getPool,
+    createRequest
 };
