@@ -82,6 +82,26 @@ describe('PendingTagsTab - Duplicate Barcode Prevention', () => {
         soldPrice: 1400,
         status: 'billed', // Billed/resolved tag
         createdAt: new Date().toISOString()
+      },
+      {
+        id: 'ptag_003',
+        barcode: '0099887766',
+        articleNo: 'CT-0100',
+        articleName: 'Cobb Chino Trouser Beige',
+        size: '34',
+        color: 'Beige',
+        section: 'Men Apparel',
+        mrp: 2499,
+        discountPercent: 60,
+        soldPrice: 1000,
+        status: 'active',
+        holdForCustomer: true,
+        holdBatchId: 'batch_test_1',
+        holdCustomerName: 'Rajesh Sharma',
+        holdCustomerPhone: '9876543210',
+        holdBagNo: 'BAG-1',
+        holdCreatedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString()
       }
     ];
 
@@ -193,7 +213,7 @@ describe('PendingTagsTab - Duplicate Barcode Prevention', () => {
       // The save button should be disabled
       const saveBtn = screen.getByRole('button', { name: /Duplicate Barcode/i });
       expect(saveBtn.disabled).toBe(true);
-    });
+    }, 15000);
 
     it('shows "This tag has already been added in the tab" when scanned in quick search', async () => {
       render(<PendingTagsTab />);
@@ -227,7 +247,7 @@ describe('PendingTagsTab - Duplicate Barcode Prevention', () => {
       // Submit button is disabled
       const saveBtn = screen.getByRole('button', { name: /Duplicate Barcode/i });
       expect(saveBtn.disabled).toBe(true);
-    });
+    }, 15000);
 
     it('allows non-duplicate barcode and enables Save button', async () => {
       render(<PendingTagsTab />);

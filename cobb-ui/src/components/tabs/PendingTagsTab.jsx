@@ -39,7 +39,8 @@ import {
   ExternalLink,
   Eye,
   FileCheck,
-  Briefcase
+  Briefcase,
+  RotateCcw
 } from 'lucide-react';
 import ThermalTagModal from '../ThermalTagModal';
 import ReportDefectModal from '../ReportDefectModal';
