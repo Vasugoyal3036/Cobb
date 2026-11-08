@@ -3101,45 +3101,49 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
               </div>
 
               {/* Product Details Form Row with Dedicated Get Item Details from Database Button */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                      <Barcode className="w-3.5 h-3.5 text-rose-500" />
-                      <span>Barcode Number *</span>
-                    </label>
-                  </div>
-                  <div className="flex gap-1.5">
-                    <input
-                      type="text"
-                      required
-                      value={form.barcode}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setForm(prev => ({ ...prev, barcode: val }));
-                        setVerifiedDbItem(null);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          handleQuickLookup(form.barcode || scanQuery);
-                        }
-                      }}
-                      placeholder="Barcode / SKU"
-                      className="flex-1 px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 font-mono font-bold"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleQuickLookup(form.barcode || scanQuery)}
-                      disabled={isSearchingBarcode || !(form.barcode || scanQuery).trim()}
-                      className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-700 hover:to-amber-700 text-white text-[10px] font-bold shadow-sm disabled:opacity-50 flex items-center gap-1 shrink-0 active:scale-95 transition-all"
-                      title="Fetch garment details from SQL Server / Cloud Database"
-                    >
-                      {isSearchingBarcode ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
-                      <span>Get Item Details from Database</span>
-                    </button>
-                  </div>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <Barcode className="w-3.5 h-3.5 text-rose-500" />
+                    <span>Barcode Number *</span>
+                  </label>
+                  <span className="text-[10px] text-slate-400 font-medium">Auto-fetches garment on click</span>
                 </div>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    type="text"
+                    required
+                    value={form.barcode}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setForm(prev => ({ ...prev, barcode: val }));
+                      setScanQuery(val);
+                      setVerifiedDbItem(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleQuickLookup(form.barcode || scanQuery);
+                      }
+                    }}
+                    placeholder="Barcode / SKU"
+                    className="flex-1 min-w-0 px-3.5 py-2 text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-mono font-bold focus:outline-none focus:ring-2 focus:ring-rose-500 shadow-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleQuickLookup(form.barcode || scanQuery)}
+                    disabled={isSearchingBarcode || !(form.barcode || scanQuery).trim()}
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-700 hover:to-amber-700 text-white text-xs font-bold shadow-md shadow-rose-500/20 disabled:opacity-50 flex items-center justify-center gap-1.5 shrink-0 active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+                    title="Fetch garment details from SQL Server / Cloud Database"
+                  >
+                    {isSearchingBarcode ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+                    <span>Get Item Details from Database</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Article No & Article Name Row */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">Article No</label>
                   <input
@@ -3147,6 +3151,16 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                     value={form.articleNo}
                     onChange={(e) => setForm({ ...form, articleNo: e.target.value })}
                     placeholder="e.g. CFS-0192"
+                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">Article Name</label>
+                  <input
+                    type="text"
+                    value={form.articleName}
+                    onChange={(e) => setForm({ ...form, articleName: e.target.value })}
+                    placeholder="e.g. Formal Cotton Shirt Slim Fit"
                     className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
                   />
                 </div>
@@ -3202,17 +3216,6 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                   </div>
                 </div>
               )}
-
-              <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">Article Name</label>
-                <input
-                  type="text"
-                  value={form.articleName}
-                  onChange={(e) => setForm({ ...form, articleName: e.target.value })}
-                  placeholder="e.g. Formal Cotton Shirt Slim Fit"
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100"
-                />
-              </div>
 
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1">
