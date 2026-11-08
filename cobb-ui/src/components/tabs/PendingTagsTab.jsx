@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import {
   Tag,
+  Barcode,
   Plus,
   Trash2,
   RefreshCw,
@@ -128,6 +129,8 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
   });
   const [scanQuery, setScanQuery] = useState('');
   const [isSearchingBarcode, setIsSearchingBarcode] = useState(false);
+  const [verifiedDbItem, setVerifiedDbItem] = useState(null);
+  const [stagedBagItem, setStagedBagItem] = useState(null);
   const [barcodeMatchError, setBarcodeMatchError] = useState('');
 
   // Real-time detection of duplicate active tag in Add Modal
@@ -501,8 +504,8 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
     }
   };
 
-  // --- Rapid Scanner for New Customer Hold Bag Modal ---
-  const handleScanItemIntoNewBag = async (e) => {
+  // --- Step 1: Rapid Scanner & DB Detail Retrieval for Customer Hold Bag ---
+  const handleFetchItemForNewBag = async (e) => {
     if (e) e.preventDefault();
     const candidate = newBagScanQuery.trim();
     if (!candidate) return;
@@ -520,12 +523,15 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
 
     setNewBagScanLoading(true);
     setNewBagScanError('');
+    setStagedBagItem(null);
 
     try {
       let matchedData = null;
       try {
         const res = await axios.get(`${API_BASE}/api/inventory/quick-scan?q=${encodeURIComponent(candidate)}`);
-        if (res.data?.success && res.data.data) {
+        if (res.data?.success && res.data.variants && res.data.variants.length > 0) {
+          matchedData = res.data.variants.find(v => isBarcodeDuplicate(v.barcode, candidate)) || res.data.variants[0];
+        } else if (res.data?.success && res.data.data) {
           matchedData = res.data.data;
         }
       } catch (err) { }
@@ -534,29 +540,46 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
       const discVal = 60;
       const soldVal = Math.round(mrpVal * (1 - discVal / 100));
 
-      const newItem = {
+      const staged = {
         id: 'new_item_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
-        barcode: candidate,
+        barcode: matchedData?.barcode || candidate,
         articleNo: matchedData?.articleNo || candidate,
         articleName: matchedData?.itemName || 'Cobb Apparel Item',
         size: matchedData?.size || 'Free',
         color: matchedData?.color || 'Standard',
-        section: matchedData?.sectionName || 'Men Apparel',
+        section: matchedData?.sectionName || matchedData?.subSectionName || 'Men Apparel',
         mrp: mrpVal,
         discountPercent: discVal,
         soldPrice: soldVal,
-        salesperson: 'Floor Staff'
+        salesperson: 'Floor Staff',
+        fromDb: !!matchedData
       };
 
-      setNewBagScannedItems(prev => [newItem, ...prev]);
-      setNewBagScanQuery('');
-      setNewBagScanError('');
+      setStagedBagItem(staged);
+      if (matchedData) {
+        showToastMsg(`Found details for ${staged.articleName} (MRP ₹${mrpVal}). Review and add to bag.`, 'success');
+      } else {
+        setNewBagScanError(`Notice: Item not found in catalog for "${candidate}". Details estimated below. Click "+ Add to Customer Bag" to proceed.`);
+      }
     } catch (err) {
-      setNewBagScanError('Error searching item: ' + err.message);
+      setNewBagScanError('Error searching database: ' + err.message);
     } finally {
       setNewBagScanLoading(false);
     }
   };
+
+  // --- Step 2: Add Staged Item into Customer Hold Bag after Details are Retrieved ---
+  const handleAddStagedItemToBag = () => {
+    if (!stagedBagItem) return;
+    setNewBagScannedItems(prev => [stagedBagItem, ...prev]);
+    showToastMsg(`Added ${stagedBagItem.articleName} (${stagedBagItem.size}) to customer bag!`, 'success');
+    setStagedBagItem(null);
+    setNewBagScanQuery('');
+    setNewBagScanError('');
+  };
+
+  // Legacy fallback alias for form submission
+  const handleScanItemIntoNewBag = handleFetchItemForNewBag;
 
   const handleRemoveItemFromNewBag = (id) => {
     setNewBagScannedItems(prev => prev.filter(it => it.id !== id));
@@ -923,10 +946,11 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
 
     // --- Barcode / Article Fast Lookup ---
   const handleQuickLookup = async (code) => {
-    const q = (code || scanQuery).trim();
+    const q = (code || form.barcode || scanQuery).trim();
     if (!q) return;
     setIsSearchingBarcode(true);
     setBarcodeMatchError('');
+    setVerifiedDbItem(null);
 
     // 1. Check if this tag has ALREADY been added to the Pending Tags tab!
     const existingActive = tags.find(t => 
@@ -947,6 +971,15 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
         soldPrice: existingActive.soldPrice || 0,
         salesperson: existingActive.salesperson || 'Cashier'
       }));
+      setVerifiedDbItem({
+        barcode: existingActive.barcode || q,
+        articleNo: existingActive.articleNo || '',
+        itemName: existingActive.articleName || 'Apparel Item',
+        size: existingActive.size || 'Free',
+        color: existingActive.color || 'Standard',
+        sectionName: existingActive.section || 'Men Apparel',
+        mrp: existingActive.mrp || 0
+      });
       setBarcodeMatchError(`This tag has already been added in the tab (Tag #${existingActive.id} • ${existingActive.articleName || 'Item'} • MRP ₹${existingActive.mrp} • Size ${existingActive.size})`);
       showToastMsg(`This tag has already been added in the tab! (Tag #${existingActive.id})`, 'error');
       setIsSearchingBarcode(false);
@@ -972,7 +1005,8 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
           mrp: mrpVal,
           soldPrice: calcPrice
         }));
-        showToastMsg(`Found: ${exact.itemName} (MRP ₹${mrpVal})`, 'success');
+        setVerifiedDbItem(exact);
+        showToastMsg(`Retrieved details for: ${exact.itemName} (MRP ₹${mrpVal})`, 'success');
       } else {
         // Fallback check against tags in case it was added under another status
         const existingInTags = tags.find(t => isBarcodeDuplicate(t.barcode, q));
@@ -3018,6 +3052,8 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                     onChange={(e) => {
                       const val = e.target.value;
                       setScanQuery(val);
+                      setForm(prev => ({ ...prev, barcode: val }));
+                      setVerifiedDbItem(null);
                       const trimmed = val.trim();
                       if (trimmed) {
                         const match = tags.find(t => t.status === 'active' && isBarcodeDuplicate(t.barcode, trimmed));
@@ -3033,7 +3069,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') {
                         e.preventDefault();
-                        handleQuickLookup(scanQuery);
+                        handleQuickLookup(scanQuery || form.barcode);
                       }
                     }}
                     autoFocus
@@ -3041,11 +3077,12 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                   />
                   <button
                     type="button"
-                    onClick={() => handleQuickLookup(scanQuery)}
-                    disabled={isSearchingBarcode || !scanQuery.trim()}
-                    className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold disabled:opacity-50 transition-all"
+                    onClick={() => handleQuickLookup(scanQuery || form.barcode)}
+                    disabled={isSearchingBarcode || !(scanQuery || form.barcode).trim()}
+                    className="px-3.5 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold disabled:opacity-50 transition-all flex items-center gap-1.5 shadow-sm"
                   >
-                    {isSearchingBarcode ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : 'Find'}
+                    {isSearchingBarcode ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
+                    <span>Find</span>
                   </button>
                 </div>
                 {barcodeMatchError && (
@@ -3062,18 +3099,45 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                 )}
               </div>
 
-              {/* Product Details Form Row */}
-              <div className="grid grid-cols-2 gap-3">
+              {/* Product Details Form Row with Dedicated Get Item Details from Database Button */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">Barcode *</label>
-                  <input
-                    type="text"
-                    required
-                    value={form.barcode}
-                    onChange={(e) => setForm({ ...form, barcode: e.target.value })}
-                    placeholder="Barcode / SKU"
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 font-mono"
-                  />
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                      <Barcode className="w-3.5 h-3.5 text-rose-500" />
+                      <span>Barcode Number *</span>
+                    </label>
+                  </div>
+                  <div className="flex gap-1.5">
+                    <input
+                      type="text"
+                      required
+                      value={form.barcode}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setForm(prev => ({ ...prev, barcode: val }));
+                        setVerifiedDbItem(null);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleQuickLookup(form.barcode || scanQuery);
+                        }
+                      }}
+                      placeholder="Barcode / SKU"
+                      className="flex-1 px-3 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 font-mono font-bold"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleQuickLookup(form.barcode || scanQuery)}
+                      disabled={isSearchingBarcode || !(form.barcode || scanQuery).trim()}
+                      className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-700 hover:to-amber-700 text-white text-[10px] font-bold shadow-sm disabled:opacity-50 flex items-center gap-1 shrink-0 active:scale-95 transition-all"
+                      title="Fetch garment details from SQL Server / Cloud Database"
+                    >
+                      {isSearchingBarcode ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Search className="w-3 h-3" />}
+                      <span>Get Item Details from Database</span>
+                    </button>
+                  </div>
                 </div>
                 <div className="space-y-1">
                   <label className="text-[11px] font-semibold text-slate-600 dark:text-slate-400">Article No</label>
@@ -3086,6 +3150,39 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                   />
                 </div>
               </div>
+
+              {/* Verified Item Details from Database Banner */}
+              {verifiedDbItem && (
+                <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 text-xs text-emerald-900 dark:text-emerald-100 space-y-1.5 animate-in fade-in shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="font-extrabold text-[11px] text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      <span>Item Details Retrieved from Database</span>
+                    </span>
+                    <span className="text-[9px] uppercase font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-200 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200">
+                      Verified in DB
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 text-[11px] pt-0.5">
+                    <div>
+                      <span className="text-slate-500 dark:text-slate-400 text-[10px] block font-semibold">Article & Name:</span>
+                      <strong className="text-slate-900 dark:text-white">{verifiedDbItem.itemName || form.articleName}</strong> ({verifiedDbItem.articleNo || form.articleNo})
+                    </div>
+                    <div>
+                      <span className="text-slate-500 dark:text-slate-400 text-[10px] block font-semibold">Size & Color:</span>
+                      <strong className="text-slate-900 dark:text-white">{verifiedDbItem.size || form.size} • {verifiedDbItem.color || form.color}</strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 dark:text-slate-400 text-[10px] block font-semibold">Section:</span>
+                      <span>{verifiedDbItem.sectionName || form.section}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 dark:text-slate-400 text-[10px] block font-semibold">Database MRP:</span>
+                      <strong className="text-emerald-700 dark:text-emerald-400 font-mono text-xs">₹{Number(verifiedDbItem.mrp || form.mrp).toLocaleString('en-IN')}</strong>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Real-time duplicate barcode banner */}
               {duplicateActiveTag && (
@@ -3983,11 +4080,11 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                 </div>
               </div>
 
-              {/* Barcode Scanner Input */}
-              <form onSubmit={handleScanItemIntoNewBag} className="space-y-1.5 pt-1">
+              {/* Barcode Scanner Input with Two-Step DB Verification */}
+              <form onSubmit={handleFetchItemForNewBag} className="space-y-2 pt-1">
                 <label className="text-xs font-bold text-purple-700 dark:text-purple-300 flex items-center justify-between">
-                  <span>Scan Garments into this Bag:</span>
-                  <span className="text-[10px] text-slate-400">Press Enter after barcode or scan with gun</span>
+                  <span>Enter Barcode Number to Add Garment:</span>
+                  <span className="text-[10px] text-slate-400">Step 1: Enter Barcode &gt; Step 2: Get DB Details &gt; Step 3: Add to Bag</span>
                 </label>
                 <div className="flex items-center gap-2">
                   <div className="relative flex-1">
@@ -3997,17 +4094,22 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                       autoFocus
                       placeholder="Scan barcode or type article / SKU..."
                       value={newBagScanQuery}
-                      onChange={(e) => setNewBagScanQuery(e.target.value)}
+                      onChange={(e) => {
+                        setNewBagScanQuery(e.target.value);
+                        if (stagedBagItem) setStagedBagItem(null);
+                        if (newBagScanError) setNewBagScanError('');
+                      }}
                       className="w-full pl-10 pr-3 py-2.5 text-xs font-mono font-bold rounded-xl border-2 border-purple-500/40 bg-purple-500/5 dark:bg-purple-950/20 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                     />
                   </div>
                   <button
                     type="submit"
                     disabled={newBagScanLoading || !newBagScanQuery.trim()}
-                    className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-bold text-xs flex items-center gap-1.5 active:scale-95 transition-all"
+                    className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-bold text-xs flex items-center gap-1.5 active:scale-95 transition-all shadow-md shadow-purple-500/20 shrink-0"
+                    title="Get Garment Details from Database"
                   >
-                    {newBagScanLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                    <span>Add to Bag</span>
+                    {newBagScanLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                    <span>Get Item Details from Database</span>
                   </button>
                 </div>
                 {newBagScanError && (
@@ -4017,6 +4119,62 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                   </p>
                 )}
               </form>
+
+              {/* Staged Item Review Card */}
+              {stagedBagItem && (
+                <div className="p-3.5 rounded-2xl bg-purple-50 dark:bg-purple-950/40 border-2 border-purple-400 dark:border-purple-600 text-xs space-y-3 animate-in fade-in shadow-md">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                      <span className="font-black text-purple-900 dark:text-purple-200">
+                        {stagedBagItem.fromDb ? 'Item Details Retrieved from Database' : 'Item Ready to Add'}
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-purple-200 dark:bg-purple-900 text-purple-900 dark:text-purple-200">
+                      Barcode: {stagedBagItem.barcode}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-slate-800 dark:text-slate-200 text-xs bg-white/80 dark:bg-slate-900/80 p-2.5 rounded-xl border border-purple-200 dark:border-purple-800">
+                    <div>
+                      <span className="text-[10px] text-slate-400 font-bold block uppercase">Article</span>
+                      <strong className="text-slate-900 dark:text-white">{stagedBagItem.articleName}</strong>
+                      <div className="text-[10px] text-slate-500 font-mono">({stagedBagItem.articleNo})</div>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 font-bold block uppercase">Size & Color</span>
+                      <strong className="text-slate-900 dark:text-white">{stagedBagItem.size} • {stagedBagItem.color}</strong>
+                      <div className="text-[10px] text-slate-500">{stagedBagItem.section}</div>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 font-bold block uppercase">Original MRP</span>
+                      <strong className="text-slate-900 dark:text-white font-mono text-sm">₹{Number(stagedBagItem.mrp).toLocaleString('en-IN')}</strong>
+                    </div>
+                    <div>
+                      <span className="text-[10px] text-slate-400 font-bold block uppercase">B1G2 Hold Deal</span>
+                      <strong className="text-emerald-600 dark:text-emerald-400 font-mono text-sm">₹{Number(stagedBagItem.soldPrice).toLocaleString('en-IN')} ({stagedBagItem.discountPercent}% OFF)</strong>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={handleAddStagedItemToBag}
+                      className="flex-1 py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs flex items-center justify-center gap-2 shadow-md shadow-emerald-500/25 active:scale-95 transition-all"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>+ Add This Verified Item to Customer Bag</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setStagedBagItem(null)}
+                      className="px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Scanned Items Table */}
               <div className="space-y-2 pt-2">

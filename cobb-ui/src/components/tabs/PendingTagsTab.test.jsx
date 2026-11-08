@@ -88,6 +88,25 @@ describe('PendingTagsTab - Duplicate Barcode Prevention', () => {
     beforeEach(() => {
       vi.clearAllMocks();
       axios.get.mockImplementation((url) => {
+        if (typeof url === 'string' && url.includes('/api/inventory/quick-scan')) {
+          return Promise.resolve({
+            data: {
+              success: true,
+              variants: [
+                {
+                  barcode: '8901234000',
+                  articleNo: 'CFS-7788',
+                  itemName: 'Cobb Premium Cotton Shirt',
+                  size: '42',
+                  color: 'Navy Blue',
+                  sectionName: 'Men Apparel',
+                  mrp: 3299,
+                  stock: 5
+                }
+              ]
+            }
+          });
+        }
         if (typeof url === 'string' && url.includes('/api/damages')) {
           return Promise.resolve({
             data: {
@@ -280,6 +299,71 @@ describe('PendingTagsTab - Duplicate Barcode Prevention', () => {
 
       await waitFor(() => {
         expect(screen.getByText(/Customer Hold Vault/i)).toBeDefined();
+      });
+    });
+
+    it('fetches item details from database via button in Add Pending Tag modal', async () => {
+      render(<PendingTagsTab />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Cobb Linen Shirt White')).toBeDefined();
+      });
+
+      // Open Add Pending Tag Modal
+      fireEvent.click(screen.getByRole('button', { name: /Add Pending Tag/i }));
+
+      // Enter barcode into Barcode / SKU input
+      const barcodeInput = screen.getByPlaceholderText('Barcode / SKU');
+      fireEvent.change(barcodeInput, { target: { value: '8901234000' } });
+
+      // Click "Get Item Details from Database" button
+      const getDetailsBtns = screen.getAllByRole('button', { name: /Get Item Details from Database/i });
+      expect(getDetailsBtns.length).toBeGreaterThan(0);
+      fireEvent.click(getDetailsBtns[0]);
+
+      // Verified item details banner should appear
+      await waitFor(() => {
+        expect(screen.getByText(/Item Details Retrieved from Database/i)).toBeDefined();
+        expect(screen.getAllByText(/Cobb Premium Cotton Shirt/i).length).toBeGreaterThan(0);
+        expect(screen.getAllByText(/CFS-7788/i).length).toBeGreaterThan(0);
+      });
+    });
+
+    it('fetches item details from database and allows adding to bag in Customer Hold Bag modal', async () => {
+      render(<PendingTagsTab />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/\+ Hold for Customer/i)).toBeDefined();
+      });
+
+      // Open modal
+      fireEvent.click(screen.getByText(/\+ Hold for Customer/i));
+
+      await waitFor(() => {
+        expect(screen.getByText(/Create Customer Hold Bag \(Direct Scan\)/i)).toBeDefined();
+      });
+
+      // Enter barcode in new bag scanner input
+      const scanInput = screen.getByPlaceholderText(/Scan barcode or type article \/ SKU/i);
+      fireEvent.change(scanInput, { target: { value: '8901234000' } });
+
+      // Click Get Item Details from Database button
+      const getDbDetailsBtn = screen.getByRole('button', { name: /Get Item Details from Database/i });
+      fireEvent.click(getDbDetailsBtn);
+
+      // Verify staged item review card appears
+      await waitFor(() => {
+        expect(screen.getByText(/Item Details Retrieved from Database/i)).toBeDefined();
+        expect(screen.getByText(/\+ Add This Verified Item to Customer Bag/i)).toBeDefined();
+      });
+
+      // Click "+ Add This Verified Item to Customer Bag"
+      const addVerifiedBtn = screen.getByRole('button', { name: /\+ Add This Verified Item to Customer Bag/i });
+      fireEvent.click(addVerifiedBtn);
+
+      // Item should be moved into bag garments table
+      await waitFor(() => {
+        expect(screen.getByText(/Garments in this Bag \(1\)/i)).toBeDefined();
       });
     });
   });

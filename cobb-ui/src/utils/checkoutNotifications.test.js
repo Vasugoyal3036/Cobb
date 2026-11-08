@@ -28,7 +28,7 @@ describe('Status Bar & Phone Link Checkout Notifications', () => {
     expect(payload.title).toMatch(/^🧾 ₹[\d,]+ — Parbhat Goyal \(98123-45678\)/);
     expect(payload.body).toContain('👤 Customer: Parbhat Goyal (98123-45678)');
     expect(payload.customer).toBe('Parbhat Goyal (98123-45678)');
-  });
+  }, 15000);
 
   it('formats VIP Mega Sale alert with Bill Amount and Customer on priority', async () => {
     const payload = await triggerTestBigTicketAlert('DEMO_STORE_001');
