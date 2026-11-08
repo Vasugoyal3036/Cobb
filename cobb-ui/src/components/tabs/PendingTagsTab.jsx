@@ -37,14 +37,15 @@ import {
   Lock,
   ExternalLink,
   Eye,
-  FileCheck
+  FileCheck,
+  Briefcase
 } from 'lucide-react';
 import ThermalTagModal from '../ThermalTagModal';
 import ReportDefectModal from '../ReportDefectModal';
 import { db } from '../../utils/firebase';
 import { doc, onSnapshot, setDoc, getDoc } from 'firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
-import { triggerDamageSlipPrint, DEFECT_TYPES } from '../../utils/thermalTagPrinter';
+import { triggerDamageSlipPrint, triggerCustomerHoldBagPrint, renderCustomerHoldBagSlipHtml, DEFECT_TYPES } from '../../utils/thermalTagPrinter';
 
 const API_BASE = window.location.protocol === 'app:' || window.location.hostname === 'localhost'
   ? 'http://localhost:5000'
@@ -137,6 +138,61 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
       t.status === 'active' && isBarcodeDuplicate(t.barcode, candidate)
     );
   }, [form.barcode, scanQuery, form.articleNo, tags]);
+
+  // --- Dedicated Customer Hold Bags State ---
+  const [showHoldModal, setShowHoldModal] = useState(false);
+  const [showNewBagModal, setShowNewBagModal] = useState(false);
+  const [customerBagModalData, setCustomerBagModalData] = useState(null); // Thermal slip review modal
+  const [activeCustomerHoldFilter, setActiveCustomerHoldFilter] = useState(null); // null or batchId
+  const [holdForm, setHoldForm] = useState({
+    customerName: '',
+    customerPhone: '',
+    bagNo: '',
+    notes: ''
+  });
+
+  // Dedicated Bulk Scanning State for "+ Customer Hold Bag"
+  const [newBagForm, setNewBagForm] = useState({
+    customerName: '',
+    customerPhone: '',
+    bagNo: '',
+    notes: ''
+  });
+  const [newBagScannedItems, setNewBagScannedItems] = useState([]);
+  const [newBagScanQuery, setNewBagScanQuery] = useState('');
+  const [newBagScanLoading, setNewBagScanLoading] = useState(false);
+  const [newBagScanError, setNewBagScanError] = useState('');
+
+  // --- Grouped Customer Hold Bags Calculation ---
+  const customerHolds = useMemo(() => {
+    const active = tags.filter(t => t.status === 'active' && t.holdForCustomer === true);
+    const map = {};
+    active.forEach(t => {
+      const key = t.holdBatchId || ('cust_' + (t.holdCustomerPhone || t.holdCustomerName || 'unnamed'));
+      if (!map[key]) {
+        map[key] = {
+          batchId: key,
+          customerName: t.holdCustomerName || t.customerName || 'Valued Customer',
+          customerPhone: t.holdCustomerPhone || t.customerPhone || '',
+          bagNo: t.holdBagNo || '',
+          notes: t.holdNotes || t.notes || '',
+          createdAt: t.holdCreatedAt || t.createdAt,
+          tags: []
+        };
+      }
+      map[key].tags.push(t);
+    });
+    return Object.values(map).map(b => ({
+      ...b,
+      count: b.tags.length,
+      totalMrp: b.tags.reduce((s, x) => s + (Number(x.mrp) || 0), 0),
+      totalCollected: b.tags.reduce((s, x) => s + (Number(x.soldPrice) || 0), 0)
+    })).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  }, [tags]);
+
+  const customerHoldTagsCount = useMemo(() => {
+    return tags.filter(t => t.status === 'active' && t.holdForCustomer === true).length;
+  }, [tags]);
 
   // --- Admin Damage & Defect Desk State ---
   const [subDesk, setSubDesk] = useState(initialSubDesk || 'tags'); // 'tags' | 'damages'
@@ -293,6 +349,287 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
 
   const clearSelection = () => {
     setSelectedTagIds([]);
+  };
+
+  // --- Create Customer Hold from Selected Tags ---
+  const handleCreateCustomerHold = async (e) => {
+    if (e) e.preventDefault();
+    if (!holdForm.customerName.trim()) {
+      showToastMsg('Customer Name is required to hold tags', 'error');
+      return;
+    }
+    if (selectedTagIds.length === 0) {
+      showToastMsg('Please select at least one tag to hold', 'error');
+      return;
+    }
+
+    const batchId = 'hold_batch_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+    const bagNo = holdForm.bagNo.trim() || `BAG-${customerHolds.length + 1}`;
+    const now = new Date().toISOString();
+
+    try {
+      try {
+        await axios.post(`${API_BASE}/api/pending-tags/create-customer-hold`, {
+          tagIds: selectedTagIds,
+          customerName: holdForm.customerName.trim(),
+          customerPhone: holdForm.customerPhone.trim(),
+          bagNo,
+          notes: holdForm.notes.trim()
+        });
+        fetchTags();
+      } catch (apiErr) {
+        if (db) {
+          const docRef = doc(db, 'stores', targetStoreId, 'data', 'pending_tags');
+          const snap = await getDoc(docRef);
+          if (snap.exists()) {
+            const list = snap.data().tags || [];
+            const updated = list.map(t => selectedTagIds.includes(t.id) ? {
+              ...t,
+              holdForCustomer: true,
+              holdBatchId: batchId,
+              holdCustomerName: holdForm.customerName.trim(),
+              holdCustomerPhone: holdForm.customerPhone.replace(/[^0-9]/g, '').slice(-10),
+              holdBagNo: bagNo,
+              holdNotes: holdForm.notes.trim(),
+              holdCreatedAt: now
+            } : t);
+            await setDoc(docRef, { tags: updated, lastUpdated: now }, { merge: true });
+            setTags(updated);
+          }
+        } else {
+          throw apiErr;
+        }
+      }
+
+      showToastMsg(`Held ${selectedTagIds.length} tag(s) for "${holdForm.customerName}" in ${bagNo}!`, 'success');
+      setShowHoldModal(false);
+      clearSelection();
+      setHoldForm({ customerName: '', customerPhone: '', bagNo: '', notes: '' });
+      setStatusFilter('holds');
+    } catch (err) {
+      showToastMsg('Failed to hold tags: ' + (err.response?.data?.error || err.message), 'error');
+    }
+  };
+
+  // --- Release Customer Hold back to General Rack ---
+  const handleReleaseCustomerHold = async (batchId, customerName) => {
+    if (!window.confirm(`Release hold for ${customerName || 'this customer'}? All garments will return to the general pending rack.`)) return;
+
+    try {
+      try {
+        await axios.post(`${API_BASE}/api/pending-tags/release-customer-hold`, { holdBatchId: batchId });
+        fetchTags();
+      } catch (apiErr) {
+        if (db) {
+          const docRef = doc(db, 'stores', targetStoreId, 'data', 'pending_tags');
+          const snap = await getDoc(docRef);
+          if (snap.exists()) {
+            const list = snap.data().tags || [];
+            const updated = list.map(t => t.holdBatchId === batchId ? {
+              ...t,
+              holdForCustomer: false,
+              holdBatchId: null,
+              holdCustomerName: null,
+              holdCustomerPhone: null,
+              holdBagNo: null,
+              holdNotes: null,
+              holdCreatedAt: null
+            } : t);
+            await setDoc(docRef, { tags: updated, lastUpdated: new Date().toISOString() }, { merge: true });
+            setTags(updated);
+          }
+        } else {
+          throw apiErr;
+        }
+      }
+
+      showToastMsg('Customer hold released. Garments returned to general rack.', 'success');
+      if (activeCustomerHoldFilter === batchId) setActiveCustomerHoldFilter(null);
+    } catch (err) {
+      showToastMsg('Failed to release hold: ' + err.message, 'error');
+    }
+  };
+
+  // --- Bill All Tags in Customer Hold ---
+  const handleBillCustomerHold = async (batch, mode = 'speed_billing') => {
+    if (!batch || !batch.tags || batch.tags.length === 0) return;
+
+    if (mode === 'speed_billing') {
+      handleBillInSpeedBilling(batch.tags, 'b1g2', {
+        name: batch.customerName,
+        phone: batch.customerPhone
+      });
+      return;
+    }
+
+    const billNo = window.prompt(`Enter Bill No for ${batch.customerName}'s hold:`, 'HOLD-' + (batch.bagNo || 'COMBO'));
+    if (billNo === null) return;
+
+    try {
+      try {
+        await axios.post(`${API_BASE}/api/pending-tags/bill-customer-hold`, {
+          holdBatchId: batch.batchId,
+          billNo
+        });
+        fetchTags();
+      } catch (apiErr) {
+        if (db) {
+          const docRef = doc(db, 'stores', targetStoreId, 'data', 'pending_tags');
+          const snap = await getDoc(docRef);
+          if (snap.exists()) {
+            const list = snap.data().tags || [];
+            const now = new Date().toISOString();
+            const updated = list.map(t => (t.holdBatchId === batch.batchId && t.status === 'active') ? {
+              ...t,
+              status: 'billed',
+              billedInBillNo: billNo,
+              billedAt: now,
+              autoResolved: false,
+              resolvedAt: now
+            } : t);
+            await setDoc(docRef, { tags: updated, lastUpdated: now }, { merge: true });
+            setTags(updated);
+          }
+        } else {
+          throw apiErr;
+        }
+      }
+
+      showToastMsg(`Marked ${batch.tags.length} tag(s) as billed in ${billNo}!`, 'success');
+    } catch (err) {
+      showToastMsg('Failed to bill hold: ' + err.message, 'error');
+    }
+  };
+
+  // --- Rapid Scanner for New Customer Hold Bag Modal ---
+  const handleScanItemIntoNewBag = async (e) => {
+    if (e) e.preventDefault();
+    const candidate = newBagScanQuery.trim();
+    if (!candidate) return;
+
+    if (newBagScannedItems.some(it => isBarcodeDuplicate(it.barcode, candidate))) {
+      setNewBagScanError(`This barcode (${candidate}) has already been added to this bag!`);
+      return;
+    }
+
+    const activeDup = tags.find(t => t.status === 'active' && isBarcodeDuplicate(t.barcode, candidate));
+    if (activeDup) {
+      setNewBagScanError(`Active Duplicate: Barcode "${candidate}" is already active on the rack (Tag #${activeDup.id}, ${activeDup.articleName})!`);
+      return;
+    }
+
+    setNewBagScanLoading(true);
+    setNewBagScanError('');
+
+    try {
+      let matchedData = null;
+      try {
+        const res = await axios.get(`${API_BASE}/api/inventory/quick-scan?q=${encodeURIComponent(candidate)}`);
+        if (res.data?.success && res.data.data) {
+          matchedData = res.data.data;
+        }
+      } catch (err) { }
+
+      const mrpVal = Number(matchedData?.mrp || 2999);
+      const discVal = 60;
+      const soldVal = Math.round(mrpVal * (1 - discVal / 100));
+
+      const newItem = {
+        id: 'new_item_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        barcode: candidate,
+        articleNo: matchedData?.articleNo || candidate,
+        articleName: matchedData?.itemName || 'Cobb Apparel Item',
+        size: matchedData?.size || 'Free',
+        color: matchedData?.color || 'Standard',
+        section: matchedData?.sectionName || 'Men Apparel',
+        mrp: mrpVal,
+        discountPercent: discVal,
+        soldPrice: soldVal,
+        salesperson: 'Floor Staff'
+      };
+
+      setNewBagScannedItems(prev => [newItem, ...prev]);
+      setNewBagScanQuery('');
+      setNewBagScanError('');
+    } catch (err) {
+      setNewBagScanError('Error searching item: ' + err.message);
+    } finally {
+      setNewBagScanLoading(false);
+    }
+  };
+
+  const handleRemoveItemFromNewBag = (id) => {
+    setNewBagScannedItems(prev => prev.filter(it => it.id !== id));
+  };
+
+  // --- Save All Scanned Items as Customer Hold Bag ---
+  const handleSaveNewCustomerBag = async () => {
+    if (!newBagForm.customerName.trim()) {
+      setNewBagScanError('Customer Name is required!');
+      return;
+    }
+    if (newBagScannedItems.length === 0) {
+      setNewBagScanError('Please scan at least one garment into the bag!');
+      return;
+    }
+
+    const batchId = 'hold_batch_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+    const bagNo = newBagForm.bagNo.trim() || `BAG-${customerHolds.length + 1}`;
+    const now = new Date().toISOString();
+
+    try {
+      for (const item of newBagScannedItems) {
+        const payload = {
+          barcode: item.barcode,
+          articleNo: item.articleNo,
+          articleName: item.articleName,
+          size: item.size,
+          color: item.color,
+          section: item.section,
+          mrp: item.mrp,
+          discountPercent: item.discountPercent,
+          soldPrice: item.soldPrice,
+          customerName: newBagForm.customerName.trim(),
+          customerPhone: newBagForm.customerPhone.trim(),
+          salesperson: 'Floor Staff',
+          notes: newBagForm.notes.trim(),
+          holdForCustomer: true,
+          holdBatchId: batchId,
+          holdCustomerName: newBagForm.customerName.trim(),
+          holdCustomerPhone: newBagForm.customerPhone.trim(),
+          holdBagNo: bagNo,
+          holdNotes: newBagForm.notes.trim(),
+          holdCreatedAt: now
+        };
+
+        try {
+          await axios.post(`${API_BASE}/api/pending-tags/add`, payload);
+        } catch (apiErr) {
+          if (db) {
+            const docRef = doc(db, 'stores', targetStoreId, 'data', 'pending_tags');
+            const snap = await getDoc(docRef);
+            const curTags = snap.exists() ? (snap.data().tags || []) : [];
+            const newEntry = {
+              id: 'ptag_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+              ...payload,
+              status: 'active',
+              createdAt: now,
+              date: now.split('T')[0]
+            };
+            await setDoc(docRef, { tags: [newEntry, ...curTags], lastUpdated: now }, { merge: true });
+          }
+        }
+      }
+
+      fetchTags();
+      showToastMsg(`Created Bag ${bagNo} for ${newBagForm.customerName} with ${newBagScannedItems.length} garments!`, 'success');
+      setShowNewBagModal(false);
+      setNewBagScannedItems([]);
+      setNewBagForm({ customerName: '', customerPhone: '', bagNo: '', notes: '' });
+      setStatusFilter('holds');
+    } catch (err) {
+      setNewBagScanError('Failed to save bag: ' + err.message);
+    }
   };
 
   // --- 1. Fetch from Local Backend API ---
@@ -852,8 +1189,18 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
   // --- Filtering & Sorting ---
   const filteredTags = useMemo(() => {
     let result = tags.filter(tag => {
-      if (statusFilter === 'active' && tag.status !== 'active') return false;
-      if (statusFilter === 'billed' && tag.status !== 'billed') return false;
+      if (statusFilter === 'active') {
+        if (tag.status !== 'active') return false;
+        if (activeCustomerHoldFilter && tag.holdBatchId !== activeCustomerHoldFilter) return false;
+      }
+      if (statusFilter === 'holds') {
+        if (tag.status !== 'active' || !tag.holdForCustomer) return false;
+        if (activeCustomerHoldFilter && tag.holdBatchId !== activeCustomerHoldFilter) return false;
+      }
+      if (statusFilter === 'billed') {
+        if (tag.status !== 'billed') return false;
+        if (activeCustomerHoldFilter && tag.holdBatchId !== activeCustomerHoldFilter) return false;
+      }
 
       if (selectedMrpFilter !== null && (Number(tag.mrp) || 0) !== Number(selectedMrpFilter)) {
         return false;
@@ -866,6 +1213,9 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
         (tag.articleNo && tag.articleNo.toLowerCase().includes(q)) ||
         (tag.articleName && tag.articleName.toLowerCase().includes(q)) ||
         (tag.customerPhone && tag.customerPhone.includes(q)) ||
+        (tag.holdCustomerName && tag.holdCustomerName.toLowerCase().includes(q)) ||
+        (tag.holdCustomerPhone && tag.holdCustomerPhone.includes(q)) ||
+        (tag.holdBagNo && tag.holdBagNo.toLowerCase().includes(q)) ||
         (tag.salesperson && tag.salesperson.toLowerCase().includes(q)) ||
         (tag.billedInBillNo && tag.billedInBillNo.toLowerCase().includes(q))
       );
@@ -930,7 +1280,8 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
 
   // --- Smart B1G2 Combo Suggester (Find sets of 3 pending tags in similar category) ---
   const comboSuggestions = useMemo(() => {
-    const active = tags.filter(t => t.status === 'active');
+    // Exclude customer hold tags so they NEVER mix in generic store combos!
+    const active = tags.filter(t => t.status === 'active' && !t.holdForCustomer);
     const grouped = {};
     active.forEach(t => {
       const key = t.section || 'General';
@@ -1067,6 +1418,27 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
               >
                 <ShieldAlert className="w-4 h-4" />
                 <span>Report Damage</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setNewBagForm({
+                    customerName: '',
+                    customerPhone: '',
+                    bagNo: `BAG-${customerHolds.length + 1}`,
+                    notes: ''
+                  });
+                  setNewBagScannedItems([]);
+                  setNewBagScanQuery('');
+                  setNewBagScanError('');
+                  setShowNewBagModal(true);
+                }}
+                className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white text-xs font-bold shadow-lg shadow-purple-500/25 transition-all active:scale-95"
+                title="Create a dedicated hold bag and scan multiple tags directly for a specific customer"
+              >
+                <Briefcase className="w-4 h-4" />
+                <span>+ Hold for Customer</span>
               </button>
 
               <button
@@ -1232,7 +1604,8 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
         {/* Status Filter Tabs */}
         <div className="flex items-center bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700 overflow-x-auto">
           <button
-            onClick={() => setStatusFilter('active')}
+            type="button"
+            onClick={() => { setStatusFilter('active'); setActiveCustomerHoldFilter(null); }}
             className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
               statusFilter === 'active'
                 ? 'bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-sm'
@@ -1241,8 +1614,23 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
           >
             Active Pending ({summary.activeCount})
           </button>
+
           <button
-            onClick={() => setStatusFilter('billed')}
+            type="button"
+            onClick={() => { setStatusFilter('holds'); setActiveCustomerHoldFilter(null); }}
+            className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+              statusFilter === 'holds'
+                ? 'bg-purple-600 text-white shadow-sm'
+                : 'text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-300'
+            }`}
+          >
+            <Briefcase className="w-3.5 h-3.5" />
+            <span>Customer Hold Bags ({customerHolds.length} Bags / {customerHoldTagsCount} Pcs)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => { setStatusFilter('billed'); setActiveCustomerHoldFilter(null); }}
             className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
               statusFilter === 'billed'
                 ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm'
@@ -1443,6 +1831,193 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
         </div>
       )}
 
+      {/* Customer Hold Bags Vault View */}
+      {statusFilter === 'holds' && (
+        <div className="space-y-4">
+          <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-950/40 via-slate-900 to-indigo-950/40 border border-purple-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                <Briefcase className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-extrabold text-sm text-purple-200">
+                  Customer Hold Vault — Dedicated Garment Bags ({customerHolds.length} Bags Active)
+                </h3>
+                <p className="text-slate-400 text-[11px] mt-0.5">
+                  Garments in this vault are held together for specific customers. They are 100% isolated from general rack pieces and excluded from random store combos!
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setNewBagForm({
+                  customerName: '',
+                  customerPhone: '',
+                  bagNo: `BAG-${customerHolds.length + 1}`,
+                  notes: ''
+                });
+                setNewBagScannedItems([]);
+                setNewBagScanQuery('');
+                setNewBagScanError('');
+                setShowNewBagModal(true);
+              }}
+              className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-purple-500/20 active:scale-95 transition-all shrink-0"
+            >
+              <Plus className="w-4 h-4" />
+              <span>+ New Customer Hold Bag</span>
+            </button>
+          </div>
+
+          {customerHolds.length === 0 ? (
+            <div className="py-16 text-center border-2 border-dashed border-purple-500/30 rounded-2xl bg-purple-500/5">
+              <Briefcase className="w-12 h-12 text-purple-400 mx-auto mb-3" />
+              <h3 className="text-sm font-bold text-slate-800 dark:text-slate-200">
+                No Customer Hold Bags Active
+              </h3>
+              <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1 mb-4">
+                When a customer picks a large quantity of garments, hold their tags together so they do not mix with other store tags.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setNewBagForm({
+                    customerName: '',
+                    customerPhone: '',
+                    bagNo: 'BAG-1',
+                    notes: ''
+                  });
+                  setNewBagScannedItems([]);
+                  setNewBagScanQuery('');
+                  setNewBagScanError('');
+                  setShowNewBagModal(true);
+                }}
+                className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all shadow-md"
+              >
+                + Create First Customer Hold Bag
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {customerHolds.map((bag) => (
+                <div
+                  key={bag.batchId}
+                  className="p-5 rounded-2xl border border-purple-500/30 bg-white dark:bg-slate-900 shadow-md hover:shadow-xl transition-all flex flex-col justify-between space-y-4"
+                >
+                  <div className="space-y-3">
+                    {/* Header */}
+                    <div className="flex items-start justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="px-2.5 py-0.5 rounded-md text-xs font-black bg-purple-600 text-white shadow-xs">
+                            {bag.bagNo ? `BAG #${bag.bagNo}` : 'HOLD BAG'}
+                          </span>
+                          <span className="text-xs font-semibold text-slate-400">
+                            {new Date(bag.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        <h4 className="text-base font-extrabold text-slate-900 dark:text-white mt-1.5 flex items-center gap-1.5">
+                          <User className="w-4 h-4 text-purple-500" />
+                          <span>{bag.customerName}</span>
+                        </h4>
+                        {bag.customerPhone && (
+                          <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 mt-0.5">
+                            <Phone className="w-3 h-3 text-slate-400" />
+                            <span>{bag.customerPhone}</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <div className="text-xl font-black text-purple-600 dark:text-purple-400">
+                          {bag.count} <span className="text-xs font-semibold text-slate-400">pcs</span>
+                        </div>
+                        <div className="text-xs font-extrabold text-slate-800 dark:text-slate-200 mt-0.5">
+                          ₹{bag.totalMrp.toLocaleString('en-IN')} MRP
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Notes if any */}
+                    {bag.notes && (
+                      <div className="p-2 rounded-lg bg-purple-500/10 border border-purple-500/20 text-[11px] text-purple-900 dark:text-purple-200 font-medium">
+                        📝 {bag.notes}
+                      </div>
+                    )}
+
+                    {/* Items List in Bag */}
+                    <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                      {bag.tags.map((item, idx) => (
+                        <div
+                          key={item.id || idx}
+                          className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 text-xs"
+                        >
+                          <div className="min-w-0 pr-2">
+                            <div className="font-bold text-slate-800 dark:text-slate-200 truncate">
+                              {item.articleName || item.articleNo}
+                            </div>
+                            <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-mono mt-0.5">
+                              <span>{item.barcode}</span>
+                              <span>•</span>
+                              <span>Size {item.size || 'Free'}</span>
+                              {item.color && (
+                                <>
+                                  <span>•</span>
+                                  <span>{item.color}</span>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <div className="font-black text-slate-900 dark:text-white">
+                              ₹{Number(item.mrp || 0).toLocaleString('en-IN')}
+                            </div>
+                            <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
+                              ₹{Number(item.soldPrice || 0).toLocaleString('en-IN')}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Actions Footer */}
+                  <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleBillCustomerHold(bag, 'speed_billing')}
+                      className="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-slate-950 font-black text-xs flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/20 active:scale-95 transition-all"
+                      title="Send all garments of this customer directly to Speed Billing POS under B1G2"
+                    >
+                      <Zap className="w-3.5 h-3.5 fill-current" />
+                      <span>Bill This Bag</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setCustomerBagModalData(bag)}
+                      className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 transition-colors"
+                      title="Print 58mm/80mm Thermal Slip for this Garment Bag"
+                    >
+                      <Printer className="w-4 h-4" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleReleaseCustomerHold(bag.batchId, bag.customerName)}
+                      className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-rose-500/20 hover:text-rose-500 text-slate-400 transition-colors text-xs font-semibold"
+                      title="Release tags back to general pending rack"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Main Tags List */}
       {/* Main Tags List */}
       {loading ? (
         <div className="py-20 text-center text-slate-400 text-sm">
@@ -1561,8 +2136,21 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
 
                       {/* Article Details */}
                       <td className="py-3 px-4">
-                        <div className="font-bold text-slate-900 dark:text-slate-100 line-clamp-1">
-                          {tag.articleName || tag.articleNo || 'Apparel'}
+                        <div className="font-bold text-slate-900 dark:text-slate-100 line-clamp-1 flex items-center gap-2">
+                          <span>{tag.articleName || tag.articleNo || 'Apparel'}</span>
+                          {tag.holdForCustomer && (
+                            <span
+                              onClick={() => {
+                                setStatusFilter('holds');
+                                setActiveCustomerHoldFilter(tag.holdBatchId);
+                              }}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-500/20 text-purple-700 dark:text-purple-300 border border-purple-500/30 cursor-pointer hover:bg-purple-500/30 transition-colors shrink-0"
+                              title={`Held for ${tag.holdCustomerName || tag.customerName} in ${tag.holdBagNo || 'Bag'}. Click to view bag.`}
+                            >
+                              <Briefcase className="w-3 h-3 text-purple-600 dark:text-purple-400" />
+                              <span>{tag.holdBagNo ? `Bag #${tag.holdBagNo}` : 'Held'}: {tag.holdCustomerName || tag.customerName}</span>
+                            </span>
+                          )}
                         </div>
                         <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
                           <span>{tag.section}</span>
@@ -1908,6 +2496,24 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
           </div>
 
           <div className="h-5 w-px bg-slate-700" />
+
+          <button
+            type="button"
+            onClick={() => {
+              setHoldForm({
+                customerName: '',
+                customerPhone: '',
+                bagNo: `BAG-${customerHolds.length + 1}`,
+                notes: ''
+              });
+              setShowHoldModal(true);
+            }}
+            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-purple-500/25 transition-all active:scale-95"
+            title="Hold these tags together in a dedicated bag for a specific customer"
+          >
+            <Briefcase className="w-4 h-4" />
+            <span>Hold for Customer</span>
+          </button>
 
           <button
             onClick={() => {
@@ -3190,6 +3796,409 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
               >
                 <Check className="w-4 h-4" />
                 <span>Confirm Settlement</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- CUSTOMER HOLD MODAL (FOR SELECTED TAGS) --- */}
+      {showHoldModal && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-purple-500/30 rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95">
+            <div className="p-5 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-r from-purple-500/15 via-indigo-500/10 to-transparent flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-purple-600 text-white shadow-md">
+                  <Briefcase className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base text-slate-900 dark:text-white">
+                    Hold Tags for Customer
+                  </h3>
+                  <p className="text-[11px] text-purple-600 dark:text-purple-300 font-medium">
+                    Reserve {selectedTagIds.length} garment(s) in a dedicated customer bag
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowHoldModal(false)}
+                className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateCustomerHold} className="p-5 space-y-4">
+              <div className="p-3 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-between text-xs">
+                <span className="font-bold text-purple-900 dark:text-purple-200">
+                  {selectedTagIds.length} Garments Selected
+                </span>
+                <span className="font-black text-slate-900 dark:text-white">
+                  ₹{tags.filter(t => selectedTagIds.includes(t.id)).reduce((s, x) => s + (Number(x.mrp) || 0), 0).toLocaleString('en-IN')} MRP
+                </span>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Customer Full Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Vikram Sharma"
+                  value={holdForm.customerName}
+                  onChange={(e) => setHoldForm({ ...holdForm, customerName: e.target.value })}
+                  className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Mobile Number (Optional)
+                  </label>
+                  <input
+                    type="tel"
+                    placeholder="10-digit mobile"
+                    value={holdForm.customerPhone}
+                    onChange={(e) => setHoldForm({ ...holdForm, customerPhone: e.target.value })}
+                    className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Bag / Token #
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. BAG-1"
+                    value={holdForm.bagNo}
+                    onChange={(e) => setHoldForm({ ...holdForm, bagNo: e.target.value })}
+                    className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  Hold Notes (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Trial room batch / customer trying shoes"
+                  value={holdForm.notes}
+                  onChange={(e) => setHoldForm({ ...holdForm, notes: e.target.value })}
+                  className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+
+              <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setShowHoldModal(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold text-xs shadow-lg shadow-purple-500/25 active:scale-95 transition-all"
+                >
+                  Confirm & Hold Tags
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* --- NEW CUSTOMER HOLD BAG (DIRECT BULK SCAN) MODAL --- */}
+      {showNewBagModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+          <div className="w-full max-w-2xl bg-white dark:bg-slate-900 border border-purple-500/30 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+            <div className="p-5 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-r from-purple-600/15 via-indigo-600/10 to-transparent flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-purple-600 text-white shadow-md">
+                  <Briefcase className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-black text-base text-slate-900 dark:text-white">
+                    Create Customer Hold Bag (Direct Scan)
+                  </h3>
+                  <p className="text-xs text-purple-600 dark:text-purple-300 font-medium">
+                    Scan customer garments in succession to isolate them into a dedicated bag
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowNewBagModal(false)}
+                className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4 overflow-y-auto flex-1">
+              {/* Customer Info Row */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Customer Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Amit Singla"
+                    value={newBagForm.customerName}
+                    onChange={(e) => setNewBagForm({ ...newBagForm, customerName: e.target.value })}
+                    className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Mobile Number
+                  </label>
+                  <input
+                    type="tel"
+                    placeholder="10-digit mobile"
+                    value={newBagForm.customerPhone}
+                    onChange={(e) => setNewBagForm({ ...newBagForm, customerPhone: e.target.value })}
+                    className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Bag / Token #
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. BAG-1"
+                    value={newBagForm.bagNo}
+                    onChange={(e) => setNewBagForm({ ...newBagForm, bagNo: e.target.value })}
+                    className="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+              </div>
+
+              {/* Barcode Scanner Input */}
+              <form onSubmit={handleScanItemIntoNewBag} className="space-y-1.5 pt-1">
+                <label className="text-xs font-bold text-purple-700 dark:text-purple-300 flex items-center justify-between">
+                  <span>Scan Garments into this Bag:</span>
+                  <span className="text-[10px] text-slate-400">Press Enter after barcode or scan with gun</span>
+                </label>
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Tag className="w-4 h-4 text-purple-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      autoFocus
+                      placeholder="Scan barcode or type article / SKU..."
+                      value={newBagScanQuery}
+                      onChange={(e) => setNewBagScanQuery(e.target.value)}
+                      className="w-full pl-10 pr-3 py-2.5 text-xs font-mono font-bold rounded-xl border-2 border-purple-500/40 bg-purple-500/5 dark:bg-purple-950/20 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={newBagScanLoading || !newBagScanQuery.trim()}
+                    className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-bold text-xs flex items-center gap-1.5 active:scale-95 transition-all"
+                  >
+                    {newBagScanLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                    <span>Add to Bag</span>
+                  </button>
+                </div>
+                {newBagScanError && (
+                  <p className="text-xs text-rose-500 font-semibold flex items-center gap-1 mt-1">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                    <span>{newBagScanError}</span>
+                  </p>
+                )}
+              </form>
+
+              {/* Scanned Items Table */}
+              <div className="space-y-2 pt-2">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-700 dark:text-slate-300">
+                  <span>Garments in this Bag ({newBagScannedItems.length})</span>
+                  <span className="text-purple-600 dark:text-purple-400 font-extrabold font-mono text-sm">
+                    Total MRP: ₹{newBagScannedItems.reduce((s, it) => s + (Number(it.mrp) || 0), 0).toLocaleString('en-IN')}
+                  </span>
+                </div>
+
+                {newBagScannedItems.length === 0 ? (
+                  <div className="py-8 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-400 text-xs">
+                    Scan the first garment to start filling this customer hold bag.
+                  </div>
+                ) : (
+                  <div className="space-y-1.5 max-h-56 overflow-y-auto">
+                    {newBagScannedItems.map((item, idx) => (
+                      <div
+                        key={item.id || idx}
+                        className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 text-xs"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <span className="w-5 h-5 rounded-full bg-purple-500/20 text-purple-700 dark:text-purple-300 font-black text-[10px] flex items-center justify-center">
+                            {idx + 1}
+                          </span>
+                          <div>
+                            <div className="font-bold text-slate-900 dark:text-white">
+                              {item.articleName} ({item.articleNo})
+                            </div>
+                            <div className="text-[10px] text-slate-400 font-mono">
+                              Barcode: {item.barcode} • Size: {item.size} • Color: {item.color}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <div className="text-right">
+                            <div className="font-black text-slate-900 dark:text-white">
+                              ₹{Number(item.mrp || 0).toLocaleString('en-IN')}
+                            </div>
+                            <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                              ₹{Number(item.soldPrice || 0).toLocaleString('en-IN')}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveItemFromNewBag(item.id)}
+                            className="p-1 rounded-lg hover:bg-rose-500/20 text-slate-400 hover:text-rose-500 transition-colors"
+                            title="Remove piece from bag"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Footer Buttons */}
+            <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
+              <span className="text-xs text-slate-500 dark:text-slate-400">
+                {newBagScannedItems.length} piece(s) ready to hold
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowNewBagModal(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveNewCustomerBag}
+                  disabled={newBagScannedItems.length === 0}
+                  className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-bold text-xs shadow-lg shadow-purple-500/25 active:scale-95 transition-all"
+                >
+                  Save & Hold Bag ({newBagScannedItems.length})
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- CUSTOMER HOLD BAG THERMAL PRINT SLIP MODAL --- */}
+      {customerBagModalData && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+            <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Printer className="w-5 h-5 text-purple-600" />
+                <h3 className="font-bold text-sm text-slate-900 dark:text-white">
+                  Customer Hold Bag Slip (Thermal Preview)
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCustomerBagModalData(null)}
+                className="p-1 rounded-full text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-4 overflow-y-auto flex-1 bg-slate-50 dark:bg-slate-950">
+              <div className="p-4 rounded-xl bg-white text-black font-mono text-xs border border-slate-300 shadow-sm space-y-2">
+                <div className="text-center border-b border-black pb-2">
+                  <div className="font-black text-sm">COBB STORE • PUNDRI</div>
+                  <div className="text-[10px]">GOYAL - HOUSE OF FASHION</div>
+                  <div className="font-black mt-1 text-xs uppercase">💼 CUSTOMER HOLD BAG SLIP</div>
+                  <div className="text-sm font-black mt-1">
+                    {customerBagModalData.bagNo ? `BAG #${customerBagModalData.bagNo}` : 'CUSTOMER HOLD'}
+                  </div>
+                </div>
+
+                <div className="text-[11px] space-y-0.5 border-b border-dashed border-black pb-2">
+                  <div><strong>Customer:</strong> {customerBagModalData.customerName}</div>
+                  {customerBagModalData.customerPhone && (
+                    <div><strong>Phone:</strong> {customerBagModalData.customerPhone}</div>
+                  )}
+                  <div><strong>Date:</strong> {new Date(customerBagModalData.createdAt).toLocaleString('en-IN')}</div>
+                  {customerBagModalData.notes && (
+                    <div><strong>Notes:</strong> {customerBagModalData.notes}</div>
+                  )}
+                </div>
+
+                <div className="space-y-1 border-b border-black pb-2">
+                  <div className="font-bold text-[10px] uppercase flex justify-between">
+                    <span># Article</span>
+                    <span>Size / MRP</span>
+                  </div>
+                  {customerBagModalData.tags.map((t, idx) => (
+                    <div key={idx} className="flex justify-between text-[11px]">
+                      <span>{idx + 1}. {t.articleNo || t.barcode}</span>
+                      <span>{t.size} - ₹{Number(t.mrp || 0).toLocaleString('en-IN')}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="text-[11px] font-bold space-y-0.5 pt-1">
+                  <div className="flex justify-between">
+                    <span>Total Pieces:</span>
+                    <span>{customerBagModalData.count} Garments</span>
+                  </div>
+                  <div className="flex justify-between text-sm font-black">
+                    <span>Total MRP:</span>
+                    <span>₹{customerBagModalData.totalMrp.toLocaleString('en-IN')}</span>
+                  </div>
+                  <div className="flex justify-between text-emerald-700">
+                    <span>Estimated Combo Cash:</span>
+                    <span>₹{customerBagModalData.totalCollected.toLocaleString('en-IN')}</span>
+                  </div>
+                </div>
+
+                <div className="text-center text-[9px] pt-2 border-t border-dashed border-black">
+                  *** ATTACH TO PHYSICAL GARMENT BAG ***<br/>
+                  EXCLUSIVELY RESERVED FOR CUSTOMER CHECKOUT
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-2 bg-white dark:bg-slate-900">
+              <button
+                type="button"
+                onClick={() => setCustomerBagModalData(null)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  triggerCustomerHoldBagPrint(customerBagModalData);
+                  showToastMsg('Printed customer hold slip!', 'success');
+                }}
+                className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-purple-500/25 active:scale-95 transition-all"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Print Slip (58mm/80mm)</span>
               </button>
             </div>
           </div>

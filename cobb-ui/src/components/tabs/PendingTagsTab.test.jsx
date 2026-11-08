@@ -251,5 +251,36 @@ describe('PendingTagsTab - Duplicate Barcode Prevention', () => {
         expect(screen.getByRole('button', { name: /Restock/i })).toBeDefined();
       });
     });
+
+    it('renders Customer Hold Bags button and allows opening direct scan modal', async () => {
+      render(<PendingTagsTab />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/\+ Hold for Customer/i)).toBeDefined();
+      });
+
+      // Open Customer Hold direct scan modal
+      fireEvent.click(screen.getByText(/\+ Hold for Customer/i));
+
+      await waitFor(() => {
+        expect(screen.getByText(/Create Customer Hold Bag \(Direct Scan\)/i)).toBeDefined();
+        expect(screen.getByPlaceholderText(/e\.g\. Amit Singla/i)).toBeDefined();
+      });
+    });
+
+    it('renders Customer Hold Bags tab and switches to hold vault', async () => {
+      render(<PendingTagsTab />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/Customer Hold Bags/i)).toBeDefined();
+      });
+
+      // Switch to Customer Hold Bags tab
+      fireEvent.click(screen.getByText(/Customer Hold Bags/i));
+
+      await waitFor(() => {
+        expect(screen.getByText(/Customer Hold Vault/i)).toBeDefined();
+      });
+    });
   });
 });

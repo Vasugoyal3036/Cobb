@@ -172,6 +172,34 @@ router.get('/', async (req, res) => {
         const activeTags = tags.filter(t => t.status === 'active');
         const billedTags = tags.filter(t => t.status === 'billed');
 
+        // Customer Hold Batches calculation
+        const customerHoldTags = activeTags.filter(t => t.holdForCustomer === true);
+        const generalActiveTags = activeTags.filter(t => !t.holdForCustomer);
+
+        const holdBatchesMap = {};
+        for (const t of customerHoldTags) {
+            const batchKey = t.holdBatchId || ('cust_' + (t.holdCustomerPhone || t.holdCustomerName || 'unnamed'));
+            if (!holdBatchesMap[batchKey]) {
+                holdBatchesMap[batchKey] = {
+                    batchId: batchKey,
+                    customerName: t.holdCustomerName || t.customerName || 'Valued Customer',
+                    customerPhone: t.holdCustomerPhone || t.customerPhone || '',
+                    bagNo: t.holdBagNo || '',
+                    notes: t.holdNotes || t.notes || '',
+                    createdAt: t.holdCreatedAt || t.createdAt,
+                    count: 0,
+                    totalMrp: 0,
+                    totalCollected: 0,
+                    tags: []
+                };
+            }
+            holdBatchesMap[batchKey].count += 1;
+            holdBatchesMap[batchKey].totalMrp += (Number(t.mrp) || 0);
+            holdBatchesMap[batchKey].totalCollected += (Number(t.soldPrice) || 0);
+            holdBatchesMap[batchKey].tags.push(t);
+        }
+        const customerHolds = Object.values(holdBatchesMap).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
         const activeMrpValue = activeTags.reduce((sum, t) => sum + (Number(t.mrp) || 0), 0);
         const activeRealizedValue = activeTags.reduce((sum, t) => sum + (Number(t.soldPrice) || 0), 0);
         const totalDiscountGiven = activeMrpValue - activeRealizedValue;
@@ -189,9 +217,13 @@ router.get('/', async (req, res) => {
         res.json({
             success: true,
             tags: tags.slice(-300).reverse(), // newest first
+            customerHolds,
             summary: {
                 totalTags: tags.length,
                 activeCount: activeTags.length,
+                generalActiveCount: generalActiveTags.length,
+                customerHoldCount: customerHoldTags.length,
+                customerHoldBagsCount: customerHolds.length,
                 billedCount: billedTags.length,
                 activeMrpValue,
                 activeRealizedValue,
@@ -267,6 +299,13 @@ router.post('/add', async (req, res) => {
             customerPhone: String(customerPhone || '').replace(/[^0-9]/g, '').slice(-10),
             salesperson: String(salesperson || 'Cashier').trim(),
             notes: String(notes || '').trim(),
+            holdForCustomer: Boolean(req.body.holdForCustomer),
+            holdCustomerName: String(req.body.holdCustomerName || customerName || '').trim(),
+            holdCustomerPhone: String(req.body.holdCustomerPhone || customerPhone || '').replace(/[^0-9]/g, '').slice(-10),
+            holdBagNo: String(req.body.holdBagNo || '').trim(),
+            holdBatchId: String(req.body.holdBatchId || '').trim() || (req.body.holdForCustomer ? ('hold_batch_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5)) : null),
+            holdNotes: String(req.body.holdNotes || notes || '').trim(),
+            holdCreatedAt: req.body.holdForCustomer ? now.toISOString() : null,
             status: 'active', // 'active' | 'billed' | 'void'
             createdAt: now.toISOString(),
             date: now.toISOString().split('T')[0],
@@ -340,7 +379,8 @@ router.delete('/:id', (req, res) => {
 router.get('/combos', (req, res) => {
     try {
         const tags = readTags();
-        const active = tags.filter(t => t.status === 'active');
+        // Exclude tags held for specific customer so they do not mix in generic store combos
+        const active = tags.filter(t => t.status === 'active' && !t.holdForCustomer);
 
         // Group by Section / Category or MRP
         const groups = {};
@@ -380,5 +420,117 @@ router.writeTags = writeTags;
 router.isBarcodeDuplicate = isBarcodeDuplicate;
 router.cleanBarcodeDigits = cleanBarcodeDigits;
 router.normalizeBarcode = normalizeBarcode;
+
+
+// POST /api/pending-tags/create-customer-hold — Put multiple tags into a dedicated customer hold bag
+router.post('/create-customer-hold', (req, res) => {
+    try {
+        const { tagIds = [], customerName, customerPhone = '', bagNo = '', notes = '' } = req.body;
+        if (!customerName || !customerName.trim()) {
+            return res.status(400).json({ success: false, error: 'Customer Name is required for Customer Hold' });
+        }
+        if (!Array.isArray(tagIds) || tagIds.length === 0) {
+            return res.status(400).json({ success: false, error: 'At least one tag must be selected to hold' });
+        }
+
+        const tags = readTags();
+        const batchId = 'hold_batch_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+        const now = new Date().toISOString();
+
+        let modifiedCount = 0;
+        for (const tag of tags) {
+            if (tagIds.includes(tag.id)) {
+                tag.holdForCustomer = true;
+                tag.holdBatchId = batchId;
+                tag.holdCustomerName = String(customerName).trim();
+                tag.holdCustomerPhone = String(customerPhone).replace(/[^0-9]/g, '').slice(-10);
+                tag.holdBagNo = String(bagNo || '').trim();
+                tag.holdNotes = String(notes || '').trim();
+                tag.holdCreatedAt = now;
+                modifiedCount++;
+            }
+        }
+
+        writeTags(tags);
+        res.json({
+            success: true,
+            message: `Held ${modifiedCount} tag(s) for customer "${customerName}" in ${bagNo ? 'Bag #' + bagNo : 'Dedicated Bag'}!`,
+            batchId,
+            modifiedCount
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// POST /api/pending-tags/release-customer-hold — Release tags back to the general pending rack
+router.post('/release-customer-hold', (req, res) => {
+    try {
+        const { holdBatchId, tagIds } = req.body;
+        if (!holdBatchId && (!Array.isArray(tagIds) || tagIds.length === 0)) {
+            return res.status(400).json({ success: false, error: 'holdBatchId or tagIds is required' });
+        }
+
+        const tags = readTags();
+        let releasedCount = 0;
+        for (const tag of tags) {
+            const matchesBatch = holdBatchId && tag.holdBatchId === holdBatchId;
+            const matchesTag = Array.isArray(tagIds) && tagIds.includes(tag.id);
+            if (matchesBatch || matchesTag) {
+                tag.holdForCustomer = false;
+                tag.holdBatchId = null;
+                tag.holdCustomerName = null;
+                tag.holdCustomerPhone = null;
+                tag.holdBagNo = null;
+                tag.holdNotes = null;
+                tag.holdCreatedAt = null;
+                releasedCount++;
+            }
+        }
+
+        writeTags(tags);
+        res.json({
+            success: true,
+            message: `Released ${releasedCount} tag(s) back to general pending rack.`,
+            releasedCount
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// POST /api/pending-tags/bill-customer-hold — Mark all tags in a customer hold as billed
+router.post('/bill-customer-hold', (req, res) => {
+    try {
+        const { holdBatchId, billNo = 'HOLD-COMBO', billedAmount } = req.body;
+        if (!holdBatchId) {
+            return res.status(400).json({ success: false, error: 'holdBatchId is required' });
+        }
+
+        const tags = readTags();
+        const now = new Date().toISOString();
+        let billedCount = 0;
+        for (const tag of tags) {
+            if (tag.holdBatchId === holdBatchId && tag.status === 'active') {
+                tag.status = 'billed';
+                tag.billedInBillNo = String(billNo).trim();
+                tag.billedAt = now;
+                tag.autoResolved = false;
+                tag.resolvedAt = now;
+                if (billedAmount !== undefined) tag.billedNet = parseFloat(billedAmount);
+                billedCount++;
+            }
+        }
+
+        writeTags(tags);
+        res.json({
+            success: true,
+            message: `Billed ${billedCount} tag(s) for customer hold in ${billNo}`,
+            billedCount
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
 
 module.exports = router;

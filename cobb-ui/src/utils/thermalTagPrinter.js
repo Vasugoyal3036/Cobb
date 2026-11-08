@@ -794,3 +794,295 @@ export function triggerDamageSlipPrint(damage, options = {}) {
 
   return false;
 }
+
+/**
+ * Render thermal print HTML for a Customer Hold Garment Bag Slip (58mm or 80mm)
+ */
+export function renderCustomerHoldBagSlipHtml(bag, options = {}) {
+  const widthMm = options.paperSize === '80mm' ? 80 : 58;
+  const printableMm = widthMm === 80 ? 74 : 52;
+  const tagsList = Array.isArray(bag.tags) ? bag.tags : [];
+
+  const now = new Date();
+  const nowStr = now.toLocaleString('en-IN', {
+    dateStyle: 'medium',
+    timeStyle: 'short'
+  });
+
+  const bagCode = String(bag.bagNo || bag.batchId || 'HOLD-BAG').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 14);
+  const barcodeSvg = generateBarcodeSvg(bagCode, {
+    width: widthMm === 80 ? 1.8 : 1.4,
+    height: widthMm === 80 ? 36 : 30
+  });
+
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <title>Customer Hold Bag Slip - ${bag.bagNo || 'Bag'} - ${bag.customerName || 'Customer'}</title>
+        <style>
+          @page {
+            size: ${widthMm}mm auto;
+            margin: 0;
+          }
+          * {
+            box-sizing: border-box;
+          }
+          body {
+            margin: 0;
+            padding: 4px 6px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, monospace, sans-serif;
+            color: #000;
+            background: #fff;
+            width: ${printableMm}mm;
+            line-height: 1.25;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          .tag-card {
+            border: 2px solid #000;
+            border-radius: 6px;
+            padding: 6px 4px;
+            text-align: center;
+          }
+          .brand-title {
+            font-size: 13px;
+            font-weight: 900;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+          }
+          .sub-brand {
+            font-size: 8px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            color: #333;
+            margin-top: 1px;
+          }
+          .desk-badge {
+            display: inline-block;
+            background: #000;
+            color: #fff;
+            font-size: 9px;
+            font-weight: 900;
+            letter-spacing: 0.8px;
+            padding: 2px 8px;
+            border-radius: 3px;
+            margin: 4px 0;
+            text-transform: uppercase;
+          }
+          .bag-pill {
+            font-size: 15px;
+            font-weight: 900;
+            letter-spacing: 1px;
+            margin: 3px 0;
+          }
+          .divider {
+            border-top: 1px dashed #000;
+            margin: 4px 0;
+          }
+          .double-divider {
+            border-top: 2px solid #000;
+            margin: 5px 0;
+          }
+          .info-table {
+            width: 100%;
+            font-size: 9px;
+            text-align: left;
+            border-collapse: collapse;
+            margin: 3px 0;
+          }
+          .info-table td {
+            padding: 1.5px 2px;
+            vertical-align: top;
+          }
+          .info-table td.label {
+            font-weight: 700;
+            width: 32%;
+            color: #444;
+          }
+          .info-table td.val {
+            font-weight: 800;
+          }
+          .items-table {
+            width: 100%;
+            font-size: 8.5px;
+            border-collapse: collapse;
+            margin: 4px 0;
+            text-align: left;
+          }
+          .items-table th {
+            border-bottom: 1px solid #000;
+            padding: 2px 1px;
+            font-size: 8px;
+            text-transform: uppercase;
+          }
+          .items-table td {
+            padding: 2px 1px;
+            border-bottom: 0.5px dotted #999;
+          }
+          .barcode-container {
+            margin: 4px auto;
+            text-align: center;
+          }
+          .barcode-container svg {
+            max-width: 100%;
+            height: auto;
+            margin: 0 auto;
+          }
+          .footer-note {
+            font-size: 7.5px;
+            font-weight: 800;
+            line-height: 1.2;
+            margin-top: 4px;
+            text-align: center;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="tag-card">
+          <div class="brand-title">COBB STORE</div>
+          <div class="sub-brand">GOYAL - HOUSE OF FASHION</div>
+          <div class="desk-badge">💼 CUSTOMER HOLD BAG SLIP</div>
+
+          <div class="bag-pill">${bag.bagNo ? `BAG #${bag.bagNo}` : 'CUSTOMER HOLD'}</div>
+
+          <div class="divider"></div>
+
+          <table class="info-table">
+            <tr>
+              <td class="label">Customer:</td>
+              <td class="val">${bag.customerName || 'Walk-in Guest'}</td>
+            </tr>
+            ${bag.customerPhone ? `
+            <tr>
+              <td class="label">Phone:</td>
+              <td class="val">${bag.customerPhone}</td>
+            </tr>
+            ` : ''}
+            <tr>
+              <td class="label">Held At:</td>
+              <td class="val">${nowStr}</td>
+            </tr>
+            ${bag.notes ? `
+            <tr>
+              <td class="label">Notes:</td>
+              <td class="val">${bag.notes}</td>
+            </tr>
+            ` : ''}
+          </table>
+
+          <div class="divider"></div>
+
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th style="width: 12%;">#</th>
+                <th style="width: 48%;">Article / Item</th>
+                <th style="width: 18%;">Size</th>
+                <th style="width: 22%; text-align: right;">MRP</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tagsList.map((t, idx) => `
+                <tr>
+                  <td>${idx + 1}</td>
+                  <td><strong>${t.articleNo || t.barcode}</strong><br/><span style="font-size:7px;color:#555;">${t.articleName || t.color || ''}</span></td>
+                  <td>${t.size || 'Free'}</td>
+                  <td style="text-align: right; font-weight: bold;">₹${Number(t.mrp || 0).toLocaleString('en-IN')}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+
+          <div class="double-divider"></div>
+
+          <table class="info-table" style="font-size: 10px;">
+            <tr>
+              <td class="label" style="font-size: 10px;">Total Pieces:</td>
+              <td class="val" style="font-size: 11px; font-weight: 900;">${tagsList.length} Garments</td>
+            </tr>
+            <tr>
+              <td class="label" style="font-size: 10px;">Total MRP:</td>
+              <td class="val" style="font-size: 11px; font-weight: 900;">₹${Number(bag.totalMrp || 0).toLocaleString('en-IN')}</td>
+            </tr>
+            <tr>
+              <td class="label" style="font-size: 9px;">Single-Pc Cash:</td>
+              <td class="val" style="font-size: 10px; font-weight: 800;">₹${Number(bag.totalCollected || 0).toLocaleString('en-IN')}</td>
+            </tr>
+          </table>
+
+          <div class="divider"></div>
+
+          <div class="barcode-container">
+            ${barcodeSvg}
+          </div>
+
+          <div class="double-divider"></div>
+
+          <div class="footer-note">
+            ⚠️ DO NOT MIX WITH GENERAL PENDING RACK<br/>
+            Reserved exclusively for customer checkout.<br/>
+            * ATTACH THIS SLIP SECURELY TO GARMENT BAG *
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+}
+
+/**
+ * Triggers thermal print of the Customer Hold Bag slip
+ */
+export function triggerCustomerHoldBagPrint(bag, options = {}) {
+  const html = renderCustomerHoldBagSlipHtml(bag, options);
+
+  if (typeof document !== 'undefined') {
+    try {
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = '0';
+      document.body.appendChild(iframe);
+
+      const doc = iframe.contentWindow.document;
+      doc.open();
+      doc.write(html);
+      doc.close();
+
+      iframe.contentWindow.focus();
+      setTimeout(() => {
+        try {
+          iframe.contentWindow.print();
+        } catch (e) {
+          console.warn('Iframe print error, falling back to window:', e);
+        }
+        setTimeout(() => {
+          if (iframe.parentNode) iframe.parentNode.removeChild(iframe);
+        }, 3000);
+      }, 350);
+      return true;
+    } catch (err) {
+      console.warn('Iframe print creation error:', err);
+    }
+  }
+
+  if (typeof window !== 'undefined') {
+    const printWindow = window.open('', '_blank', 'width=380,height=580');
+    if (printWindow) {
+      printWindow.document.write(html);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+      }, 400);
+      return true;
+    }
+  }
+
+  return false;
+}
