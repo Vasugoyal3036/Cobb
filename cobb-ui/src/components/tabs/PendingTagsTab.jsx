@@ -79,6 +79,81 @@ export function isBarcodeDuplicate(b1, b2) {
   return false;
 }
 
+export const TARGET_WHATSAPP_PHONE = '8708788707';
+
+export function generatePendingTagsWhatsAppMessage(items = [], storeName = 'Cobb Apparels') {
+  if (!items || items.length === 0) return '';
+
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
+  const timeStr = now.toLocaleTimeString('en-IN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+
+  const totalMrp = items.reduce((sum, t) => sum + (Number(t.mrp) || 0), 0);
+  const totalSold = items.reduce((sum, t) => sum + (Number(t.soldPrice) || 0), 0);
+
+  let message = `🏷️ *COBB PENDING TAGS BRIEF*\n`;
+  message += `📅 *Date:* ${dateStr}, ${timeStr}\n`;
+  message += `📦 *Total Articles:* ${items.length} pcs\n`;
+  message += `💰 *Total MRP:* ₹${totalMrp.toLocaleString('en-IN')}`;
+  if (totalSold > 0) {
+    message += ` | *Cash Realized:* ₹${totalSold.toLocaleString('en-IN')}`;
+  }
+  message += `\n`;
+  message += `━━━━━━━━━━━━━━━━━━━━━\n\n`;
+
+  items.forEach((item, index) => {
+    const num = index + 1;
+    const barcode = item.barcode || 'N/A';
+    const artNo = item.articleNo || 'Standard';
+    const artName = item.articleName || item.itemName || 'Garment';
+    const size = item.size || 'Free';
+    const color = item.color || 'Standard';
+    const mrp = Number(item.mrp || 0).toLocaleString('en-IN');
+    const sold = Number(item.soldPrice || 0).toLocaleString('en-IN');
+    const disc = item.discountPercent ? `${item.discountPercent}% OFF` : '';
+
+    message += `${num}. *Barcode:* \`${barcode}\`\n`;
+    message += `   • *Article:* ${artNo} (${artName})\n`;
+    message += `   • *Size/Color:* ${size} | ${color}\n`;
+    message += `   • *MRP:* ₹${mrp}`;
+    if (Number(item.soldPrice) > 0) {
+      message += ` | *Sold Price:* ₹${sold}`;
+    }
+    if (disc) {
+      message += ` (${disc})`;
+    }
+    message += `\n`;
+
+    if (item.holdForCustomer) {
+      const cust = item.holdCustomerName || item.customerName || 'Customer';
+      const bag = item.holdBagNo ? ` [${item.holdBagNo}]` : '';
+      message += `   • *Customer Hold:* ${cust}${bag}\n`;
+    } else if (item.customerName) {
+      message += `   • *Customer:* ${item.customerName}\n`;
+    }
+
+    if (item.salesperson && item.salesperson !== 'Cashier') {
+      message += `   • *Staff:* ${item.salesperson}\n`;
+    }
+
+    message += `\n`;
+  });
+
+  message += `━━━━━━━━━━━━━━━━━━━━━\n`;
+  message += `📲 *Target:* +91 ${TARGET_WHATSAPP_PHONE}\n`;
+  message += `🏪 *Store:* ${storeName}\n`;
+
+  return message;
+}
+
 const DISCOUNT_PRESETS = [
   { label: 'Flat 50%', value: 50 },
   { label: '60% Off', value: 60 },
@@ -109,6 +184,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
   const [thermalTagModalData, setThermalTagModalData] = useState(null); // B1G2 Triplet discount review modal
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDefectModal, setShowDefectModal] = useState(false);
+  const [whatsAppModal, setWhatsAppModal] = useState(null); // { message, count, phone }
   const [copiedId, setCopiedId] = useState(null);
   const [toast, setToast] = useState(null);
 
@@ -1221,6 +1297,66 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
     setThermalTagModalData(tag);
   };
 
+  // --- Copy WhatsApp Summary Brief to 8708788707 ---
+  const handleCopyAllWhatsApp = async (customItems = null) => {
+    const itemsToCopy = customItems || (filteredTags.length > 0 ? filteredTags : tags.filter(t => t.status === 'active'));
+
+    if (!itemsToCopy || itemsToCopy.length === 0) {
+      showToastMsg('No pending tags available to copy!', 'error');
+      return;
+    }
+
+    const message = generatePendingTagsWhatsAppMessage(itemsToCopy, activeStore || 'Cobb Store');
+    const targetPhone = TARGET_WHATSAPP_PHONE;
+
+    // 1. Copy to clipboard
+    let copied = false;
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(message);
+        copied = true;
+      }
+    } catch (err) {
+      console.warn('Clipboard write failed, using fallback', err);
+    }
+
+    if (!copied && typeof document !== 'undefined') {
+      try {
+        const textArea = document.createElement('textarea');
+        textArea.value = message;
+        textArea.style.position = 'fixed';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        copied = document.execCommand('copy');
+        document.body.removeChild(textArea);
+      } catch (e) {}
+    }
+
+    // 2. Open WhatsApp link or chat
+    const encoded = encodeURIComponent(message);
+    const waUrl = encoded.length < 3000
+      ? `https://wa.me/91${targetPhone}?text=${encoded}`
+      : `https://wa.me/91${targetPhone}`;
+
+    try {
+      if (typeof window !== 'undefined' && window.open) {
+        window.open(waUrl, '_blank');
+      }
+    } catch (e) {
+      console.warn('Popup blocked, WhatsApp modal available', e);
+    }
+
+    // 3. Set preview modal & toast
+    showToastMsg(`Copied WhatsApp brief for ${itemsToCopy.length} article(s)! (Target: ${targetPhone})`, 'success');
+    setWhatsAppModal({
+      message,
+      count: itemsToCopy.length,
+      phone: targetPhone
+    });
+  };
+
   // --- Filtering & Sorting ---
   const filteredTags = useMemo(() => {
     let result = tags.filter(tag => {
@@ -1435,6 +1571,16 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
               >
                 <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin text-rose-400' : ''}`} />
                 <span>{refreshing ? 'Checking POS...' : 'Sync with POS'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleCopyAllWhatsApp()}
+                className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold shadow-lg shadow-emerald-500/25 transition-all active:scale-95 cursor-pointer"
+                title="Create and copy WhatsApp message to 8708788707 with barcode briefs of all pending tags"
+              >
+                <Copy className="w-4 h-4" />
+                <span>Copy All (WhatsApp)</span>
               </button>
 
               <button
@@ -1775,6 +1921,17 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
               className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-rose-500"
             />
           </div>
+
+          {/* Quick Copy All WhatsApp Button */}
+          <button
+            type="button"
+            onClick={() => handleCopyAllWhatsApp()}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold transition-all active:scale-95 shrink-0 shadow-sm cursor-pointer"
+            title="Copy WhatsApp summary of current articles with barcodes to 8708788707"
+          >
+            <Copy className="w-3.5 h-3.5" />
+            <span>Copy All</span>
+          </button>
         </div>
       </div>
 
@@ -2034,6 +2191,15 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                       title="Print 58mm/80mm Thermal Slip for this Garment Bag"
                     >
                       <Printer className="w-4 h-4" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleCopyAllWhatsApp(bag.tags)}
+                      className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-emerald-500/20 hover:text-emerald-500 text-slate-700 dark:text-slate-200 transition-colors"
+                      title="Copy WhatsApp brief for this customer bag (8708788707)"
+                    >
+                      <Copy className="w-4 h-4" />
                     </button>
 
                     <button
@@ -2548,6 +2714,19 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
           >
             <Briefcase className="w-4 h-4" />
             <span>Hold for Customer</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              const selectedItems = tags.filter(t => selectedTagIds.includes(t.id));
+              handleCopyAllWhatsApp(selectedItems);
+            }}
+            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-500/25 transition-all active:scale-95 cursor-pointer"
+            title="Copy WhatsApp summary of selected tags to 8708788707"
+          >
+            <Copy className="w-4 h-4" />
+            <span>Copy Selected ({selectedTagIds.length})</span>
           </button>
 
           <button
@@ -4384,6 +4563,104 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
             <img src={photoPreviewUrl} alt="Defect High Res" className="w-full h-auto rounded-xl max-h-[80vh] object-contain" />
             <div className="p-3 text-center text-xs text-slate-300 font-medium">
               Defect photo captured on floor staff mobile camera
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- WHATSAPP BRIEF PREVIEW MODAL --- */}
+      {whatsAppModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95">
+            {/* Header */}
+            <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-gradient-to-r from-emerald-500/10 to-teal-500/10">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-emerald-600 text-white shadow-md">
+                  <Copy className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>WhatsApp Pending Tags Brief</span>
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                      {whatsAppModal.count} Articles
+                    </span>
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Target: <span className="font-mono font-bold text-slate-800 dark:text-slate-200">+91 87087 88707</span>
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setWhatsAppModal(null)}
+                className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 transition-all cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-5 space-y-4 overflow-y-auto flex-1">
+              <div className="p-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200/80 dark:border-emerald-800/40 text-xs text-emerald-800 dark:text-emerald-300 font-medium">
+                ✓ Message copied to clipboard! You can paste directly or click below to open WhatsApp chat with <strong>8708788707</strong>.
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+                    WhatsApp Message Preview:
+                  </label>
+                  <span className="text-[10px] text-slate-400">Includes Barcodes & Article Details</span>
+                </div>
+                <textarea
+                  readOnly
+                  value={whatsAppModal.message}
+                  rows={12}
+                  className="w-full p-3 font-mono text-xs rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-200 resize-none focus:outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-2.5 bg-slate-50 dark:bg-slate-900/60">
+              <button
+                type="button"
+                onClick={() => setWhatsAppModal(null)}
+                className="px-4 py-2 text-xs font-semibold rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  try {
+                    await navigator?.clipboard?.writeText(whatsAppModal.message);
+                    showToastMsg('Copied to clipboard!', 'success');
+                  } catch (e) {
+                    showToastMsg('Failed to copy', 'error');
+                  }
+                }}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                <span>Copy Text</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const encoded = encodeURIComponent(whatsAppModal.message);
+                  const phone = whatsAppModal.phone || '8708788707';
+                  const waUrl = encoded.length < 3000
+                    ? `https://wa.me/91${phone}?text=${encoded}`
+                    : `https://wa.me/91${phone}`;
+                  window.open(waUrl, '_blank');
+                }}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold shadow-md shadow-emerald-500/25 flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>Open WhatsApp (8708788707)</span>
+              </button>
             </div>
           </div>
         </div>

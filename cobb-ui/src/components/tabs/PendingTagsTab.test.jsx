@@ -4,7 +4,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import PendingTagsTab, {
   normalizeBarcode,
   cleanBarcodeDigits,
-  isBarcodeDuplicate
+  isBarcodeDuplicate,
+  generatePendingTagsWhatsAppMessage,
+  TARGET_WHATSAPP_PHONE
 } from './PendingTagsTab';
 import axios from 'axios';
 
@@ -385,6 +387,110 @@ describe('PendingTagsTab - Duplicate Barcode Prevention', () => {
       await waitFor(() => {
         expect(screen.getByText(/Garments in this Bag \(1\)/i)).toBeDefined();
       });
+    });
+
+    it('renders Copy All (WhatsApp) button and opens preview modal with formatted brief for 8708788707', async () => {
+      const writeTextMock = vi.fn().mockResolvedValue();
+      Object.assign(navigator, {
+        clipboard: {
+          writeText: writeTextMock
+        }
+      });
+      const windowOpenMock = vi.fn();
+      window.open = windowOpenMock;
+
+      render(<PendingTagsTab />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Cobb Linen Shirt White')).toBeDefined();
+      });
+
+      // Find "Copy All" or "Copy All (WhatsApp)" button
+      const copyAllBtn = screen.getByRole('button', { name: /Copy All \(WhatsApp\)/i });
+      expect(copyAllBtn).toBeDefined();
+
+      fireEvent.click(copyAllBtn);
+
+      // Clipboard should have been called
+      expect(writeTextMock).toHaveBeenCalled();
+      const copiedText = writeTextMock.mock.calls[0][0];
+
+      // Must include target number 8708788707
+      expect(copiedText).toContain('8708788707');
+
+      // Must include barcode number
+      expect(copiedText).toContain('0080727340');
+
+      // Must include article brief
+      expect(copiedText).toContain('CFS-0192');
+      expect(copiedText).toContain('Cobb Linen Shirt White');
+
+      // WhatsApp Preview modal should be visible
+      await waitFor(() => {
+        expect(screen.getByText('WhatsApp Pending Tags Brief')).toBeDefined();
+        expect(screen.getByText(/\+91 87087 88707/i)).toBeDefined();
+        expect(screen.getByRole('button', { name: /Open WhatsApp \(8708788707\)/i })).toBeDefined();
+      });
+
+      // window.open should have been called targeting wa.me with 8708788707
+      expect(windowOpenMock).toHaveBeenCalled();
+      expect(windowOpenMock.mock.calls[0][0]).toContain('wa.me/918708788707');
+
+      // Clicking Close should dismiss the modal
+      fireEvent.click(screen.getByRole('button', { name: /Close/i }));
+      await waitFor(() => {
+        expect(screen.queryByText('WhatsApp Pending Tags Brief')).toBeNull();
+      });
+    });
+  });
+
+  describe('WhatsApp Brief Generator Logic', () => {
+    it('returns empty string when given empty array', () => {
+      expect(generatePendingTagsWhatsAppMessage([])).toBe('');
+      expect(generatePendingTagsWhatsAppMessage(null)).toBe('');
+    });
+
+    it('generates structured WhatsApp brief including barcode numbers for every article and target 8708788707', () => {
+      const items = [
+        {
+          id: '1',
+          barcode: '0079484055',
+          articleNo: 'FJWA2610',
+          articleName: 'Denim Slim Fit',
+          size: '32',
+          color: 'Navy',
+          mrp: 3999,
+          soldPrice: 1600,
+          discountPercent: 60
+        },
+        {
+          id: '2',
+          barcode: '0071258969',
+          articleNo: 'CFS-0192',
+          articleName: 'Formal Linen Shirt',
+          size: '40',
+          color: 'White',
+          mrp: 2999,
+          soldPrice: 1200,
+          discountPercent: 60,
+          holdForCustomer: true,
+          holdCustomerName: 'Rajesh',
+          holdBagNo: 'BAG-1'
+        }
+      ];
+
+      const msg = generatePendingTagsWhatsAppMessage(items, 'Cobb Delhi Store');
+
+      expect(TARGET_WHATSAPP_PHONE).toBe('8708788707');
+      expect(msg).toContain('COBB PENDING TAGS BRIEF');
+      expect(msg).toContain('Total Articles:* 2 pcs');
+      expect(msg).toContain('0079484055');
+      expect(msg).toContain('0071258969');
+      expect(msg).toContain('FJWA2610');
+      expect(msg).toContain('CFS-0192');
+      expect(msg).toContain('Customer Hold:* Rajesh [BAG-1]');
+      expect(msg).toContain('+91 8708788707');
+      expect(msg).toContain('Cobb Delhi Store');
     });
   });
 });
