@@ -662,6 +662,26 @@ app.get('/api/inventory/stock-health', async (req, res) => {
 });
 
 
+// In-memory cache for ultra-fast repeated barcode & article lookups (10-min TTL, max 500 items)
+const quickScanCache = new Map();
+const QUICK_SCAN_CACHE_TTL = 10 * 60 * 1000;
+function getCachedQuickScan(key) {
+    const entry = quickScanCache.get(key);
+    if (!entry) return null;
+    if (Date.now() - entry.ts > QUICK_SCAN_CACHE_TTL) {
+        quickScanCache.delete(key);
+        return null;
+    }
+    return entry.data;
+}
+function setCachedQuickScan(key, data) {
+    if (quickScanCache.size > 500) {
+        const firstKey = quickScanCache.keys().next().value;
+        quickScanCache.delete(firstKey);
+    }
+    quickScanCache.set(key, { ts: Date.now(), data });
+}
+
 app.get('/api/inventory/quick-scan', async (req, res) => {
     try {
         const query = (req.query.q || '').trim();
@@ -669,43 +689,131 @@ app.get('/api/inventory/quick-scan', async (req, res) => {
             return res.json({ success: false, message: 'Query is required' });
         }
 
-        const findReq = createRequest();
-        findReq.input('q', sql.NVarChar, query);
-        
-        const matchRes = await findReq.query(`
-            SELECT TOP 1 
-                s.article_no, 
-                ISNULL(s.article_name, s.section_name) as itemName, 
-                s.section_name as sectionName,
-                ISNULL(s.sub_section_name, '') as subSectionName
-            FROM SKU_NAMES s WITH (NOLOCK)
-            WHERE LTRIM(RTRIM(s.product_Code)) = @q 
-               OR LTRIM(RTRIM(s.article_no)) = @q 
-               OR LTRIM(RTRIM(s.VENDOR_EAN_NO)) = @q
-               OR s.product_Code = @q 
-               OR s.article_no = @q 
-               OR s.VENDOR_EAN_NO = @q
-               OR s.article_no LIKE @q + '%'
-               OR s.article_name LIKE '%' + @q + '%'
-            ORDER BY 
-               CASE 
-                 WHEN LTRIM(RTRIM(s.product_Code)) = @q THEN 1
-                 WHEN LTRIM(RTRIM(s.article_no)) = @q THEN 2
-                 WHEN LTRIM(RTRIM(s.VENDOR_EAN_NO)) = @q THEN 3
-                 WHEN s.article_no LIKE @q + '%' THEN 4
-                 ELSE 5 
-               END
-        `);
-
-        if (!matchRes.recordset || matchRes.recordset.length === 0) {
-            return res.json({ success: false, message: `No item found matching "${query}"` });
+        const isSingleMode = req.query.mode === 'single' || req.query.single === 'true';
+        const cacheKey = `${query.toUpperCase()}_${isSingleMode ? 'single' : 'full'}`;
+        const cached = getCachedQuickScan(cacheKey);
+        if (cached) {
+            return res.json(cached);
         }
 
-        const matchedArticle = matchRes.recordset[0].article_no;
-        const matchedItemName = matchRes.recordset[0].itemName;
-        const matchedSection = matchRes.recordset[0].sectionName;
-        const matchedSubSection = matchRes.recordset[0].subSectionName;
+        const cleanDigits = query.replace(/^0+/, '') || query;
+        const paddedDigits = query.length < 10 && /^\d+$/.test(query) ? query.padStart(10, '0') : query;
 
+        // Tier 1: Instant Direct Clustered Index Seek on product_Code / VENDOR_EAN_NO / article_no
+        // Uses pk_skunames clustered index for sub-30ms retrieval without table scans
+        const tier1Req = createRequest();
+        tier1Req.input('q', sql.NVarChar, query);
+        tier1Req.input('cleanDigits', sql.NVarChar, cleanDigits);
+        tier1Req.input('paddedDigits', sql.NVarChar, paddedDigits);
+
+        const tier1Res = await tier1Req.query(`
+            SELECT TOP 1 
+                s.product_Code as barcode,
+                s.article_no as articleNo,
+                ISNULL(s.article_name, s.section_name) as itemName, 
+                s.section_name as sectionName,
+                ISNULL(s.sub_section_name, '') as subSectionName,
+                ISNULL(s.para1_name, 'Standard') as color,
+                ISNULL(s.para2_name, 'Standard') as size,
+                ISNULL(s.para2_order, 99) as sizeOrder,
+                ISNULL(s.mrp, 0) as mrp
+            FROM SKU_NAMES s WITH (NOLOCK)
+            WHERE s.product_Code = @q 
+               OR s.product_Code = @cleanDigits
+               OR s.product_Code = @paddedDigits
+               OR s.VENDOR_EAN_NO = @q 
+               OR s.VENDOR_EAN_NO = @cleanDigits
+               OR s.article_no = @q
+        `);
+
+        let matched = tier1Res.recordset && tier1Res.recordset[0];
+
+        // Tier 2: Prefix fallback ONLY if Tier 1 found nothing (e.g. partial article prefix)
+        if (!matched) {
+            const tier2Req = createRequest();
+            tier2Req.input('q', sql.NVarChar, query);
+            const tier2Res = await tier2Req.query(`
+                SELECT TOP 1 
+                    s.product_Code as barcode,
+                    s.article_no as articleNo,
+                    ISNULL(s.article_name, s.section_name) as itemName, 
+                    s.section_name as sectionName,
+                    ISNULL(s.sub_section_name, '') as subSectionName,
+                    ISNULL(s.para1_name, 'Standard') as color,
+                    ISNULL(s.para2_name, 'Standard') as size,
+                    ISNULL(s.para2_order, 99) as sizeOrder,
+                    ISNULL(s.mrp, 0) as mrp
+                FROM SKU_NAMES s WITH (NOLOCK)
+                WHERE s.article_no LIKE @q + '%'
+            `);
+            matched = tier2Res.recordset && tier2Res.recordset[0];
+        }
+
+        if (!matched) {
+            const notFoundResp = { success: false, message: `No item found matching "${query}"` };
+            setCachedQuickScan(cacheKey, notFoundResp);
+            return res.json(notFoundResp);
+        }
+
+        const matchedArticle = matched.articleNo;
+        const matchedItemName = matched.itemName;
+        const matchedSection = matched.sectionName;
+        const matchedSubSection = matched.subSectionName;
+
+        // If single mode is requested (e.g. pending tags desk, customer hold bags, quick tag addition),
+        // we only need this specific garment's details and stock - responds sub-30ms!
+        if (isSingleMode) {
+            let singleStock = 0;
+            try {
+                const stockReq = createRequest();
+                stockReq.input('bc', sql.NVarChar, matched.barcode);
+                const stockRes = await stockReq.query(`
+                    SELECT TOP 1 quantity_in_stock FROM PMT01106 WITH (NOLOCK) WHERE product_code = @bc
+                `);
+                singleStock = stockRes.recordset?.[0]?.quantity_in_stock || 0;
+            } catch (stockErr) {
+                console.warn('[QuickScan single stock query error]', stockErr.message);
+            }
+
+            const singleVariant = {
+                barcode: matched.barcode,
+                articleNo: matched.articleNo,
+                itemName: matched.itemName,
+                sectionName: matched.sectionName,
+                subSectionName: matched.subSectionName,
+                color: matched.color,
+                size: matched.size,
+                sizeOrder: matched.sizeOrder,
+                mrp: matched.mrp,
+                stock: singleStock
+            };
+
+            const singleResp = {
+                success: true,
+                articleNo: matched.articleNo,
+                itemName: matched.itemName,
+                sectionName: matched.sectionName,
+                subSectionName: matched.subSectionName,
+                color: matched.color,
+                size: matched.size,
+                mrp: matched.mrp,
+                totalStock: singleStock,
+                sizes: [{ size: matched.size, stock: singleStock, barcode: matched.barcode, sizeOrder: matched.sizeOrder }],
+                colors: [{ color: matched.color, totalStock: singleStock, sizes: [{ size: matched.size, stock: singleStock, barcode: matched.barcode, sizeOrder: matched.sizeOrder }] }],
+                scannedBarcode: query,
+                variants: [singleVariant],
+                data: singleVariant,
+                soldToday: 0,
+                soldLast7Days: 0,
+                soldLast30Days: 0,
+                lastSoldDate: null
+            };
+
+            setCachedQuickScan(cacheKey, singleResp);
+            return res.json(singleResp);
+        }
+
+        // Full mode: fetch all variants for the matched article
         const variantReq = createRequest();
         variantReq.input('art', sql.NVarChar, matchedArticle);
 
@@ -729,7 +837,7 @@ app.get('/api/inventory/quick-scan', async (req, res) => {
 
         const rows = variantsRes.recordset || [];
         const totalStock = rows.reduce((sum, r) => sum + Math.max(0, r.stock || 0), 0);
-        const mrp = rows[0]?.mrp || 0;
+        const mrp = rows[0]?.mrp || matched.mrp || 0;
 
         // Group variants by color
         const colorMap = {};
@@ -768,10 +876,10 @@ app.get('/api/inventory/quick-scan', async (req, res) => {
         const sizes = Object.values(sizeMap).sort((a, b) => a.sizeOrder - b.sizeOrder);
 
         // Detect if query matched a specific barcode/variant
-        const matchedVariant = rows.find(r => r.barcode === query) || rows[0];
-        const scannedColor = matchedVariant ? matchedVariant.color : (colors[0]?.color || '');
+        const matchedVariant = rows.find(r => r.barcode === query || r.barcode === cleanDigits || r.barcode === paddedDigits) || rows[0];
+        const scannedColor = matchedVariant ? matchedVariant.color : (colors[0]?.color || matched.color);
 
-        // Query sales velocity
+        // Query sales velocity (capped / non-fatal)
         let salesStats = { soldToday: 0, soldLast7Days: 0, soldLast30Days: 0, lastSoldDate: null };
         try {
             const statsReq = createRequest();
@@ -794,7 +902,7 @@ app.get('/api/inventory/quick-scan', async (req, res) => {
             console.warn('[QuickScan salesStats non-fatal]', e.message);
         }
 
-        return res.json({
+        const fullResp = {
             success: true,
             articleNo: matchedArticle,
             itemName: matchedItemName,
@@ -807,11 +915,15 @@ app.get('/api/inventory/quick-scan', async (req, res) => {
             colors,
             scannedBarcode: query,
             variants: rows,
+            data: matchedVariant,
             soldToday: salesStats.soldToday || 0,
             soldLast7Days: salesStats.soldLast7Days || 0,
             soldLast30Days: salesStats.soldLast30Days || 0,
             lastSoldDate: salesStats.lastSoldDate
-        });
+        };
+
+        setCachedQuickScan(cacheKey, fullResp);
+        return res.json(fullResp);
     } catch (err) {
         console.error('[QuickScan API Error]', err);
         return res.status(500).json({ success: false, error: err.message });

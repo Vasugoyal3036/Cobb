@@ -529,7 +529,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
     try {
       let matchedData = null;
       try {
-        const res = await axios.get(`${API_BASE}/api/inventory/quick-scan?q=${encodeURIComponent(candidate)}`);
+        const res = await axios.get(`${API_BASE}/api/inventory/quick-scan?q=${encodeURIComponent(candidate)}&mode=single`, { timeout: 7000 });
         if (res.data?.success && res.data.variants && res.data.variants.length > 0) {
           matchedData = res.data.variants.find(v => isBarcodeDuplicate(v.barcode, candidate)) || res.data.variants[0];
         } else if (res.data?.success && res.data.data) {
@@ -988,7 +988,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
     }
 
     try {
-      const res = await axios.get(`${API_BASE}/api/inventory/quick-scan?q=${encodeURIComponent(q)}`);
+      const res = await axios.get(`${API_BASE}/api/inventory/quick-scan?q=${encodeURIComponent(q)}&mode=single`, { timeout: 7000 });
       if (res.data?.success && res.data.variants && res.data.variants.length > 0) {
         const exact = res.data.variants.find(v => v.barcode === q) || res.data.variants[0];
         const mrpVal = Number(exact.mrp || 0);
