@@ -77,13 +77,10 @@ import {
 // Stock Health tiles (Broken Size Runs, Dead Stock & Ageing, Reorder Alerts)
 import GoodsInTransitDesk from '../GoodsInTransitDesk';
 import ExecutiveKpiStrip from '../dashboard/ExecutiveKpiStrip';
-import LivePulseFeed from '../dashboard/LivePulseFeed';
 import WhatsAppAutomationWidget from '../dashboard/WhatsAppAutomationWidget';
 import QuickToolsWidget from '../dashboard/QuickToolsWidget';
 const AlterationSlipModal = React.lazy(() => import('../AlterationSlipModal'));
 import PnlStatementView from '../dashboard/PnlStatementView';
-import StaffFloorRaceWidget from '../dashboard/StaffFloorRaceWidget';
-import ExecutiveVisualHeatmap from '../dashboard/ExecutiveVisualHeatmap';
 import ExecutiveBentoDashboard from '../dashboard/ExecutiveBentoDashboard';
 
 const DashboardTab = (props) => {

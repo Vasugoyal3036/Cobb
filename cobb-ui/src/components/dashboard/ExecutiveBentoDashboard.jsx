@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo, useRef, Suspense, lazy } from 'rea
 /**
  * SyncCounter — isolated 1-second ticker.
  * Extracted from ExecutiveBentoDashboard so the 1s interval only re-renders
- * this tiny span instead of the entire 1100-line dashboard component.
+ * this tiny span instead of the entire dashboard component.
  */
 const SyncCounter = React.memo(function SyncCounter({ resetSignal }) {
   const [sec, setSec] = useState(4);
@@ -16,22 +16,20 @@ const SyncCounter = React.memo(function SyncCounter({ resetSignal }) {
   }, []);
   return <span className="font-mono">Synced {sec}s ago</span>;
 });
+
 import {
   Activity,
   ArrowRight,
-  BarChart3,
   Calendar,
   ChevronLeft,
   ChevronRight,
   Clock,
   DollarSign,
-  Flame,
   Layers,
   Package,
   Plus,
   Receipt,
   RefreshCw,
-  Scissors,
   Search,
   Send,
   Sparkles,
@@ -45,8 +43,6 @@ import {
   AlertTriangle,
   ExternalLink,
   ShieldCheck,
-  Trophy,
-  Crown,
   Tag,
   ShoppingBag,
   Eye,
@@ -56,14 +52,11 @@ import {
   X,
   Wifi,
   WifiOff,
-  Tv,
-  Minimize2,
-  Maximize2
+  Tv
 } from 'lucide-react';
+
 import ExecutiveKpiStrip from './ExecutiveKpiStrip';
 import GoodsInTransitDesk from '../GoodsInTransitDesk';
-import StaffFloorRaceWidget from './StaffFloorRaceWidget';
-import ExecutiveVisualHeatmap from './ExecutiveVisualHeatmap';
 import QuickToolsWidget from './QuickToolsWidget';
 import LivePulseFeed from './LivePulseFeed';
 import MultiStoreFleetMatrix from './MultiStoreFleetMatrix';
@@ -72,8 +65,9 @@ const AlterationSlipModal = lazy(() => import('../AlterationSlipModal'));
 const MissionControlModal = lazy(() => import('./MissionControlModal'));
 
 /**
- * Unified Executive Bento Grid V2
- * Sleek Obsidian Glassmorphism command center for Cobb Retail Operations.
+ * Redesigned Executive Command Center Bento Dashboard
+ * Sleek, high-contrast Obsidian Glassmorphism command center for Cobb Retail Operations.
+ * Streamlined: Removes gamified racing & redundant rush heatmaps to maximize operational focus.
  */
 const ExecutiveBentoDashboard = (props) => {
   const {
@@ -124,10 +118,10 @@ const ExecutiveBentoDashboard = (props) => {
     handlePrintBill
   } = props;
 
-  // Primary Perspective Switcher: 'bento' (Unified Bento V2), 'racing' (Floor Race & Rush Radar), 'counter' (Counter Tools)
+  // Primary Perspective Switcher: 'bento' (Executive Command Center), 'counter' (Counter Operations Cockpit), 'fleet' (Multi-Store Fleet)
   const [activePerspective, setActivePerspective] = useState('bento');
   const [showMissionControl, setShowMissionControl] = useState(false);
-  const [racingTileSmall, setRacingTileSmall] = useState(true);
+
   // Global listener for TV Wall trigger & Ctrl+Shift+T
   useEffect(() => {
     const handleOpenTv = () => setShowMissionControl(true);
@@ -172,11 +166,6 @@ const ExecutiveBentoDashboard = (props) => {
     };
   }, []);
 
-  useEffect(() => {
-    // Removed: 1-second setInterval that caused full component re-render every second
-    // Replaced by isolated <SyncCounter> component above
-  }, []);
-
   // 1-tap Cloud Force Sync trigger
   const handleManualSync = () => {
     setIsSyncing(true);
@@ -187,20 +176,6 @@ const ExecutiveBentoDashboard = (props) => {
     setTimeout(() => {
       setIsSyncing(false);
     }, 1200);
-  };
-
-  // 1-tap Target Victory Fanfare & Canvas Confetti trigger
-  const handleManualCelebrate = () => {
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(
-        new CustomEvent('cobb_celebrate', {
-          detail: {
-            title: '🔥 STORE TARGET ON FIRE!',
-            subtitle: `Floor sales ${formatCurrency(overviewStats?.today?.TotalSales || 0)} reached!`
-          }
-        })
-      );
-    }
   };
 
   // Keyboard shortcut Ctrl+S focus scanner listener
@@ -299,167 +274,90 @@ const ExecutiveBentoDashboard = (props) => {
     }, 0);
   }, [dailySales, calendarDate]);
 
-  const daysInCurMonth = useMemo(() => {
-    return new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 0).getDate();
-  }, [calendarDate]);
+  const daysInCurMonth = useMemo(
+    () => new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 0).getDate(),
+    [calendarDate]
+  );
 
   return (
     <div className="space-y-5 sm:space-y-6 animate-in fade-in duration-300 pb-12">
       {/* =========================================================================
-          COMMAND HEADER: SLEEK OBSIDIAN GLASS BAR
+          TOP COMMAND STRIP: STORE TELEMETRY, SENTRY & PERSPECTIVE SELECTOR
           ========================================================================= */}
-      <div className="glass-header-bar p-3.5 sm:p-4 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-3.5 shadow-lg">
-        {/* Left: Telemetry Beacon & Store Title */}
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="relative flex h-3.5 w-3.5 shrink-0">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.8)]"></span>
+      <div className="glass-card-obsidian p-3.5 sm:p-4 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-lg shadow-black/20 border border-slate-200/80 dark:border-white/[0.08]">
+        {/* Left: Brand Identity & Telemetry Status */}
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-md shadow-blue-500/25 shrink-0 border border-white/20">
+            <Sparkles className="w-5 h-5" />
           </div>
-
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-base sm:text-xl font-black tracking-tight text-slate-900 dark:text-white truncate">
-                {activeStore === 'ALL'
-                  ? 'All Stores Fleet Command'
-                  : activeStore === 'STORE_02'
-                    ? 'Cobb Branch 2 Command'
-                    : 'Cobb Pundri Command'}
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-sm sm:text-base font-black tracking-tight text-slate-900 dark:text-white uppercase flex items-center gap-1.5">
+                <span>Executive Command Center</span>
               </h1>
-              <span
-                className={`px-2.5 py-0.5 text-[10.5px] font-black rounded-full border shadow-xs tracking-wider uppercase shrink-0 ${
-                  userRole === 'owner'
-                    ? 'bg-amber-500/10 text-amber-500 dark:text-amber-400 border-amber-500/30'
-                    : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
-                }`}
-              >
-                {userRole === 'owner' ? '👑 Owner Mode' : '👔 Store Manager'}
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/25">
+                {activeStore || 'DEMO_STORE_001'}
               </span>
             </div>
-            <div className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 font-medium flex-wrap">
-              {/* Cloud Sentry Status Pill */}
-              <span className={`px-2 py-0.5 rounded-full border inline-flex items-center gap-1.5 font-bold text-[10px] ${
-                isOnline
-                  ? 'bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 border-emerald-500/25'
-                  : 'bg-amber-500/15 text-amber-500 dark:text-amber-300 border-amber-500/40 animate-pulse'
-              }`}>
+            <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
+              <span className="flex items-center gap-1">
                 {isOnline ? (
-                  <>
-                    <Wifi className="w-3 h-3 text-emerald-400" />
-                    <span>Cloud Synced</span>
-                  </>
+                  <span className="inline-flex items-center gap-1 text-emerald-500 font-bold">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span>Cloud Sentry Online</span>
+                  </span>
                 ) : (
-                  <>
-                    <WifiOff className="w-3 h-3 text-amber-400" />
-                    <span>Offline Cached</span>
-                  </>
+                  <span className="inline-flex items-center gap-1 text-rose-500 font-bold">
+                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                    <span>Offline (Local Cache)</span>
+                  </span>
                 )}
               </span>
               <span>•</span>
               <SyncCounter resetSignal={syncResetSignal} />
-              <span>•</span>
-              <span>{todayBills.length} Bills Today</span>
-
-              {/* 1-Tap Manual Force Sync */}
-              <button
-                type="button"
-                onClick={handleManualSync}
-                disabled={isSyncing}
-                title="Force Sync POS & Cloud (Ctrl+Shift+R)"
-                className="ml-1 px-2 py-0.5 rounded-md bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 dark:text-blue-400 border border-blue-500/25 flex items-center gap-1 cursor-pointer transition-all active:scale-95"
-              >
-                <RefreshCw className={`w-2.5 h-2.5 ${isSyncing ? 'animate-spin text-blue-400' : ''}`} />
-                <span className="text-[10px] font-bold">Sync Now</span>
-                <span className="text-[8.5px] px-1 py-0.2 bg-black/20 dark:bg-white/10 rounded font-mono hidden sm:inline">⌃⇧R</span>
-              </button>
             </div>
           </div>
         </div>
 
-        {/* Center/Right: Quick Actions & Perspective Selector */}
-        <div className="flex flex-wrap items-center justify-between md:justify-end gap-2.5">
-          {/* Quick Action Buttons */}
-          <div className="flex items-center gap-1.5">
-            {/* Celebrate Milestone Particle Burst */}
-            <button
-              type="button"
-              onClick={handleManualCelebrate}
-              className="px-2.5 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 dark:text-amber-400 border border-amber-500/25 flex items-center gap-1.5 text-xs font-black transition-all cursor-pointer active:scale-95 shadow-xs"
-              title="Trigger Milestone Victory Fanfare & Confetti Burst"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-              <span className="hidden sm:inline">Celebrate</span>
-            </button>
+        {/* Right: Actions, Force Sync & Perspective Selector */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <button
+            type="button"
+            onClick={handleManualSync}
+            disabled={isSyncing}
+            className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.06] dark:hover:bg-white/[0.1] text-slate-700 dark:text-slate-200 text-xs font-bold border border-slate-200/80 dark:border-white/[0.08] transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 disabled:opacity-50"
+            title="Force immediate sync with Cloud Database"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin text-blue-500' : 'text-slate-400'}`} />
+            <span className="hidden sm:inline">{isSyncing ? 'Syncing...' : 'Force Sync'}</span>
+          </button>
 
-            {/* Speed Billing POS */}
-            <button
-              type="button"
-              onClick={() => {
-                if (typeof window !== 'undefined') {
-                  window.dispatchEvent(new CustomEvent('cobb_open_speed_billing'));
-                }
-              }}
-              className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white text-xs font-black shadow-md shadow-emerald-500/20 flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
-              title="Open POS Speed Billing (Ctrl+B / F1)"
-            >
-              <Zap className="w-3.5 h-3.5" />
-              <span>Speed Bill</span>
-              <span className="text-[9px] px-1 py-0.2 bg-black/30 rounded font-mono hidden sm:inline">⌃B</span>
-            </button>
+          <button
+            type="button"
+            onClick={() => typeof setActiveTab === 'function' && setActiveTab('owner_hub')}
+            className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.06] dark:hover:bg-white/[0.1] text-slate-700 dark:text-slate-200 text-xs font-bold border border-slate-200/80 dark:border-white/[0.08] transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+            title="Open Store Controls & Mobile Inputs"
+          >
+            <Sliders className="w-3.5 h-3.5 text-slate-400" />
+            <span className="hidden sm:inline">Store Inputs</span>
+          </button>
 
-            {typeof setShowReconModal === 'function' && (
-              <button
-                type="button"
-                onClick={() => setShowReconModal(true)}
-                className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.06] dark:hover:bg-white/[0.1] text-slate-700 dark:text-slate-200 text-xs font-bold border border-slate-200/80 dark:border-white/[0.08] transition-all cursor-pointer flex items-center gap-1 active:scale-95"
-                title="EOD Cash Drawer Reconcile"
-              >
-                <Wallet className="w-3.5 h-3.5 text-amber-400" />
-                <span className="hidden sm:inline">Cash Recon</span>
-              </button>
-            )}
-
-            {typeof setShowEodModal === 'function' && (
-              <button
-                type="button"
-                onClick={() => setShowEodModal(true)}
-                className="px-2.5 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.06] dark:hover:bg-white/[0.1] text-slate-700 dark:text-slate-200 text-xs font-bold border border-slate-200/80 dark:border-white/[0.08] transition-all cursor-pointer flex items-center gap-1 active:scale-95"
-                title="Generate EOD Store Summary"
-              >
-                <Printer className="w-3.5 h-3.5 text-blue-400" />
-                <span className="hidden sm:inline">EOD</span>
-              </button>
-            )}
-
-            <button
-              type="button"
-              onClick={() => {
-                if (typeof setActiveTab === 'function') setActiveTab('owner_hub');
-                else window.dispatchEvent(new CustomEvent('cobb_open_owner_hub'));
-              }}
-              className="px-2.5 py-1.5 rounded-xl bg-purple-500/15 hover:bg-purple-500/25 text-purple-400 border border-purple-500/30 text-xs font-black shadow-sm transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
-              title="Open Store Controls & Mobile Inputs"
-            >
-              <Sliders className="w-3.5 h-3.5" />
-              <span>Store Inputs</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setShowMissionControl(true)}
-              className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black shadow-md shadow-emerald-600/25 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
-              title="Open Fullscreen TV Wall / Mission Control Mode (Ctrl+Shift+T)"
-            >
-              <Tv className="w-3.5 h-3.5" />
-              <span>TV Wall</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={() => setShowMissionControl(true)}
+            className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-black shadow-md shadow-emerald-600/25 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+            title="Open Fullscreen TV Wall / Mission Control Mode (Ctrl+Shift+T)"
+          >
+            <Tv className="w-3.5 h-3.5" />
+            <span>TV Wall</span>
+          </button>
 
           {/* Perspective Selector Segmented Control */}
           <div className="flex items-center gap-1 bg-slate-100 dark:bg-black/50 p-1 rounded-xl border border-slate-200/80 dark:border-white/[0.08] text-xs font-bold overflow-x-auto no-scrollbar max-w-full">
             {[
-              { id: 'bento', label: '✨ Executive Bento V2' },
-              { id: 'racing', label: '🏁 Floor Race & Rush' },
-              { id: 'counter', label: '🏷️ Counter Desk' }
+              { id: 'bento', label: '📊 Command Center' },
+              { id: 'counter', label: '🏷️ Counter Desk' },
+              { id: 'fleet', label: '🏢 Multi-Store Fleet' }
             ].map((view) => (
               <button
                 key={view.id}
@@ -480,7 +378,7 @@ const ExecutiveBentoDashboard = (props) => {
 
       {/* =========================================================================
           TIER 1: HERO EXECUTIVE KPI STRIP (FROSTED GLASS MODULES)
-          (Visible in 'bento', 'racing', and 'counter' perspectives)
+          (Visible in 'bento' and 'counter' perspectives)
           ========================================================================= */}
       {activePerspective !== 'fleet' && (
         <ExecutiveKpiStrip
@@ -500,17 +398,16 @@ const ExecutiveBentoDashboard = (props) => {
       )}
 
       {/* =========================================================================
-          TIER 2: PRIMARY EXECUTIVE BENTO GRID (12 COLUMNS)
-          (Visible in 'bento' mode)
+          TIER 2: REDESIGNED EXECUTIVE BENTO GRID (12 COLUMNS)
           ========================================================================= */}
       {activePerspective === 'bento' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 items-start">
           {/* ---------------------------------------------------------------------
-              LEFT WING (7 COLUMNS): LIVE OPERATIONS STREAM & STORE TELEMETRY
+              LEFT WING (7 COLUMNS): LIVE STORE PULSE STREAM & COUNTER COCKPIT
               --------------------------------------------------------------------- */}
           <div className="lg:col-span-7 space-y-5">
             {/* CARD A1: LIVE STORE PULSE STREAM */}
-            <div className="glass-card-obsidian rounded-2xl overflow-hidden flex flex-col h-[460px] sm:h-[480px]">
+            <div className="glass-card-obsidian rounded-2xl overflow-hidden flex flex-col h-[480px]">
               {/* Card Header with Controls */}
               <div className="p-3.5 sm:p-4 border-b border-inherit flex flex-col sm:flex-row sm:items-center justify-between gap-3 shrink-0 bg-slate-50/50 dark:bg-white/[0.02]">
                 <div className="flex items-center gap-2.5">
@@ -583,7 +480,7 @@ const ExecutiveBentoDashboard = (props) => {
                   <button
                     type="button"
                     onClick={() => setPulseSearchQuery('')}
-                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5"
+                    className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 cursor-pointer"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -721,58 +618,66 @@ const ExecutiveBentoDashboard = (props) => {
               </div>
             </div>
 
-            {/* CARD A2: LIVE STORE INTELLIGENCE RIBBON */}
+            {/* CARD A2: COUNTER SPEED OPERATIONS DESK (QUICK TOOLS COCKPIT) */}
+            <div className="glass-card-obsidian rounded-2xl overflow-hidden p-4 sm:p-5 border border-slate-200/80 dark:border-white/[0.08]">
+              <div className="flex items-center gap-2 pb-3 mb-3 border-b border-inherit">
+                <span className="p-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-xs font-black shadow-sm">
+                  🏷️
+                </span>
+                <div>
+                  <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
+                    Counter Operations Cockpit
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Barcode scanner, promotional offer calculator, customer holds &amp; pocket khata
+                  </p>
+                </div>
+              </div>
+
+              <QuickToolsWidget
+                dashboardZone="all"
+                overviewStats={overviewStats}
+                khataSummary={khataSummary}
+                holds={holds}
+                quickScanInputRef={quickScanInputRef}
+                quickScanQuery={quickScanQuery}
+                setQuickScanQuery={setQuickScanQuery}
+                isScannerFocused={isScannerFocused}
+                setIsScannerFocused={setIsScannerFocused}
+                quickScanResult={quickScanResult}
+                setQuickScanResult={setQuickScanResult}
+                quickScanError={quickScanError}
+                setQuickScanError={setQuickScanError}
+                handleQuickScan={handleQuickScan}
+                setActiveTab={setActiveTab}
+                calcOffer={calcOffer}
+                setCalcOffer={setCalcOffer}
+                calcMrp={calcMrp}
+                setCalcMrp={setCalcMrp}
+                b1g3Items={b1g3Items}
+                setB1g3Items={setB1g3Items}
+                formatCurrency={formatCurrency}
+                darkMode={darkMode}
+                setShowAlterationModal={setShowAlterationModal}
+              />
+            </div>
+          </div>
+
+          {/* ---------------------------------------------------------------------
+              RIGHT WING (5 COLUMNS): STRATEGIC OPERATIONS, CALENDAR & SUPPLY CHAIN
+              --------------------------------------------------------------------- */}
+          <div className="lg:col-span-5 space-y-5">
+            {/* CARD B1: ALTERATIONS & TAILORING OPERATIONS DESK */}
             <LivePulseFeed
-              hourlySales={hourlySales}
-              liveBills={liveBills}
-              vips={vips}
               setActiveTab={setActiveTab}
               darkMode={darkMode}
-              todayTopArticlesLoading={todayTopArticlesLoading}
-              todayTopArticles={todayTopArticles}
               setShowAlterationModal={setShowAlterationModal}
               activeStore={activeStore}
               API_BASE={API_BASE}
             />
 
-            {/* CARD A3: WHATSAPP AUTOMATION ENGINE CAPSULE */}
-            <div className="glass-card-obsidian p-3.5 sm:p-4 rounded-2xl flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center shrink-0">
-                  <Send className="w-4 h-4" />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
-                    <span>WhatsApp Customer Automation</span>
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  </h3>
-                  <p className="text-[11px] text-slate-400 truncate">
-                    {Array.isArray(automationDispatches) && automationDispatches.length > 0
-                      ? `${automationDispatches.length} messages dispatched today • Queue Active`
-                      : 'Gateway listening • ready for instant bill notifications & offer blasts'}
-                  </p>
-                </div>
-              </div>
-
-              {typeof setActiveTab === 'function' && (
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('broadcast')}
-                  className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.06] dark:hover:bg-white/[0.1] text-slate-700 dark:text-slate-200 text-xs font-bold border border-slate-200/80 dark:border-white/[0.08] transition-all cursor-pointer flex items-center gap-1.5 shrink-0 active:scale-95"
-                >
-                  <span>Broadcast Desk</span>
-                  <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* ---------------------------------------------------------------------
-              RIGHT WING (5 COLUMNS): STRATEGIC TELEMETRY & SUPPLY CHAIN
-              --------------------------------------------------------------------- */}
-          <div className="lg:col-span-5 space-y-5">
-            {/* CARD B1: SALES PERFORMANCE CALENDAR */}
-            <div className="glass-card-obsidian p-4 sm:p-5 rounded-2xl relative overflow-visible">
+            {/* CARD B2: SALES PERFORMANCE CALENDAR */}
+            <div className="glass-card-obsidian p-4 sm:p-5 rounded-2xl relative overflow-visible border border-slate-200/80 dark:border-white/[0.08]">
               <div className="flex items-center justify-between mb-3 pb-3 border-b border-inherit">
                 <div className="flex items-center gap-2.5">
                   <div className="p-2 bg-blue-500/10 text-blue-400 rounded-xl border border-blue-500/20">
@@ -940,113 +845,55 @@ const ExecutiveBentoDashboard = (props) => {
               </div>
             </div>
 
-            {/* CARD B2: GOODS IN TRANSIT DESK */}
+            {/* CARD B3: GOODS IN TRANSIT DESK */}
             <GoodsInTransitDesk
               formatCurrency={formatCurrency}
               darkMode={darkMode}
               API_BASE={API_BASE}
               setActiveTab={setActiveTab}
             />
-          </div>
-        </div>
-      )}
 
-      {/* =========================================================================
-          TIER 3: GAMIFIED FLOOR RACE GRAND PRIX & EXECUTIVE RUSH HEATMAP
-          (Side-by-Side balanced split in 'bento', full stage in 'racing')
-          ========================================================================= */}
-      {(activePerspective === 'bento' || activePerspective === 'racing') && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between gap-3 pb-2 border-b border-inherit">
-            <div className="flex items-center gap-2">
-              <span className="p-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-rose-500 text-white text-xs font-black shadow-xs">
-                🏁
-              </span>
-              <div>
-                <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white">
-                  Floor Race Grand Prix &amp; Rush Velocity Radar
-                </h3>
-                <p className="text-[11px] text-slate-400">
-                  Staff gamified racetracks &amp; 24-hour customer rush velocity
-                </p>
+            {/* CARD B4: WHATSAPP AUTOMATION ENGINE CAPSULE */}
+            <div className="glass-card-obsidian p-3.5 sm:p-4 rounded-2xl flex items-center justify-between gap-3 border border-slate-200/80 dark:border-white/[0.08]">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                  <Send className="w-4 h-4" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
+                    <span>WhatsApp Customer Automation</span>
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  </h3>
+                  <p className="text-[11px] text-slate-400 truncate">
+                    {Array.isArray(automationDispatches) && automationDispatches.length > 0
+                      ? `${automationDispatches.length} messages dispatched today • Queue Active`
+                      : 'Gateway listening • ready for instant bill notifications & offer blasts'}
+                  </p>
+                </div>
               </div>
+
+              {typeof setActiveTab === 'function' && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('broadcast')}
+                  className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.06] dark:hover:bg-white/[0.1] text-slate-700 dark:text-slate-200 text-xs font-bold border border-slate-200/80 dark:border-white/[0.08] transition-all cursor-pointer flex items-center gap-1.5 shrink-0 active:scale-95"
+                >
+                  <span>Broadcast Desk</span>
+                  <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
+                </button>
+              )}
             </div>
-
-            {activePerspective === 'bento' && (
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setRacingTileSmall(prev => !prev)}
-                  className={`px-2.5 py-1 rounded-xl text-xs font-bold border transition flex items-center gap-1.5 cursor-pointer active:scale-95 ${
-                    darkMode
-                      ? 'bg-slate-800/80 border-slate-700 text-slate-300 hover:text-white'
-                      : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
-                  }`}
-                  title={racingTileSmall ? "Expand to Full Size" : "Make Tile Small"}
-                >
-                  {racingTileSmall ? (
-                    <>
-                      <Maximize2 className="w-3.5 h-3.5 text-amber-500" />
-                      <span className="hidden sm:inline">Expand Size</span>
-                    </>
-                  ) : (
-                    <>
-                      <Minimize2 className="w-3.5 h-3.5 text-amber-500" />
-                      <span className="hidden sm:inline">Make Small</span>
-                    </>
-                  )}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setActivePerspective('racing')}
-                  className="text-xs font-bold text-amber-500 hover:text-amber-400 flex items-center gap-1 cursor-pointer"
-                >
-                  <span>Stage Mode</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div
-            className={`grid gap-5 sm:gap-6 items-start ${
-              activePerspective === 'bento' ? 'grid-cols-1 xl:grid-cols-2' : 'grid-cols-1'
-            }`}
-          >
-            {/* Gamified Floor Race Grand Prix */}
-            <StaffFloorRaceWidget
-              darkMode={darkMode}
-              formatCurrency={formatCurrency}
-              API_BASE={API_BASE}
-              activeStore={activeStore}
-              setActiveTab={setActiveTab}
-              compact={activePerspective === 'bento' && racingTileSmall}
-            />
-
-            {/* Executive Rush Heatmap & Velocity Radar */}
-            <ExecutiveVisualHeatmap
-              hourlySales={hourlySales}
-              liveBills={liveBills}
-              DAILY_TARGET={DAILY_TARGET}
-              averageOrderValue={averageOrderValue}
-              formatCurrency={formatCurrency}
-              darkMode={darkMode}
-              setActiveTab={setActiveTab}
-              compact={activePerspective === 'bento' && racingTileSmall}
-            />
           </div>
         </div>
       )}
 
       {/* =========================================================================
-          TIER 4: HIGH-SPEED COUNTER OPERATIONS DESK (QUICK TOOLS COCKPIT)
-          (Rendered at bottom in 'bento', or primary in 'counter')
+          FOCUSED PERSPECTIVE: COUNTER OPERATIONS COCKPIT
           ========================================================================= */}
-      {(activePerspective === 'bento' || activePerspective === 'counter') && (
-        <div className="space-y-4">
-          {activePerspective === 'counter' && (
-            <div className="flex items-center gap-2 pb-2 border-b border-inherit">
+      {activePerspective === 'counter' && (
+        <div className="space-y-5">
+          <div className="glass-card-obsidian rounded-2xl overflow-hidden p-4 sm:p-5 border border-slate-200/80 dark:border-white/[0.08]">
+            <div className="flex items-center gap-2 pb-3 mb-4 border-b border-inherit">
               <span className="p-1.5 rounded-xl bg-emerald-500 text-white text-xs font-black shadow-xs">
                 🏷️
               </span>
@@ -1059,39 +906,39 @@ const ExecutiveBentoDashboard = (props) => {
                 </p>
               </div>
             </div>
-          )}
 
-          <QuickToolsWidget
-            dashboardZone="all"
-            overviewStats={overviewStats}
-            khataSummary={khataSummary}
-            holds={holds}
-            quickScanInputRef={quickScanInputRef}
-            quickScanQuery={quickScanQuery}
-            setQuickScanQuery={setQuickScanQuery}
-            isScannerFocused={isScannerFocused}
-            setIsScannerFocused={setIsScannerFocused}
-            quickScanResult={quickScanResult}
-            setQuickScanResult={setQuickScanResult}
-            quickScanError={quickScanError}
-            setQuickScanError={setQuickScanError}
-            handleQuickScan={handleQuickScan}
-            setActiveTab={setActiveTab}
-            calcOffer={calcOffer}
-            setCalcOffer={setCalcOffer}
-            calcMrp={calcMrp}
-            setCalcMrp={setCalcMrp}
-            b1g3Items={b1g3Items}
-            setB1g3Items={setB1g3Items}
-            formatCurrency={formatCurrency}
-            darkMode={darkMode}
-            setShowAlterationModal={setShowAlterationModal}
-          />
+            <QuickToolsWidget
+              dashboardZone="all"
+              overviewStats={overviewStats}
+              khataSummary={khataSummary}
+              holds={holds}
+              quickScanInputRef={quickScanInputRef}
+              quickScanQuery={quickScanQuery}
+              setQuickScanQuery={setQuickScanQuery}
+              isScannerFocused={isScannerFocused}
+              setIsScannerFocused={setIsScannerFocused}
+              quickScanResult={quickScanResult}
+              setQuickScanResult={setQuickScanResult}
+              quickScanError={quickScanError}
+              setQuickScanError={setQuickScanError}
+              handleQuickScan={handleQuickScan}
+              setActiveTab={setActiveTab}
+              calcOffer={calcOffer}
+              setCalcOffer={setCalcOffer}
+              calcMrp={calcMrp}
+              setCalcMrp={setCalcMrp}
+              b1g3Items={b1g3Items}
+              setB1g3Items={setB1g3Items}
+              formatCurrency={formatCurrency}
+              darkMode={darkMode}
+              setShowAlterationModal={setShowAlterationModal}
+            />
+          </div>
         </div>
       )}
 
       {/* =========================================================================
-          TIER 5: MULTI-STORE FLEET BENCHMARK MATRIX (STORE 01 VS STORE 02)
+          FOCUSED PERSPECTIVE: MULTI-STORE FLEET BENCHMARK MATRIX (STORE 01 VS STORE 02)
           ========================================================================= */}
       {activePerspective === 'fleet' && (
         <MultiStoreFleetMatrix

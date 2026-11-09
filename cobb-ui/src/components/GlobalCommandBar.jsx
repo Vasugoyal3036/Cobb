@@ -138,7 +138,7 @@ export default function GlobalCommandBar({
     const appActions = [
       { id: 'gun_scanner', title: '🔫 Handheld Gun Matrix Scanner [F3]', sub: 'Instant barcode scan, size matrix, velocity & offer quote', icon: Barcode, keywords: ['gun', 'scanner', 'barcode', 'sku', 'matrix', 'size', 'f3', 'laser', 'stock', 'check'], customAction: () => window.dispatchEvent(new CustomEvent('cobb_open_gun_scanner')) },
       { id: 'speed_billing', title: '⚡ Speed Billing (F1-POS)', sub: 'Rapid barcode scan & thermal checkout', icon: Zap, tab: 'speed_billing', keywords: ['pos', 'bill', 'counter', 'checkout', 'sale', 'fast'] },
-      { id: 'dashboard', title: '📊 Executive Command Center', sub: 'Floor race, sales pulse & operating KPIs', icon: Sparkles, tab: 'dashboard', keywords: ['home', 'race', 'heatmap', 'radar', 'overview'] },
+      { id: 'dashboard', title: '📊 Executive Command Center', sub: 'Live sales pulse, counter operations & operating KPIs', icon: Sparkles, tab: 'dashboard', keywords: ['home', 'sales', 'pulse', 'kpi', 'overview', 'dashboard'] },
       { id: 'live', title: '🧾 Live Transactions & Invoices', sub: 'Search bills, reprints & payment modes', icon: Receipt, tab: 'live', keywords: ['bills', 'receipt', 'invoice', 'payment', 'cash', 'upi'] },
       { id: 'staff_leaderboard', title: '🏆 Staff Floor Race & Incentives', sub: 'Sales commission ladder & leaderboards', icon: Trophy, tab: 'staff_leaderboard', keywords: ['staff', 'salesman', 'commission', 'target', 'incentive'] },
       { id: 'pnl', title: '💰 Store Sales & P&L Statement', sub: 'Revenue, OpEx, Gross Margin & EBITDA', icon: DollarSign, tab: 'pnl', keywords: ['profit', 'loss', 'expenses', 'margin', 'bep'] },
