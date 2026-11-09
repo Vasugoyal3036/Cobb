@@ -1504,9 +1504,10 @@ export default function App() {
   // Global POS Force Sync Trigger
   const forceSyncOverviewAndBills = async () => {
     try {
-      const [overviewRes, liveRes] = await Promise.allSettled([
+      const [overviewRes, liveRes, dailyRes] = await Promise.allSettled([
         axios.get(`${API_BASE}/api/sales/overview?t=${Date.now()}`),
-        axios.get(`${API_BASE}/api/sales/live?t=${Date.now()}`)
+        axios.get(`${API_BASE}/api/sales/live?t=${Date.now()}`),
+        axios.get(`${API_BASE}/api/sales/daily-month?t=${Date.now()}`)
       ]);
       if (overviewRes.status === 'fulfilled' && overviewRes.value?.data && !overviewRes.value.data.error) {
         setOverviewStats(overviewRes.value.data);
@@ -1516,9 +1517,36 @@ export default function App() {
         const bills = Array.isArray(liveRes.value.data) ? liveRes.value.data : [];
         setLiveBills(bills);
       }
+      if (dailyRes.status === 'fulfilled' && dailyRes.value?.data && !dailyRes.value.data.error) {
+        const dailyData = Array.isArray(dailyRes.value.data) ? dailyRes.value.data : [];
+        setDailySales(dailyData);
+        setLocalCache('dailySales', dailyData);
+      }
+
+      // Firestore Cloud sync fallback for Phone Link (remote/offline)
+      try {
+        const { db } = await import('./utils/firebase.js');
+        if (db) {
+          const { doc, getDoc } = await import('firebase/firestore');
+          const targetStore = getActiveStoreId();
+          const dailyDocRef = doc(db, 'stores', targetStore, 'data', 'sales_daily_month');
+          const snap = await getDoc(dailyDocRef);
+          if (snap.exists()) {
+            const data = snap.data();
+            const items = Array.isArray(data.items) ? data.items : (Array.isArray(data) ? data : null);
+            if (items && items.length > 0) {
+              setDailySales(items);
+              setLocalCache('dailySales', items);
+            }
+          }
+        }
+      } catch (cloudErr) {
+        console.warn('[SYNC] Cloud daily-month sync notice:', cloudErr.message);
+      }
+
       setToasts(prev => [
         ...prev,
-        { id: Date.now(), title: 'CLOUD SYNC COMPLETE 🔄', message: 'Sales, live invoices & target milestones synced successfully!' }
+        { id: Date.now(), title: 'CLOUD SYNC COMPLETE 🔄', message: 'Sales, live invoices, daily calendar & MTD synced successfully!' }
       ]);
     } catch (e) {
       console.error('[SYNC] Force sync error:', e);

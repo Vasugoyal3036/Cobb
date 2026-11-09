@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, Suspense, lazy } from 'react';
+import axios from 'axios';
 
 /**
  * SyncCounter — isolated 1-second ticker.
@@ -82,6 +83,7 @@ const ExecutiveBentoDashboard = (props) => {
     overviewStats = {},
     liveBills = [],
     dailySales = [],
+    setDailySales,
     hourlySales = [],
     vips = [],
     automationDispatches = [],
@@ -167,15 +169,28 @@ const ExecutiveBentoDashboard = (props) => {
   }, []);
 
   // 1-tap Cloud Force Sync trigger
-  const handleManualSync = () => {
+  const handleManualSync = async () => {
     setIsSyncing(true);
     setSyncResetSignal(s => s + 1);
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('cobb_force_sync'));
     }
-    setTimeout(() => {
-      setIsSyncing(false);
-    }, 1200);
+    // Also directly refresh daily sales so MTD in calendar updates immediately
+    try {
+      const res = await axios.get(`${API_BASE}/api/sales/daily-month?t=${Date.now()}`);
+      if (res?.data && !res.data.error) {
+        const items = Array.isArray(res.data) ? res.data : [];
+        if (typeof setDailySales === 'function') {
+          setDailySales(items);
+        }
+      }
+    } catch (e) {
+      console.warn('[SYNC] Direct daily sales sync notice:', e.message);
+    } finally {
+      setTimeout(() => {
+        setIsSyncing(false);
+      }, 1000);
+    }
   };
 
   // Keyboard shortcut Ctrl+S focus scanner listener

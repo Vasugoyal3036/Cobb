@@ -131,7 +131,8 @@ const QuickToolsWidget = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+      {/* 2X2 Grid: Row 1 = [Gun Scanner] & [Offer Calculator], Row 2 = [Hold Desk] & [Pocket Khata] */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
 
         {/* TILE 1: FAST BARCODE & SIZE CHECKER */}
         <div 
