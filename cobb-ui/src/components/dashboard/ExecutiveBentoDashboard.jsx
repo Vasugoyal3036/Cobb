@@ -59,7 +59,6 @@ import {
 import ExecutiveKpiStrip from './ExecutiveKpiStrip';
 import GoodsInTransitDesk from '../GoodsInTransitDesk';
 import QuickToolsWidget from './QuickToolsWidget';
-import LivePulseFeed from './LivePulseFeed';
 import MultiStoreFleetMatrix from './MultiStoreFleetMatrix';
 
 const AlterationSlipModal = lazy(() => import('../AlterationSlipModal'));
@@ -705,16 +704,7 @@ const ExecutiveBentoDashboard = (props) => {
               RIGHT WING (5 COLUMNS): STRATEGIC OPERATIONS, CALENDAR & SUPPLY CHAIN
               --------------------------------------------------------------------- */}
           <div className="lg:col-span-5 space-y-5">
-            {/* CARD B1: ALTERATIONS & TAILORING OPERATIONS DESK */}
-            <LivePulseFeed
-              setActiveTab={setActiveTab}
-              darkMode={darkMode}
-              setShowAlterationModal={setShowAlterationModal}
-              activeStore={activeStore}
-              API_BASE={API_BASE}
-            />
-
-            {/* CARD B2: SALES PERFORMANCE CALENDAR */}
+            {/* CARD B1: SALES PERFORMANCE CALENDAR */}
             <div className="glass-card-obsidian p-4 sm:p-5 rounded-2xl relative overflow-visible border border-slate-200/80 dark:border-white/[0.08]">
               <div className="flex items-center justify-between mb-3 pb-3 border-b border-inherit">
                 <div className="flex items-center gap-2.5">

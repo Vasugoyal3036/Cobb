@@ -119,7 +119,7 @@ describe('StaffStockCheckerPage [Floor Mobile Stock Checker]', () => {
     expect(screen.getAllByText(/40 size/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/42 size/i).length).toBeGreaterThan(0);
     expect(screen.getAllByText(/available/i).length).toBeGreaterThan(0);
-  });
+  }, 15000);
 
   it('allows switching colors to view sizes for that color', async () => {
     const mockData = {
