@@ -661,15 +661,24 @@ axios.get = async (url, config) => {
       }
     }
 
-    let docName = url.replace(API_BASE, '').replace('/api/', '').replace(/\//g, '_');
-    docName = docName.split('?')[0];
+    const cleanPath = url.includes('/api/') ? url.split('/api/')[1].split('?')[0] : url.replace(API_BASE, '').split('?')[0];
+    let docName = cleanPath.replace(/\//g, '_');
     try {
       // Await anonymous authentication before hitting Firestore to satisfy security rules
       if (authPromise) await authPromise;
 
       const targetStore = getActiveStoreId();
-      const docRef = doc(db, 'stores', targetStore, 'data', docName);
-      const docSnap = await getDoc(docRef);
+      let docRef = doc(db, 'stores', targetStore, 'data', docName);
+      let docSnap = await getDoc(docRef);
+      if (!docSnap.exists() && docName.includes('-')) {
+        const altRef = doc(db, 'stores', targetStore, 'data', docName.replace(/-/g, '_'));
+        const altSnap = await getDoc(altRef);
+        if (altSnap.exists()) docSnap = altSnap;
+      } else if (!docSnap.exists() && docName.includes('_')) {
+        const altRef = doc(db, 'stores', targetStore, 'data', docName.replace(/_/g, '-'));
+        const altSnap = await getDoc(altRef);
+        if (altSnap.exists()) docSnap = altSnap;
+      }
       if (docSnap.exists()) {
         let data = docSnap.data();
         // Unwrap arrays if the sync agent wrapped them
@@ -1518,9 +1527,12 @@ export default function App() {
         setLiveBills(bills);
       }
       if (dailyRes.status === 'fulfilled' && dailyRes.value?.data && !dailyRes.value.data.error) {
-        const dailyData = Array.isArray(dailyRes.value.data) ? dailyRes.value.data : [];
-        setDailySales(dailyData);
-        setLocalCache('dailySales', dailyData);
+        const raw = dailyRes.value.data;
+        const dailyData = Array.isArray(raw) ? raw : (Array.isArray(raw?.items) ? raw.items : null);
+        if (dailyData && dailyData.length > 0) {
+          setDailySales(dailyData);
+          setLocalCache('dailySales', dailyData);
+        }
       }
 
       // Firestore Cloud sync fallback for Phone Link (remote/offline)
@@ -1529,8 +1541,10 @@ export default function App() {
         if (db) {
           const { doc, getDoc } = await import('firebase/firestore');
           const targetStore = getActiveStoreId();
-          const dailyDocRef = doc(db, 'stores', targetStore, 'data', 'sales_daily_month');
-          const snap = await getDoc(dailyDocRef);
+          let snap = await getDoc(doc(db, 'stores', targetStore, 'data', 'sales_daily-month'));
+          if (!snap.exists()) {
+            snap = await getDoc(doc(db, 'stores', targetStore, 'data', 'sales_daily_month'));
+          }
           if (snap.exists()) {
             const data = snap.data();
             const items = Array.isArray(data.items) ? data.items : (Array.isArray(data) ? data : null);

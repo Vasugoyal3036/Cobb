@@ -178,10 +178,33 @@ const ExecutiveBentoDashboard = (props) => {
     // Also directly refresh daily sales so MTD in calendar updates immediately
     try {
       const res = await axios.get(`${API_BASE}/api/sales/daily-month?t=${Date.now()}`);
-      if (res?.data && !res.data.error) {
-        const items = Array.isArray(res.data) ? res.data : [];
+      const raw = res?.data;
+      const items = Array.isArray(raw) ? raw : (Array.isArray(raw?.items) ? raw.items : null);
+      if (items && items.length > 0) {
         if (typeof setDailySales === 'function') {
           setDailySales(items);
+        }
+      } else {
+        // Fallback directly to Firestore doc on Phone Link / remote
+        try {
+          const { db } = await import('../../utils/firebase.js');
+          if (db) {
+            const { doc, getDoc } = await import('firebase/firestore');
+            const targetStore = (typeof localStorage !== 'undefined' && localStorage.getItem('cobb_active_store') === 'STORE_02') ? 'STORE_002' : 'DEMO_STORE_001';
+            let snap = await getDoc(doc(db, 'stores', targetStore, 'data', 'sales_daily-month'));
+            if (!snap.exists()) {
+              snap = await getDoc(doc(db, 'stores', targetStore, 'data', 'sales_daily_month'));
+            }
+            if (snap.exists()) {
+              const data = snap.data();
+              const cloudItems = Array.isArray(data.items) ? data.items : (Array.isArray(data) ? data : null);
+              if (cloudItems && cloudItems.length > 0 && typeof setDailySales === 'function') {
+                setDailySales(cloudItems);
+              }
+            }
+          }
+        } catch (cErr) {
+          console.warn('[DASHBOARD SYNC] Firestore fallback notice:', cErr.message);
         }
       }
     } catch (e) {

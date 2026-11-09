@@ -154,7 +154,7 @@ async function sendWhatsAppToOwners(message, tag = 'ALERT', targetNumbers = null
 const operationalEndpoints = [
     "/api/sales/overview",
     { url: "/api/sales/live?days=7", docName: "sales_live" },
-    "/api/sales/daily-month",
+    { url: "/api/sales/daily-month", docName: "sales_daily-month", aliasDocs: ["sales_daily_month"] },
     "/api/analytics/hourly",
     "/api/reconciliation/latest",
     "/api/gateway/status",
