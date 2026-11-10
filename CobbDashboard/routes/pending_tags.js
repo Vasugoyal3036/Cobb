@@ -557,38 +557,53 @@ router.post('/add', async (req, res) => {
             return res.status(400).json({ success: false, error: 'Barcode or Article No is required' });
         }
 
-        // 1. Live SQL Server net-billed prevention check (handles returns cleanly: sold +1 and returned -1 => net 0 => allowed!)
+        // 1. Live SQL Server stock & net-billed check:
+        // Only block if physical stock in PMT01106 <= 0 AND net billed qty > 0.
+        // If returned (-1) or back in physical POS stock (quantity_in_stock > 0), allow adding!
         let preSqlCheck = null;
         try {
             const cleanDigits = candidateBarcode.replace(/^0+/, '') || candidateBarcode;
             const paddedDigits = candidateBarcode.length < 10 && /^\d+$/.test(candidateBarcode) ? candidateBarcode.padStart(10, '0') : candidateBarcode;
 
             if (createRequest) {
-                const posReq = createRequest();
-                posReq.input('bc', sql.NVarChar, candidateBarcode);
-                posReq.input('cleanDigits', sql.NVarChar, cleanDigits);
-                posReq.input('paddedDigits', sql.NVarChar, paddedDigits);
-
-                const billedPosRes = await posReq.query(`
-                    SELECT TOP 20
-                        RTRIM(d.PRODUCT_CODE) as barcode,
-                        RTRIM(m.CM_NO) as billNo,
-                        CONVERT(varchar, m.CM_TIME, 126) as billTime,
-                        ISNULL(d.NET, 0) as netAmount,
-                        ISNULL(d.QUANTITY, 0) as qty
-                    FROM CMD01106 d WITH (NOLOCK)
-                    JOIN CMM01106 m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
-                    WHERE m.CANCELLED = 0
-                      AND (d.PRODUCT_CODE = @bc OR d.PRODUCT_CODE = @cleanDigits OR d.PRODUCT_CODE = @paddedDigits)
-                    ORDER BY m.CM_TIME DESC
+                const stockReq = createRequest();
+                stockReq.input('bc', sql.NVarChar, candidateBarcode);
+                stockReq.input('cleanDigits', sql.NVarChar, cleanDigits);
+                stockReq.input('paddedDigits', sql.NVarChar, paddedDigits);
+                const stockRes = await stockReq.query(`
+                    SELECT ISNULL(SUM(quantity_in_stock), 0) as stock
+                    FROM PMT01106 WITH (NOLOCK)
+                    WHERE product_code = @bc OR product_code = @cleanDigits OR product_code = @paddedDigits
                 `);
+                const currentStock = stockRes.recordset?.[0]?.stock || 0;
 
-                const rows = billedPosRes.recordset || [];
-                if (rows.length > 0) {
-                    const netSold = rows.reduce((s, r) => s + Number(r.qty || 0), 0);
-                    if (netSold > 0) {
-                        const billedRow = rows.find(r => Number(r.qty || 0) > 0) || rows[0];
-                        preSqlCheck = billedRow;
+                if (currentStock <= 0) {
+                    const posReq = createRequest();
+                    posReq.input('bc', sql.NVarChar, candidateBarcode);
+                    posReq.input('cleanDigits', sql.NVarChar, cleanDigits);
+                    posReq.input('paddedDigits', sql.NVarChar, paddedDigits);
+
+                    const billedPosRes = await posReq.query(`
+                        SELECT TOP 20
+                            RTRIM(d.PRODUCT_CODE) as barcode,
+                            RTRIM(m.CM_NO) as billNo,
+                            CONVERT(varchar, m.CM_TIME, 126) as billTime,
+                            ISNULL(d.NET, 0) as netAmount,
+                            ISNULL(d.QUANTITY, 0) as qty
+                        FROM CMD01106 d WITH (NOLOCK)
+                        JOIN CMM01106 m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
+                        WHERE m.CANCELLED = 0
+                          AND (d.PRODUCT_CODE = @bc OR d.PRODUCT_CODE = @cleanDigits OR d.PRODUCT_CODE = @paddedDigits)
+                        ORDER BY m.CM_TIME DESC
+                    `);
+
+                    const rows = billedPosRes.recordset || [];
+                    if (rows.length > 0) {
+                        const netSold = rows.reduce((s, r) => s + Number(r.qty || 0), 0);
+                        if (netSold > 0) {
+                            const billedRow = rows.find(r => Number(r.qty || 0) > 0) || rows[0];
+                            preSqlCheck = billedRow;
+                        }
                     }
                 }
             }

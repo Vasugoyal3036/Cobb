@@ -691,9 +691,12 @@ app.get('/api/inventory/quick-scan', async (req, res) => {
 
         const isSingleMode = req.query.mode === 'single' || req.query.single === 'true';
         const cacheKey = `${query.toUpperCase()}_${isSingleMode ? 'single' : 'full'}`;
-        const cached = getCachedQuickScan(cacheKey);
-        if (cached) {
-            return res.json(cached);
+        // Bypass 10-min cache for mode=single so real-time POS billing/returns & PMT01106 stock are ALWAYS live
+        if (!isSingleMode) {
+            const cached = getCachedQuickScan(cacheKey);
+            if (cached) {
+                return res.json(cached);
+            }
         }
 
         const cleanDigits = query.replace(/^0+/, '') || query;
@@ -775,29 +778,35 @@ app.get('/api/inventory/quick-scan', async (req, res) => {
                 console.warn('[QuickScan single stock query error]', stockErr.message);
             }
 
-            // Fast POS billed check (sub-25ms seek on CMD01106)
+            // Failproof POS billed check (considers BOTH physical stock AND returns/exchanges):
+            // An item is only considered currently billed if PMT01106 stock <= 0 AND net billed qty > 0.
+            // If returned (QUANTITY = -1 => netSold <= 0) OR back in stock (quantity_in_stock > 0), it is NOT billed!
             let billedInfo = null;
-            try {
-                const billReq = createRequest();
-                billReq.input('bc', sql.NVarChar, matched.barcode);
-                const billRes = await billReq.query(`
-                    SELECT TOP 1 
-                        RTRIM(d.PRODUCT_CODE) as barcode,
-                        RTRIM(m.CM_NO) as billNo,
-                        CONVERT(varchar, m.CM_TIME, 126) as billTime,
-                        ISNULL(d.NET, 0) as netAmount
-                    FROM CMD01106 d WITH (NOLOCK)
-                    JOIN CMM01106 m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
-                    WHERE m.CANCELLED = 0 
-                      AND d.QUANTITY > 0
-                      AND d.PRODUCT_CODE = @bc
-                    ORDER BY m.CM_TIME DESC
-                `);
-                if (billRes.recordset && billRes.recordset.length > 0) {
-                    billedInfo = billRes.recordset[0];
+            if (singleStock <= 0) {
+                try {
+                    const billReq = createRequest();
+                    billReq.input('bc', sql.NVarChar, matched.barcode);
+                    const billRes = await billReq.query(`
+                        SELECT TOP 20
+                            RTRIM(d.PRODUCT_CODE) as barcode,
+                            RTRIM(m.CM_NO) as billNo,
+                            CONVERT(varchar, m.CM_TIME, 126) as billTime,
+                            ISNULL(d.NET, 0) as netAmount,
+                            ISNULL(d.QUANTITY, 0) as qty
+                        FROM CMD01106 d WITH (NOLOCK)
+                        JOIN CMM01106 m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
+                        WHERE m.CANCELLED = 0 
+                          AND d.PRODUCT_CODE = @bc
+                        ORDER BY m.CM_TIME DESC
+                    `);
+                    const rows = billRes.recordset || [];
+                    const netSold = rows.reduce((s, r) => s + Number(r.qty || 0), 0);
+                    if (netSold > 0) {
+                        billedInfo = rows.find(r => Number(r.qty || 0) > 0) || rows[0];
+                    }
+                } catch (bErr) {
+                    console.warn('[QuickScan check billed error]', bErr.message);
                 }
-            } catch (bErr) {
-                console.warn('[QuickScan check billed error]', bErr.message);
             }
 
             const singleVariant = {
@@ -838,7 +847,6 @@ app.get('/api/inventory/quick-scan', async (req, res) => {
                 lastSoldDate: null
             };
 
-            setCachedQuickScan(cacheKey, singleResp);
             return res.json(singleResp);
         }
 
