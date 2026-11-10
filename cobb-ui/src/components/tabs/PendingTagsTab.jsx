@@ -162,6 +162,44 @@ const DISCOUNT_PRESETS = [
   { label: '70% Off', value: 70 }
 ];
 
+async function lookupBarcodeInCloudFallback(q, activeStore) {
+  if (!db || !q) return null;
+  try {
+    const storeId = (!activeStore || activeStore === 'ALL' || activeStore === 'STORE_01') ? 'DEMO_STORE_001' : activeStore;
+    const [invSnap, masterSnap] = await Promise.allSettled([
+      getDoc(doc(db, 'stores', storeId, 'data', 'inventory')),
+      getDoc(doc(db, 'stores', storeId, 'data', 'inventory_master'))
+    ]);
+    let allItems = [];
+    if (invSnap.status === 'fulfilled' && invSnap.value.exists()) {
+      const d = invSnap.value.data();
+      allItems = allItems.concat(Array.isArray(d) ? d : (d.items || []));
+    }
+    if (masterSnap.status === 'fulfilled' && masterSnap.value.exists()) {
+      const d = masterSnap.value.data();
+      allItems = allItems.concat(Array.isArray(d) ? d : (d.items || []));
+    }
+    const qLower = q.trim().toLowerCase();
+    const match = allItems.find(it => {
+      const sku = String(it.SKU || it.barcode || '').trim();
+      const art = String(it.ArticleNo || it.articleNo || '').trim().toLowerCase();
+      return isBarcodeDuplicate(sku, q) || art === qLower;
+    });
+    if (!match) return null;
+    return {
+      barcode: match.SKU || match.barcode || q,
+      articleNo: match.ArticleNo || match.articleNo || '',
+      itemName: match.ItemName || match.itemName || 'Apparel Item',
+      size: match.Size || match.size || 'Free',
+      color: match.Color || match.color || 'Standard',
+      sectionName: match.ProductType || match.sectionName || match.subSectionName || 'Apparel',
+      mrp: Number(match.MRP || match.mrp || 0)
+    };
+  } catch (e) {
+    return null;
+  }
+}
+
 export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001', setActiveTab, onOpenSpeedBilling, initialSubDesk = 'tags' }) {
   const [tags, setTags] = useState([]);
   const [selectedTagIds, setSelectedTagIds] = useState([]);
@@ -609,7 +647,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
     try {
       let matchedData = null;
       try {
-        const res = await axios.get(`${API_BASE}/api/inventory/quick-scan?q=${encodeURIComponent(candidate)}&mode=single`, { timeout: 7000 });
+        const res = await axios.get(`${API_BASE}/api/inventory/quick-scan?q=${encodeURIComponent(candidate)}&mode=single`, { timeout: 12000 });
         if (res.data?.isBilled || res.data?.variants?.[0]?.isBilled) {
           const bInfo = res.data?.billedInfo || res.data?.variants?.[0]?.billedInfo;
           setNewBagScanError(`Already Billed in POS: Barcode "${candidate}" was billed in Bill #${bInfo?.billNo || 'POS-BILL'}! Cannot add an already billed garment.`);
@@ -620,7 +658,12 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
         } else if (res.data?.success && res.data.data) {
           matchedData = res.data.data;
         }
-      } catch (err) { }
+      } catch (err) {
+        matchedData = await lookupBarcodeInCloudFallback(candidate, activeStore);
+      }
+      if (!matchedData) {
+        matchedData = await lookupBarcodeInCloudFallback(candidate, activeStore);
+      }
 
       const mrpVal = Number(matchedData?.mrp || 2999);
       const discVal = 60;
@@ -1084,10 +1127,30 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
       }
     }
 
+    const applyMatchedItem = (exact, sourceLabel = 'database') => {
+      const mrpVal = Number(exact.mrp || 0);
+      const discVal = Number(form.discountPercent || 60);
+      const calcPrice = mrpVal > 0 ? Math.round(mrpVal * (1 - (discVal / 100))) : '';
+
+      setForm(prev => ({
+        ...prev,
+        barcode: exact.barcode || q,
+        articleNo: exact.articleNo || '',
+        articleName: exact.itemName || 'Apparel Item',
+        size: exact.size || 'Free',
+        color: exact.color || 'Standard',
+        section: exact.sectionName || exact.subSectionName || 'Apparel',
+        mrp: mrpVal,
+        soldPrice: calcPrice
+      }));
+      setVerifiedDbItem(exact);
+      showToastMsg(`Retrieved details (${sourceLabel}): ${exact.itemName} (MRP ₹${mrpVal})`, 'success');
+    };
+
     try {
-      const res = await axios.get(`${API_BASE}/api/inventory/quick-scan?q=${encodeURIComponent(q)}&mode=single`, { timeout: 7000 });
+      const res = await axios.get(`${API_BASE}/api/inventory/quick-scan?q=${encodeURIComponent(q)}&mode=single`, { timeout: 12000 });
       if (res.data?.success && res.data.variants && res.data.variants.length > 0) {
-        const exact = res.data.variants.find(v => v.barcode === q) || res.data.variants[0];
+        const exact = res.data.variants.find(v => isBarcodeDuplicate(v.barcode, q)) || res.data.variants[0];
 
         // Check if quick-scan returned isBilled: true from POS database
         if (res.data.isBilled || exact.isBilled) {
@@ -1099,38 +1162,32 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
           setIsSearchingBarcode(false);
           return;
         }
-        const mrpVal = Number(exact.mrp || 0);
-        const discVal = Number(form.discountPercent || 60);
-        const calcPrice = mrpVal > 0 ? Math.round(mrpVal * (1 - (discVal / 100))) : '';
-
-        setForm(prev => ({
-          ...prev,
-          barcode: exact.barcode || q,
-          articleNo: exact.articleNo || '',
-          articleName: exact.itemName || 'Apparel Item',
-          size: exact.size || 'Free',
-          color: exact.color || 'Standard',
-          section: exact.sectionName || exact.subSectionName || 'Apparel',
-          mrp: mrpVal,
-          soldPrice: calcPrice
-        }));
-        setVerifiedDbItem(exact);
-        showToastMsg(`Retrieved details for: ${exact.itemName} (MRP ₹${mrpVal})`, 'success');
+        applyMatchedItem(exact, 'POS Database');
       } else {
-        // Fallback check against tags in case it was added under another status
+        const cloudFallback = await lookupBarcodeInCloudFallback(q, activeStore);
+        if (cloudFallback) {
+          applyMatchedItem(cloudFallback, 'Cloud Catalog');
+        } else {
+          // Fallback check against tags in case it was added under another status
+          const existingInTags = tags.find(t => isBarcodeDuplicate(t.barcode, q));
+          if (existingInTags) {
+            setBarcodeMatchError(`This tag has already been added in the tab (Tag #${existingInTags.id} • ${existingInTags.articleName || 'Item'} • Status: ${existingInTags.status})`);
+          } else {
+            setBarcodeMatchError(`No product found matching "${q}". You can enter details manually.`);
+          }
+        }
+      }
+    } catch (err) {
+      const cloudFallback = await lookupBarcodeInCloudFallback(q, activeStore);
+      if (cloudFallback) {
+        applyMatchedItem(cloudFallback, 'Cloud Catalog');
+      } else {
         const existingInTags = tags.find(t => isBarcodeDuplicate(t.barcode, q));
         if (existingInTags) {
           setBarcodeMatchError(`This tag has already been added in the tab (Tag #${existingInTags.id} • ${existingInTags.articleName || 'Item'} • Status: ${existingInTags.status})`);
         } else {
-          setBarcodeMatchError(`No product found matching "${q}". You can enter details manually.`);
+          setBarcodeMatchError('Quick scan lookup timed out. Enter details manually.');
         }
-      }
-    } catch (err) {
-      const existingInTags = tags.find(t => isBarcodeDuplicate(t.barcode, q));
-      if (existingInTags) {
-        setBarcodeMatchError(`This tag has already been added in the tab (Tag #${existingInTags.id} • ${existingInTags.articleName || 'Item'} • Status: ${existingInTags.status})`);
-      } else {
-        setBarcodeMatchError('Quick scan lookup timed out. Enter details manually.');
       }
     } finally {
       setIsSearchingBarcode(false);
