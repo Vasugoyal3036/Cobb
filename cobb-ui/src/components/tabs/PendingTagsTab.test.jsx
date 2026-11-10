@@ -466,6 +466,69 @@ describe('PendingTagsTab - Duplicate Barcode Prevention', () => {
         expect(screen.queryByText('WhatsApp Pending Tags Brief')).toBeNull();
       });
     });
+
+    it('displays transparent POS sync verification report toast when Sync with POS is clicked', async () => {
+      axios.get.mockImplementation((url) => {
+        if (typeof url === 'string' && url.includes('/api/pending-tags')) {
+          return Promise.resolve({
+            data: {
+              success: true,
+              tags: mockTags,
+              syncReport: {
+                checkedActiveCount: 2,
+                activeCountAfter: 2,
+                resolvedCount: 0,
+                resolvedTags: [],
+                restoredCount: 0,
+                restoredTags: [],
+                mergedFromCloudCount: 0
+              },
+              summary: { activeCount: 2, billedCount: 1, activeMrpValue: 5498, activeRealizedValue: 2200, avgDiscountPct: '60.0', billedTodayCount: 0 }
+            }
+          });
+        }
+        return Promise.resolve({ data: { success: true, damages: [] } });
+      });
+
+      render(<PendingTagsTab />);
+      await waitFor(() => {
+        expect(screen.getByText('Cobb Linen Shirt White')).toBeDefined();
+      });
+
+      const syncBtn = screen.getByRole('button', { name: /Sync with POS/i });
+      fireEvent.click(syncBtn);
+
+      await waitFor(() => {
+        expect(screen.getByText(/POS Sync Verified: Checked 2 active tag\(s\) — 0 billed, all 2 safe!/i)).toBeDefined();
+      });
+    });
+
+    it('provides 1-click Restore button in Billed / Cleared tab to recover billed tags back to active', async () => {
+      window.confirm = vi.fn(() => true);
+      axios.post.mockResolvedValue({ data: { success: true, message: 'Restored back to Active Pending!' } });
+
+      render(<PendingTagsTab />);
+      await waitFor(() => {
+        expect(screen.getByText('Cobb Linen Shirt White')).toBeDefined();
+      });
+
+      const billedTabBtn = screen.getByRole('button', { name: /Auto-Billed \/ Resolved/i });
+      fireEvent.click(billedTabBtn);
+
+      await waitFor(() => {
+        expect(screen.getByText('Cobb Denim Jeans Dark Blue')).toBeDefined();
+      });
+
+      const restoreBtns = screen.getAllByRole('button', { name: /Restore/i });
+      fireEvent.click(restoreBtns[0]);
+
+      await waitFor(() => {
+        expect(axios.post).toHaveBeenCalledWith(
+          expect.stringContaining('/api/pending-tags/ptag_002/restore-active'),
+          expect.any(Object)
+        );
+      });
+    });
   });
 
   describe('WhatsApp Brief Generator Logic', () => {

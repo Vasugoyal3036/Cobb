@@ -162,6 +162,13 @@ const DISCOUNT_PRESETS = [
   { label: '70% Off', value: 70 }
 ];
 
+async function assertApiSuccess(res) {
+  if (!res || typeof res.data !== 'object' || !res.data?.success) {
+    throw new Error('Local backend unavailable or returned non-JSON response');
+  }
+  return res;
+}
+
 async function lookupBarcodeInCloudFallback(q, activeStore) {
   if (!db || !q) return null;
   try {
@@ -487,13 +494,14 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
 
     try {
       try {
-        await axios.post(`${API_BASE}/api/pending-tags/create-customer-hold`, {
+        const res = await axios.post(`${API_BASE}/api/pending-tags/create-customer-hold`, {
           tagIds: selectedTagIds,
           customerName: holdForm.customerName.trim(),
           customerPhone: holdForm.customerPhone.trim(),
           bagNo,
           notes: holdForm.notes.trim()
         });
+        await assertApiSuccess(res);
         fetchTags();
       } catch (apiErr) {
         if (db) {
@@ -509,9 +517,10 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
               holdCustomerPhone: holdForm.customerPhone.replace(/[^0-9]/g, '').slice(-10),
               holdBagNo: bagNo,
               holdNotes: holdForm.notes.trim(),
-              holdCreatedAt: now
+              holdCreatedAt: now,
+              updatedAt: now
             } : t);
-            await setDoc(docRef, { tags: updated, lastUpdated: now }, { merge: true });
+            await setDoc(docRef, { tags: updated, activeCount: updated.filter(x => x.status === 'active').length, lastUpdated: now }, { merge: true });
             setTags(updated);
           }
         } else {
@@ -535,7 +544,8 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
 
     try {
       try {
-        await axios.post(`${API_BASE}/api/pending-tags/release-customer-hold`, { holdBatchId: batchId });
+        const res = await axios.post(`${API_BASE}/api/pending-tags/release-customer-hold`, { holdBatchId: batchId });
+        await assertApiSuccess(res);
         fetchTags();
       } catch (apiErr) {
         if (db) {
@@ -543,6 +553,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
           const snap = await getDoc(docRef);
           if (snap.exists()) {
             const list = snap.data().tags || [];
+            const now = new Date().toISOString();
             const updated = list.map(t => t.holdBatchId === batchId ? {
               ...t,
               holdForCustomer: false,
@@ -551,9 +562,10 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
               holdCustomerPhone: null,
               holdBagNo: null,
               holdNotes: null,
-              holdCreatedAt: null
+              holdCreatedAt: null,
+              updatedAt: now
             } : t);
-            await setDoc(docRef, { tags: updated, lastUpdated: new Date().toISOString() }, { merge: true });
+            await setDoc(docRef, { tags: updated, activeCount: updated.filter(x => x.status === 'active').length, lastUpdated: now }, { merge: true });
             setTags(updated);
           }
         } else {
@@ -585,10 +597,11 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
 
     try {
       try {
-        await axios.post(`${API_BASE}/api/pending-tags/bill-customer-hold`, {
+        const res = await axios.post(`${API_BASE}/api/pending-tags/bill-customer-hold`, {
           holdBatchId: batch.batchId,
           billNo
         });
+        await assertApiSuccess(res);
         fetchTags();
       } catch (apiErr) {
         if (db) {
@@ -603,9 +616,10 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
               billedInBillNo: billNo,
               billedAt: now,
               autoResolved: false,
-              resolvedAt: now
+              resolvedAt: now,
+              updatedAt: now
             } : t);
-            await setDoc(docRef, { tags: updated, lastUpdated: now }, { merge: true });
+            await setDoc(docRef, { tags: updated, activeCount: updated.filter(x => x.status === 'active').length, lastUpdated: now }, { merge: true });
             setTags(updated);
           }
         } else {
@@ -755,8 +769,12 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
         };
 
         try {
-          await axios.post(`${API_BASE}/api/pending-tags/add`, payload);
+          const res = await axios.post(`${API_BASE}/api/pending-tags/add`, payload);
+          await assertApiSuccess(res);
         } catch (apiErr) {
+          if (apiErr.response?.status === 409 || apiErr.response?.data?.duplicate || apiErr.response?.data?.billed) {
+            throw apiErr;
+          }
           if (db) {
             const docRef = doc(db, 'stores', targetStoreId, 'data', 'pending_tags');
             const snap = await getDoc(docRef);
@@ -766,9 +784,17 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
               ...payload,
               status: 'active',
               createdAt: now,
+              updatedAt: now,
               date: now.split('T')[0]
             };
-            await setDoc(docRef, { tags: [newEntry, ...curTags], lastUpdated: now }, { merge: true });
+            const updated = [...curTags, newEntry];
+            await setDoc(docRef, {
+              tags: updated,
+              activeCount: updated.filter(t => t.status === 'active').length,
+              lastUpdated: now
+            }, { merge: true });
+          } else {
+            throw apiErr;
           }
         }
       }
@@ -784,7 +810,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
     }
   };
 
-  // --- 1. Fetch from Local Backend API ---
+  // --- 1. Fetch from Local Backend API (with Cloud Firestore Fallback & Transparent Sync Report) ---
   const fetchTags = useCallback(async (isManual = false) => {
     if (isManual) setRefreshing(true);
     try {
@@ -792,14 +818,61 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
       if (res.data?.success) {
         setTags(res.data.tags || []);
         if (res.data.summary) setSummary(res.data.summary);
+
+        if (isManual && res.data.syncReport) {
+          const sr = res.data.syncReport;
+          const parts = [];
+          if (sr.mergedFromCloudCount > 0) parts.push(`recovered ${sr.mergedFromCloudCount} from cloud`);
+          if (sr.restoredCount > 0) parts.push(`restored ${sr.restoredCount} cancelled POS bill(s)`);
+          if (sr.resolvedCount > 0) {
+            const details = sr.resolvedTags.slice(0, 3).map(r => `${r.barcode}→${r.billNo}`).join(', ');
+            parts.push(`${sr.resolvedCount} billed in POS (${details})`);
+          }
+          if (parts.length > 0) {
+            showToastMsg(`POS Sync: ${parts.join(' • ')}. Active count: ${sr.activeCountAfter}.`, 'success');
+          } else {
+            showToastMsg(`POS Sync Verified: Checked ${sr.checkedActiveCount} active tag(s) — 0 billed, all ${sr.activeCountAfter} safe!`, 'success');
+          }
+        } else if (isManual) {
+          showToastMsg('Synced with POS database successfully!', 'success');
+        }
+        return;
       }
+      throw new Error('Non-JSON backend response');
     } catch (e) {
       console.warn('[PendingTagsTab] Local API fetch warning:', e.message);
+      if (db) {
+        try {
+          const snap = await getDoc(doc(db, 'stores', targetStoreId, 'data', 'pending_tags'));
+          if (snap.exists() && Array.isArray(snap.data().tags)) {
+            const cloudList = snap.data().tags;
+            setTags(cloudList);
+            const active = cloudList.filter(t => t.status === 'active');
+            const billed = cloudList.filter(t => t.status === 'billed');
+            const activeMrp = active.reduce((s, t) => s + (Number(t.mrp) || 0), 0);
+            const activeReal = active.reduce((s, t) => s + (Number(t.soldPrice) || 0), 0);
+            const avgDisc = active.length > 0
+              ? (active.reduce((s, t) => s + (Number(t.discountPercent) || 0), 0) / active.length).toFixed(1)
+              : '0.0';
+            setSummary(prev => ({
+              ...prev,
+              activeCount: active.length,
+              billedCount: billed.length,
+              activeMrpValue: activeMrp,
+              activeRealizedValue: activeReal,
+              avgDiscountPct: avgDisc
+            }));
+            if (isManual) {
+              showToastMsg(`Cloud Sync: Loaded ${active.length} active tag(s) from Firestore.`, 'success');
+            }
+          }
+        } catch (cloudErr) { }
+      }
     } finally {
       setLoading(false);
       if (isManual) setRefreshing(false);
     }
-  }, []);
+  }, [targetStoreId]);
 
   // Poll backend every 25s (with document.hidden guard)
   useEffect(() => {
@@ -1260,10 +1333,9 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
       // 1. Try local API
       try {
         const res = await axios.post(`${API_BASE}/api/pending-tags/add`, payload);
-        if (res.data?.success) {
-          showToastMsg(res.data.message || 'Pending Tag Created!', 'success');
-          fetchTags();
-        }
+        await assertApiSuccess(res);
+        showToastMsg(res.data.message || 'Pending Tag Created!', 'success');
+        fetchTags();
       } catch (apiErr) {
         // If backend specifically returned 409 or duplicate/billed error, display error and DO NOT write to Firestore
         if (apiErr.response?.status === 409 || apiErr.response?.data?.duplicate || apiErr.response?.data?.billed) {
@@ -1296,10 +1368,15 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
             ...payload,
             status: 'active',
             createdAt: now.toISOString(),
+            updatedAt: now.toISOString(),
             date: now.toISOString().split('T')[0]
           };
           const updated = [newEntry, ...curTags];
-          await setDoc(docRef, { tags: updated, lastUpdated: now.toISOString() }, { merge: true });
+          await setDoc(docRef, {
+            tags: updated,
+            activeCount: updated.filter(t => t.status === 'active').length,
+            lastUpdated: now.toISOString()
+          }, { merge: true });
           setTags(updated);
           showToastMsg('Pending Tag saved to Cloud Firestore!', 'success');
         } else {
@@ -1336,7 +1413,8 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
 
     try {
       try {
-        await axios.post(`${API_BASE}/api/pending-tags/${tagId}/mark-billed`, { billNo });
+        const res = await axios.post(`${API_BASE}/api/pending-tags/${tagId}/mark-billed`, { billNo });
+        await assertApiSuccess(res);
         fetchTags();
       } catch (apiErr) {
         if (db) {
@@ -1344,13 +1422,20 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
           const snap = await getDoc(docRef);
           if (snap.exists()) {
             const list = snap.data().tags || [];
+            const nowIso = new Date().toISOString();
             const updated = list.map(t => t.id === tagId ? {
               ...t,
               status: 'billed',
               billedInBillNo: billNo,
-              billedAt: new Date().toISOString()
+              billedAt: nowIso,
+              resolvedAt: nowIso,
+              updatedAt: nowIso
             } : t);
-            await setDoc(docRef, { tags: updated, lastUpdated: new Date().toISOString() }, { merge: true });
+            await setDoc(docRef, {
+              tags: updated,
+              activeCount: updated.filter(t => t.status === 'active').length,
+              lastUpdated: nowIso
+            }, { merge: true });
             setTags(updated);
           }
         }
@@ -1361,12 +1446,17 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
     }
   };
 
-  // --- Delete Tag ---
-  const handleDeleteTag = async (tagId) => {
-    if (!window.confirm('Are you sure you want to remove this pending tag?')) return;
+  // --- Restore Billed Tag Back to Active Pending (1-Click Failproof Recovery) ---
+  const handleRestoreActive = async (tag) => {
+    if (!tag?.id) return;
+    if (!window.confirm(`Restore "${tag.articleName || tag.barcode}" (${tag.barcode}) back to Active Pending?`)) return;
+
     try {
       try {
-        await axios.delete(`${API_BASE}/api/pending-tags/${tagId}`);
+        const res = await axios.post(`${API_BASE}/api/pending-tags/${tag.id}/restore-active`, {
+          reason: 'Restored via Pending Tags Desk'
+        });
+        await assertApiSuccess(res);
         fetchTags();
       } catch (apiErr) {
         if (db) {
@@ -1374,8 +1464,55 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
           const snap = await getDoc(docRef);
           if (snap.exists()) {
             const list = snap.data().tags || [];
+            const nowIso = new Date().toISOString();
+            const updated = list.map(t => t.id === tag.id ? {
+              ...t,
+              status: 'active',
+              restoredFromBillNo: t.billedInBillNo || null,
+              billedInBillNo: null,
+              billedAt: null,
+              billedNet: null,
+              autoResolved: false,
+              resolvedAt: null,
+              manualRestoreAt: nowIso,
+              updatedAt: nowIso
+            } : t);
+            await setDoc(docRef, {
+              tags: updated,
+              activeCount: updated.filter(x => x.status === 'active').length,
+              lastUpdated: nowIso
+            }, { merge: true });
+            setTags(updated);
+          }
+        }
+      }
+      showToastMsg(`Restored ${tag.barcode} (${tag.articleName || 'Garment'}) back to Active Pending!`, 'success');
+    } catch (err) {
+      showToastMsg('Failed to restore tag: ' + err.message, 'error');
+    }
+  };
+
+  // --- Delete Tag ---
+  const handleDeleteTag = async (tagId) => {
+    if (!window.confirm('Are you sure you want to remove this pending tag?')) return;
+    try {
+      try {
+        const res = await axios.delete(`${API_BASE}/api/pending-tags/${tagId}`);
+        await assertApiSuccess(res);
+        fetchTags();
+      } catch (apiErr) {
+        if (db) {
+          const docRef = doc(db, 'stores', targetStoreId, 'data', 'pending_tags');
+          const snap = await getDoc(docRef);
+          if (snap.exists()) {
+            const list = snap.data().tags || [];
+            const nowIso = new Date().toISOString();
             const updated = list.filter(t => t.id !== tagId);
-            await setDoc(docRef, { tags: updated, lastUpdated: new Date().toISOString() }, { merge: true });
+            await setDoc(docRef, {
+              tags: updated,
+              activeCount: updated.filter(t => t.status === 'active').length,
+              lastUpdated: nowIso
+            }, { merge: true });
             setTags(updated);
           }
         }
@@ -2560,7 +2697,16 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                             <Printer className="w-3.5 h-3.5" />
                           </button>
 
-                          {!isBilled && (
+                          {isBilled ? (
+                            <button
+                              onClick={() => handleRestoreActive(tag)}
+                              className="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs font-bold flex items-center gap-1 transition-all cursor-pointer"
+                              title="Restore this tag back to Active Pending"
+                            >
+                              <RotateCcw className="w-3.5 h-3.5" />
+                              <span>Restore</span>
+                            </button>
+                          ) : (
                             <>
                               <button
                                 onClick={() => handleBillInSpeedBilling([tag], 'b1g2')}
@@ -2751,7 +2897,16 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                   </button>
 
                   <div className="flex items-center gap-1.5">
-                    {!isBilled && (
+                    {isBilled ? (
+                      <button
+                        onClick={() => handleRestoreActive(tag)}
+                        className="px-2.5 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs font-bold flex items-center gap-1 transition-all cursor-pointer"
+                        title="Restore this tag back to Active Pending"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Restore Active</span>
+                      </button>
+                    ) : (
                       <>
                         <button
                           onClick={() => handleBillInSpeedBilling([tag], 'b1g2')}
