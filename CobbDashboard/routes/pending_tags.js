@@ -291,6 +291,53 @@ async function checkAndResolveBilledTags(tags, customQueryFn = null) {
             }
         }
 
+        // STEP A2: Mark historical 'billed' tags whose garment was later returned/exchanged & restocked in POS (stock > 0 & netSold <= 0)
+        // so they no longer falsely block staff from creating a new pending tag when a returned item is resold!
+        if (!customQueryFn) {
+            const thirtyDaysAgo = Date.now() - (30 * 86400000);
+            const recentBilledForReturnCheck = tags.filter(t =>
+                t.status === 'billed' &&
+                !t.returnedToStock &&
+                t.barcode &&
+                new Date(t.resolvedAt || t.billedAt || t.createdAt || 0).getTime() >= thirtyDaysAgo
+            );
+            if (recentBilledForReturnCheck.length > 0) {
+                try {
+                    const billedBcs = [...new Set(recentBilledForReturnCheck.map(t => String(t.barcode).trim()).filter(Boolean))];
+                    const fmtBcs = billedBcs.map(b => `'${b.replace(/'/g, "''")}'`).join(',');
+                    const stockCheckRes = await runQuery(`
+                        SELECT RTRIM(p.product_code) as bc, ISNULL(p.quantity_in_stock, 0) as stock
+                        FROM PMT01106 p WITH (NOLOCK)
+                        WHERE RTRIM(p.product_code) IN (${fmtBcs}) AND p.quantity_in_stock > 0
+                    `);
+                    const inStockBcs = new Set((stockCheckRes.recordset || []).map(r => cleanBarcodeDigits(r.bc)));
+                    if (inStockBcs.size > 0) {
+                        const fmtInStock = [...new Set(recentBilledForReturnCheck.filter(t => inStockBcs.has(cleanBarcodeDigits(t.barcode))).map(t => `'${String(t.barcode).trim().replace(/'/g, "''")}'`))].join(',');
+                        const netRes = await runQuery(`
+                            SELECT RTRIM(d.PRODUCT_CODE) as bc, SUM(ISNULL(d.QUANTITY, 0)) as netSold
+                            FROM CMD01106 d WITH (NOLOCK)
+                            JOIN CMM01106 m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
+                            WHERE m.CANCELLED = 0 AND RTRIM(d.PRODUCT_CODE) IN (${fmtInStock})
+                            GROUP BY RTRIM(d.PRODUCT_CODE)
+                        `);
+                        const netSoldMap = new Map((netRes.recordset || []).map(r => [cleanBarcodeDigits(r.bc), Number(r.netSold || 0)]));
+                        for (const t of recentBilledForReturnCheck) {
+                            const cBc = cleanBarcodeDigits(t.barcode);
+                            if (inStockBcs.has(cBc) && (netSoldMap.get(cBc) || 0) <= 0) {
+                                t.returnedToStock = true;
+                                t.returnedToStockAt = new Date().toISOString();
+                                changed = true;
+                                appendAuditLog('MARKED_RETURNED_TO_STOCK', { tagId: t.id, barcode: t.barcode, prevBill: t.billedInBillNo });
+                                console.log(`[PENDING TAGS RESTOCKED] Historical tag ${t.barcode} (${t.billedInBillNo}) detected returned & back in stock — unblocked for future tagging!`);
+                            }
+                        }
+                    }
+                } catch (retErr) {
+                    console.warn('[PENDING TAGS] Return restock check notice:', retErr.message);
+                }
+            }
+        }
+
         // STEP B: Verify active pending tags against POS bills
         const activeTags = tags.filter(t => t.status === 'active' && t.barcode);
         if (activeTags.length === 0) {
@@ -533,6 +580,108 @@ router.get('/', async (req, res) => {
     }
 });
 
+async function verifyPosStockAndNetBilled(candidateBarcode, createReqFn = createRequest) {
+    let preSqlCheck = null;
+    let verifiedAvailableInPos = false;
+    try {
+        const cleanDigits = candidateBarcode.replace(/^0+/, '') || candidateBarcode;
+        const paddedDigits = candidateBarcode.length < 10 && /^\d+$/.test(candidateBarcode) ? candidateBarcode.padStart(10, '0') : candidateBarcode;
+
+        if (createReqFn) {
+            const stockReq = createReqFn();
+            stockReq.input('bc', sql.NVarChar, candidateBarcode);
+            stockReq.input('cleanDigits', sql.NVarChar, cleanDigits);
+            stockReq.input('paddedDigits', sql.NVarChar, paddedDigits);
+            const stockRes = await stockReq.query(`
+                SELECT ISNULL(SUM(quantity_in_stock), 0) as stock
+                FROM PMT01106 WITH (NOLOCK)
+                WHERE product_code = @bc OR product_code = @cleanDigits OR product_code = @paddedDigits
+            `);
+            const currentStock = Number(stockRes.recordset?.[0]?.stock || 0);
+
+            if (currentStock > 0) {
+                verifiedAvailableInPos = true;
+            } else {
+                const posReq = createReqFn();
+                posReq.input('bc', sql.NVarChar, candidateBarcode);
+                posReq.input('cleanDigits', sql.NVarChar, cleanDigits);
+                posReq.input('paddedDigits', sql.NVarChar, paddedDigits);
+
+                const billedPosRes = await posReq.query(`
+                    SELECT TOP 20
+                        RTRIM(d.PRODUCT_CODE) as barcode,
+                        RTRIM(m.CM_NO) as billNo,
+                        CONVERT(varchar, m.CM_TIME, 126) as billTime,
+                        ISNULL(d.NET, 0) as netAmount,
+                        ISNULL(d.QUANTITY, 0) as qty
+                    FROM CMD01106 d WITH (NOLOCK)
+                    JOIN CMM01106 m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
+                    WHERE m.CANCELLED = 0
+                      AND (d.PRODUCT_CODE = @bc OR d.PRODUCT_CODE = @cleanDigits OR d.PRODUCT_CODE = @paddedDigits)
+                    ORDER BY m.CM_TIME DESC
+                `);
+
+                const rows = billedPosRes.recordset || [];
+                if (rows.length > 0) {
+                    const netSold = rows.reduce((s, r) => s + Number(r.qty || 0), 0);
+                    if (netSold > 0) {
+                        const billedRow = rows.find(r => Number(r.qty || 0) > 0) || rows[0];
+                        preSqlCheck = billedRow;
+                    } else {
+                        verifiedAvailableInPos = true;
+                    }
+                }
+            }
+        }
+    } catch (sqlErr) {
+        console.warn('[PendingTags check SQL POS billed error]', sqlErr.message);
+    }
+    return { preSqlCheck, verifiedAvailableInPos };
+}
+
+function evaluateDuplicateAndBilledState(tags, candidateBarcode, verifiedAvailableInPos = false) {
+    const activeDuplicate = tags.find(t => t.status === 'active' && isBarcodeDuplicate(t.barcode, candidateBarcode));
+    if (activeDuplicate) {
+        return {
+            statusCode: 409,
+            body: {
+                success: false,
+                duplicate: true,
+                error: `Duplicate Barcode: An active pending tag with barcode "${activeDuplicate.barcode}" (${activeDuplicate.articleName || 'Item'}, ₹${activeDuplicate.mrp || 0}) is already on the pending rack! (Tag #${activeDuplicate.id}). Similar or duplicate barcode cannot be added.`,
+                existingTag: activeDuplicate
+            },
+            clearedReturnedBilled: []
+        };
+    }
+
+    const unreturnedBilled = tags.filter(t => t.status === 'billed' && !t.returnedToStock && isBarcodeDuplicate(t.barcode, candidateBarcode));
+    if (unreturnedBilled.length > 0) {
+        if (!verifiedAvailableInPos) {
+            const billedTag = unreturnedBilled[0];
+            return {
+                statusCode: 409,
+                body: {
+                    success: false,
+                    duplicate: true,
+                    billed: true,
+                    error: `Already Billed: Barcode "${candidateBarcode}" has already been billed in POS (Bill #${billedTag.billedInBillNo || 'POS-BILL'} on ${billedTag.billedAt ? new Date(billedTag.billedAt).toLocaleDateString('en-IN') : 'earlier'})! Billed items cannot be re-added as pending tags.`,
+                    existingTag: billedTag
+                },
+                clearedReturnedBilled: []
+            };
+        }
+        const returnedIso = new Date().toISOString();
+        for (const bt of unreturnedBilled) {
+            bt.returnedToStock = true;
+            bt.returnedToStockAt = returnedIso;
+            bt.updatedAt = returnedIso;
+        }
+        return { statusCode: 200, body: null, clearedReturnedBilled: unreturnedBilled };
+    }
+
+    return { statusCode: 200, body: null, clearedReturnedBilled: [] };
+}
+
 // POST /api/pending-tags/add — create a new pending tag (protected by mutex + cloud merge + net-billed guard)
 router.post('/add', async (req, res) => {
     try {
@@ -560,56 +709,7 @@ router.post('/add', async (req, res) => {
         // 1. Live SQL Server stock & net-billed check:
         // Only block if physical stock in PMT01106 <= 0 AND net billed qty > 0.
         // If returned (-1) or back in physical POS stock (quantity_in_stock > 0), allow adding!
-        let preSqlCheck = null;
-        try {
-            const cleanDigits = candidateBarcode.replace(/^0+/, '') || candidateBarcode;
-            const paddedDigits = candidateBarcode.length < 10 && /^\d+$/.test(candidateBarcode) ? candidateBarcode.padStart(10, '0') : candidateBarcode;
-
-            if (createRequest) {
-                const stockReq = createRequest();
-                stockReq.input('bc', sql.NVarChar, candidateBarcode);
-                stockReq.input('cleanDigits', sql.NVarChar, cleanDigits);
-                stockReq.input('paddedDigits', sql.NVarChar, paddedDigits);
-                const stockRes = await stockReq.query(`
-                    SELECT ISNULL(SUM(quantity_in_stock), 0) as stock
-                    FROM PMT01106 WITH (NOLOCK)
-                    WHERE product_code = @bc OR product_code = @cleanDigits OR product_code = @paddedDigits
-                `);
-                const currentStock = stockRes.recordset?.[0]?.stock || 0;
-
-                if (currentStock <= 0) {
-                    const posReq = createRequest();
-                    posReq.input('bc', sql.NVarChar, candidateBarcode);
-                    posReq.input('cleanDigits', sql.NVarChar, cleanDigits);
-                    posReq.input('paddedDigits', sql.NVarChar, paddedDigits);
-
-                    const billedPosRes = await posReq.query(`
-                        SELECT TOP 20
-                            RTRIM(d.PRODUCT_CODE) as barcode,
-                            RTRIM(m.CM_NO) as billNo,
-                            CONVERT(varchar, m.CM_TIME, 126) as billTime,
-                            ISNULL(d.NET, 0) as netAmount,
-                            ISNULL(d.QUANTITY, 0) as qty
-                        FROM CMD01106 d WITH (NOLOCK)
-                        JOIN CMM01106 m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
-                        WHERE m.CANCELLED = 0
-                          AND (d.PRODUCT_CODE = @bc OR d.PRODUCT_CODE = @cleanDigits OR d.PRODUCT_CODE = @paddedDigits)
-                        ORDER BY m.CM_TIME DESC
-                    `);
-
-                    const rows = billedPosRes.recordset || [];
-                    if (rows.length > 0) {
-                        const netSold = rows.reduce((s, r) => s + Number(r.qty || 0), 0);
-                        if (netSold > 0) {
-                            const billedRow = rows.find(r => Number(r.qty || 0) > 0) || rows[0];
-                            preSqlCheck = billedRow;
-                        }
-                    }
-                }
-            }
-        } catch (sqlErr) {
-            console.warn('[PendingTags check SQL POS billed error]', sqlErr.message);
-        }
+        const { preSqlCheck, verifiedAvailableInPos } = await verifyPosStockAndNetBilled(candidateBarcode);
 
         if (preSqlCheck) {
             return res.status(409).json({
@@ -626,31 +726,17 @@ router.post('/add', async (req, res) => {
             const { tags } = await mergeTagsWithCloud(localTags);
 
             // Duplication & Billed Prevention in existing tags
-            const existingTag = tags.find(t => t.status !== 'void' && isBarcodeDuplicate(t.barcode, candidateBarcode));
-            if (existingTag) {
-                if (existingTag.status === 'billed') {
-                    return {
-                        statusCode: 409,
-                        body: {
-                            success: false,
-                            duplicate: true,
-                            billed: true,
-                            error: `Already Billed: Barcode "${candidateBarcode}" has already been billed in POS (Bill #${existingTag.billedInBillNo || 'POS-BILL'} on ${existingTag.billedAt ? new Date(existingTag.billedAt).toLocaleDateString('en-IN') : 'earlier'})! Billed items cannot be re-added as pending tags.`,
-                            existingTag
-                        }
-                    };
-                }
-                if (existingTag.status === 'active') {
-                    return {
-                        statusCode: 409,
-                        body: {
-                            success: false,
-                            duplicate: true,
-                            error: `Duplicate Barcode: An active pending tag with barcode "${existingTag.barcode}" (${existingTag.articleName || 'Item'}, ₹${existingTag.mrp || 0}) is already on the pending rack! (Tag #${existingTag.id}). Similar or duplicate barcode cannot be added.`,
-                            existingTag
-                        }
-                    };
-                }
+            const guardResult = evaluateDuplicateAndBilledState(tags, candidateBarcode, verifiedAvailableInPos);
+            if (guardResult.statusCode !== 200) {
+                return { statusCode: guardResult.statusCode, body: guardResult.body };
+            }
+            for (const bt of guardResult.clearedReturnedBilled) {
+                appendAuditLog('MARKED_RETURNED_TO_STOCK', {
+                    tagId: bt.id,
+                    barcode: bt.barcode,
+                    previousBillNo: bt.billedInBillNo,
+                    reason: 'Verified back in POS stock / netSold <= 0 on re-add'
+                });
             }
 
             const now = new Date();
@@ -850,6 +936,8 @@ router.parsePosTimeMs = parsePosTimeMs;
 router.mergeTagsList = mergeTagsList;
 router.buildCloudTagsPayload = buildCloudTagsPayload;
 router.checkAndResolveBilledTags = checkAndResolveBilledTags;
+router.verifyPosStockAndNetBilled = verifyPosStockAndNetBilled;
+router.evaluateDuplicateAndBilledState = evaluateDuplicateAndBilledState;
 router.appendAuditLog = appendAuditLog;
 
 

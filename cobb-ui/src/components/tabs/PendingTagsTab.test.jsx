@@ -529,6 +529,115 @@ describe('PendingTagsTab - Duplicate Barcode Prevention', () => {
         );
       });
     });
+
+    it('clears historical billed block and enables Save Pending Tag when live POS lookup confirms returned item is in stock and unbilled', async () => {
+      axios.get.mockImplementation((url) => {
+        if (typeof url === 'string' && url.includes('/api/pending-tags')) {
+          return Promise.resolve({
+            data: {
+              success: true,
+              tags: mockTags,
+              summary: { activeCount: 2, billedCount: 1, activeMrpValue: 5498, activeRealizedValue: 2200, avgDiscountPct: '60.0', billedTodayCount: 0 }
+            }
+          });
+        }
+        if (typeof url === 'string' && url.includes('/api/inventory/quick-scan')) {
+          return Promise.resolve({
+            data: {
+              success: true,
+              isBilled: false,
+              billedInfo: null,
+              variants: [
+                {
+                  barcode: '0090123456',
+                  articleNo: 'CJN-0500',
+                  itemName: 'Cobb Denim Jeans Dark Blue',
+                  size: '32',
+                  color: 'Dark Blue',
+                  sectionName: 'Men Apparel',
+                  mrp: 3499,
+                  stock: 1,
+                  isBilled: false
+                }
+              ]
+            }
+          });
+        }
+        return Promise.resolve({ data: { success: true, damages: [] } });
+      });
+
+      render(<PendingTagsTab />);
+      await waitFor(() => {
+        expect(screen.getByText('Cobb Linen Shirt White')).toBeDefined();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /Add Pending Tag/i }));
+      const barcodeInput = screen.getByPlaceholderText('Barcode / SKU');
+      fireEvent.change(barcodeInput, { target: { value: '0090123456' } });
+
+      // Before live lookup, historical billed tag shows warning & disabled button
+      expect(screen.getByText(/Barcode Already Billed in POS/i)).toBeDefined();
+      expect(screen.getByRole('button', { name: /Already Billed in POS/i }).disabled).toBe(true);
+
+      // Click "Get Item Details from Database" -> queries live POS quick-scan
+      fireEvent.click(screen.getByRole('button', { name: /Get Item Details from Database/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText(/Item Details Retrieved from Database/i)).toBeDefined();
+        expect(screen.queryByText(/Barcode Already Billed in POS/i)).toBeNull();
+        const saveBtn = screen.getByRole('button', { name: /Save Pending Tag/i });
+        expect(saveBtn.disabled).toBe(false);
+      });
+    });
+
+    it('keeps billed block active when live POS lookup confirms isBilled: true', async () => {
+      axios.get.mockImplementation((url) => {
+        if (typeof url === 'string' && url.includes('/api/pending-tags')) {
+          return Promise.resolve({
+            data: {
+              success: true,
+              tags: mockTags,
+              summary: { activeCount: 2, billedCount: 1, activeMrpValue: 5498, activeRealizedValue: 2200, avgDiscountPct: '60.0', billedTodayCount: 0 }
+            }
+          });
+        }
+        if (typeof url === 'string' && url.includes('/api/inventory/quick-scan')) {
+          return Promise.resolve({
+            data: {
+              success: true,
+              isBilled: true,
+              billedInfo: { billNo: 'STST27-00703', billTime: '2026-11-10T12:00:00.000' },
+              variants: [
+                {
+                  barcode: '0090123456',
+                  articleNo: 'CJN-0500',
+                  itemName: 'Cobb Denim Jeans Dark Blue',
+                  mrp: 3499,
+                  stock: 0,
+                  isBilled: true,
+                  billedInfo: { billNo: 'STST27-00703', billTime: '2026-11-10T12:00:00.000' }
+                }
+              ]
+            }
+          });
+        }
+        return Promise.resolve({ data: { success: true, damages: [] } });
+      });
+
+      render(<PendingTagsTab />);
+      await waitFor(() => {
+        expect(screen.getByText('Cobb Linen Shirt White')).toBeDefined();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /Add Pending Tag/i }));
+      fireEvent.change(screen.getByPlaceholderText('Barcode / SKU'), { target: { value: '0090123456' } });
+      fireEvent.click(screen.getByRole('button', { name: /Get Item Details from Database/i }));
+
+      await waitFor(() => {
+        expect(screen.getAllByText(/STST27-00703/i).length).toBeGreaterThan(0);
+        expect(screen.getByRole('button', { name: /Already Billed in POS/i }).disabled).toBe(true);
+      });
+    });
   });
 
   describe('WhatsApp Brief Generator Logic', () => {

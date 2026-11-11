@@ -284,13 +284,22 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
   const [stagedBagItem, setStagedBagItem] = useState(null);
   const [barcodeMatchError, setBarcodeMatchError] = useState('');
   const [posBilledInfo, setPosBilledInfo] = useState(null);
+  const [posVerifiedUnbilled, setPosVerifiedUnbilled] = useState(false);
+
+  const findBlockingPendingTag = (tagsList, candidate, posConfirmedAvailable = false) => {
+    const q = (candidate || '').trim();
+    if (!q || !Array.isArray(tagsList)) return null;
+    const activeMatch = tagsList.find(t => t.status === 'active' && isBarcodeDuplicate(t.barcode, q));
+    if (activeMatch) return activeMatch;
+    if (posConfirmedAvailable) return null;
+    return tagsList.find(t => t.status === 'billed' && !t.returnedToStock && isBarcodeDuplicate(t.barcode, q)) || null;
+  };
 
   // Real-time detection of duplicate or already-billed tag in Add Modal
   const duplicateTag = useMemo(() => {
     const candidate = (form.barcode || scanQuery || form.articleNo || '').trim();
-    if (!candidate) return null;
-    return tags.find(t => isBarcodeDuplicate(t.barcode, candidate));
-  }, [form.barcode, scanQuery, form.articleNo, tags]);
+    return findBlockingPendingTag(tags, candidate, posVerifiedUnbilled);
+  }, [form.barcode, scanQuery, form.articleNo, tags, posVerifiedUnbilled]);
   const duplicateActiveTag = duplicateTag;
 
   // --- Dedicated Customer Hold Bags State ---
@@ -673,15 +682,12 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
       return;
     }
 
-    const existing = tags.find(t => isBarcodeDuplicate(t.barcode, candidate));
-    if (existing) {
-      if (existing.status === 'billed') {
-        setNewBagScanError(`Already Billed: Barcode "${candidate}" was already billed in POS (${existing.billedInBillNo ? 'Bill #' + existing.billedInBillNo : 'Billed'} • ${existing.articleName})! Cannot hold an already billed garment.`);
-        return;
-      }
-      setNewBagScanError(`Active Duplicate: Barcode "${candidate}" is already active on the rack (Tag #${existing.id}, ${existing.articleName})!`);
+    const activeExisting = tags.find(t => t.status === 'active' && isBarcodeDuplicate(t.barcode, candidate));
+    if (activeExisting) {
+      setNewBagScanError(`Active Duplicate: Barcode "${candidate}" is already active on the rack (Tag #${activeExisting.id}, ${activeExisting.articleName})!`);
       return;
     }
+    const unreturnedBilled = tags.find(t => t.status === 'billed' && !t.returnedToStock && isBarcodeDuplicate(t.barcode, candidate));
 
     setNewBagScanLoading(true);
     setNewBagScanError('');
@@ -689,6 +695,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
 
     try {
       let matchedData = null;
+      let posVerifiedForBag = false;
       try {
         const res = await axios.get(`${API_BASE}/api/inventory/quick-scan?q=${encodeURIComponent(candidate)}&mode=single`, { timeout: 12000 });
         if (res.data?.isBilled || res.data?.variants?.[0]?.isBilled) {
@@ -698,11 +705,19 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
         }
         if (res.data?.success && res.data.variants && res.data.variants.length > 0) {
           matchedData = res.data.variants.find(v => isBarcodeDuplicate(v.barcode, candidate)) || res.data.variants[0];
+          posVerifiedForBag = !matchedData?.isBilled;
         } else if (res.data?.success && res.data.data) {
           matchedData = res.data.data;
+          posVerifiedForBag = !matchedData?.isBilled;
         }
       } catch (err) {
-        matchedData = await lookupBarcodeInCloudFallback(candidate, activeStore);
+        if (!unreturnedBilled) {
+          matchedData = await lookupBarcodeInCloudFallback(candidate, activeStore);
+        }
+      }
+      if (unreturnedBilled && !posVerifiedForBag) {
+        setNewBagScanError(`Already Billed: Barcode "${candidate}" was already billed in POS (${unreturnedBilled.billedInBillNo ? 'Bill #' + unreturnedBilled.billedInBillNo : 'Billed'} • ${unreturnedBilled.articleName})! Cannot hold an already billed garment.`);
+        return;
       }
       if (!matchedData) {
         matchedData = await lookupBarcodeInCloudFallback(candidate, activeStore);
@@ -1176,58 +1191,68 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
   }, [damages, damagesFilter, damagesSeverityFilter, damagesSearch]);
 
     // --- Barcode / Article Fast Lookup ---
+  const closeAddModal = () => {
+    setShowAddModal(false);
+    setPosVerifiedUnbilled(false);
+    setPosBilledInfo(null);
+    setVerifiedDbItem(null);
+    setBarcodeMatchError('');
+  };
+
   const handleQuickLookup = async (code) => {
     const q = (code || form.barcode || scanQuery).trim();
     if (!q) return;
     setIsSearchingBarcode(true);
     setBarcodeMatchError('');
     setVerifiedDbItem(null);
+    setPosBilledInfo(null);
+    setPosVerifiedUnbilled(false);
 
-    // 1. Check if this tag has ALREADY been added to the Pending Tags tab (active or billed)!
-    const existing = tags.find(t => isBarcodeDuplicate(t.barcode, q));
-
-    if (existing) {
-      if (existing.status === 'billed') {
-        const billNotice = existing.billedInBillNo ? `Bill #${existing.billedInBillNo}` : 'POS Billing';
-        setPosBilledInfo({
-          billNo: existing.billedInBillNo || 'POS-BILL',
-          billTime: existing.billedAt || existing.resolvedAt || null,
-          articleName: existing.articleName
-        });
-        setBarcodeMatchError(`🚫 This barcode has ALREADY BEEN BILLED in POS (${billNotice} • Tag #${existing.id} • ${existing.articleName || 'Item'}). Already billed items cannot be added as pending tags!`);
-        showToastMsg(`Cannot add: Barcode was already billed in ${billNotice}!`, 'error');
-        setIsSearchingBarcode(false);
-        return;
-      }
-      if (existing.status === 'active') {
-        setForm(prev => ({
-          ...prev,
-          barcode: existing.barcode || q,
-          articleNo: existing.articleNo || '',
-          articleName: existing.articleName || 'Apparel Item',
-          size: existing.size || 'Free',
-          color: existing.color || 'Standard',
-          section: existing.section || 'Men Apparel',
-          mrp: existing.mrp || 0,
-          discountPercent: existing.discountPercent || 60,
-          soldPrice: existing.soldPrice || 0,
-          salesperson: existing.salesperson || 'Cashier'
-        }));
-        setVerifiedDbItem({
-          barcode: existing.barcode || q,
-          articleNo: existing.articleNo || '',
-          itemName: existing.articleName || 'Apparel Item',
-          size: existing.size || 'Free',
-          color: existing.color || 'Standard',
-          sectionName: existing.section || 'Men Apparel',
-          mrp: existing.mrp || 0
-        });
-        setBarcodeMatchError(`This tag has already been added in the tab (Tag #${existing.id} • ${existing.articleName || 'Item'} • MRP ₹${existing.mrp} • Size ${existing.size})`);
-        showToastMsg(`This tag has already been added in the tab! (Tag #${existing.id})`, 'error');
-        setIsSearchingBarcode(false);
-        return;
-      }
+    // 1. Always block if an ACTIVE tag with this barcode is already on the pending rack
+    const existingActive = tags.find(t => t.status === 'active' && isBarcodeDuplicate(t.barcode, q));
+    if (existingActive) {
+      setForm(prev => ({
+        ...prev,
+        barcode: existingActive.barcode || q,
+        articleNo: existingActive.articleNo || '',
+        articleName: existingActive.articleName || 'Apparel Item',
+        size: existingActive.size || 'Free',
+        color: existingActive.color || 'Standard',
+        section: existingActive.section || 'Men Apparel',
+        mrp: existingActive.mrp || 0,
+        discountPercent: existingActive.discountPercent || 60,
+        soldPrice: existingActive.soldPrice || 0,
+        salesperson: existingActive.salesperson || 'Cashier'
+      }));
+      setVerifiedDbItem({
+        barcode: existingActive.barcode || q,
+        articleNo: existingActive.articleNo || '',
+        itemName: existingActive.articleName || 'Apparel Item',
+        size: existingActive.size || 'Free',
+        color: existingActive.color || 'Standard',
+        sectionName: existingActive.section || 'Men Apparel',
+        mrp: existingActive.mrp || 0
+      });
+      setBarcodeMatchError(`This tag has already been added in the tab (Tag #${existingActive.id} • ${existingActive.articleName || 'Item'} • MRP ₹${existingActive.mrp} • Size ${existingActive.size})`);
+      showToastMsg(`This tag has already been added in the tab! (Tag #${existingActive.id})`, 'error');
+      setIsSearchingBarcode(false);
+      return;
     }
+
+    // Track unreturned historical billed tag, but verify live POS stock/sales first in case garment was returned/exchanged
+    const unreturnedBilled = tags.find(t => t.status === 'billed' && !t.returnedToStock && isBarcodeDuplicate(t.barcode, q));
+
+    const applyHistoricalBilledBlock = (billedTag) => {
+      const billNotice = billedTag.billedInBillNo ? `Bill #${billedTag.billedInBillNo}` : 'POS Billing';
+      setPosVerifiedUnbilled(false);
+      setPosBilledInfo({
+        billNo: billedTag.billedInBillNo || 'POS-BILL',
+        billTime: billedTag.billedAt || billedTag.resolvedAt || null,
+        articleName: billedTag.articleName
+      });
+      setBarcodeMatchError(`🚫 This barcode has ALREADY BEEN BILLED in POS (${billNotice} • Tag #${billedTag.id} • ${billedTag.articleName || 'Item'}). Already billed items cannot be added as pending tags!`);
+      showToastMsg(`Cannot add: Barcode was already billed in ${billNotice}!`, 'error');
+    };
 
     const applyMatchedItem = (exact, sourceLabel = 'database') => {
       const mrpVal = Number(exact.mrp || 0);
@@ -1257,6 +1282,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
         // Check if quick-scan returned isBilled: true from POS database
         if (res.data.isBilled || exact.isBilled) {
           const bInfo = res.data.billedInfo || exact.billedInfo;
+          setPosVerifiedUnbilled(false);
           setPosBilledInfo(bInfo);
           const billNo = bInfo?.billNo || 'POS-BILL';
           setBarcodeMatchError(`🚫 This barcode was ALREADY BILLED in POS (Bill #${billNo})! Already billed items cannot be added as pending tags.`);
@@ -1264,14 +1290,19 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
           setIsSearchingBarcode(false);
           return;
         }
-        applyMatchedItem(exact, 'POS Database');
+        // Live POS confirmed stock > 0 / not billed (e.g. returned/exchanged back to store stock)
+        setPosVerifiedUnbilled(true);
+        setPosBilledInfo(null);
+        setBarcodeMatchError('');
+        applyMatchedItem(exact, unreturnedBilled ? 'POS Returned / In Stock' : 'POS Database');
+      } else if (unreturnedBilled) {
+        applyHistoricalBilledBlock(unreturnedBilled);
       } else {
         const cloudFallback = await lookupBarcodeInCloudFallback(q, activeStore);
         if (cloudFallback) {
           applyMatchedItem(cloudFallback, 'Cloud Catalog');
         } else {
-          // Fallback check against tags in case it was added under another status
-          const existingInTags = tags.find(t => isBarcodeDuplicate(t.barcode, q));
+          const existingInTags = findBlockingPendingTag(tags, q, false);
           if (existingInTags) {
             setBarcodeMatchError(`This tag has already been added in the tab (Tag #${existingInTags.id} • ${existingInTags.articleName || 'Item'} • Status: ${existingInTags.status})`);
           } else {
@@ -1280,15 +1311,19 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
         }
       }
     } catch (err) {
-      const cloudFallback = await lookupBarcodeInCloudFallback(q, activeStore);
-      if (cloudFallback) {
-        applyMatchedItem(cloudFallback, 'Cloud Catalog');
+      if (unreturnedBilled) {
+        applyHistoricalBilledBlock(unreturnedBilled);
       } else {
-        const existingInTags = tags.find(t => isBarcodeDuplicate(t.barcode, q));
-        if (existingInTags) {
-          setBarcodeMatchError(`This tag has already been added in the tab (Tag #${existingInTags.id} • ${existingInTags.articleName || 'Item'} • Status: ${existingInTags.status})`);
+        const cloudFallback = await lookupBarcodeInCloudFallback(q, activeStore);
+        if (cloudFallback) {
+          applyMatchedItem(cloudFallback, 'Cloud Catalog');
         } else {
-          setBarcodeMatchError('Quick scan lookup timed out. Enter details manually.');
+          const existingInTags = findBlockingPendingTag(tags, q, false);
+          if (existingInTags) {
+            setBarcodeMatchError(`This tag has already been added in the tab (Tag #${existingInTags.id} • ${existingInTags.articleName || 'Item'} • Status: ${existingInTags.status})`);
+          } else {
+            setBarcodeMatchError('Quick scan lookup timed out. Enter details manually.');
+          }
         }
       }
     } finally {
@@ -1339,8 +1374,8 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
       return;
     }
 
-    // Check existing tags in pending tags desk (both active and billed)
-    const existingTag = tags.find(t => isBarcodeDuplicate(t.barcode, candidate));
+    // Check existing tags in pending tags desk (active always blocks; billed blocks unless returnedToStock or live POS verified available)
+    const existingTag = findBlockingPendingTag(tags, candidate, posVerifiedUnbilled);
     if (existingTag) {
       if (existingTag.status === 'billed') {
         const billInfo = existingTag.billedInBillNo ? `Bill #${existingTag.billedInBillNo}` : 'POS';
@@ -1379,8 +1414,8 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
           const snap = await getDoc(docRef);
           const curTags = snap.exists() ? (snap.data().tags || []) : [];
 
-          // Verify no active or billed duplicate in Firestore
-          const cloudExisting = curTags.find(t => isBarcodeDuplicate(t.barcode, candidate));
+          // Verify no active or unreturned billed duplicate in Firestore
+          const cloudExisting = findBlockingPendingTag(curTags, candidate, posVerifiedUnbilled);
           if (cloudExisting) {
             if (cloudExisting.status === 'billed') {
               const billInfo = cloudExisting.billedInBillNo ? `Bill #${cloudExisting.billedInBillNo}` : 'POS';
@@ -1392,6 +1427,11 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
           }
 
           const now = new Date();
+          const normalizedCurTags = posVerifiedUnbilled
+            ? curTags.map(t => (t.status === 'billed' && !t.returnedToStock && isBarcodeDuplicate(t.barcode, candidate))
+              ? { ...t, returnedToStock: true, returnedToStockAt: now.toISOString(), updatedAt: now.toISOString() }
+              : t)
+            : curTags;
           const newEntry = {
             id: 'ptag_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
             ...payload,
@@ -1400,7 +1440,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
             updatedAt: now.toISOString(),
             date: now.toISOString().split('T')[0]
           };
-          const updated = [newEntry, ...curTags];
+          const updated = [newEntry, ...normalizedCurTags];
           await setDoc(docRef, {
             tags: updated,
             activeCount: updated.filter(t => t.status === 'active').length,
@@ -1413,7 +1453,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
         }
       }
 
-      setShowAddModal(false);
+      closeAddModal();
       setScanQuery('');
       setForm({
         barcode: '',
@@ -3496,7 +3536,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                 </div>
               </div>
               <button
-                onClick={() => setShowAddModal(false)}
+                onClick={closeAddModal}
                 className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 transition-all"
               >
                 <X className="w-5 h-5" />
@@ -3521,9 +3561,11 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                       setScanQuery(val);
                       setForm(prev => ({ ...prev, barcode: val }));
                       setVerifiedDbItem(null);
+                      setPosVerifiedUnbilled(false);
+                      setPosBilledInfo(null);
                       const trimmed = val.trim();
                       if (trimmed) {
-                        const match = tags.find(t => isBarcodeDuplicate(t.barcode, trimmed));
+                        const match = findBlockingPendingTag(tags, trimmed, false);
                         if (match) {
                           if (match.status === 'billed') {
                             setBarcodeMatchError(`🚫 This barcode has ALREADY BEEN BILLED in POS (${match.billedInBillNo ? 'Bill #' + match.billedInBillNo : 'Billed'} • Tag #${match.id}). Cannot be added!`);
@@ -3532,11 +3574,9 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                           }
                         } else if (barcodeMatchError && (barcodeMatchError.includes('already been added in the tab') || barcodeMatchError.includes('ALREADY BEEN BILLED'))) {
                           setBarcodeMatchError('');
-                          setPosBilledInfo(null);
                         }
                       } else {
                         setBarcodeMatchError('');
-                        setPosBilledInfo(null);
                       }
                     }}
                     onKeyDown={(e) => {
@@ -3593,6 +3633,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                       setForm(prev => ({ ...prev, barcode: val }));
                       setScanQuery(val);
                       setVerifiedDbItem(null);
+                      setPosVerifiedUnbilled(false);
                       setPosBilledInfo(null);
                       setBarcodeMatchError('');
                     }}
@@ -3854,7 +3895,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
               <div className="pt-2 flex items-center justify-end gap-2">
                 <button
                   type="button"
-                  onClick={() => setShowAddModal(false)}
+                  onClick={closeAddModal}
                   className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
                 >
                   Cancel

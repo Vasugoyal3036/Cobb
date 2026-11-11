@@ -4,6 +4,8 @@ const router = require('./pending_tags');
 
 const {
     checkAndResolveBilledTags,
+    verifyPosStockAndNetBilled,
+    evaluateDuplicateAndBilledState,
     mergeTagsList,
     buildCloudTagsPayload,
     parsePosTimeMs
@@ -204,3 +206,92 @@ test('buildCloudTagsPayload ALWAYS preserves 100% of active tags even when histo
     assert.deepEqual(activeIds, ['ptag_old_active', 'ptag_new_active']);
     assert.equal(payload.filter(t => t.status === 'billed').length, 250);
 });
+
+test('verifyPosStockAndNetBilled marks returned garment in PMT01106 stock as available even after prior sale', async () => {
+    const mockCreateRequest = () => ({
+        input() { return this; },
+        async query(q) {
+            if (q.includes('FROM PMT01106')) {
+                return { recordset: [{ stock: 1 }] };
+            }
+            throw new Error('Should not query CMD01106 when PMT01106 stock > 0');
+        }
+    });
+
+    const res = await verifyPosStockAndNetBilled('0079385464', mockCreateRequest);
+    assert.equal(res.preSqlCheck, null);
+    assert.equal(res.verifiedAvailableInPos, true);
+});
+
+test('verifyPosStockAndNetBilled blocks when stock is 0 and netSold > 0, allows when netSold <= 0', async () => {
+    const mockBlockedRequest = () => ({
+        input() { return this; },
+        async query(q) {
+            if (q.includes('FROM PMT01106')) return { recordset: [{ stock: 0 }] };
+            return {
+                recordset: [
+                    { barcode: '0090123456', billNo: 'STST27-00999', billTime: '2026-11-10T14:00:00.000', netAmount: 1999, qty: 1 }
+                ]
+            };
+        }
+    });
+    const blocked = await verifyPosStockAndNetBilled('0090123456', mockBlockedRequest);
+    assert.equal(blocked.verifiedAvailableInPos, false);
+    assert.equal(blocked.preSqlCheck?.billNo, 'STST27-00999');
+
+    const mockReturnedRequest = () => ({
+        input() { return this; },
+        async query(q) {
+            if (q.includes('FROM PMT01106')) return { recordset: [{ stock: 0 }] };
+            return {
+                recordset: [
+                    { barcode: '0079385464', billNo: 'STST27-01030', billTime: '2026-11-07T14:00:00.000', netAmount: -3800, qty: -1 },
+                    { barcode: '0079385464', billNo: 'STST27-00995', billTime: '2026-11-04T14:00:00.000', netAmount: 3800, qty: 1 }
+                ]
+            };
+        }
+    });
+    const allowed = await verifyPosStockAndNetBilled('0079385464', mockReturnedRequest);
+    assert.equal(allowed.preSqlCheck, null);
+    assert.equal(allowed.verifiedAvailableInPos, true);
+});
+
+test('evaluateDuplicateAndBilledState allows re-adding returned historical billed tag once POS confirms availability, while strictly blocking active or unreturned billed tags', () => {
+    const tags = [
+        {
+            id: 'ptag_1793786666828_828n0w',
+            barcode: '0079385464',
+            articleName: 'BLAZER - EX',
+            status: 'billed',
+            billedInBillNo: 'STST27-00995',
+            billedAt: '2026-11-04T10:00:00.000Z'
+        },
+        {
+            id: 'ptag_active_1',
+            barcode: '0080727340',
+            articleName: 'ACTIVE ITEM',
+            mrp: 2999,
+            status: 'active'
+        }
+    ];
+
+    // Without POS verification, historical billed tag stays blocked
+    const blockedRes = evaluateDuplicateAndBilledState(tags, '0079385464', false);
+    assert.equal(blockedRes.statusCode, 409);
+    assert.equal(blockedRes.body.billed, true);
+    assert.equal(tags[0].returnedToStock, undefined);
+
+    // With POS stock / netSold <= 0 verification, historical billed tag is marked returnedToStock and allowed
+    const clearedRes = evaluateDuplicateAndBilledState(tags, '0079385464', true);
+    assert.equal(clearedRes.statusCode, 200);
+    assert.equal(clearedRes.clearedReturnedBilled.length, 1);
+    assert.equal(tags[0].returnedToStock, true);
+    assert.ok(tags[0].returnedToStockAt);
+
+    // Active pending tag is ALWAYS blocked even if verifiedAvailableInPos = true
+    const activeBlocked = evaluateDuplicateAndBilledState(tags, '0080727340', true);
+    assert.equal(activeBlocked.statusCode, 409);
+    assert.equal(activeBlocked.body.duplicate, true);
+    assert.equal(activeBlocked.body.billed, undefined);
+});
+
