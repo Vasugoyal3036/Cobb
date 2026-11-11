@@ -682,6 +682,85 @@ function setCachedQuickScan(key, data) {
     quickScanCache.set(key, { ts: Date.now(), data });
 }
 
+// Shared fallback helper when a barcode exists in live SKU or Inbound Challan (DOCWSL_SKU_MIRROR) before MRR syncs to SKU_NAMES
+async function findSkuOrTransitFallback(query, cleanDigits, paddedDigits) {
+    // 1. Live SKU table fallback
+    try {
+        const skuReq = createRequest();
+        skuReq.input('q', sql.NVarChar, query);
+        skuReq.input('cleanDigits', sql.NVarChar, cleanDigits);
+        skuReq.input('paddedDigits', sql.NVarChar, paddedDigits);
+        const skuRes = await skuReq.query(`
+            SELECT TOP 1
+                RTRIM(s.product_code) as barcode,
+                ISNULL(RTRIM(art.article_no), '') as articleNo,
+                COALESCE(NULLIF(RTRIM(art.article_name), ''), NULLIF(RTRIM(s.product_name), ''), RTRIM(sub.sub_section_name), 'Apparel') as itemName,
+                ISNULL(RTRIM(sec.section_name), 'Apparel') as sectionName,
+                ISNULL(RTRIM(sub.sub_section_name), '') as subSectionName,
+                ISNULL(RTRIM(p1.para1_name), 'Standard') as color,
+                ISNULL(RTRIM(p2.para2_name), 'Standard') as size,
+                ISNULL(p2.para2_order, 99) as sizeOrder,
+                ISNULL(s.mrp, ISNULL(art.mrp, 0)) as mrp,
+                0 as isInboundTransit
+            FROM SKU s WITH (NOLOCK)
+            LEFT JOIN ARTICLE art WITH (NOLOCK) ON s.article_code = art.article_code
+            LEFT JOIN SECTIOND sub WITH (NOLOCK) ON art.sub_section_code = sub.sub_section_code
+            LEFT JOIN SECTIONM sec WITH (NOLOCK) ON sub.section_code = sec.section_code
+            LEFT JOIN PARA1 p1 WITH (NOLOCK) ON s.para1_code = p1.para1_code
+            LEFT JOIN PARA2 p2 WITH (NOLOCK) ON s.para2_code = p2.para2_code
+            WHERE s.product_code = @q
+               OR s.product_code = @cleanDigits
+               OR s.product_code = @paddedDigits
+               OR s.VENDOR_EAN_NO = @q
+               OR s.VENDOR_EAN_NO = @cleanDigits
+        `);
+        if (skuRes.recordset && skuRes.recordset[0]) return skuRes.recordset[0];
+    } catch (skuFallbackErr) {
+        console.warn('[QuickScan SKU fallback notice]', skuFallbackErr.message);
+    }
+
+    // 2. Inbound Transit Challan fallback (DOCWSL_SKU_MIRROR / unposted MRR items)
+    try {
+        const gitReq = createRequest();
+        gitReq.input('q', sql.NVarChar, query);
+        gitReq.input('cleanDigits', sql.NVarChar, cleanDigits);
+        gitReq.input('paddedDigits', sql.NVarChar, paddedDigits);
+        const gitRes = await gitReq.query(`
+            SELECT TOP 1
+                RTRIM(sm.product_code) as barcode,
+                COALESCE(RTRIM(art.article_no), RTRIM(artM.article_no), '') as articleNo,
+                COALESCE(NULLIF(RTRIM(art.article_name), ''), NULLIF(RTRIM(artM.article_name), ''), NULLIF(RTRIM(sm.product_name), ''), NULLIF(RTRIM(sub.sub_section_name), ''), NULLIF(RTRIM(subM.sub_section_name), ''), 'Apparel (Inbound GIT)') as itemName,
+                COALESCE(NULLIF(RTRIM(sec.section_name), ''), NULLIF(RTRIM(secM.section_name), ''), 'Apparel') as sectionName,
+                COALESCE(NULLIF(RTRIM(sub.sub_section_name), ''), NULLIF(RTRIM(subM.sub_section_name), ''), '') as subSectionName,
+                COALESCE(NULLIF(RTRIM(p1.para1_name), ''), NULLIF(RTRIM(p1M.para1_name), ''), 'Standard') as color,
+                COALESCE(NULLIF(RTRIM(p2.para2_name), ''), NULLIF(RTRIM(p2M.para2_name), ''), 'Standard') as size,
+                COALESCE(p2.para2_order, p2M.para2_order, 99) as sizeOrder,
+                ISNULL(sm.mrp, 0) as mrp,
+                1 as isInboundTransit
+            FROM DOCWSL_SKU_MIRROR sm WITH (NOLOCK)
+            LEFT JOIN ARTICLE art WITH (NOLOCK) ON sm.article_code = art.article_code
+            LEFT JOIN DOCWSL_ARTICLE_MIRROR artM WITH (NOLOCK) ON sm.article_code = artM.article_code
+            LEFT JOIN SECTIOND sub WITH (NOLOCK) ON ISNULL(art.sub_section_code, artM.sub_section_code) = sub.sub_section_code
+            LEFT JOIN DOCWSL_SECTIOND_MIRROR subM WITH (NOLOCK) ON ISNULL(art.sub_section_code, artM.sub_section_code) = subM.sub_section_code
+            LEFT JOIN SECTIONM sec WITH (NOLOCK) ON ISNULL(sub.section_code, subM.section_code) = sec.section_code
+            LEFT JOIN DOCWSL_SECTIONM_MIRROR secM WITH (NOLOCK) ON ISNULL(sub.section_code, subM.section_code) = secM.section_code
+            LEFT JOIN PARA1 p1 WITH (NOLOCK) ON sm.para1_code = p1.para1_code
+            LEFT JOIN DOCWSL_PARA1_MIRROR p1M WITH (NOLOCK) ON sm.para1_code = p1M.para1_code
+            LEFT JOIN PARA2 p2 WITH (NOLOCK) ON sm.para2_code = p2.para2_code
+            LEFT JOIN DOCWSL_PARA2_MIRROR p2M WITH (NOLOCK) ON sm.para2_code = p2M.para2_code
+            WHERE sm.product_code = @q
+               OR sm.product_code = @cleanDigits
+               OR sm.product_code = @paddedDigits
+               OR sm.VENDOR_EAN_NO = @q
+               OR sm.VENDOR_EAN_NO = @cleanDigits
+        `);
+        if (gitRes.recordset && gitRes.recordset[0]) return gitRes.recordset[0];
+    } catch (gitFallbackErr) {
+        console.warn('[QuickScan GIT fallback notice]', gitFallbackErr.message);
+    }
+    return null;
+}
+
 app.get('/api/inventory/quick-scan', async (req, res) => {
     try {
         const query = (req.query.q || '').trim();
@@ -752,10 +831,14 @@ app.get('/api/inventory/quick-scan', async (req, res) => {
             matched = tier2Res.recordset && tier2Res.recordset[0];
         }
 
+        // Tier 3: Live SKU or Inbound Transit Challan (DOCWSL_SKU_MIRROR) fallback before MRR syncs to SKU_NAMES
         if (!matched) {
-            const notFoundResp = { success: false, message: `No item found matching "${query}"` };
-            setCachedQuickScan(cacheKey, notFoundResp);
-            return res.json(notFoundResp);
+            matched = await findSkuOrTransitFallback(query, cleanDigits, paddedDigits);
+        }
+
+        if (!matched) {
+            // Do NOT cache negative "not found" results so newly posted MRRs / incoming challans resolve immediately!
+            return res.json({ success: false, message: `No item found matching "${query}"` });
         }
 
         const matchedArticle = matched.articleNo;
@@ -872,7 +955,9 @@ app.get('/api/inventory/quick-scan', async (req, res) => {
             ORDER BY s.para1_name, s.para2_order, s.para2_name
         `);
 
-        const rows = variantsRes.recordset || [];
+        const rows = (variantsRes.recordset && variantsRes.recordset.length > 0)
+            ? variantsRes.recordset
+            : [{ ...matched, stock: matched.isInboundTransit ? 1 : 0 }];
         const totalStock = rows.reduce((sum, r) => sum + Math.max(0, r.stock || 0), 0);
         const mrp = rows[0]?.mrp || matched.mrp || 0;
 
@@ -1017,20 +1102,33 @@ app.get('/api/staff/stock-check', async (req, res) => {
                END
         `);
 
-        if (!matchRes.recordset || matchRes.recordset.length === 0) {
-            return res.json({ success: false, message: `No item found matching "${query}"` });
+        let matchedRow = matchRes.recordset && matchRes.recordset[0];
+        let fallbackTransitItem = null;
+        if (!matchedRow) {
+            fallbackTransitItem = await findSkuOrTransitFallback(query, cleanQ, paddedQ);
+            if (!fallbackTransitItem) {
+                return res.json({ success: false, message: `No item found matching "${query}"` });
+            }
+            matchedRow = {
+                article_no: fallbackTransitItem.articleNo,
+                itemName: fallbackTransitItem.itemName,
+                sectionName: fallbackTransitItem.sectionName,
+                subSectionName: fallbackTransitItem.subSectionName,
+                matchedBarcode: fallbackTransitItem.barcode,
+                matchedColor: fallbackTransitItem.color,
+                matchedSize: fallbackTransitItem.size
+            };
         }
 
-        const matchedRow = matchRes.recordset[0];
         const matchedArticle = matchedRow.article_no;
         const matchedItemName = matchedRow.itemName;
         const matchedSection = matchedRow.sectionName;
         const matchedSubSection = matchedRow.subSectionName;
 
         const variantReq = createRequest();
-        variantReq.input('art', sql.NVarChar, matchedArticle);
+        variantReq.input('art', sql.NVarChar, matchedArticle || '');
 
-        const variantsRes = await variantReq.query(`
+        const variantsRes = matchedArticle ? await variantReq.query(`
             SELECT 
                 s.product_Code as barcode,
                 s.article_no as articleNo,
@@ -1047,9 +1145,11 @@ app.get('/api/staff/stock-check', async (req, res) => {
             LEFT JOIN PMT01106 p WITH (NOLOCK) ON s.product_Code = p.product_code
             WHERE s.article_no = @art
             ORDER BY s.para1_name, s.para2_order, s.para2_name
-        `);
+        `) : { recordset: [] };
 
-        const rows = variantsRes.recordset || [];
+        const rows = (variantsRes.recordset && variantsRes.recordset.length > 0)
+            ? variantsRes.recordset
+            : (fallbackTransitItem ? [{ ...fallbackTransitItem, stock: fallbackTransitItem.isInboundTransit ? 1 : 0, vendorEan: '' }] : []);
         const totalStock = rows.reduce((sum, r) => sum + Math.max(0, r.stock || 0), 0);
         const mrp = rows[0]?.mrp || 0;
 

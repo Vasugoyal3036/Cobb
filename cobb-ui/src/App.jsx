@@ -303,6 +303,37 @@ axios.get = async (url, config) => {
           }));
         }
 
+        // 4. Inbound Transit Challan (parcels_transit) fallback before MRR completes
+        if (matched.length === 0) {
+          try {
+            const parcelSnap = await getDoc(doc(db, 'stores', targetStore, 'data', 'parcels_transit'));
+            if (parcelSnap.exists()) {
+              const pData = parcelSnap.data() || {};
+              const parcels = Array.isArray(pData.allParcels) ? pData.allParcels : (Array.isArray(pData.activeInTransit) ? pData.activeInTransit : []);
+              const transitItems = [];
+              parcels.forEach(p => {
+                if (Array.isArray(p.items)) p.items.forEach(it => transitItems.push(it));
+              });
+              matched = transitItems.filter(it => {
+                const code = String(it.code || '').trim().toLowerCase();
+                const codeClean = code.replace(/^0+/, '');
+                const art = String(it.article || '').trim().toLowerCase();
+                return code === qLower || (qClean && codeClean === qClean) || art === qLower;
+              }).map(it => ({
+                SKU: it.code,
+                ArticleNo: it.article || '',
+                ItemName: it.desc || 'Apparel (Inbound GIT)',
+                ProductType: 'Apparel',
+                subSectionName: '',
+                Color: it.p1 || 'Standard',
+                Size: it.p2 || 'Standard',
+                CurrentStock: Number(it.qty || 1),
+                MRP: Number(it.mrp || 0)
+              }));
+            }
+          } catch (parcelErr) {}
+        }
+
         if (matched.length > 0) {
           const targetArticle = matched[0].ArticleNo || matched[0].articleNo;
           const targetArticleNorm = String(targetArticle || '').trim().toUpperCase();

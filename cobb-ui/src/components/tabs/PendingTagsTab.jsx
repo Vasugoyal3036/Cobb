@@ -192,16 +192,45 @@ async function lookupBarcodeInCloudFallback(q, activeStore) {
       const art = String(it.ArticleNo || it.articleNo || '').trim().toLowerCase();
       return isBarcodeDuplicate(sku, q) || art === qLower;
     });
-    if (!match) return null;
-    return {
-      barcode: match.SKU || match.barcode || q,
-      articleNo: match.ArticleNo || match.articleNo || '',
-      itemName: match.ItemName || match.itemName || 'Apparel Item',
-      size: match.Size || match.size || 'Free',
-      color: match.Color || match.color || 'Standard',
-      sectionName: match.ProductType || match.sectionName || match.subSectionName || 'Apparel',
-      mrp: Number(match.MRP || match.mrp || 0)
-    };
+    if (match) {
+      return {
+        barcode: match.SKU || match.barcode || q,
+        articleNo: match.ArticleNo || match.articleNo || '',
+        itemName: match.ItemName || match.itemName || 'Apparel Item',
+        size: match.Size || match.size || 'Free',
+        color: match.Color || match.color || 'Standard',
+        sectionName: match.ProductType || match.sectionName || match.subSectionName || 'Apparel',
+        mrp: Number(match.MRP || match.mrp || 0)
+      };
+    }
+
+    // Fallback to Goods-In-Transit Challan items (parcels_transit) before MRR syncs to catalog
+    try {
+      const parcelSnap = await getDoc(doc(db, 'stores', storeId, 'data', 'parcels_transit'));
+      if (parcelSnap.exists()) {
+        const pData = parcelSnap.data() || {};
+        const parcels = Array.isArray(pData.allParcels) ? pData.allParcels : (Array.isArray(pData.activeInTransit) ? pData.activeInTransit : []);
+        for (const p of parcels) {
+          for (const it of (p.items || [])) {
+            const code = String(it.code || '').trim();
+            const art = String(it.article || '').trim().toLowerCase();
+            if (isBarcodeDuplicate(code, q) || (art && art === qLower)) {
+              return {
+                barcode: code || q,
+                articleNo: it.article || '',
+                itemName: it.desc || 'Apparel (Inbound GIT)',
+                size: it.p2 || 'Free',
+                color: it.p1 || 'Standard',
+                sectionName: 'Apparel',
+                mrp: Number(it.mrp || 0)
+              };
+            }
+          }
+        }
+      }
+    } catch (parcelErr) {}
+
+    return null;
   } catch (e) {
     return null;
   }
