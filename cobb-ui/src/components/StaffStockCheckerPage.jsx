@@ -42,11 +42,10 @@ import {
   subscribeToTeaExpenses,
   DEFAULT_SALESMEN
 } from '../utils/teaExpenses';
-import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 import { playSound } from '../utils/sound';
 import { isBarcodeDuplicate } from './tabs/PendingTagsTab';
-import ThermalTagModal from './ThermalTagModal';
-import ReportDefectModal from './ReportDefectModal';
+const ThermalTagModal = React.lazy(() => import('./ThermalTagModal'));
+const ReportDefectModal = React.lazy(() => import('./ReportDefectModal'));
 import { getColorDot } from './GunScannerModal';
 import OrsLogo from './OrsLogo';
 import {
@@ -836,6 +835,7 @@ export default function StaffStockCheckerPage({
     }
 
     try {
+      const { Html5Qrcode, Html5QrcodeSupportedFormats } = await import('html5-qrcode');
       const html5QrCode = new Html5Qrcode(scannerContainerId, {
         experimentalFeatures: {
           useBarCodeDetectorIfSupported: true
@@ -920,7 +920,7 @@ export default function StaffStockCheckerPage({
 
       // Background OCR Reader for numbers beneath barcode
       ocrIntervalRef.current = setInterval(async () => {
-        if (isOcrProcessingRef.current || isCodeResolvedRef.current || !html5QrCodeRef.current?.isScanning) return;
+        if ((typeof document !== 'undefined' && document.hidden) || isOcrProcessingRef.current || isCodeResolvedRef.current || !html5QrCodeRef.current?.isScanning) return;
         const currentVideo = document.querySelector(`#${scannerContainerId} video`);
         if (!currentVideo || currentVideo.readyState < 2) return;
 
@@ -959,6 +959,7 @@ export default function StaffStockCheckerPage({
       // 1. Try barcode decoding via html5QrCode
       let scanner = html5QrCodeRef.current;
       if (!scanner) {
+        const { Html5Qrcode } = await import('html5-qrcode');
         scanner = new Html5Qrcode(scannerContainerId);
         html5QrCodeRef.current = scanner;
       }
@@ -2633,45 +2634,49 @@ export default function StaffStockCheckerPage({
         </div>
       )}
 
-            {/* --- Thermal Replacement Garment Tag Modal --- */}
+      {/* --- Thermal Replacement Garment Tag Modal (Lazy Loaded) --- */}
       {thermalTagData && (
-        <ThermalTagModal
-          isOpen={Boolean(thermalTagData)}
-          onClose={() => setThermalTagData(null)}
-          tagData={thermalTagData}
-        />
+        <React.Suspense fallback={null}>
+          <ThermalTagModal
+            isOpen={Boolean(thermalTagData)}
+            onClose={() => setThermalTagData(null)}
+            tagData={thermalTagData}
+          />
+        </React.Suspense>
       )}
 
-      {/* --- Report Defect & Damage Modal --- */}
+      {/* --- Report Defect & Damage Modal (Lazy Loaded) --- */}
       {defectModalData && (
-        <ReportDefectModal
-          isOpen={Boolean(defectModalData)}
-          onClose={() => {
-            setDefectModalData(null);
-            scannerModeRef.current = 'lookup';
-            setScannerMode('lookup');
-          }}
-          initialBarcode={defectModalData?.barcode || ''}
-          initialArticle={defectModalData}
-          activeStore={activeStore}
-          API_BASE={API_BASE}
-          reportedBy={activeSalesman || 'Floor Staff'}
-          initialPrintSlip={false}
-          onQuarantineSuccess={(d) => {
-            setQuarantineInfo(d);
-            setPendingSuccessMsg(`Garment #${d.articleNo} (${d.size}) quarantined in Damage Bin!`);
-            setTimeout(() => setPendingSuccessMsg(''), 4000);
-            if (stockData?.articleNo) {
-              handleLookup(stockData.articleNo);
+        <React.Suspense fallback={null}>
+          <ReportDefectModal
+            isOpen={Boolean(defectModalData)}
+            onClose={() => {
+              setDefectModalData(null);
+              scannerModeRef.current = 'lookup';
+              setScannerMode('lookup');
+            }}
+            initialBarcode={defectModalData?.barcode || ''}
+            initialArticle={defectModalData}
+            activeStore={activeStore}
+            API_BASE={API_BASE}
+            reportedBy={activeSalesman || 'Floor Staff'}
+            initialPrintSlip={false}
+            onQuarantineSuccess={(d) => {
+              setQuarantineInfo(d);
+              setPendingSuccessMsg(`Garment #${d.articleNo} (${d.size}) quarantined in Damage Bin!`);
+              setTimeout(() => setPendingSuccessMsg(''), 4000);
+              if (stockData?.articleNo) {
+                handleLookup(stockData.articleNo);
             }
           }}
           onOpenScanner={() => {
             handleStartDefectScan();
           }}
-          onScanNext={() => {
-            handleStartDefectScan();
-          }}
-        />
+            onScanNext={() => {
+              handleStartDefectScan();
+            }}
+          />
+        </React.Suspense>
       )}
 
       {/* --- Add / Report Pending Tag Modal --- */}

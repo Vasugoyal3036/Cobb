@@ -40,23 +40,48 @@ export async function fetchWithOfflineFallback(key, url) {
   }
 }
 
+const POLL_INTERVAL_MS = 120000;
+
 export function subscribeToData(key, url, setter) {
-  // Initial fetch using the offline fallback mechanism
-  fetchWithOfflineFallback(key, url).then(data => {
-    setter(data);
-  });
-  
-  // Setup polling (will continue updating cache when online)
-  const interval = setInterval(() => {
-    axios.get(url).then(async res => {
+  let lastFetchAt = 0;
+
+  const refreshFromNetwork = () => {
+    lastFetchAt = Date.now();
+    return axios.get(url).then(async res => {
       if (res.data) {
         await localforage.setItem(key, res.data);
         setter(res.data);
       }
-    }).catch(err => {
-      // Silently fail on interval if offline, UI stays populated from last cache
+    }).catch(() => {
+      // Silently fail if offline; UI stays populated from last cache
     });
-  }, 120000);
-  
-  return () => clearInterval(interval);
+  };
+
+  // Initial fetch using the offline fallback mechanism
+  fetchWithOfflineFallback(key, url).then(data => {
+    lastFetchAt = Date.now();
+    setter(data);
+  });
+
+  // Pause background polling when tab/window is hidden to avoid idle CPU & network churn
+  const interval = setInterval(() => {
+    if (typeof document !== 'undefined' && document.hidden) return;
+    refreshFromNetwork();
+  }, POLL_INTERVAL_MS);
+
+  const handleVisibilityChange = () => {
+    if (typeof document !== 'undefined' && !document.hidden && (Date.now() - lastFetchAt) >= POLL_INTERVAL_MS) {
+      refreshFromNetwork();
+    }
+  };
+  if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+  }
+
+  return () => {
+    clearInterval(interval);
+    if (typeof document !== 'undefined' && typeof document.removeEventListener === 'function') {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }
+  };
 }

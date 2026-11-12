@@ -42,9 +42,9 @@ import {
   Briefcase,
   RotateCcw
 } from 'lucide-react';
-import ThermalTagModal from '../ThermalTagModal';
+const ThermalTagModal = React.lazy(() => import('../ThermalTagModal'));
 import PaginationControls, { usePagination } from '../PaginationControls';
-import ReportDefectModal from '../ReportDefectModal';
+const ReportDefectModal = React.lazy(() => import('../ReportDefectModal'));
 import { db } from '../../utils/firebase';
 import { doc, onSnapshot, setDoc, getDoc } from 'firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
@@ -3520,29 +3520,33 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
         </div>
       )}
 
-            {/* --- THERMAL GARMENT REPLACEMENT TAG MODAL --- */}
+      {/* --- THERMAL GARMENT REPLACEMENT TAG MODAL (Lazy Loaded) --- */}
       {thermalTagModalData && (
-        <ThermalTagModal
-          isOpen={Boolean(thermalTagModalData)}
-          onClose={() => setThermalTagModalData(null)}
-          tagData={thermalTagModalData}
-          onPrintSuccess={(pt) => {
-            showToastMsg(`Replacement tag printed for #${pt.barcode}`, 'success');
-          }}
-        />
+        <React.Suspense fallback={null}>
+          <ThermalTagModal
+            isOpen={Boolean(thermalTagModalData)}
+            onClose={() => setThermalTagModalData(null)}
+            tagData={thermalTagModalData}
+            onPrintSuccess={(pt) => {
+              showToastMsg(`Replacement tag printed for #${pt.barcode}`, 'success');
+            }}
+          />
+        </React.Suspense>
       )}
 
-      {/* --- REPORT DEFECT & DAMAGE MODAL --- */}
+      {/* --- REPORT DEFECT & DAMAGE MODAL (Lazy Loaded) --- */}
       {showDefectModal && (
-        <ReportDefectModal
-          isOpen={showDefectModal}
-          onClose={() => setShowDefectModal(false)}
-          userRole={currentRole}
-          onQuarantineSuccess={(d) => {
-            showToastMsg(`Garment #${d.articleNo} (${d.size}) quarantined in Damage Bin!`, 'success');
-            fetchDamages();
-          }}
-        />
+        <React.Suspense fallback={null}>
+          <ReportDefectModal
+            isOpen={showDefectModal}
+            onClose={() => setShowDefectModal(false)}
+            userRole={currentRole}
+            onQuarantineSuccess={(d) => {
+              showToastMsg(`Garment #${d.articleNo} (${d.size}) quarantined in Damage Bin!`, 'success');
+              fetchDamages();
+            }}
+          />
+        </React.Suspense>
       )}
 
       {/* --- ADD PENDING TAG MODAL --- */}
