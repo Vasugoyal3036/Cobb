@@ -567,4 +567,38 @@ describe('StaffStockCheckerPage [Floor Mobile Stock Checker]', () => {
     expect(screen.getByText(/Damage Bin & Quarantine Desk/i)).toBeDefined();
     expect(screen.getByRole('button', { name: /Scan Defect with Camera/i })).toBeDefined();
   });
+
+  it('falls back to quick-scan when stock-check returns non-JSON HTML or fails', async () => {
+    const fallbackPayload = {
+      success: true,
+      articleNo: 'FALLBACK-99',
+      itemName: 'LINEN SHIRT',
+      mrp: 2499,
+      totalStock: 4,
+      matchedColor: 'WHITE',
+      matchedBarcode: '0099887766',
+      colors: [
+        {
+          color: 'WHITE',
+          totalStock: 4,
+          sizes: [{ size: 'L', stock: 4, barcode: '0099887766' }]
+        }
+      ]
+    };
+
+    axios.get
+      .mockResolvedValueOnce({ data: '<!doctype html><html></html>' }) // HTML SPA fallback
+      .mockResolvedValueOnce({ data: fallbackPayload }); // /api/inventory/quick-scan
+
+    render(<StaffStockCheckerPage onClose={vi.fn()} />);
+
+    const input = screen.getByPlaceholderText(/Enter barcode or article no/i);
+    fireEvent.change(input, { target: { value: '99887766' } });
+    fireEvent.click(screen.getByRole('button', { name: /find/i }));
+
+    await waitFor(() => {
+      expect(screen.getAllByText('LINEN SHIRT').length).toBeGreaterThan(0);
+      expect(screen.getAllByText('FALLBACK-99').length).toBeGreaterThan(0);
+    });
+  });
 });

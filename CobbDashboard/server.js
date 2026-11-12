@@ -56,6 +56,12 @@ app.use('/api/alterations', alterationsRouter);
 const pendingTagsRouter = require('./routes/pending_tags');
 app.use('/api/pending-tags', pendingTagsRouter);
 
+const {
+    normalizeLookupQuery,
+    findMatchingSku,
+    createStockCheckHandler
+} = require('./routes/stock_check');
+
 const damagesRouter = require('./routes/damages');
 app.use('/api/damages', damagesRouter);
 
@@ -114,7 +120,7 @@ app.use((req, res, next) => {
         
         const originalJson = res.json;
         res.json = function(body) {
-            if (res.statusCode >= 200 && res.statusCode < 300 && body && !body.error) {
+            if (res.statusCode >= 200 && res.statusCode < 300 && body && body.success !== false && !body.error) {
                 globalApiCache.set(key, body, ttl);
             }
             return originalJson.call(this, body);
@@ -129,7 +135,7 @@ app.use((req, res, next) => {
 function invalidateSalesCache() {
     const keys = globalApiCache.keys();
     keys.forEach(k => {
-        if (k.includes('/api/sales') || k.includes('/api/analytics/hourly') || k.includes('/api/reports/eod') || k.includes('/api/customers/vip') || k.includes('/api/loyalty')) {
+        if (k.includes('/api/sales') || k.includes('/api/analytics/hourly') || k.includes('/api/reports/eod') || k.includes('/api/customers/vip') || k.includes('/api/loyalty') || k.includes('/api/staff/stock-check')) {
             globalApiCache.del(k);
         }
     });
@@ -778,63 +784,18 @@ app.get('/api/inventory/quick-scan', async (req, res) => {
             }
         }
 
-        const cleanDigits = query.replace(/^0+/, '') || query;
-        const paddedDigits = query.length < 10 && /^\d+$/.test(query) ? query.padStart(10, '0') : query;
+        const { cleanDigits, paddedDigits } = normalizeLookupQuery(query);
 
-        // Tier 1: Instant Direct Clustered Index Seek on product_Code / VENDOR_EAN_NO / article_no
-        // Uses pk_skunames clustered index for sub-30ms retrieval without table scans
-        const tier1Req = createRequest();
-        tier1Req.input('q', sql.NVarChar, query);
-        tier1Req.input('cleanDigits', sql.NVarChar, cleanDigits);
-        tier1Req.input('paddedDigits', sql.NVarChar, paddedDigits);
-
-        const tier1Res = await tier1Req.query(`
-            SELECT TOP 1 
-                s.product_Code as barcode,
-                s.article_no as articleNo,
-                ISNULL(s.article_name, s.section_name) as itemName, 
-                s.section_name as sectionName,
-                ISNULL(s.sub_section_name, '') as subSectionName,
-                ISNULL(s.para1_name, 'Standard') as color,
-                ISNULL(s.para2_name, 'Standard') as size,
-                ISNULL(s.para2_order, 99) as sizeOrder,
-                ISNULL(s.mrp, 0) as mrp
-            FROM SKU_NAMES s WITH (NOLOCK)
-            WHERE s.product_Code = @q 
-               OR s.product_Code = @cleanDigits
-               OR s.product_Code = @paddedDigits
-               OR s.VENDOR_EAN_NO = @q 
-               OR s.VENDOR_EAN_NO = @cleanDigits
-               OR s.article_no = @q
-        `);
-
-        let matched = tier1Res.recordset && tier1Res.recordset[0];
-
-        // Tier 2: Prefix fallback ONLY if Tier 1 found nothing (e.g. partial article prefix)
-        if (!matched) {
-            const tier2Req = createRequest();
-            tier2Req.input('q', sql.NVarChar, query);
-            const tier2Res = await tier2Req.query(`
-                SELECT TOP 1 
-                    s.product_Code as barcode,
-                    s.article_no as articleNo,
-                    ISNULL(s.article_name, s.section_name) as itemName, 
-                    s.section_name as sectionName,
-                    ISNULL(s.sub_section_name, '') as subSectionName,
-                    ISNULL(s.para1_name, 'Standard') as color,
-                    ISNULL(s.para2_name, 'Standard') as size,
-                    ISNULL(s.para2_order, 99) as sizeOrder,
-                    ISNULL(s.mrp, 0) as mrp
-                FROM SKU_NAMES s WITH (NOLOCK)
-                WHERE s.article_no LIKE @q + '%'
-            `);
-            matched = tier2Res.recordset && tier2Res.recordset[0];
-        }
-
-        // Tier 3: Live SKU or Inbound Transit Challan (DOCWSL_SKU_MIRROR) fallback before MRR syncs to SKU_NAMES
-        if (!matched) {
-            matched = await findSkuOrTransitFallback(query, cleanDigits, paddedDigits);
-        }
+        // Tiered SARGABLE index seek: exact barcode/article -> article prefix -> SKU/transit fallback
+        const matched = await findMatchingSku({
+            createRequest,
+            sql,
+            findSkuOrTransitFallback,
+            query,
+            cleanDigits,
+            paddedDigits,
+            allowNameWildcard: false
+        });
 
         if (!matched) {
             // Do NOT cache negative "not found" results so newly posted MRRs / incoming challans resolve immediately!
@@ -1056,322 +1017,20 @@ app.get('/api/inventory/quick-scan', async (req, res) => {
 // STAFF MOBILE STOCK CHECKER ENDPOINT
 // Fast lookup by barcode or articleNo returning all colors and sizes in each color
 // ===================================================================
-app.get('/api/staff/stock-check', async (req, res) => {
-    try {
-        const query = (req.query.q || req.query.barcode || req.query.articleNo || '').trim();
-        if (!query) {
-            return res.json({ success: false, message: 'Barcode or Article No is required' });
-        }
-
-        const cleanQ = query.replace(/^0+/, '');
-        const paddedQ = query.length < 10 && /^\d+$/.test(query) ? query.padStart(10, '0') : query;
-
-        const findReq = createRequest();
-        findReq.input('q', sql.NVarChar, query);
-        findReq.input('cleanQ', sql.NVarChar, cleanQ);
-        findReq.input('paddedQ', sql.NVarChar, paddedQ);
-        
-        const matchRes = await findReq.query(`
-            SELECT TOP 1 
-                s.article_no, 
-                ISNULL(s.article_name, s.section_name) as itemName, 
-                s.section_name as sectionName,
-                ISNULL(s.sub_section_name, '') as subSectionName,
-                s.product_Code as matchedBarcode,
-                ISNULL(s.para1_name, 'Standard') as matchedColor,
-                ISNULL(s.para2_name, 'Standard') as matchedSize
-            FROM SKU_NAMES s WITH (NOLOCK)
-            WHERE LTRIM(RTRIM(s.product_Code)) = @q 
-               OR LTRIM(RTRIM(s.article_no)) = @q 
-               OR LTRIM(RTRIM(s.VENDOR_EAN_NO)) = @q
-               OR s.product_Code = @q 
-               OR s.article_no = @q 
-               OR s.VENDOR_EAN_NO = @q
-               OR LTRIM(RTRIM(s.product_Code)) = @paddedQ
-               OR LTRIM(RTRIM(s.product_Code)) = @cleanQ
-               OR s.article_no LIKE @q + '%'
-               OR s.article_name LIKE '%' + @q + '%'
-            ORDER BY 
-               CASE 
-                 WHEN LTRIM(RTRIM(s.product_Code)) = @q THEN 1
-                 WHEN LTRIM(RTRIM(s.product_Code)) = @paddedQ THEN 2
-                 WHEN LTRIM(RTRIM(s.article_no)) = @q THEN 3
-                 WHEN LTRIM(RTRIM(s.VENDOR_EAN_NO)) = @q THEN 4
-                 WHEN s.article_no LIKE @q + '%' THEN 5
-                 ELSE 6 
-               END
-        `);
-
-        let matchedRow = matchRes.recordset && matchRes.recordset[0];
-        let fallbackTransitItem = null;
-        if (!matchedRow) {
-            fallbackTransitItem = await findSkuOrTransitFallback(query, cleanQ, paddedQ);
-            if (!fallbackTransitItem) {
-                return res.json({ success: false, message: `No item found matching "${query}"` });
-            }
-            matchedRow = {
-                article_no: fallbackTransitItem.articleNo,
-                itemName: fallbackTransitItem.itemName,
-                sectionName: fallbackTransitItem.sectionName,
-                subSectionName: fallbackTransitItem.subSectionName,
-                matchedBarcode: fallbackTransitItem.barcode,
-                matchedColor: fallbackTransitItem.color,
-                matchedSize: fallbackTransitItem.size
-            };
-        }
-
-        const matchedArticle = matchedRow.article_no;
-        const matchedItemName = matchedRow.itemName;
-        const matchedSection = matchedRow.sectionName;
-        const matchedSubSection = matchedRow.subSectionName;
-
-        const variantReq = createRequest();
-        variantReq.input('art', sql.NVarChar, matchedArticle || '');
-
-        const variantsRes = matchedArticle ? await variantReq.query(`
-            SELECT 
-                s.product_Code as barcode,
-                s.article_no as articleNo,
-                ISNULL(s.article_name, s.section_name) as itemName,
-                s.section_name as sectionName,
-                ISNULL(s.sub_section_name, '') as subSectionName,
-                ISNULL(s.para1_name, 'Standard') as color,
-                ISNULL(s.para2_name, 'Standard') as size,
-                ISNULL(s.para2_order, 99) as sizeOrder,
-                ISNULL(s.mrp, 0) as mrp,
-                ISNULL(p.quantity_in_stock, 0) as stock,
-                ISNULL(s.VENDOR_EAN_NO, '') as vendorEan
-            FROM SKU_NAMES s WITH (NOLOCK)
-            LEFT JOIN PMT01106 p WITH (NOLOCK) ON s.product_Code = p.product_code
-            WHERE s.article_no = @art
-            ORDER BY s.para1_name, s.para2_order, s.para2_name
-        `) : { recordset: [] };
-
-        const rows = (variantsRes.recordset && variantsRes.recordset.length > 0)
-            ? variantsRes.recordset
-            : (fallbackTransitItem ? [{ ...fallbackTransitItem, stock: fallbackTransitItem.isInboundTransit ? 1 : 0, vendorEan: '' }] : []);
-        const totalStock = rows.reduce((sum, r) => sum + Math.max(0, r.stock || 0), 0);
-        const mrp = rows[0]?.mrp || 0;
-
-        // Fetch active pending tags matching this article or any of its variant barcodes
-        let activePendingForArticle = [];
-        try {
-            const allPtags = (typeof pendingTagsRouter.readTags === 'function')
-                ? pendingTagsRouter.readTags()
-                : (fs.existsSync(path.join(__dirname, 'pending_tags.json'))
-                    ? JSON.parse(fs.readFileSync(path.join(__dirname, 'pending_tags.json'), 'utf8') || '[]')
-                    : []);
-            const artUpper = (matchedArticle || '').trim().toUpperCase();
-            const variantBarcodes = new Set(rows.map(r => (r.barcode || '').trim().toUpperCase()).filter(Boolean));
-
-            activePendingForArticle = allPtags.filter(t => {
-                if (t.status !== 'active') return false;
-                const tagArt = (t.articleNo || '').trim().toUpperCase();
-                const tagBarcode = (t.barcode || '').trim().toUpperCase();
-                return (tagArt && tagArt === artUpper) || (tagBarcode && variantBarcodes.has(tagBarcode));
-            });
-        } catch (ptagErr) {
-            console.warn('[StaffStockCheck] Error reading pending tags:', ptagErr.message);
-        }
-
-        const normalizeColor = (c) => String(c || 'Standard').trim().toUpperCase();
-        const normalizeSize = (s) => String(s || 'Standard').trim().toUpperCase();
-        const cleanSizeToken = (s) => normalizeSize(s).split(/[\s(]/)[0];
-
-        const getPendingTagsForVariant = (clr, sz, barcodes = []) => {
-            const normClr = normalizeColor(clr);
-            const normSz = normalizeSize(sz);
-            const tokenSz = cleanSizeToken(sz);
-            const bcodeSet = new Set(barcodes.map(b => String(b || '').trim().toUpperCase()).filter(Boolean));
-
-            return activePendingForArticle.filter(t => {
-                const tBc = String(t.barcode || '').trim().toUpperCase();
-                if (tBc && bcodeSet.has(tBc)) return true;
-
-                const tClr = normalizeColor(t.color);
-                if (tClr !== normClr && tClr !== 'STANDARD' && normClr !== 'STANDARD') return false;
-
-                const tSz = normalizeSize(t.size);
-                const tToken = cleanSizeToken(t.size);
-                return tSz === normSz || (tokenSz && tToken === tokenSz);
-            });
-        };
-
-        // Group variants by color and combine sizes (including sizes with pending tags)
-        const colorMap = {};
-        rows.forEach(r => {
-            const clr = (r.color || 'Standard').trim();
-            if (!colorMap[clr]) {
-                colorMap[clr] = {
-                    color: clr,
-                    totalStock: 0,
-                    pendingTagsCount: 0,
-                    sizeMap: {}
-                };
-            }
-            const stockQty = Math.max(0, r.stock || 0);
-            colorMap[clr].totalStock += stockQty;
-
-            const sz = (r.size || 'Standard').trim();
-            const matchingPending = getPendingTagsForVariant(clr, sz, [r.barcode]);
-            const pCount = matchingPending.length;
-
-            // Combine and include available items OR items with active pending tags
-            if (stockQty > 0 || pCount > 0) {
-                if (!colorMap[clr].sizeMap[sz]) {
-                    colorMap[clr].sizeMap[sz] = {
-                        size: sz,
-                        stock: 0,
-                        pendingTagsCount: 0,
-                        pendingTagDetails: [],
-                        hasPendingTag: false,
-                        barcode: r.barcode,
-                        barcodes: [],
-                        vendorEan: r.vendorEan,
-                        sizeOrder: r.sizeOrder || 99
-                    };
-                }
-                colorMap[clr].sizeMap[sz].stock += stockQty;
-                colorMap[clr].sizeMap[sz].pendingTagsCount = pCount;
-                colorMap[clr].sizeMap[sz].hasPendingTag = pCount > 0;
-                colorMap[clr].sizeMap[sz].pendingTagDetails = matchingPending.map(t => ({
-                    id: t.id,
-                    barcode: t.barcode,
-                    size: t.size,
-                    color: t.color,
-                    notes: t.notes || '',
-                    mrp: t.mrp || mrp,
-                    soldPrice: t.soldPrice,
-                    salesperson: t.salesperson || '',
-                    createdAt: t.createdAt
-                }));
-
-                if (r.barcode && !colorMap[clr].sizeMap[sz].barcodes.includes(r.barcode)) {
-                    colorMap[clr].sizeMap[sz].barcodes.push(r.barcode);
-                }
-            }
-        });
-
-        // Also check if any pending tag has a color/size not yet present in colorMap
-        activePendingForArticle.forEach(t => {
-            const clr = (t.color || 'Standard').trim();
-            const sz = (t.size || 'Standard').trim();
-            if (!colorMap[clr]) {
-                colorMap[clr] = {
-                    color: clr,
-                    totalStock: 0,
-                    pendingTagsCount: 0,
-                    sizeMap: {}
-                };
-            }
-            if (!colorMap[clr].sizeMap[sz]) {
-                const matchingPending = getPendingTagsForVariant(clr, sz, [t.barcode]);
-                colorMap[clr].sizeMap[sz] = {
-                    size: sz,
-                    stock: 0,
-                    pendingTagsCount: matchingPending.length,
-                    pendingTagDetails: matchingPending.map(x => ({
-                        id: x.id,
-                        barcode: x.barcode,
-                        size: x.size,
-                        color: x.color,
-                        notes: x.notes || '',
-                        mrp: x.mrp || mrp,
-                        soldPrice: x.soldPrice,
-                        salesperson: x.salesperson || '',
-                        createdAt: x.createdAt
-                    })),
-                    hasPendingTag: true,
-                    barcode: t.barcode || '',
-                    barcodes: t.barcode ? [t.barcode] : [],
-                    vendorEan: '',
-                    sizeOrder: 99
-                };
-            }
-        });
-
-        const colors = Object.values(colorMap).map(c => {
-            const sizeList = Object.values(c.sizeMap);
-            sizeList.sort((a, b) => a.sizeOrder - b.sizeOrder);
-            const colorPendingCount = sizeList.reduce((sum, s) => sum + (s.pendingTagsCount || 0), 0);
-            return {
-                color: c.color,
-                totalStock: c.totalStock,
-                pendingTagsCount: colorPendingCount,
-                hasPendingTags: colorPendingCount > 0,
-                sizes: sizeList
-            };
-        });
-
-        // Aggregated unique sizes across all colors
-        const sizeMap = {};
-        rows.forEach(r => {
-            const sz = (r.size || 'Standard').trim();
-            if (!sizeMap[sz]) {
-                sizeMap[sz] = { size: sz, stock: 0, pendingTagsCount: 0, hasPendingTag: false, barcode: r.barcode, sizeOrder: r.sizeOrder || 99 };
-            }
-            sizeMap[sz].stock += Math.max(0, r.stock || 0);
-        });
-
-        colors.forEach(c => {
-            (c.sizes || []).forEach(s => {
-                if (!sizeMap[s.size]) {
-                    sizeMap[s.size] = {
-                        size: s.size,
-                        stock: 0,
-                        pendingTagsCount: 0,
-                        hasPendingTag: false,
-                        barcode: s.barcode,
-                        sizeOrder: s.sizeOrder || 99
-                    };
-                }
-                sizeMap[s.size].pendingTagsCount += (s.pendingTagsCount || 0);
-                sizeMap[s.size].hasPendingTag = sizeMap[s.size].pendingTagsCount > 0;
-            });
-        });
-
-        const sizes = Object.values(sizeMap).sort((a, b) => a.sizeOrder - b.sizeOrder);
-
-        const specificMatch = rows.find(r => r.barcode === query || r.vendorEan === query) || rows[0];
-
-        return res.json({
-            success: true,
-            articleNo: matchedArticle,
-            itemName: matchedItemName,
-            sectionName: matchedSection,
-            subSectionName: matchedSubSection,
-            mrp,
-            totalStock,
-            hasPendingTags: activePendingForArticle.length > 0,
-            totalPendingTags: activePendingForArticle.length,
-            pendingTagsList: activePendingForArticle.map(t => ({
-                id: t.id,
-                barcode: t.barcode,
-                articleNo: t.articleNo || matchedArticle,
-                articleName: t.articleName || matchedItemName,
-                color: t.color,
-                size: t.size,
-                status: t.status,
-                notes: t.notes || '',
-                salesperson: t.salesperson || '',
-                mrp: t.mrp || mrp,
-                soldPrice: t.soldPrice,
-                createdAt: t.createdAt
-            })),
-            scannedBarcode: query,
-            matchedBarcode: specificMatch?.barcode || query,
-            matchedColor: specificMatch?.color || (colors[0]?.color || ''),
-            matchedSize: specificMatch?.size || '',
-            matchedStock: Math.max(0, specificMatch?.stock || 0),
-            colors,
-            sizes,
-            variants: rows
-        });
-    } catch (err) {
-        console.error('[StaffStockCheck API Error]', err);
-        return res.status(500).json({ success: false, error: err.message });
-    }
+// Staff Mobile Stock Checker Endpoint: Fast tiered SARGABLE lookup across barcodes, articles, colors & sizes
+const handleStaffStockCheck = createStockCheckHandler({
+    createRequest,
+    sql,
+    findSkuOrTransitFallback,
+    readPendingTags: () => (
+        typeof pendingTagsRouter.readTags === 'function'
+            ? pendingTagsRouter.readTags()
+            : (fs.existsSync(path.join(__dirname, 'pending_tags.json'))
+                ? JSON.parse(fs.readFileSync(path.join(__dirname, 'pending_tags.json'), 'utf8') || '[]')
+                : [])
+    )
 });
+app.get('/api/staff/stock-check', handleStaffStockCheck);
 
 app.get('/api/inventory/dead-stock', async (req, res) => {
     try {

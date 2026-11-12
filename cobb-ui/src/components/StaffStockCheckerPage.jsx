@@ -57,6 +57,7 @@ import {
   parseTagNumbers,
   getOcrWorker
 } from '../utils/tagScannerEngine';
+import { lookupStockInCloudFallback } from '../utils/stockCheckCloudFallback';
 
 const RECENT_SCANS_KEY = 'cobb_staff_stock_recent_scans';
 
@@ -422,6 +423,21 @@ export default function StaffStockCheckerPage({
     }
   }, [API_BASE, activeStore]);
 
+  const applyStockLookupResult = useCallback((data, fallbackQuery) => {
+    setStockData(data);
+    setSelectedColorFilter('ALL');
+    setSelectedSizeFilter('ALL');
+    saveToRecentScans(data);
+    const codeToCheck = data?.scannedBarcode || data?.matchedBarcode || fallbackQuery;
+    checkDamageQuarantine(codeToCheck);
+    try {
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate([60, 40, 60]);
+      }
+      playSound('click');
+    } catch {}
+  }, [saveToRecentScans, checkDamageQuarantine]);
+
   // Main Stock Lookup Function
   const handleLookup = useCallback(async (searchQuery) => {
     const q = String(searchQuery || query || '').trim();
@@ -431,30 +447,22 @@ export default function StaffStockCheckerPage({
     setErrorMsg('');
     setQuarantineInfo(null);
 
+    const isJsonObject = (payload) => payload && typeof payload === 'object' && !Array.isArray(payload);
+
     try {
       const endpoint = API_BASE
         ? `${API_BASE}/api/staff/stock-check?q=${encodeURIComponent(q)}`
         : `/api/staff/stock-check?q=${encodeURIComponent(q)}`;
 
       const res = await axios.get(endpoint, { timeout: 6000 });
+      if (!isJsonObject(res?.data)) {
+        throw new Error('Backend returned non-JSON response');
+      }
 
-      if (res?.data?.success) {
-        setStockData(res.data);
-        setSelectedColorFilter('ALL');
-        setSelectedSizeFilter('ALL');
-        saveToRecentScans(res.data);
-        const codeToCheck = res.data?.scannedBarcode || res.data?.matchedBarcode || q;
-        checkDamageQuarantine(codeToCheck);
-
-        // Haptic feedback & audio
-        try {
-          if (typeof navigator !== 'undefined' && navigator.vibrate) {
-            navigator.vibrate([60, 40, 60]);
-          }
-          playSound('click');
-        } catch {}
+      if (res.data.success) {
+        applyStockLookupResult(res.data, q);
       } else {
-        setErrorMsg(res?.data?.message || `No Cobb article found matching "${q}"`);
+        setErrorMsg(res.data.message || `No Cobb article found matching "${q}"`);
         setStockData(null);
         try { playSound('error'); } catch {}
       }
@@ -465,11 +473,16 @@ export default function StaffStockCheckerPage({
           ? `${API_BASE}/api/inventory/quick-scan?q=${encodeURIComponent(q)}`
           : `/api/inventory/quick-scan?q=${encodeURIComponent(q)}`;
         const fallbackRes = await axios.get(fallbackEndpoint, { timeout: 6000 });
-        if (fallbackRes.data && fallbackRes.data.success) {
-          setStockData(fallbackRes.data);
-          saveToRecentScans(fallbackRes.data);
-          const codeToCheck = fallbackRes.data?.scannedBarcode || fallbackRes.data?.matchedBarcode || q;
-          checkDamageQuarantine(codeToCheck);
+        if (isJsonObject(fallbackRes?.data) && fallbackRes.data.success) {
+          applyStockLookupResult(fallbackRes.data, q);
+          return;
+        }
+      } catch {}
+
+      try {
+        const cloudData = await lookupStockInCloudFallback(q, activeStore);
+        if (cloudData?.success) {
+          applyStockLookupResult(cloudData, q);
           return;
         }
       } catch {}
@@ -479,7 +492,7 @@ export default function StaffStockCheckerPage({
     } finally {
       setLoading(false);
     }
-  }, [query, API_BASE, saveToRecentScans, checkDamageQuarantine]);
+  }, [query, API_BASE, activeStore, applyStockLookupResult]);
 
   // Fast Floor Actions for Pending Tags
   const handleOpenAddPendingTag = (prefillColor = '', prefillSize = '') => {
