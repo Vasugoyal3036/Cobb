@@ -467,18 +467,34 @@ async function checkAndResolveBilledTags(tags, customQueryFn = null) {
 }
 
 // Background auto-resolver runs every 60 seconds (Balanced mode) under strict mutex lock + re-entrancy guard
+const PENDING_SYNC_STALE_MS = 45000;
 let pendingBackgroundSyncActive = false;
+let lastPendingSyncAt = 0;
+let lastPendingSyncMeta = {
+    resolvedTags: [],
+    restoredTags: [],
+    mergedFromCloudCount: 0,
+    syncedAt: null
+};
+
 const pendingSyncInterval = setInterval(() => {
     if (pendingBackgroundSyncActive) return;
     pendingBackgroundSyncActive = true;
     withTagsLock(async () => {
         try {
             const localTags = readTags();
-            const { tags, cloudChanged } = await mergeTagsWithCloud(localTags);
-            const { changed: posChanged } = await checkAndResolveBilledTags(tags);
+            const { tags, mergedFromCloudCount = 0, cloudChanged } = await mergeTagsWithCloud(localTags);
+            const { changed: posChanged, resolvedTags = [], restoredTags = [] } = await checkAndResolveBilledTags(tags);
             if (cloudChanged || posChanged) {
                 writeTags(tags);
             }
+            lastPendingSyncAt = Date.now();
+            lastPendingSyncMeta = {
+                resolvedTags,
+                restoredTags,
+                mergedFromCloudCount,
+                syncedAt: new Date(lastPendingSyncAt).toISOString()
+            };
         } catch (e) { }
     }).finally(() => {
         pendingBackgroundSyncActive = false;
@@ -488,19 +504,41 @@ if (typeof pendingSyncInterval.unref === 'function') pendingSyncInterval.unref()
 
 // --- ROUTES ---
 
-// GET /api/pending-tags — merge cloud tags, verify POS billing safely, and calculate summary metrics
+// GET /api/pending-tags — fast local read when synced recently; full cloud + POS reconciliation on ?sync=true or stale (>45s)
 router.get('/', async (req, res) => {
     try {
-        const resultPayload = await withTagsLock(async () => {
-            const localTags = readTags();
-            const { tags: mergedTags, mergedFromCloudCount, cloudChanged } = await mergeTagsWithCloud(localTags);
-            const { changed: posChanged, resolvedTags, restoredTags } = await checkAndResolveBilledTags(mergedTags);
+        const forceSync = req.query.sync === 'true';
+        const isStale = (Date.now() - lastPendingSyncAt) > PENDING_SYNC_STALE_MS;
 
-            if (cloudChanged || posChanged) {
-                writeTags(mergedTags);
+        const resultPayload = await withTagsLock(async () => {
+            let currentTags = readTags();
+            let resolvedTags = lastPendingSyncMeta.resolvedTags;
+            let restoredTags = lastPendingSyncMeta.restoredTags;
+            let mergedFromCloudCount = 0;
+
+            if (forceSync || isStale) {
+                const cloudRes = await mergeTagsWithCloud(currentTags);
+                currentTags = cloudRes.tags;
+                mergedFromCloudCount = cloudRes.mergedFromCloudCount || 0;
+
+                const posRes = await checkAndResolveBilledTags(currentTags);
+                resolvedTags = posRes.resolvedTags || [];
+                restoredTags = posRes.restoredTags || [];
+
+                if (cloudRes.cloudChanged || posRes.changed) {
+                    writeTags(currentTags);
+                }
+
+                lastPendingSyncAt = Date.now();
+                lastPendingSyncMeta = {
+                    resolvedTags,
+                    restoredTags,
+                    mergedFromCloudCount,
+                    syncedAt: new Date(lastPendingSyncAt).toISOString()
+                };
             }
 
-            const tags = mergedTags.filter(t => t.status !== 'void');
+            const tags = currentTags.filter(t => t.status !== 'void');
             const activeTags = tags.filter(t => t.status === 'active');
             const billedTags = tags.filter(t => t.status === 'billed');
 
@@ -554,14 +592,15 @@ router.get('/', async (req, res) => {
                 tags: visibleTags, // newest first
                 customerHolds,
                 syncReport: {
-                    checkedActiveCount: activeTags.length + resolvedTags.length,
+                    checkedActiveCount: activeTags.length + (forceSync || isStale ? resolvedTags.length : 0),
                     activeCountAfter: activeTags.length,
                     resolvedCount: resolvedTags.length,
                     resolvedTags,
                     restoredCount: restoredTags.length,
                     restoredTags,
                     mergedFromCloudCount,
-                    syncedAt: new Date().toISOString()
+                    cachedSync: !(forceSync || isStale),
+                    syncedAt: lastPendingSyncMeta.syncedAt || new Date().toISOString()
                 },
                 summary: {
                     totalTags: tags.length,

@@ -859,7 +859,10 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
   const fetchTags = useCallback(async (isManual = false) => {
     if (isManual) setRefreshing(true);
     try {
-      const res = await axios.get(`${API_BASE}/api/pending-tags`);
+      const url = isManual
+        ? `${API_BASE}/api/pending-tags?sync=true`
+        : `${API_BASE}/api/pending-tags`;
+      const res = await axios.get(url);
       if (res.data?.success) {
         setTags(res.data.tags || []);
         if (res.data.summary) setSummary(res.data.summary);

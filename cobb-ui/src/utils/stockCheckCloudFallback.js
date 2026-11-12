@@ -223,16 +223,33 @@ export function buildStockCheckFromCloudData({
   };
 }
 
+const CLOUD_CATALOG_CACHE_TTL_MS = 120000;
+const cloudCatalogCache = new Map();
+
+/**
+ * Clear the in-memory Firestore catalog cache (useful for manual refresh or unit tests).
+ */
+export function clearCloudStockCache() {
+  cloudCatalogCache.clear();
+}
+
 /**
  * Queries synced Firebase Firestore store catalogs when local/ngrok backend is unreachable.
+ * Caches snapshot payloads in memory per store for 2 minutes to make repeat scans instant.
  */
-export async function lookupStockInCloudFallback(query, activeStore) {
+export async function lookupStockInCloudFallback(query, activeStore, { bypassCache = false } = {}) {
   if (!query) return null;
   try {
+    const storeId = normalizeStoreId(activeStore);
+    const cached = !bypassCache ? cloudCatalogCache.get(storeId) : null;
+
+    if (cached && (Date.now() - cached.fetchedAt) < CLOUD_CATALOG_CACHE_TTL_MS) {
+      return buildStockCheckFromCloudData({ query, ...cached.data });
+    }
+
     const { db } = await import('./firebase');
     if (!db) return null;
     const { doc, getDoc } = await import('firebase/firestore');
-    const storeId = normalizeStoreId(activeStore);
 
     const [invSnap, masterSnap, parcelsSnap, ptagsSnap] = await Promise.allSettled([
       getDoc(doc(db, 'stores', storeId, 'data', 'inventory')),
@@ -253,13 +270,10 @@ export async function lookupStockInCloudFallback(query, activeStore) {
       ? (ptagsSnap.value.data()?.tags || [])
       : [];
 
-    return buildStockCheckFromCloudData({
-      query,
-      inventoryItems,
-      masterItems,
-      parcels,
-      pendingTags
-    });
+    const catalogData = { inventoryItems, masterItems, parcels, pendingTags };
+    cloudCatalogCache.set(storeId, { fetchedAt: Date.now(), data: catalogData });
+
+    return buildStockCheckFromCloudData({ query, ...catalogData });
   } catch {
     return null;
   }

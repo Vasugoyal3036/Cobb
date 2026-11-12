@@ -132,7 +132,10 @@ app.use((req, res, next) => {
 });
 
 // Cache invalidation endpoint (triggered on checkout/alteration/payment)
+let overviewHistoricalCache = null;
+
 function invalidateSalesCache() {
+    overviewHistoricalCache = null;
     const keys = globalApiCache.keys();
     keys.forEach(k => {
         if (k.includes('/api/sales') || k.includes('/api/analytics/hourly') || k.includes('/api/reports/eod') || k.includes('/api/customers/vip') || k.includes('/api/loyalty') || k.includes('/api/staff/stock-check')) {
@@ -251,6 +254,11 @@ function getPythonwExecutable() {
 
 app.get('/api/sales/overview', async (req, res) => {
     try {
+        const now = new Date();
+        const localDateKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        const bypassHistCache = req.query.refresh === 'true';
+        const hasValidHist = !bypassHistCache && overviewHistoricalCache && overviewHistoricalCache.dateKey === localDateKey;
+
         const batchResult = await sql.query(`
             DECLARE @todayStart DATE = CAST(GETDATE() AS DATE);
             DECLARE @yesterdayStart DATE = DATEADD(day, -1, @todayStart);
@@ -260,7 +268,10 @@ app.get('/api/sales/overview', async (req, res) => {
             DECLARE @thisMonthStart DATE = DATEFROMPARTS(YEAR(@todayStart), MONTH(@todayStart), 1);
             DECLARE @nextMonthStart DATE = DATEADD(month, 1, @thisMonthStart);
             DECLARE @lastMonthStart DATE = DATEADD(month, -1, @thisMonthStart);
+            DECLARE @periodScanStart DATE = CASE WHEN @lastMonthStart < @lastWeekStart THEN @lastMonthStart ELSE @lastWeekStart END;
+            IF @yesterdayStart < @periodScanStart SET @periodScanStart = @yesterdayStart;
 
+            -- 1. Live Today (with payment split)
             SELECT 
                 ISNULL(SUM(m.NET_AMOUNT), 0) as TotalSales, 
                 COUNT(m.CM_ID) as BillCount,
@@ -274,27 +285,22 @@ app.get('/api/sales/overview', async (req, res) => {
             LEFT JOIN VW_WL_CASHMEMOLIST w WITH (NOLOCK) ON m.CM_ID = w.MEMO_ID
             WHERE m.CM_TIME >= @todayStart AND m.CANCELLED = 0;
 
-            SELECT ISNULL(SUM(NET_AMOUNT), 0) as TotalSales, COUNT(CM_ID) as BillCount 
-            FROM CMM01106 WITH (NOLOCK) 
-            WHERE CM_TIME >= @yesterdayStart AND CM_TIME < @todayStart AND CANCELLED = 0;
-
-            SELECT ISNULL(SUM(NET_AMOUNT), 0) as TotalSales, COUNT(CM_ID) as BillCount
+            -- 2. Live thisWeek + thisMonth (single pass; includes closed periods on cold cache)
+            SELECT
+                ISNULL(SUM(CASE WHEN CM_TIME >= @yesterdayStart AND CM_TIME < @todayStart THEN NET_AMOUNT ELSE 0 END), 0) as YesterdaySales,
+                SUM(CASE WHEN CM_TIME >= @yesterdayStart AND CM_TIME < @todayStart THEN 1 ELSE 0 END) as YesterdayBills,
+                ISNULL(SUM(CASE WHEN CM_TIME >= @thisWeekStart THEN NET_AMOUNT ELSE 0 END), 0) as ThisWeekSales,
+                SUM(CASE WHEN CM_TIME >= @thisWeekStart THEN 1 ELSE 0 END) as ThisWeekBills,
+                ISNULL(SUM(CASE WHEN CM_TIME >= @lastWeekStart AND CM_TIME < @thisWeekStart THEN NET_AMOUNT ELSE 0 END), 0) as LastWeekSales,
+                SUM(CASE WHEN CM_TIME >= @lastWeekStart AND CM_TIME < @thisWeekStart THEN 1 ELSE 0 END) as LastWeekBills,
+                ISNULL(SUM(CASE WHEN CM_TIME >= @thisMonthStart AND CM_TIME < @nextMonthStart THEN NET_AMOUNT ELSE 0 END), 0) as ThisMonthSales,
+                SUM(CASE WHEN CM_TIME >= @thisMonthStart AND CM_TIME < @nextMonthStart THEN 1 ELSE 0 END) as ThisMonthBills,
+                ISNULL(SUM(CASE WHEN CM_TIME >= @lastMonthStart AND CM_TIME < @thisMonthStart THEN NET_AMOUNT ELSE 0 END), 0) as LastMonthSales,
+                SUM(CASE WHEN CM_TIME >= @lastMonthStart AND CM_TIME < @thisMonthStart THEN 1 ELSE 0 END) as LastMonthBills
             FROM CMM01106 WITH (NOLOCK)
-            WHERE CANCELLED = 0 AND CM_TIME >= @thisWeekStart;
+            WHERE CANCELLED = 0 AND CM_TIME >= ${hasValidHist ? 'CASE WHEN @thisWeekStart < @thisMonthStart THEN @thisWeekStart ELSE @thisMonthStart END' : '@periodScanStart'};
 
-            SELECT ISNULL(SUM(NET_AMOUNT), 0) as TotalSales, COUNT(CM_ID) as BillCount
-            FROM CMM01106 WITH (NOLOCK)
-            WHERE CANCELLED = 0 AND CM_TIME >= @lastWeekStart AND CM_TIME < @thisWeekStart;
-
-            SELECT ISNULL(SUM(NET_AMOUNT), 0) as TotalSales, COUNT(CM_ID) as BillCount
-            FROM CMM01106 WITH (NOLOCK)
-            WHERE CANCELLED = 0 AND CM_TIME >= @thisMonthStart AND CM_TIME < @nextMonthStart;
-
-            SELECT ISNULL(SUM(NET_AMOUNT), 0) as TotalSales, COUNT(CM_ID) as BillCount
-            FROM CMM01106 WITH (NOLOCK)
-            WHERE CANCELLED = 0 AND CM_TIME >= @lastMonthStart AND CM_TIME < @thisMonthStart;
-
-            -- 7. Day-Matched Week-over-Week (WoW) Benchmark (e.g. This Thursday vs Last Thursday)
+            ${hasValidHist ? '' : `-- 3. Day-Matched Week-over-Week Benchmark (computed once per day / cache reset)
             SELECT 
                 ISNULL(SUM(m.NET_AMOUNT), 0) as TotalSales, 
                 COUNT(m.CM_ID) as BillCount,
@@ -306,18 +312,30 @@ app.get('/api/sales/overview', async (req, res) => {
             FROM CMM01106 m WITH (NOLOCK)
             LEFT JOIN VW_BILL_PAYMODE p WITH (NOLOCK) ON m.CM_ID = p.MEMO_ID
             LEFT JOIN VW_WL_CASHMEMOLIST w WITH (NOLOCK) ON m.CM_ID = w.MEMO_ID
-            WHERE m.CM_TIME >= @lastWeekSameDayStart AND m.CM_TIME < DATEADD(day, 1, @lastWeekSameDayStart) AND m.CANCELLED = 0;
+            WHERE m.CM_TIME >= @lastWeekSameDayStart AND m.CM_TIME < DATEADD(day, 1, @lastWeekSameDayStart) AND m.CANCELLED = 0;`}
         `);
 
         const sets = batchResult.recordsets;
+        const agg = sets[1]?.[0] || {};
+
+        if (!hasValidHist) {
+            overviewHistoricalCache = {
+                dateKey: localDateKey,
+                yesterday: { TotalSales: agg.YesterdaySales || 0, BillCount: agg.YesterdayBills || 0 },
+                lastWeek: { TotalSales: agg.LastWeekSales || 0, BillCount: agg.LastWeekBills || 0 },
+                lastMonth: { TotalSales: agg.LastMonthSales || 0, BillCount: agg.LastMonthBills || 0 },
+                lastWeekSameDay: sets[2]?.[0] || { TotalSales: 0, BillCount: 0, DayName: '', DateStr: '', CashAmount: 0, CardAmount: 0, UPIAmount: 0 }
+            };
+        }
+
         const responseData = {
             today: sets[0]?.[0] || { TotalSales: 0, BillCount: 0, CashAmount: 0, CardAmount: 0, UPIAmount: 0 },
-            yesterday: sets[1]?.[0] || { TotalSales: 0, BillCount: 0 },
-            thisWeek: sets[2]?.[0] || { TotalSales: 0, BillCount: 0 },
-            lastWeek: sets[3]?.[0] || { TotalSales: 0, BillCount: 0 },
-            thisMonth: sets[4]?.[0] || { TotalSales: 0, BillCount: 0 },
-            lastMonth: sets[5]?.[0] || { TotalSales: 0, BillCount: 0 },
-            lastWeekSameDay: sets[6]?.[0] || { TotalSales: 0, BillCount: 0, DayName: '', DateStr: '', CashAmount: 0, CardAmount: 0, UPIAmount: 0 }
+            yesterday: overviewHistoricalCache.yesterday,
+            thisWeek: { TotalSales: agg.ThisWeekSales || 0, BillCount: agg.ThisWeekBills || 0 },
+            lastWeek: overviewHistoricalCache.lastWeek,
+            thisMonth: { TotalSales: agg.ThisMonthSales || 0, BillCount: agg.ThisMonthBills || 0 },
+            lastMonth: overviewHistoricalCache.lastMonth,
+            lastWeekSameDay: overviewHistoricalCache.lastWeekSameDay
         };
         
         res.json(responseData);
@@ -1368,8 +1386,11 @@ app.get('/api/customers/dormant', async (req, res) => {
 app.get('/api/customers/:phone/history', async (req, res) => {
     const { phone } = req.params;
     try {
-        const cleanPhone = phone.replace(/[^0-9]/g, '');
-        const result = await sql.query(`
+        const cleanPhone = String(phone || '').replace(/[^0-9]/g, '');
+        if (!cleanPhone) return res.json([]);
+        const reqSql = createRequest();
+        reqSql.input('phone', sql.NVarChar, cleanPhone);
+        const result = await reqSql.query(`
             SELECT TOP 50
                 d.ARTICLE_NO as ArticleNo,
                 d.ARTICLE_NAME as ArticleName,
@@ -1381,8 +1402,8 @@ app.get('/api/customers/:phone/history', async (req, res) => {
                 ISNULL(d.SECTION_NAME, 'Apparel') as Category
             FROM VW_CASHMEMO_PRINT_DET d WITH (NOLOCK)
             INNER JOIN VW_CASHMEMO_PRINT_MST m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
-            LEFT JOIN SKU_NAMES s ON d.PRODUCT_CODE = s.product_Code
-            WHERE m.CUSTOMER_CODE LIKE '%${cleanPhone}%' AND m.CANCELLED = 0
+            LEFT JOIN SKU_NAMES s WITH (NOLOCK) ON d.PRODUCT_CODE = s.product_Code
+            WHERE (m.CUSTOMER_CODE = @phone OR m.CUSTOMER_CODE LIKE '%' + @phone) AND m.CANCELLED = 0
             ORDER BY m.CM_TIME DESC
         `);
         res.json(result.recordset);
@@ -1391,40 +1412,48 @@ app.get('/api/customers/:phone/history', async (req, res) => {
     }
 });
 
-// Bulk VIP Itemized Wardrobe History for cloud sync
+// Bulk VIP Itemized Wardrobe History for cloud sync (single batched window-function query instead of N+1 queries)
 app.get('/api/customers/vip-history', async (req, res) => {
     try {
-        const vipsRes = await sql.query(`
-            SELECT TOP 25 RTRIM(LTRIM(A.CUSTOMER_CODE)) as Phone
-            FROM CMM01106 A WITH (NOLOCK)
-            WHERE A.CANCELLED = 0 AND A.CUSTOMER_CODE IS NOT NULL AND LEN(A.CUSTOMER_CODE) >= 10
-            GROUP BY A.CUSTOMER_CODE
-            ORDER BY SUM(A.NET_AMOUNT) DESC
+        const histRes = await sql.query(`
+            WITH TopVips AS (
+                SELECT TOP 25 A.CUSTOMER_CODE
+                FROM CMM01106 A WITH (NOLOCK)
+                WHERE A.CANCELLED = 0 AND A.CUSTOMER_CODE IS NOT NULL AND LEN(A.CUSTOMER_CODE) >= 10
+                GROUP BY A.CUSTOMER_CODE
+                ORDER BY SUM(A.NET_AMOUNT) DESC
+            ),
+            RankedItems AS (
+                SELECT
+                    RTRIM(LTRIM(m.CUSTOMER_CODE)) as Phone,
+                    d.ARTICLE_NO as ArticleNo,
+                    d.ARTICLE_NAME as ArticleName,
+                    d.QUANTITY as Quantity,
+                    d.NET as NetPrice,
+                    CONVERT(varchar, m.CM_TIME, 126) as BillDate,
+                    ISNULL(s.para1_name, 'Standard') as Color,
+                    ISNULL(s.para2_name, 'Standard') as Size,
+                    ISNULL(d.SECTION_NAME, 'Apparel') as Category,
+                    ROW_NUMBER() OVER (PARTITION BY m.CUSTOMER_CODE ORDER BY m.CM_TIME DESC) as rn
+                FROM VW_CASHMEMO_PRINT_DET d WITH (NOLOCK)
+                INNER JOIN VW_CASHMEMO_PRINT_MST m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
+                INNER JOIN TopVips tv ON m.CUSTOMER_CODE = tv.CUSTOMER_CODE
+                LEFT JOIN SKU_NAMES s WITH (NOLOCK) ON d.PRODUCT_CODE = s.product_Code
+                WHERE m.CANCELLED = 0
+            )
+            SELECT Phone, ArticleNo, ArticleName, Quantity, NetPrice, BillDate, Color, Size, Category
+            FROM RankedItems
+            WHERE rn <= 15
+            ORDER BY Phone, BillDate DESC
         `);
 
         const map = {};
-        for (const row of vipsRes.recordset) {
-            const cleanPhone = (row.Phone || '').replace(/[^0-9]/g, '');
+        for (const row of (histRes.recordset || [])) {
+            const cleanPhone = String(row.Phone || '').replace(/[^0-9]/g, '');
             if (!cleanPhone) continue;
-            try {
-                const histRes = await sql.query(`
-                    SELECT TOP 15
-                        d.ARTICLE_NO as ArticleNo,
-                        d.ARTICLE_NAME as ArticleName,
-                        d.QUANTITY as Quantity,
-                        d.NET as NetPrice,
-                        CONVERT(varchar, m.CM_TIME, 126) as BillDate,
-                        ISNULL(s.para1_name, 'Standard') as Color,
-                        ISNULL(s.para2_name, 'Standard') as Size,
-                        ISNULL(d.SECTION_NAME, 'Apparel') as Category
-                    FROM VW_CASHMEMO_PRINT_DET d WITH (NOLOCK)
-                    INNER JOIN VW_CASHMEMO_PRINT_MST m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
-                    LEFT JOIN SKU_NAMES s ON d.PRODUCT_CODE = s.product_Code
-                    WHERE m.CUSTOMER_CODE LIKE '%${cleanPhone}%' AND m.CANCELLED = 0
-                    ORDER BY m.CM_TIME DESC
-                `);
-                map[cleanPhone] = histRes.recordset;
-            } catch (err) {}
+            if (!map[cleanPhone]) map[cleanPhone] = [];
+            const { Phone, ...item } = row;
+            map[cleanPhone].push(item);
         }
         res.json(map);
     } catch (err) {
@@ -1538,15 +1567,8 @@ app.get('/api/sales/bill-lookup/:query', async (req, res) => {
         return res.status(400).json({ error: 'Search query must be at least 3 characters' });
     }
     try {
-        const cleanQuery = rawQuery.replace(/'/g, "''");
         const isNumeric = /^\d+$/.test(rawQuery);
-        
-        let whereClause = `m.CM_NO LIKE '%${cleanQuery}%'`;
-        if (isNumeric) {
-            whereClause = `(m.CUSTOMER_CODE LIKE '%${cleanQuery}%' OR m.CM_NO LIKE '%${cleanQuery}%')`;
-        }
-
-        const billsResult = await sql.query(`
+        const billSelectCols = `
             SELECT TOP 10
                 m.CM_ID as BillId,
                 m.CM_NO as BillNumber,
@@ -1557,9 +1579,33 @@ app.get('/api/sales/bill-lookup/:query', async (req, res) => {
                 DATEDIFF(day, m.CM_TIME, GETDATE()) as DaysAgo
             FROM CMM01106 m WITH (NOLOCK)
             LEFT JOIN CUSTDYM c WITH (NOLOCK) ON m.CUSTOMER_CODE = c.CUSTOMER_CODE
-            WHERE ${whereClause} AND m.CANCELLED = 0
+        `;
+
+        // Tier 1: SARGABLE exact/prefix seek on CM_NO or CUSTOMER_CODE
+        const exactReq = createRequest();
+        exactReq.input('q', sql.NVarChar, rawQuery);
+        const exactWhere = isNumeric
+            ? `(m.CUSTOMER_CODE = @q OR m.CM_NO = @q OR m.CUSTOMER_CODE LIKE @q + '%' OR m.CM_NO LIKE @q + '%')`
+            : `(m.CM_NO = @q OR m.CM_NO LIKE @q + '%')`;
+        let billsResult = await exactReq.query(`
+            ${billSelectCols}
+            WHERE ${exactWhere} AND m.CANCELLED = 0
             ORDER BY m.CM_TIME DESC
         `);
+
+        // Tier 2: Parameterized substring fallback only if exact/prefix search returned empty
+        if (!billsResult.recordset || billsResult.recordset.length === 0) {
+            const wildReq = createRequest();
+            wildReq.input('q', sql.NVarChar, rawQuery);
+            const wildWhere = isNumeric
+                ? `(m.CUSTOMER_CODE LIKE '%' + @q + '%' OR m.CM_NO LIKE '%' + @q + '%')`
+                : `m.CM_NO LIKE '%' + @q + '%'`;
+            billsResult = await wildReq.query(`
+                ${billSelectCols}
+                WHERE ${wildWhere} AND m.CANCELLED = 0
+                ORDER BY m.CM_TIME DESC
+            `);
+        }
 
         const bills = billsResult.recordset || [];
         if (bills.length === 0) {
@@ -1609,38 +1655,40 @@ app.get('/api/sales/bill-lookup/:query', async (req, res) => {
 const handleSalesLiveOrHistory = async (req, res) => {
     try {
         const { date, startDate, endDate, days, search, limit: reqLimit } = req.query;
-        const maxLimit = Math.min(parseInt(reqLimit, 10) || 100, 500);
+        const maxLimit = Math.min(Math.max(parseInt(reqLimit, 10) || 100, 1), 500);
+        const liveReq = createRequest();
 
         let dateClause = 'm.CM_TIME >= CAST(GETDATE() AS DATE)';
 
         if (date) {
             const dateStr = String(date).trim().toLowerCase();
             if (dateStr === 'yesterday') {
-                dateClause = 'CAST(m.CM_TIME AS DATE) = CAST(DATEADD(day, -1, GETDATE()) AS DATE)';
+                dateClause = 'm.CM_TIME >= CAST(DATEADD(day, -1, GETDATE()) AS DATE) AND m.CM_TIME < CAST(GETDATE() AS DATE)';
             } else if (dateStr === 'today') {
                 dateClause = 'm.CM_TIME >= CAST(GETDATE() AS DATE)';
             } else if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-                dateClause = `CAST(m.CM_TIME AS DATE) = '${dateStr.replace(/'/g, "''")}'`;
+                liveReq.input('targetDate', sql.Date, dateStr);
+                dateClause = 'm.CM_TIME >= @targetDate AND m.CM_TIME < DATEADD(day, 1, @targetDate)';
             }
-        } else if (startDate && endDate) {
-            const s = String(startDate).replace(/'/g, "''");
-            const e = String(endDate).replace(/'/g, "''");
-            dateClause = `CAST(m.CM_TIME AS DATE) >= '${s}' AND CAST(m.CM_TIME AS DATE) <= '${e}'`;
+        } else if (startDate && endDate && /^\d{4}-\d{2}-\d{2}$/.test(String(startDate).trim()) && /^\d{4}-\d{2}-\d{2}$/.test(String(endDate).trim())) {
+            liveReq.input('startDate', sql.Date, String(startDate).trim());
+            liveReq.input('endDate', sql.Date, String(endDate).trim());
+            dateClause = 'm.CM_TIME >= @startDate AND m.CM_TIME < DATEADD(day, 1, @endDate)';
         } else if (days) {
             const numDays = Math.max(1, Math.min(parseInt(days, 10) || 7, 90));
-            dateClause = `m.CM_TIME >= CAST(DATEADD(day, -${numDays}, GETDATE()) AS DATE)`;
+            liveReq.input('numDays', sql.Int, numDays);
+            dateClause = 'm.CM_TIME >= CAST(DATEADD(day, -@numDays, GETDATE()) AS DATE)';
         } else if (req.path === '/api/sales/history') {
-            // Default for history endpoint if no param: last 7 days
             dateClause = 'm.CM_TIME >= CAST(DATEADD(day, -7, GETDATE()) AS DATE)';
         }
 
         let searchClause = '';
         if (search && String(search).trim() !== '') {
-            const cleanSearch = String(search).trim().replace(/'/g, "''");
-            searchClause = ` AND (m.CM_NO LIKE '%${cleanSearch}%' OR m.CUSTOMER_CODE LIKE '%${cleanSearch}%' OR c.CUSTOMER_FNAME LIKE '%${cleanSearch}%' OR c.CUSTOMER_LNAME LIKE '%${cleanSearch}%')`;
+            liveReq.input('search', sql.NVarChar, String(search).trim());
+            searchClause = ` AND (m.CM_NO LIKE '%' + @search + '%' OR m.CUSTOMER_CODE LIKE '%' + @search + '%' OR c.CUSTOMER_FNAME LIKE '%' + @search + '%' OR c.CUSTOMER_LNAME LIKE '%' + @search + '%')`;
         }
 
-        const result = await sql.query(`
+        const result = await liveReq.query(`
             SELECT TOP ${maxLimit} 
                 m.CM_ID as BillId,
                 m.CM_NO as BillNumber,
