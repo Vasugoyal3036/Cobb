@@ -466,8 +466,11 @@ async function checkAndResolveBilledTags(tags, customQueryFn = null) {
     }
 }
 
-// Background auto-resolver runs every 30 seconds under strict mutex lock + cloud merge
+// Background auto-resolver runs every 60 seconds (Balanced mode) under strict mutex lock + re-entrancy guard
+let pendingBackgroundSyncActive = false;
 const pendingSyncInterval = setInterval(() => {
+    if (pendingBackgroundSyncActive) return;
+    pendingBackgroundSyncActive = true;
     withTagsLock(async () => {
         try {
             const localTags = readTags();
@@ -477,8 +480,10 @@ const pendingSyncInterval = setInterval(() => {
                 writeTags(tags);
             }
         } catch (e) { }
+    }).finally(() => {
+        pendingBackgroundSyncActive = false;
     });
-}, 30000);
+}, 60000);
 if (typeof pendingSyncInterval.unref === 'function') pendingSyncInterval.unref();
 
 // --- ROUTES ---

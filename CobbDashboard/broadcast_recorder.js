@@ -52,6 +52,6 @@ async function syncLedger() {
 // Initial sync
 syncLedger();
 
-// Sync every 20 seconds
-const interval = setInterval(syncLedger, 20000);
+// Sync every 60 seconds (Balanced mode)
+const interval = setInterval(syncLedger, 60000);
 

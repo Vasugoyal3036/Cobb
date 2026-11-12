@@ -196,8 +196,8 @@ const LoginScreen = ({ onSetup }) => {
 
       {/* Top Header Branding */}
       <header className="w-full max-w-md mx-auto text-center z-10 pt-2 sm:pt-4">
-        <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-white/[0.04] border border-white/10 backdrop-blur-md mb-3 shadow-lg">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+        <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-slate-900/90 border border-white/10 mb-3 shadow-lg">
+          <span className="w-2 h-2 rounded-full bg-emerald-400" />
           <span className="text-[11px] font-bold tracking-wide text-slate-300">
             {activeStoreObj?.name}
           </span>
@@ -235,7 +235,7 @@ const LoginScreen = ({ onSetup }) => {
       {/* Main Authentication Card */}
       <main className="w-full max-w-md mx-auto my-auto z-10 py-3">
         {/* Role Selector Tabs */}
-        <div className="grid grid-cols-3 gap-2 p-1 bg-white/[0.03] border border-white/10 rounded-2xl backdrop-blur-xl mb-4 shadow-xl">
+        <div className="grid grid-cols-3 gap-2 p-1 bg-slate-900/90 border border-white/10 rounded-2xl mb-4 shadow-xl">
           {ROLES.map((r) => {
             const isSelected = selectedRole === r.id;
             return (
@@ -257,7 +257,7 @@ const LoginScreen = ({ onSetup }) => {
         </div>
 
         {/* PIN Entry Box */}
-        <div className={`bg-slate-900/80 border border-white/10 rounded-3xl p-5 sm:p-6 backdrop-blur-2xl shadow-2xl relative transition-all duration-300 ${
+        <div className={`bg-slate-900 border border-white/10 rounded-3xl p-5 sm:p-6 shadow-2xl relative transition-colors duration-200 ${
           shake ? 'translate-x-2 border-red-500/60' : ''
         }`}>
           {/* User Header */}

@@ -79,7 +79,7 @@ const CheckoutNotificationToast = ({ notification, onClose, onOpenBill, onOpenEo
 
   return (
     <div className="fixed top-4 right-4 left-4 sm:left-auto sm:w-[440px] z-[9999] animate-bounce-in shadow-2xl transition-all duration-300">
-      <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white border ${borderColor} p-4 backdrop-blur-xl`}>
+      <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-900 via-slate-800 to-indigo-950 text-white border ${borderColor} p-4`}>
         {/* Glow ambient light */}
         <div className={`absolute -top-12 -left-12 w-32 h-32 ${glowColor} rounded-full blur-2xl pointer-events-none`} />
         <div className="absolute -bottom-12 -right-12 w-32 h-32 bg-indigo-500/20 rounded-full blur-2xl pointer-events-none" />

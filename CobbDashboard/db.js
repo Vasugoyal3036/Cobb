@@ -4,6 +4,8 @@ const { loadConfig } = require('./config_manager');
 
 let currentPool = null;
 let reconnectPromise = null;
+let lastConnectedAt = 0;
+const MIN_RECONNECT_COOLDOWN_MS = 10000;
 const rawQuery = sql.query.bind(sql);
 let dbStatus = {
     connected: false,
@@ -23,16 +25,17 @@ function buildSqlConfig(dbCfg = null) {
     const cfg = {
         server: configData.server || 'localhost',
         database: configData.database || 'RPD_AVATAR01_NEW_ST_POS',
-        requestTimeout: 60000,
+        requestTimeout: 45000,
         connectionTimeout: 15000,
         pool: {
-            max: 20,
-            min: 2,
-            idleTimeoutMillis: 60000
+            max: 10,
+            min: 1,
+            idleTimeoutMillis: 60000,
+            acquireTimeoutMillis: 30000
         },
         options: {
             trustedConnection: isTrusted,
-            requestTimeout: 60000
+            requestTimeout: 45000
         }
     };
 
@@ -56,11 +59,13 @@ async function connectDB(customDbConfig = null) {
     dbStatus.database = sqlConfig.database;
 
     try {
-        if (currentPool) {
-            try { await currentPool.close(); } catch (e) { /* ignore */ }
+        const previousPool = currentPool;
+        const newPool = await sql.connect(sqlConfig);
+        currentPool = newPool;
+        lastConnectedAt = Date.now();
+        if (previousPool && previousPool !== newPool) {
+            try { await previousPool.close(); } catch (e) { /* ignore */ }
         }
-
-        currentPool = await sql.connect(sqlConfig);
         dbStatus.connected = true;
         dbStatus.lastError = null;
         dbStatus.lastChecked = new Date().toISOString();
@@ -97,8 +102,17 @@ async function connectDB(customDbConfig = null) {
 function isConnectionLossError(err) {
     const message = String(err?.message || err || '').toLowerCase();
     const code = String(err?.code || '').toUpperCase();
-    // Do not reconnect on individual SQL execution / request timeouts (connection pool is still valid)
-    if (code === 'ETIMEOUT' || message.includes('request timeout') || message.includes('request timed out')) {
+    // Never teardown the pool on individual query/acquire timeouts or aborted operations
+    if (
+        code === 'ETIMEOUT' ||
+        code === 'EABORT' ||
+        message.includes('request timeout') ||
+        message.includes('request timed out') ||
+        message.includes('query timeout expired') ||
+        message.includes('timeout expired') ||
+        message.includes('pendingoperation') ||
+        message.includes('aborted')
+    ) {
         return false;
     }
     return message.includes('no connection is specified') ||
@@ -115,6 +129,9 @@ function isConnectionLossError(err) {
 }
 
 async function reconnectOnce() {
+    if (currentPool && currentPool.connected && (Date.now() - lastConnectedAt) < MIN_RECONNECT_COOLDOWN_MS) {
+        return { success: true };
+    }
     if (!reconnectPromise) {
         reconnectPromise = connectDB().finally(() => {
             reconnectPromise = null;
@@ -220,5 +237,6 @@ module.exports = {
     testDatabaseConnection,
     getDbStatus,
     getPool,
-    createRequest
+    createRequest,
+    isConnectionLossError
 };

@@ -41,7 +41,7 @@ export const ToastProvider = ({ children }) => {
               if (toast.onClick) toast.onClick();
               removeToast(toast.id);
             }}
-            className="pointer-events-auto bg-slate-900/95 backdrop-blur text-white rounded-2xl shadow-2xl border border-slate-800/90 p-4 min-w-[340px] max-w-sm flex items-start gap-3.5 animate-slide-in relative overflow-hidden cursor-pointer hover:border-emerald-500/50 transition-all group"
+            className="pointer-events-auto bg-slate-900 text-white rounded-2xl shadow-2xl border border-slate-800/90 p-4 min-w-[340px] max-w-sm flex items-start gap-3.5 animate-slide-in relative overflow-hidden cursor-pointer hover:border-emerald-500/50 transition-colors group"
           >
             <div className="p-2.5 bg-emerald-500/10 text-emerald-400 rounded-xl border border-emerald-500/20 shrink-0">
               <Zap className="w-5 h-5" />

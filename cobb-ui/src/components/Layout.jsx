@@ -278,7 +278,7 @@ const Layout = ({
     const interval = setInterval(() => {
       if (typeof document !== 'undefined' && document.hidden) return;
       fetchHealth();
-    }, 15000);
+    }, 60000);
     return () => clearInterval(interval);
   }, [API_BASE]);
 
@@ -348,12 +348,12 @@ const Layout = ({
       {isMobileMenuOpen && (
         <div
           onClick={() => setIsMobileMenuOpen(false)}
-          className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-30 lg:hidden"
+          className="fixed inset-0 bg-slate-950/80 z-30 lg:hidden"
         />
       )}
 
-      {/* Sidebar Navigation - Glassmorphism Floating Theme */}
-      <div className={`fixed lg:static inset-y-0 left-0 lg:my-4 lg:ml-4 lg:mr-2 lg:h-[calc(100vh-32px)] lg:rounded-[2rem] flex flex-col z-40 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isMobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0'} ${isLeftSidebarCollapsed ? 'w-[80px]' : 'w-[85vw] max-w-xs lg:w-64'} ${darkMode ? 'bg-[#0d111a] lg:bg-white/[0.03] backdrop-blur-xl border-r lg:border border-white/[0.08] shadow-[0_8px_32px_0_rgba(0,0,0,0.6)]' : 'bg-white lg:bg-white/80 backdrop-blur-xl border-r lg:border border-slate-200/50 shadow-[0_8px_30px_rgb(0,0,0,0.06)]'}`}>
+      {/* Sidebar Navigation - Crisp Solid Low-CPU Theme */}
+      <div className={`fixed lg:static inset-y-0 left-0 lg:my-4 lg:ml-4 lg:mr-2 lg:h-[calc(100vh-32px)] lg:rounded-[2rem] flex flex-col z-40 transition-all duration-300 ${isMobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0'} ${isLeftSidebarCollapsed ? 'w-[80px]' : 'w-[85vw] max-w-xs lg:w-64'} ${darkMode ? 'bg-[#0d111a] border-r lg:border border-white/[0.08] shadow-[0_8px_24px_0_rgba(0,0,0,0.6)]' : 'bg-white border-r lg:border border-slate-200/80 shadow-[0_8px_24px_rgb(0,0,0,0.06)]'}`}>
         <div className={`p-4 lg:p-5 pb-3 flex items-center border-b transition-all duration-500 pt-safe ${isLeftSidebarCollapsed ? 'justify-center px-2' : 'justify-between'} ${darkMode ? 'border-white/[0.06]' : 'border-slate-100'}`}>
           <div className="flex items-center gap-2.5">
             <OrsLogo size={38} />
@@ -508,9 +508,9 @@ const Layout = ({
       {/* Main Content Area */}
       <div className={`flex-1 overflow-auto relative min-w-0 pb-28 lg:pb-0 transition-colors duration-200 lg:my-4 lg:mx-2 lg:rounded-[2rem] border ${darkMode ? 'bg-[#0f1115] border-white/[0.05] shadow-[inset_0_0_40px_rgba(0,0,0,0.5)]' : 'bg-white border-slate-200/50 shadow-sm'}`}>
 
-        {/* Top App Bar (Mobile Only — Native Mobile App Bar with Clean Controls) */}
-        <header className={`lg:hidden px-3.5 py-2.5 border-b sticky top-0 z-30 transition-colors backdrop-blur-2xl select-none pt-safe ${
-          darkMode ? 'bg-[#0d1017]/92 border-white/[0.08] text-white shadow-sm' : 'bg-white/92 border-slate-200/90 text-slate-800 shadow-xs'
+        {/* Top App Bar (Mobile Only — Native Mobile App Bar with Crisp Controls) */}
+        <header className={`lg:hidden px-3.5 py-2.5 border-b sticky top-0 z-30 transition-colors select-none pt-safe ${
+          darkMode ? 'bg-[#0d1017] border-white/[0.08] text-white shadow-sm' : 'bg-white border-slate-200/90 text-slate-800 shadow-xs'
         }`}>
           <div className="flex items-center justify-between gap-2 max-w-full">
             {/* Left: Hamburger Drawer + Branch Name & Live Indicator */}
@@ -534,9 +534,6 @@ const Layout = ({
                       {AVAILABLE_STORES.find(s => s.id === activeStore)?.shortName || 'Goyal Pundri'}
                     </span>
                     <span className="relative flex h-2 w-2 shrink-0">
-                      {(systemStatus?.isOnline ?? true) && (
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                      )}
                       <span className={`relative inline-flex rounded-full h-2 w-2 ${(systemStatus?.isOnline ?? true) ? 'bg-emerald-500' : 'bg-rose-500'}`} />
                     </span>
                   </div>
@@ -594,7 +591,7 @@ const Layout = ({
               >
                 {notificationsEnabled ? <BellRing className="w-4 h-4 text-indigo-400" /> : <Bell className="w-4 h-4 text-slate-400" />}
                 <span className={`absolute top-1.5 right-1.5 w-2 h-2 rounded-full ${
-                  notificationsEnabled ? 'bg-emerald-500' : 'bg-amber-500 animate-ping'
+                  notificationsEnabled ? 'bg-emerald-500' : 'bg-amber-500'
                 }`} />
               </button>
 
@@ -639,7 +636,7 @@ const Layout = ({
         }>
           {/* 1-Tap Biometric Setup Banner on Mobile & Desktop if not yet enrolled */}
           {showBiometricBanner && (
-            <div className="mb-4 p-3 sm:p-4 rounded-2xl bg-gradient-to-r from-amber-950/70 via-slate-900/90 to-blue-950/70 border border-amber-500/40 flex items-center justify-between gap-3 shadow-lg backdrop-blur-md">
+            <div className="mb-4 p-3 sm:p-4 rounded-2xl bg-gradient-to-r from-amber-950 via-slate-900 to-blue-950 border border-amber-500/40 flex items-center justify-between gap-3 shadow-lg">
               <div className="flex items-center gap-2.5 min-w-0">
                 <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
                   <Fingerprint className="w-4 h-4" />
@@ -670,7 +667,7 @@ const Layout = ({
 
           {/* Multi-Store Executive HQ Mode Banner (Owner Exclusive) */}
           {activeStore === 'ALL' && currentRole === 'owner' && (
-            <div className="mb-5 p-4 rounded-2xl bg-gradient-to-r from-blue-950/70 via-indigo-950/60 to-purple-950/70 border border-blue-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xl backdrop-blur-md">
+            <div className="mb-5 p-4 rounded-2xl bg-gradient-to-r from-blue-950 via-indigo-950 to-purple-950 border border-blue-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xl">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl bg-blue-600 text-white font-black text-xs flex items-center justify-center shadow-lg shadow-blue-500/30 shrink-0">
                   HQ
@@ -718,25 +715,21 @@ const Layout = ({
             : 'shadow-[0_8px_30px_rgb(0,0,0,0.08)] text-slate-800'
           }`}
       >
-        {/* Luminous Cybernetic Border Beam */}
+        {/* Static accent border without heavy infinite rotation */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-[2rem]">
-          <div className="absolute -inset-[150%] m-auto aspect-square bg-[conic-gradient(from_0deg,transparent_0deg,transparent_270deg,rgba(56,189,248,0.25)_300deg,rgba(168,85,247,0.75)_335deg,rgba(236,72,153,0.85)_350deg,rgba(56,189,248,0.95)_360deg)] animate-border-beam opacity-100 blur-[2px]" />
+          <div className="absolute inset-0 rounded-[2rem] border border-cyan-500/20" />
         </div>
 
         {/* Inner Solid Rail Shell */}
         <div className={`relative flex flex-col h-full w-full rounded-[calc(2rem-1.5px)] overflow-hidden z-10 ${darkMode ? 'bg-[#0d121f]' : 'bg-white'
           }`}>
-          {/* Ambient Vertical Radar Scanner */}
-          <div className="pointer-events-none absolute inset-x-0 h-24 bg-gradient-to-b from-transparent via-cyan-400/[0.06] to-transparent animate-telemetry-scan z-0" />
-
           {/* Top Header / Collapse Toggle */}
-          <div className={`p-3.5 pb-3 flex items-center justify-between border-b gap-2 relative z-10 ${darkMode ? 'border-white/[0.06] bg-[#0d121f]/90' : 'border-slate-100 bg-white/90'
+          <div className={`p-3.5 pb-3 flex items-center justify-between border-b gap-2 relative z-10 ${darkMode ? 'border-white/[0.06] bg-[#0d121f]' : 'border-slate-100 bg-white'
             }`}>
-            <div className={`flex items-center gap-2 min-w-0 overflow-hidden transition-all duration-500 delay-[0ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none blur-md -translate-y-4' : 'w-full opacity-100 blur-0 translate-y-0'
+            <div className={`flex items-center gap-2 min-w-0 overflow-hidden transition-opacity duration-200 ${isRightSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none' : 'w-full opacity-100'
               }`}>
               <div className="relative w-8 h-8 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-400 shrink-0">
-                <span className="absolute inset-0 rounded-xl border border-cyan-400/50 animate-sonar-pulse pointer-events-none" />
-                <Activity className="transition-transform duration-700 group-hover:rotate-[360deg] w-4 h-4 relative z-10 animate-ambient-glow" />
+                <Activity className="w-4 h-4 relative z-10" />
               </div>
               <div className="min-w-0 whitespace-nowrap">
                 <span className="font-black text-xs uppercase tracking-wider block leading-none">Operations</span>
@@ -937,8 +930,8 @@ const Layout = ({
                       : 'bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-700'
                     : systemStatus?.status === 'unresponsive'
                       ? darkMode
-                        ? 'bg-amber-500/15 hover:bg-amber-500/25 border-amber-500/30 text-amber-300 animate-pulse'
-                        : 'bg-amber-50 hover:bg-amber-100 border-amber-200 text-amber-700 animate-pulse'
+                        ? 'bg-amber-500/15 hover:bg-amber-500/25 border-amber-500/30 text-amber-300'
+                        : 'bg-amber-50 hover:bg-amber-100 border-amber-200 text-amber-700'
                       : darkMode
                         ? 'bg-rose-500/15 hover:bg-rose-500/25 border-rose-500/30 text-rose-300'
                         : 'bg-rose-50 hover:bg-rose-100 border-rose-200 text-rose-700'
@@ -948,10 +941,7 @@ const Layout = ({
                 <div className="pointer-events-none absolute -inset-full bg-gradient-to-r from-transparent via-white/[0.08] to-transparent -translate-x-[150%] group-hover:translate-x-[150%] transition-transform duration-1000 transform -skew-x-25" />
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0">
                   <span className="relative flex h-3 w-3">
-                    {(systemStatus?.isOnline ?? true) && (
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    )}
-                    <span className={`relative inline-flex rounded-full h-3 w-3 shadow-[0_0_8px_rgba(16,185,129,0.7)] ${(systemStatus?.isOnline ?? true) ? 'bg-emerald-500' : systemStatus?.status === 'unresponsive' ? 'bg-amber-500' : 'bg-rose-500'
+                    <span className={`relative inline-flex rounded-full h-3 w-3 ${(systemStatus?.isOnline ?? true) ? 'bg-emerald-500' : systemStatus?.status === 'unresponsive' ? 'bg-amber-500' : 'bg-rose-500'
                       }`}></span>
                   </span>
                 </div>
@@ -992,7 +982,7 @@ const Layout = ({
                     <p className="text-[9.5px] text-slate-400 truncate">DevOps Watchdog</p>
                   </div>
                   {healthStatus.inboundAlertsCount > 0 ? (
-                    <span className="px-1.5 py-0.5 text-[9px] font-black rounded-full bg-rose-500 text-white animate-pulse shrink-0">
+                    <span className="px-1.5 py-0.5 text-[9px] font-black rounded-full bg-rose-500 text-white shrink-0">
                       {healthStatus.inboundAlertsCount}
                     </span>
                   ) : (
@@ -1011,8 +1001,8 @@ const Layout = ({
                       ? 'bg-emerald-500/10 hover:bg-emerald-500/20 border-emerald-500/30 text-emerald-400'
                       : 'bg-emerald-50 hover:bg-emerald-100 border-emerald-200 text-emerald-700'
                     : darkMode
-                      ? 'bg-amber-500/15 hover:bg-amber-500/25 border-amber-500/30 text-amber-300 animate-pulse'
-                      : 'bg-amber-50 hover:bg-amber-100 border-amber-200 text-amber-700 animate-pulse'
+                      ? 'bg-amber-500/15 hover:bg-amber-500/25 border-amber-500/30 text-amber-300'
+                      : 'bg-amber-50 hover:bg-amber-100 border-amber-200 text-amber-700'
                   }`}
                 title="Phone Notification Bar Alerts (Click to test / view)"
               >
@@ -1029,7 +1019,7 @@ const Layout = ({
                     </p>
                     <p className="text-[9.5px] opacity-75 truncate">Firebase Notification Bar</p>
                   </div>
-                  <span className={`w-2 h-2 rounded-full shrink-0 shadow-[0_0_8px_rgba(16,185,129,0.8)] ${notificationsEnabled ? 'bg-emerald-500' : 'bg-amber-500 animate-ping'}`} />
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${notificationsEnabled ? 'bg-emerald-500' : 'bg-amber-500'}`} />
                 </div>
               </button>
             </div>
@@ -1206,7 +1196,7 @@ const Layout = ({
       {/* Checkout Push Notification Info & Controls Modal */}
       {showAlertModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 animate-fade-in"
           onClick={() => setShowAlertModal(false)}
         >
           <div
@@ -1217,7 +1207,7 @@ const Layout = ({
             <div className="flex items-center justify-between pb-4 border-b border-white/10">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-                  <BellRing className="w-5 h-5 animate-pulse" />
+                  <BellRing className="w-5 h-5" />
                 </div>
                 <div>
                   <h3 className="font-extrabold text-base leading-tight">Checkout Push Alerts</h3>
@@ -1237,7 +1227,6 @@ const Layout = ({
               <div className="flex items-center justify-between p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20">
                 <div className="flex items-center gap-2.5">
                   <span className="relative flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
                   </span>
                   <span className="text-xs font-bold text-emerald-300">
@@ -1341,8 +1330,8 @@ const Layout = ({
                 ) : (
                   <div className="flex items-center justify-between p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold">
                     <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                      <span>Push & In-App Alerts Active</span>
+                      <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                      <span>Push &amp; In-App Alerts Active</span>
                     </div>
                     <button
                       type="button"

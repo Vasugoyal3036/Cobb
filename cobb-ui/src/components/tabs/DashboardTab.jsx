@@ -471,7 +471,7 @@ const DashboardTab = (props) => {
 
             <div className="bg-white dark:bg-slate-900 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Broadcast Engine Status</p>
-              <h4 className={`text-2xl font-black mt-2 ${broadcastStatus.isRunning ? 'text-amber-600 animate-pulse' : 'text-slate-800'}`}>
+              <h4 className={`text-2xl font-black mt-2 ${broadcastStatus.isRunning ? 'text-amber-600' : 'text-slate-800'}`}>
                 {broadcastStatus.isRunning ? '● BROADCASTING' : '● READY'}
               </h4>
               <p className="text-xs text-slate-400 mt-1">{broadcastStatus.isRunning ? `Processing ${broadcastStatus.currentIndex}/${broadcastStatus.total}` : 'Standing by for offer dispatch'}</p>
@@ -634,7 +634,7 @@ const DashboardTab = (props) => {
                 <div className="w-full bg-slate-800 h-3 rounded-full overflow-hidden border border-slate-700">
                   <div
                     className={`h-full transition-all duration-300 rounded-full ${broadcastStatus.inCooldown
-                      ? 'bg-amber-500 animate-pulse'
+                      ? 'bg-amber-500'
                       : 'bg-gradient-to-r from-emerald-500 to-blue-500'
                       }`}
                     style={{ width: `${(broadcastStatus.currentIndex / Math.max(broadcastStatus.total, 1)) * 100}%` }}
@@ -736,7 +736,7 @@ const DashboardTab = (props) => {
           <div className="border-b border-slate-200 pb-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <h3 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center">
-                <Flame className="w-6 h-6 mr-3 text-rose-600 animate-pulse" /> Top-Moving Leaderboard & Size Demand Matrix
+                <Flame className="w-6 h-6 mr-3 text-rose-600" /> Top-Moving Leaderboard & Size Demand Matrix
               </h3>
               <p className="text-sm text-slate-500 mt-1">Real-time analysis of your highest-selling articles and size demand distribution from POS sales.</p>
             </div>
@@ -1705,7 +1705,7 @@ const DashboardTab = (props) => {
                       <tr>
                         <td colSpan="8" className="text-center py-12 text-slate-400">
                           {(!sizeMatrix || sizeMatrix.length === 0) ? (
-                            <div className="flex flex-col items-center gap-2 animate-pulse">
+                            <div className="flex flex-col items-center gap-2">
                               <Grid className="w-6 h-6 text-blue-500 animate-spin" />
                               <span className="text-xs font-bold text-slate-500">Loading Size Heatmap Matrix...</span>
                             </div>
@@ -1815,8 +1815,8 @@ const DashboardTab = (props) => {
             </div>
 
             {Object.keys(groupedByMonth).length === 0 ? (
-              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-12 text-center animate-pulse">
-                <Calendar className="w-8 h-8 mx-auto mb-3 text-blue-500 animate-bounce" />
+              <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-12 text-center">
+                <Calendar className="w-8 h-8 mx-auto mb-3 text-blue-500" />
                 <p className="text-sm font-bold text-slate-700 dark:text-slate-200">Loading Monthly Category Breakdown...</p>
                 <p className="text-xs text-slate-400 mt-1">Aggregating historical sales by department.</p>
               </div>

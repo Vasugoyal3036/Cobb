@@ -100,7 +100,7 @@ const LivePulseFeed = ({
     const interval = setInterval(() => {
       if (typeof document !== 'undefined' && document.hidden) return;
       loadAlterations();
-    }, 15000);
+    }, 60000);
     return () => {
       clearInterval(interval);
       if (typeof unsubPromise === 'function') unsubPromise();

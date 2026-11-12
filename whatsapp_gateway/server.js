@@ -621,9 +621,12 @@ async function initWhatsApp(isFresh = false) {
                     '--disable-background-networking',
                     '--disable-component-update',
                     '--disable-blink-features=AutomationControlled',
-                    '--disable-renderer-backgrounding',
-                    '--disable-background-timer-throttling',
-                    '--disable-backgrounding-occluded-windows'
+                    '--disable-features=Translate,OptimizationHints,MediaRouter,CalculateNativeWinOcclusion',
+                    '--renderer-process-limit=2',
+                    '--js-flags=--max-old-space-size=256',
+                    '--mute-audio',
+                    '--disable-canvas-aa',
+                    '--disable-2d-canvas-clip-aa'
                 ],
                 timeout: 120000
             },

@@ -13,70 +13,12 @@
    FASCINATING OPERATIONS CONTROL RAIL ANIMATIONS
    ============================================================ */
 
-/* 1. Orbiting Cyber Border Beam */
-@keyframes borderBeamRotate {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-.animate-border-beam {
-  animation: borderBeamRotate 2.5s linear infinite;
-}
-
-/* 2. Ambient Telemetry Downward Radar Scanner */
-@keyframes telemetryScan {
-  0% {
-    top: -15%;
-    opacity: 0;
-  }
-  10% {
-    opacity: 0.7;
-  }
-  85% {
-    opacity: 0.7;
-  }
-  100% {
-    top: 115%;
-    opacity: 0;
-  }
-}
-
-.animate-telemetry-scan {
-  animation: telemetryScan 5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
-
-/* 3. Mission Control Sonar Rings */
-@keyframes sonarPulse {
-  0% {
-    transform: scale(0.85);
-    opacity: 0.9;
-  }
-  100% {
-    transform: scale(2.3);
-    opacity: 0;
-  }
-}
-
-.animate-sonar-pulse {
-  animation: sonarPulse 2.2s cubic-bezier(0.1, 0.3, 0.2, 1) infinite;
-}
-
-/* 4. Subtle Ambient Shimmer for Telemetry Indicators */
-@keyframes ambientGlowPulse {
-  0%, 100% {
-    filter: drop-shadow(0 0 4px rgba(56, 189, 248, 0.4));
-  }
-  50% {
-    filter: drop-shadow(0 0 12px rgba(168, 85, 247, 0.8));
-  }
-}
-
+/* Idle infinite ambient animations neutralized to prevent continuous main-thread/GPU repaints */
+.animate-border-beam,
+.animate-telemetry-scan,
+.animate-sonar-pulse,
 .animate-ambient-glow {
-  animation: ambientGlowPulse 3.5s ease-in-out infinite;
+  animation: none !important;
 }
 
 
@@ -247,56 +189,60 @@ body {
 }
 @keyframes lockScreenDrop { 0% { opacity: 0; transform: scale(0.9) translateY(-30px) rotateX(10deg); } 100% { opacity: 1; transform: scale(1) translateY(0) rotateX(0deg); } }
 .animate-lock-drop { animation: lockScreenDrop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; perspective: 1000px; }
-@keyframes blurBackdrop { 0% { opacity: 0; backdrop-filter: blur(0px); } 100% { opacity: 1; backdrop-filter: blur(12px); } }
+@keyframes blurBackdrop { 0% { opacity: 0; } 100% { opacity: 1; } }
 .animate-blur-backdrop { animation: blurBackdrop 0.5s ease-out forwards; }
 
 /* ============================================================
-   SLEEK OBSIDIAN GLASSMORHPISM DESIGN SYSTEM
+   LOW-CPU CRISP SURFACE DESIGN SYSTEM
    ============================================================ */
 .glass-card-obsidian {
-  background: rgba(255, 255, 255, 0.88);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(226, 232, 240, 0.85);
-  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05);
-  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.06);
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .dark .glass-card-obsidian,
 .dark-mode .glass-card-obsidian,
 html.dark .glass-card-obsidian {
-  background: rgba(11, 15, 25, 0.78);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  box-shadow: 0 8px 32px -4px rgba(0, 0, 0, 0.45);
+  background: rgba(11, 15, 25, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 6px 24px -4px rgba(0, 0, 0, 0.5);
 }
 
 .glass-card-obsidian:hover {
-  border-color: rgba(148, 163, 184, 0.35);
+  border-color: rgba(148, 163, 184, 0.4);
 }
 
 .dark .glass-card-obsidian:hover,
 .dark-mode .glass-card-obsidian:hover,
 html.dark .glass-card-obsidian:hover {
   border-color: rgba(255, 255, 255, 0.15);
-  box-shadow: 0 12px 36px -4px rgba(0, 0, 0, 0.6), 0 0 20px -2px rgba(16, 185, 129, 0.08);
+  box-shadow: 0 8px 28px -4px rgba(0, 0, 0, 0.6);
 }
 
 .glass-header-bar {
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(226, 232, 240, 0.9);
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid rgba(226, 232, 240, 0.92);
 }
 
 .dark .glass-header-bar,
 .dark-mode .glass-header-bar,
 html.dark .glass-header-bar {
-  background: rgba(10, 14, 23, 0.85);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.5);
+  background: rgba(10, 14, 23, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5);
+}
+
+/* Defer off-screen rendering for paginated below-the-fold rows/cards */
+.deferred-row {
+  content-visibility: auto;
+  contain-intrinsic-size: auto none auto 72px;
+}
+
+@supports not (content-visibility: auto) {
+  .deferred-row {
+    contain: layout style paint;
+  }
 }
 

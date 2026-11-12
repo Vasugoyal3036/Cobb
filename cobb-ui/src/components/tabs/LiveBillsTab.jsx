@@ -36,6 +36,7 @@ import {
   Info
 } from 'lucide-react';
 import AlterationSlipModal from '../AlterationSlipModal';
+import PaginationControls, { usePagination } from '../PaginationControls';
 
 export const resolvePaymentMode = (bill) => {
   const cash = Number(bill?.CashAmount || 0);
@@ -284,7 +285,7 @@ const LiveBillsTab = (props) => {
     const interval = setInterval(() => {
       if (typeof document !== 'undefined' && document.hidden) return;
       fetchBills('today');
-    }, 25000);
+    }, 60000);
     return () => clearInterval(interval);
   }, [dateFilter, fetchBills]);
 
@@ -294,19 +295,6 @@ const LiveBillsTab = (props) => {
       setBills(liveBills);
     }
   }, [liveBills, dateFilter]);
-
-  // Auto-scroll into view if arriving from a Push Notification tap
-  useEffect(() => {
-    if (targetHighlightBill) {
-      const timer = setTimeout(() => {
-        const el = document.getElementById(`bill-row-${String(targetHighlightBill).trim()}`);
-        if (el) {
-          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        }
-      }, 350);
-      return () => clearTimeout(timer);
-    }
-  }, [targetHighlightBill, bills]);
 
   // Filter bills client-side (handles search, payment mode, barcodes, and date matching)
   const filteredBills = useMemo(() => {
@@ -354,6 +342,39 @@ const LiveBillsTab = (props) => {
       return true;
     });
   }, [bills, dateFilter, todayStr, yesterdayStr, customDate, paymentFilter, searchQuery, billItemsCache]);
+
+  const billsResetKey = `${dateFilter}|${customDate}|${paymentFilter}|${searchQuery}`;
+  const {
+    page: billsPage,
+    setPage: setBillsPage,
+    pageSize: billsPageSize,
+    totalItems: totalBillsCount,
+    totalPages: totalBillsPages,
+    startIndex: billsStartIdx,
+    endIndex: billsEndIdx,
+    pageItems: pagedBills
+  } = usePagination(filteredBills, 50, billsResetKey);
+
+  // Auto-jump to target page and scroll into view if arriving from a Push Notification tap
+  useEffect(() => {
+    if (!targetHighlightBill) return;
+    const normTarget = String(targetHighlightBill).trim().toLowerCase();
+    const targetIdx = filteredBills.findIndex((b) =>
+      String(b.BillNumber || '').trim().toLowerCase() === normTarget ||
+      String(b.BillId || '').trim().toLowerCase() === normTarget
+    );
+    if (targetIdx >= 0) {
+      const targetPage = Math.floor(targetIdx / billsPageSize) + 1;
+      setBillsPage((prev) => (prev === targetPage ? prev : targetPage));
+    }
+    const timer = setTimeout(() => {
+      const el = document.getElementById(`bill-row-${String(targetHighlightBill).trim()}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [targetHighlightBill, filteredBills, billsPageSize, setBillsPage]);
 
   // Comprehensive KPI Calculations
   const summaryKpis = useMemo(() => {
@@ -882,7 +903,7 @@ const LiveBillsTab = (props) => {
           </div>
         )}
 
-        {filteredBills.map((bill, idx) => {
+        {pagedBills.map((bill, idx) => {
           const isExpanded = expandedBillId === bill.BillId;
           const items = billItemsCache[bill.BillId] || bill.Items || [];
           const fin = getBillFinancials(bill);
@@ -895,7 +916,7 @@ const LiveBillsTab = (props) => {
             <div
               key={bill.BillId || idx}
               onClick={() => toggleBillExpansion(bill.BillId)}
-              className="glass-card-obsidian p-3.5 sm:p-4 rounded-2xl transition-all cursor-pointer"
+              className={`glass-card-obsidian p-3.5 sm:p-4 rounded-2xl transition-all cursor-pointer ${idx >= 12 ? 'deferred-row' : ''}`}
             >
               {/* Top row: Invoice #, Mode, Cashier, Time */}
               <div className="flex items-start justify-between gap-2">
@@ -1162,7 +1183,7 @@ const LiveBillsTab = (props) => {
                   </td>
                 </tr>
               )}
-              {filteredBills.map((bill, idx) => {
+              {pagedBills.map((bill, idx) => {
                 const isExpanded = expandedBillId === bill.BillId;
                 const items = billItemsCache[bill.BillId] || bill.Items || [];
                 const fin = getBillFinancials(bill);
@@ -1180,7 +1201,7 @@ const LiveBillsTab = (props) => {
                     <tr
                       id={`bill-row-${String(bill.BillNumber || bill.BillId || '').trim()}`}
                       onClick={() => toggleBillExpansion(bill.BillId)}
-                      className={`transition-all duration-300 cursor-pointer ${
+                      className={`transition-colors duration-200 cursor-pointer ${idx >= 12 ? 'deferred-row' : ''} ${
                         isTargetHighlight
                           ? darkMode
                             ? 'bg-emerald-500/20 ring-2 ring-emerald-500/80 shadow-lg shadow-emerald-500/20'
@@ -1802,6 +1823,18 @@ const LiveBillsTab = (props) => {
           </table>
         </div>
       </div>
+
+      <PaginationControls
+        page={billsPage}
+        totalPages={totalBillsPages}
+        totalItems={totalBillsCount}
+        startIndex={billsStartIdx}
+        endIndex={billsEndIdx}
+        onPageChange={setBillsPage}
+        darkMode={darkMode}
+        itemLabel="bills"
+        className="mt-4"
+      />
 
       <AlterationSlipModal 
         isOpen={showAlterationModal}

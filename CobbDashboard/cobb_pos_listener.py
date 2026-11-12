@@ -884,7 +884,7 @@ def run_listener():
         except Exception as e:
             print(f"[{time.strftime('%X')}] [LOOP ERROR] {e}. Resuming in 3s...", flush=True)
 
-        time.sleep(5)
+        time.sleep(15)
 
 if __name__ == '__main__':
     run_listener()

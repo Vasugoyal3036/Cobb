@@ -160,7 +160,7 @@ export default function MobileNav({
         {/* Compact Toggle Handle */}
         <div className="flex items-center justify-between w-full max-w-md px-1 mb-0.5">
           <div className="flex items-center gap-1.5">
-            <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
             <span className={`text-[9.5px] font-black uppercase tracking-wider ${
               darkMode ? 'text-slate-400' : 'text-slate-500'
             }`}>
@@ -184,10 +184,10 @@ export default function MobileNav({
 
         {/* Scrollable Action Capsule Bar */}
         {showQuickDock && (
-          <div className={`w-full max-w-md py-1.5 px-2 rounded-2xl border backdrop-blur-2xl shadow-xl flex items-center gap-2 overflow-x-auto no-scrollbar transition-all duration-200 ${
+          <div className={`w-full max-w-md py-1.5 px-2 rounded-2xl border shadow-xl flex items-center gap-2 overflow-x-auto no-scrollbar transition-colors duration-200 ${
             darkMode
-              ? 'bg-[#0a0d16]/95 border-white/10 text-white shadow-black/60'
-              : 'bg-white/95 border-slate-200/90 text-slate-900 shadow-slate-300/40'
+              ? 'bg-[#0a0d16] border-white/10 text-white shadow-black/60'
+              : 'bg-white border-slate-200/90 text-slate-900 shadow-slate-300/40'
           }`}>
             {quickActions.map(action => {
               const Icon = action.icon;
@@ -237,10 +237,10 @@ export default function MobileNav({
 
       {/* ── Primary 5-Tab Bottom Dock ── */}
       <nav
-        className={`pointer-events-auto border-t backdrop-blur-2xl transition-colors duration-200 ${
+        className={`pointer-events-auto border-t transition-colors duration-200 ${
           darkMode
-            ? 'bg-[#0a0d16]/95 border-white/10 text-slate-400 shadow-[0_-8px_30px_rgba(0,0,0,0.7)]'
-            : 'bg-white/95 border-slate-200/90 text-slate-500 shadow-[0_-8px_25px_rgba(0,0,0,0.06)]'
+            ? 'bg-[#0a0d16] border-white/10 text-slate-400 shadow-[0_-8px_24px_rgba(0,0,0,0.7)]'
+            : 'bg-white border-slate-200/90 text-slate-500 shadow-[0_-8px_20px_rgba(0,0,0,0.06)]'
         }`}
       >
         <div className="flex items-center justify-around px-3 pt-1 pb-safe">
@@ -259,8 +259,8 @@ export default function MobileNav({
                   title="Universal Search (Ctrl+K)"
                 >
                   <div className="relative">
-                    {/* Ambient Glow Ring */}
-                    <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 opacity-60 blur-sm group-hover:opacity-100 transition-opacity animate-pulse" />
+                    {/* Ambient Accent Ring */}
+                    <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 opacity-50 group-hover:opacity-90 transition-opacity" />
                     
                     {/* Elevated Button Tile */}
                     <div className="relative w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 text-white flex items-center justify-center shadow-lg shadow-indigo-600/40 border border-white/30 transform active:scale-90 transition-transform duration-150">

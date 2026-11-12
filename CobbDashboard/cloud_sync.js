@@ -204,8 +204,7 @@ const deepAnalyticsEndpoints = [
     "/api/analytics/wardrobe-profiles",
     "/api/broadcast/group",
     "/api/smart-bundles",
-    { url: "/api/inventory/depreciation-clock", docName: "inventory_depreciation-clock" },
-    { url: "/api/ai/demand-forecasts", method: "POST", data: { refresh: true } }
+    { url: "/api/inventory/depreciation-clock", docName: "inventory_depreciation-clock" }
 ];
 
 const lastPayloadHash = new Map();
@@ -219,6 +218,7 @@ async function syncEndpointList(items, tierName = 'Sync') {
     console.log(`\n[SYNC AGENT] ⚡ Starting [${tierName}] for Store: ${STORE_ID} (${items.length} endpoints) at ${new Date().toLocaleTimeString()}`);
     
     for (const item of items) {
+        await new Promise(r => setTimeout(r, 150)); // Yield briefly between endpoints to keep SQL/Node CPU smooth
         // Support both string URL and object config
         const url = typeof item === 'string' ? item : item.url;
         const method = (typeof item === 'object' && item.method) ? item.method : 'GET';
@@ -1416,17 +1416,15 @@ process.on('message', (msg) => {
     if (msg === 'shutdown') handleGracefulShutdown('pm2:shutdown');
 });
 
-// Smart Tiered Sync Intervals:
-const OPERATIONAL_INTERVAL = 2 * 60 * 1000;      // 2 minutes (Sales, Live, Hourly, Status)
-const STANDARD_INTERVAL = 15 * 60 * 1000;        // 15 minutes (Staff, Returns, Top Movers)
-const DEEP_ANALYTICS_INTERVAL = 60 * 60 * 1000;  // 60 minutes (Heavy Inventory, GST, PnL)
+// Balanced Tiered Sync Intervals:
+const OPERATIONAL_INTERVAL = 3 * 60 * 1000;      // 3 minutes (Sales, Live, Hourly, Status)
+const STANDARD_INTERVAL = 20 * 60 * 1000;        // 20 minutes (Staff, Returns, Top Movers)
+const DEEP_ANALYTICS_INTERVAL = 120 * 60 * 1000; // 2 hours (Heavy Inventory, GST, PnL)
 
-// Check for new checkouts every 10 seconds for real-time notification
-const CHECKOUT_INTERVAL = 10 * 1000;
-// Check for cancelled bills every 20 seconds
-const CANCELLED_INTERVAL = 20 * 1000;
-// Heartbeat pulse every 20 seconds for watchdog power cut detection
-const HEARTBEAT_INTERVAL = 20 * 1000;
+// Balanced real-time notifications (30s checkout/cancelled bills, 60s watchdog heartbeat)
+const CHECKOUT_INTERVAL = 30 * 1000;
+const CANCELLED_INTERVAL = 30 * 1000;
+const HEARTBEAT_INTERVAL = 60 * 1000;
 
 // Detect if the PC physically booted up recently (within 6 minutes) and send alert once per boot session
 async function checkAndDispatchPcBootAlert() {
@@ -1529,35 +1527,49 @@ function startSyncAgent() {
         // 1. Check if the PC physically booted up recently before dispatching alert
         checkAndDispatchPcBootAlert();
 
-        // 2. Initial baseline sync across all tiers (sequenced to protect POS CPU)
-        (async () => {
-            try {
-                await syncEndpointList(operationalEndpoints, 'Operational Tier');
-                await syncEndpointList(standardEndpoints, 'Standard Tier');
-                await syncEndpointList(deepAnalyticsEndpoints, 'Deep Analytics Tier');
-            } catch (initialSyncErr) {
-                console.warn('[SYNC AGENT] Initial sync notice:', initialSyncErr.message);
-            }
-        })();
+        // 2. Staggered baseline sync (Operational at +3s, Standard at +45s; skip heavy deep-analytics on boot)
+        setTimeout(() => {
+            syncEndpointList(operationalEndpoints, 'Operational Tier').catch(err => {
+                console.warn('[SYNC AGENT] Initial operational sync notice:', err.message);
+            });
+        }, 3000);
+        setTimeout(() => {
+            syncEndpointList(standardEndpoints, 'Standard Tier').catch(err => {
+                console.warn('[SYNC AGENT] Initial standard sync notice:', err.message);
+            });
+        }, 45000);
 
-        // 3. Start tiered intervals & remote test listeners
+        // 3. Start balanced tiered intervals & remote test listeners
         checkAndDispatchCheckoutAlerts();
         checkAndDispatchCancelledBillAlerts();
         listenForTestAlertsAndDispatchFcm();
         listenForStaffConfigChanges();
         listenForStoreConfigChanges();
-        setInterval(() => syncEndpointList(operationalEndpoints, 'Operational Tier'), OPERATIONAL_INTERVAL);
-        setInterval(() => syncEndpointList(standardEndpoints, 'Standard Tier'), STANDARD_INTERVAL);
+        const isClosedNight = (closeHour = 23, openHour = 8) => {
+            const h = new Date().getHours();
+            return h >= closeHour || h < openHour;
+        };
         setInterval(() => {
-            const nowHour = new Date().getHours();
-            if (nowHour >= 22 || nowHour < 9) {
-                console.log(`[SYNC AGENT] 🌙 Store closed (${nowHour}:00). Skipping heavy catalog sync.`);
+            if (isClosedNight(23, 8)) return;
+            syncEndpointList(operationalEndpoints, 'Operational Tier');
+        }, OPERATIONAL_INTERVAL);
+        setInterval(() => {
+            if (isClosedNight(23, 8)) return;
+            syncEndpointList(standardEndpoints, 'Standard Tier');
+        }, STANDARD_INTERVAL);
+        setInterval(() => {
+            if (isClosedNight(22, 9)) {
+                console.log(`[SYNC AGENT] 🌙 Store closed. Skipping heavy catalog sync.`);
                 return;
             }
             syncEndpointList(deepAnalyticsEndpoints, 'Deep Analytics Tier');
         }, DEEP_ANALYTICS_INTERVAL);
-        setInterval(checkAndDispatchCheckoutAlerts, CHECKOUT_INTERVAL);
-        setInterval(checkAndDispatchCancelledBillAlerts, CANCELLED_INTERVAL);
+        setInterval(() => {
+            if (!isClosedNight(23, 8)) checkAndDispatchCheckoutAlerts();
+        }, CHECKOUT_INTERVAL);
+        setInterval(() => {
+            if (!isClosedNight(23, 8)) checkAndDispatchCancelledBillAlerts();
+        }, CANCELLED_INTERVAL);
         setInterval(updateHeartbeat, HEARTBEAT_INTERVAL);
 
         // 3. Nightly closing digest scheduled trigger (DISABLED per user request)

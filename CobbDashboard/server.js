@@ -2009,9 +2009,12 @@ const handleSalesLiveOrHistory = async (req, res) => {
         let itemsByBill = {};
 
         if (billIds.length > 0) {
-            const idList = billIds.map(id => `'${String(id).replace(/'/g, "''")}'`).join(',');
-            
-            const payPromise = sql.query(`
+            // Query bill paymodes and line items in 60-bill batches to prevent SQL query timeouts
+            for (let chunkStart = 0; chunkStart < billIds.length; chunkStart += 60) {
+                const chunkIds = billIds.slice(chunkStart, chunkStart + 60);
+                const idList = chunkIds.map(id => `'${String(id).replace(/'/g, "''")}'`).join(',');
+
+                const payPromise = sql.query(`
                 SELECT 
                     m.CM_ID as BillId,
                     ISNULL(MAX(p.CASH_AMOUNT), 0) as CashAmount,
@@ -2031,7 +2034,7 @@ const handleSalesLiveOrHistory = async (req, res) => {
                 return { recordset: [] };
             });
 
-            const itemsPromise = sql.query(`
+                const itemsPromise = sql.query(`
                 SELECT 
                     A.CM_ID as BillId,
                     LTRIM(RTRIM(A.PRODUCT_CODE)) as Barcode,
@@ -2068,14 +2071,15 @@ const handleSalesLiveOrHistory = async (req, res) => {
                 return { recordset: [] };
             });
 
-            const [payRes, itemsRes] = await Promise.all([payPromise, itemsPromise]);
+                const [payRes, itemsRes] = await Promise.all([payPromise, itemsPromise]);
 
-            for (const p of (payRes.recordset || [])) {
-                paymodesByBill[p.BillId] = p;
-            }
-            for (const item of (itemsRes.recordset || [])) {
-                if (!itemsByBill[item.BillId]) itemsByBill[item.BillId] = [];
-                itemsByBill[item.BillId].push(item);
+                for (const p of (payRes.recordset || [])) {
+                    paymodesByBill[p.BillId] = p;
+                }
+                for (const item of (itemsRes.recordset || [])) {
+                    if (!itemsByBill[item.BillId]) itemsByBill[item.BillId] = [];
+                    itemsByBill[item.BillId].push(item);
+                }
             }
         }
 
@@ -2457,20 +2461,38 @@ async function startAutomationHelper() {
     return true;
 }
 
-// Robust Gateway Controllers for Windows
+// Robust Gateway Controllers for Windows (store-hours aware + lightweight sleep overnight)
+let gatewayManualStopped = false;
+let gatewayManualOverrideUntil = 0;
+
+function isStoreOpenHours(date = new Date()) {
+    const h = date.getHours();
+    return h >= 9 && h < 22;
+}
+
+function stopGatewayProcessTree() {
+    if (gatewayProcess) {
+        try {
+            spawn('taskkill', ['/PID', gatewayProcess.pid.toString(), '/F', '/T'], { windowsHide: true });
+        } catch (e) {
+            try { gatewayProcess.kill(); } catch (_) {}
+        }
+        gatewayProcess = null;
+    }
+}
+
 app.post('/api/gateway/start', async (req, res) => {
+    gatewayManualStopped = false;
+    gatewayManualOverrideUntil = Date.now() + 2 * 60 * 60 * 1000;
     const started = await startGatewayHelper();
     res.json({ status: started ? 'started' : 'error' });
 });
 
 app.post('/api/gateway/stop', (req, res) => {
+    gatewayManualStopped = true;
+    gatewayManualOverrideUntil = 0;
     if (gatewayProcess) {
-        try {
-            spawn('taskkill', ['/PID', gatewayProcess.pid.toString(), '/F', '/T'], { windowsHide: true });
-        } catch (e) {
-            gatewayProcess.kill();
-        }
-        gatewayProcess = null;
+        stopGatewayProcessTree();
         pushGatewayLog(`[${new Date().toLocaleTimeString()}] Gateway manually stopped.`);
         return res.json({ status: 'stopped' });
     }
@@ -5722,10 +5744,14 @@ app.post('/api/system/backup-now', async (req, res) => {
 const PORT = 5000;
 app.listen(PORT, () => {
     console.log(`CRM Backend running on http://localhost:${PORT}`);
-    console.log("Auto-starting Automation Engine, WhatsApp Gateway, and Cloud Sync...");
-    startAutomationHelper();
-    startGatewayHelper();
-    startCloudSyncHelper();
+    console.log("Staggering startup for Automation Engine, WhatsApp Gateway (09:00-22:00), and Cloud Sync...");
+    setTimeout(() => startAutomationHelper(), 1500);
+    if (isStoreOpenHours()) {
+        setTimeout(() => startGatewayHelper(), 2500);
+    } else {
+        console.log("[SUPERVISOR] Store closed (22:00-09:00): skipping WhatsApp Chrome launch overnight to save CPU/RAM.");
+    }
+    setTimeout(() => startCloudSyncHelper(), 4000);
 
     // Inject WhatsApp sender into Hold Desk router for courtesy pings
     holdsRouter.setSendWhatsApp(async (phone, message) => {
@@ -5742,45 +5768,52 @@ app.listen(PORT, () => {
         }
     });
 
-    // --- HIGH-AVAILABILITY SUPERVISOR (Runs every 10 seconds) ---
-    // Continuously monitors and auto-heals WhatsApp Gateway, POS Listener, and Cloud Sync
+    // --- HIGH-AVAILABILITY SUPERVISOR (Runs every 60 seconds, store-hours aware) ---
+    // Continuously monitors and auto-heals WhatsApp Gateway (09:00-22:00), POS Listener, and Cloud Sync
     let consecutiveGatewayFailures = 0;
     setInterval(async () => {
-        // 1. WhatsApp Gateway Supervisor (ensures process & port 3000 are alive)
-        try {
-            const ping = await fetch('http://localhost:3000/status', { signal: AbortSignal.timeout(3000) });
-            if (ping.ok) {
-                const data = await ping.json().catch(() => ({}));
-                if (data.isReady || data.qrCodeUrl) {
-                    consecutiveGatewayFailures = 0;
-                } else {
-                    consecutiveGatewayFailures++;
-                    if (consecutiveGatewayFailures >= 6) { // 60 seconds stuck unready without QR code
-                        console.log('[SUPERVISOR] WhatsApp Client unready for >60s. Auto-restarting gateway process...');
-                        pushGatewayLog(`[${new Date().toLocaleTimeString()}] [SUPERVISOR] Gateway stuck — auto-restarting cleanly...`);
-                        consecutiveGatewayFailures = 0;
-                        if (gatewayProcess) {
-                            try { spawn('taskkill', ['/PID', gatewayProcess.pid.toString(), '/F', '/T'], { windowsHide: true }); } catch (err) {}
-                            gatewayProcess = null;
-                        }
-                        await startGatewayHelper(true);
-                    }
-                }
-            } else {
-                throw new Error('status not ok');
+        // 1. WhatsApp Gateway Supervisor (active 09:00-22:00, sleeps overnight unless manually started)
+        const shouldRunGateway = !gatewayManualStopped && (isStoreOpenHours() || Date.now() < gatewayManualOverrideUntil);
+        if (!shouldRunGateway) {
+            consecutiveGatewayFailures = 0;
+            if (gatewayProcess) {
+                console.log('[SUPERVISOR] Store closed (22:00-09:00) or manually stopped — sleeping WhatsApp Chromium to save CPU/RAM.');
+                pushGatewayLog(`[${new Date().toLocaleTimeString()}] [SUPERVISOR] Overnight sleep mode active — Chromium paused.`);
+                stopGatewayProcessTree();
+                try {
+                    execSync('powershell -WindowStyle Hidden -Command "Get-CimInstance Win32_Process | Where-Object { $_.ExecutablePath -match \'puppeteer\' -and $_.CommandLine -match \'session-cobb-pos-session\' } | Invoke-CimMethod -MethodName Terminate"', { windowsHide: true, timeout: 5000 });
+                } catch (e) {}
             }
-        } catch (e) {
-            consecutiveGatewayFailures++;
-            // Only trigger recovery if the gateway HTTP server is completely unreachable for 3 consecutive checks (30s)
-            if (consecutiveGatewayFailures >= 3) {
-                console.log('[SUPERVISOR] WhatsApp Gateway port 3000 is unresponsive (30s). Auto-restarting...');
-                pushGatewayLog(`[${new Date().toLocaleTimeString()}] [SUPERVISOR] Gateway offline — restarting process...`);
-                consecutiveGatewayFailures = 0;
-                if (gatewayProcess) {
-                    try { spawn('taskkill', ['/PID', gatewayProcess.pid.toString(), '/F', '/T'], { windowsHide: true }); } catch (err) {}
-                    gatewayProcess = null;
+        } else {
+            try {
+                const ping = await fetch('http://localhost:3000/status', { signal: AbortSignal.timeout(3000) });
+                if (ping.ok) {
+                    const data = await ping.json().catch(() => ({}));
+                    if (data.isReady || data.qrCodeUrl) {
+                        consecutiveGatewayFailures = 0;
+                    } else {
+                        consecutiveGatewayFailures++;
+                        if (consecutiveGatewayFailures >= 3) { // 3 minutes stuck unready without QR code
+                            console.log('[SUPERVISOR] WhatsApp Client unready for >3m. Auto-restarting gateway process...');
+                            pushGatewayLog(`[${new Date().toLocaleTimeString()}] [SUPERVISOR] Gateway stuck — auto-restarting cleanly...`);
+                            consecutiveGatewayFailures = 0;
+                            stopGatewayProcessTree();
+                            await startGatewayHelper(true);
+                        }
+                    }
+                } else {
+                    throw new Error('status not ok');
                 }
-                await startGatewayHelper(true);
+            } catch (e) {
+                consecutiveGatewayFailures++;
+                // Only trigger recovery if the gateway HTTP server is unreachable for 2 consecutive checks (2m)
+                if (consecutiveGatewayFailures >= 2) {
+                    console.log('[SUPERVISOR] WhatsApp Gateway port 3000 is unresponsive (2m). Auto-restarting...');
+                    pushGatewayLog(`[${new Date().toLocaleTimeString()}] [SUPERVISOR] Gateway offline — restarting process...`);
+                    consecutiveGatewayFailures = 0;
+                    stopGatewayProcessTree();
+                    await startGatewayHelper(true);
+                }
             }
         }
 
@@ -5822,7 +5855,7 @@ app.listen(PORT, () => {
         } catch (backupErr) {
             /* ignore */
         }
-    }, 30000); // 30s — was 10s; each tick runs 2 PowerShell Get-CimInstance calls which are slow on Windows
+    }, 60000); // 60s balanced supervisor interval
 
     // --- AUTOMATIC EOD CLOSING DISPATCH & RECOVERY ENGINE ---
     let lastEodCheckTimestamp = 0;

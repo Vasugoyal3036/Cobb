@@ -3,7 +3,8 @@ module.exports = {
     {
       name: "cobb-backend",
       script: "server.js",
-      watch: ["server.js"],
+      watch: false,
+      max_memory_restart: "500M",
       ignore_watch: [
         "node_modules",
         "*.log",

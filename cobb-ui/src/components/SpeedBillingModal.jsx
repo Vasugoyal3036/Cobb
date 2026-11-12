@@ -1019,7 +1019,7 @@ _Thank you for choosing Cobb! For sizing alterations or exchanges, please quote 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-slate-950/95 backdrop-blur-md text-white select-none">
+    <div className="fixed inset-0 z-50 flex flex-col bg-slate-950 text-white select-none">
       {/* 1. TOP SPEED BILLING HEADER */}
       <header className="h-16 px-6 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between shadow-lg shrink-0">
         <div className="flex items-center space-x-4">
@@ -1033,7 +1033,7 @@ _Thank you for choosing Cobb! For sizing alterations or exchanges, please quote 
                   COBB SPEED POS
                 </h1>
                 <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
                   ZERO-MOUSE ACTIVE
                 </span>
                 {activePromo !== 'none' && (
@@ -1055,7 +1055,7 @@ _Thank you for choosing Cobb! For sizing alterations or exchanges, please quote 
           {parkedBills.length > 0 && (
             <button
               onClick={() => setActiveModal('parked')}
-              className="px-3 py-1.5 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-bold flex items-center gap-1.5 hover:bg-amber-500/30 transition animate-pulse"
+              className="px-3 py-1.5 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/40 text-xs font-bold flex items-center gap-1.5 hover:bg-amber-500/30 transition"
             >
               <PauseCircle className="w-4 h-4" />
               <span>{parkedBills.length} Held (Shift+F9)</span>
@@ -1787,7 +1787,7 @@ _Thank you for choosing Cobb! For sizing alterations or exchanges, please quote 
       {/* VARIANT PICKER MODAL (When DB returns multiple sizes/colors)  */}
       {/* ============================================================== */}
       {variantPicker && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 animate-in fade-in duration-150">
           <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl">
             <div className="flex justify-between items-start mb-4">
               <div>
@@ -1852,7 +1852,7 @@ _Thank you for choosing Cobb! For sizing alterations or exchanges, please quote 
       {/* SUB-MODAL 1: F2 EDIT QUANTITY                                  */}
       {/* ============================================================== */}
       {activeModal === 'qty' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 animate-in fade-in duration-150">
           <div className="w-full max-w-sm bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl">
             <h3 className="text-base font-bold text-white mb-1 flex items-center gap-2">
               <span className="px-2 py-0.5 rounded bg-amber-500 text-slate-950 font-mono text-xs font-bold">F2</span>
@@ -1912,7 +1912,7 @@ _Thank you for choosing Cobb! For sizing alterations or exchanges, please quote 
       {/* SUB-MODAL 2: F3 DISCOUNT                                       */}
       {/* ============================================================== */}
       {activeModal === 'discount' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 animate-in fade-in duration-150">
           <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl">
             <h3 className="text-base font-bold text-white mb-1 flex items-center gap-2">
               <span className="px-2 py-0.5 rounded bg-amber-500 text-slate-950 font-mono text-xs font-bold">Alt+D</span>
@@ -2011,7 +2011,7 @@ _Thank you for choosing Cobb! For sizing alterations or exchanges, please quote 
       {/* SUB-MODAL 3: F4 SALESPERSON / STAFF TAG                         */}
       {/* ============================================================== */}
       {activeModal === 'staff' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 animate-in fade-in duration-150">
           <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl">
             <h3 className="text-base font-bold text-white mb-1 flex items-center gap-2">
               <span className="px-2 py-0.5 rounded bg-amber-500 text-slate-950 font-mono text-xs font-bold">F4</span>
@@ -2056,7 +2056,7 @@ _Thank you for choosing Cobb! For sizing alterations or exchanges, please quote 
       {/* SUB-MODAL: F5 PROMOTIONS & MULTI-BUY                           */}
       {/* ============================================================== */}
       {activeModal === 'promo' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 animate-in fade-in duration-150">
           <div className="w-full max-w-md bg-slate-900 border border-purple-500/40 rounded-3xl p-6 shadow-2xl">
             <h3 className="text-base font-bold text-white mb-1 flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-purple-400" />
@@ -2208,7 +2208,7 @@ _Thank you for choosing Cobb! For sizing alterations or exchanges, please quote 
       {/* SUB-MODAL 4: F6 CASH SETTLE & CHANGE CALCULATOR                */}
       {/* ============================================================== */}
       {activeModal === 'cash' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 animate-in fade-in duration-150">
           <div className="w-full max-w-lg bg-slate-900 border-2 border-emerald-500/40 rounded-3xl p-6 shadow-2xl">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-black text-white flex items-center gap-2">
@@ -2317,7 +2317,7 @@ _Thank you for choosing Cobb! For sizing alterations or exchanges, please quote 
       {/* SUB-MODAL 5: F7 DYNAMIC UPI QR                                 */}
       {/* ============================================================== */}
       {activeModal === 'upi' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 animate-in fade-in duration-150">
           <div className="w-full max-w-md bg-slate-900 border-2 border-indigo-500/50 rounded-3xl p-6 shadow-2xl text-center">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base font-black text-white flex items-center gap-2">
@@ -2367,7 +2367,7 @@ _Thank you for choosing Cobb! For sizing alterations or exchanges, please quote 
       {/* SUB-MODAL: F8 SPLIT TENDER (Cash + UPI)                        */}
       {/* ============================================================== */}
       {activeModal === 'split' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 animate-in fade-in duration-150">
           <div className="w-full max-w-lg bg-slate-900 border-2 border-purple-500/50 rounded-3xl p-6 shadow-2xl">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-base font-black text-white flex items-center gap-2">
@@ -2444,7 +2444,7 @@ _Thank you for choosing Cobb! For sizing alterations or exchanges, please quote 
       {/* SUB-MODAL 6: RECALL PARKED BILLS (Shift+F9)                    */}
       {/* ============================================================== */}
       {activeModal === 'parked' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 animate-in fade-in duration-150">
           <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-2xl">
             <h3 className="text-base font-bold text-white mb-1 flex items-center gap-2">
               <PauseCircle className="w-5 h-5 text-amber-400" />
@@ -2501,7 +2501,7 @@ _Thank you for choosing Cobb! For sizing alterations or exchanges, please quote 
       {/* SUB-MODAL 7: SUCCESS SETTLEMENT BANNER                          */}
       {/* ============================================================== */}
       {activeModal === 'success' && settledBill && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/95 animate-in zoom-in-95 duration-150">
           <div className="w-full max-w-md bg-slate-900 border-2 border-emerald-500 rounded-3xl p-6 shadow-2xl text-center">
             <div className="w-16 h-16 rounded-full bg-emerald-500/20 border-2 border-emerald-500 flex items-center justify-center mx-auto mb-4 text-emerald-400 shadow-xl shadow-emerald-500/20">
               <CheckCircle2 className="w-10 h-10" />

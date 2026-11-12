@@ -418,7 +418,7 @@ export default function GlobalCommandBar({
       onClick={onClose}
     >
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/75 backdrop-blur-md" />
+      <div className="absolute inset-0 bg-black/80" />
 
       {/* Main Command Bar Modal */}
       <div

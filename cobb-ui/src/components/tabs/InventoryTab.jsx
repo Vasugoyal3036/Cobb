@@ -9,6 +9,7 @@ import axios from 'axios';
 import { db, storage } from '../../utils/firebase';
 import { doc, getDoc, setDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import PaginationControls, { usePagination } from '../PaginationControls';
 
 // Base data using the format provided in the user's screenshot
 const INITIAL_CATEGORY_DATA = [
@@ -244,10 +245,21 @@ const InventoryTab = (props) => {
     });
   }, [items, searchQuery, selectedSection, filterMissingPhoto]);
 
-  // Grouped by section for the table format
+  const inventoryResetKey = `${searchQuery}|${selectedSection}|${filterMissingPhoto}|${activeTab}`;
+  const {
+    page: inventoryPage,
+    setPage: setInventoryPage,
+    totalItems: totalInventoryItems,
+    totalPages: totalInventoryPages,
+    startIndex: invStartIdx,
+    endIndex: invEndIdx,
+    pageItems: pagedInventoryItems
+  } = usePagination(filteredItems, 60, inventoryResetKey);
+
+  // Grouped by section for the table format (scoped to active page)
   const groupedSections = useMemo(() => {
     const groups = {};
-    filteredItems.forEach(row => {
+    pagedInventoryItems.forEach(row => {
       if (!groups[row.section]) {
         groups[row.section] = {
           sectionName: row.section,
@@ -273,7 +285,7 @@ const InventoryTab = (props) => {
       const sellThru = g.totalObs > 0 ? (g.totalNetSls * 100) / g.totalObs : 0;
       return { ...g, totalSellThru: sellThru };
     });
-  }, [filteredItems]);
+  }, [pagedInventoryItems]);
 
   // Overall Gross Totals
   const grossTotal = useMemo(() => {
@@ -480,13 +492,13 @@ const InventoryTab = (props) => {
           <div className="flex-1 overflow-auto custom-scrollbar">
             {/* Mobile Cards (Screens < md) */}
             <div className="md:hidden p-3 space-y-3">
-              {filteredItems.map((row) => {
+              {pagedInventoryItems.map((row, idx) => {
                 const isSelected = selectedItem?.subSection === row.subSection;
                 return (
                   <div
                     key={`${row.section}-${row.subSection}`}
                     onClick={() => setSelectedItem(row)}
-                    className={`p-3.5 rounded-2xl border transition-all cursor-pointer ${
+                    className={`p-3.5 rounded-2xl border transition-all cursor-pointer ${idx >= 12 ? 'deferred-row' : ''} ${
                       isSelected
                         ? 'border-blue-500 ring-2 ring-blue-500/20 shadow-md'
                         : darkMode ? 'bg-[#0f131c] border-[#1f283d] text-white active:bg-white/[0.04]' : 'bg-white border-slate-200 text-slate-800 shadow-xs active:bg-slate-50'
@@ -614,7 +626,7 @@ const InventoryTab = (props) => {
                         <tr
                           key={`${row.section}-${row.subSection}`}
                           onClick={() => setSelectedItem(row)}
-                          className={`cursor-pointer transition-colors ${
+                          className={`cursor-pointer transition-colors ${idx >= 12 ? 'deferred-row' : ''} ${
                             isSelected
                               ? darkMode ? 'bg-blue-900/30' : 'bg-blue-50 font-semibold'
                               : idx % 2 === 0
@@ -756,6 +768,17 @@ const InventoryTab = (props) => {
 
               </tbody>
             </table>
+            <PaginationControls
+              page={inventoryPage}
+              totalPages={totalInventoryPages}
+              totalItems={totalInventoryItems}
+              startIndex={invStartIdx}
+              endIndex={invEndIdx}
+              onPageChange={setInventoryPage}
+              darkMode={darkMode}
+              itemLabel="articles"
+              className="m-3"
+            />
           </div>
         ) : (
 
@@ -764,11 +787,11 @@ const InventoryTab = (props) => {
           /* ------------------------------------------------------------ */
           <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
-              {filteredItems.map(item => (
+              {pagedInventoryItems.map((item, idx) => (
                 <div
                   key={item.subSection}
                   onClick={() => setSelectedItem(item)}
-                  className={`rounded-2xl border overflow-hidden transition-all duration-200 group flex flex-col cursor-pointer ${
+                  className={`rounded-2xl border overflow-hidden transition-all duration-200 group flex flex-col cursor-pointer ${idx >= 12 ? 'deferred-row' : ''} ${
                     selectedItem?.subSection === item.subSection
                       ? 'border-blue-500 ring-2 ring-blue-500/20 shadow-lg'
                       : darkMode ? 'bg-[#121622] border-[#1e273a] hover:border-slate-600' : 'bg-white border-slate-200 hover:shadow-md'
@@ -840,6 +863,17 @@ const InventoryTab = (props) => {
                 </div>
               ))}
             </div>
+            <PaginationControls
+              page={inventoryPage}
+              totalPages={totalInventoryPages}
+              totalItems={totalInventoryItems}
+              startIndex={invStartIdx}
+              endIndex={invEndIdx}
+              onPageChange={setInventoryPage}
+              darkMode={darkMode}
+              itemLabel="articles"
+              className="mt-5"
+            />
           </div>
         )}
 

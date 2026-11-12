@@ -298,7 +298,7 @@ const ExecutiveKpiStrip = ({
           }`}>
             <div className="flex items-center justify-between gap-1 flex-wrap text-[11px]">
               <div className="flex items-center gap-1.5">
-                <span className={`w-2 h-2 rounded-full ${wowDayBenchmark.isAhead ? 'bg-emerald-400 animate-pulse' : 'bg-rose-400'}`} />
+                <span className={`w-2 h-2 rounded-full ${wowDayBenchmark.isAhead ? 'bg-emerald-400' : 'bg-rose-400'}`} />
                 <span className="text-slate-400 dark:text-slate-300 font-medium text-[11px]">
                   vs Last {wowDayBenchmark.dayName}:
                 </span>
@@ -498,15 +498,15 @@ const ExecutiveKpiStrip = ({
               <>
                 {/* Detailed Target Sub-Grid (Achieved vs Gap) */}
                 <div className="grid grid-cols-2 gap-1.5 pt-1 text-xs font-mono">
-                  <div className={`p-2 rounded-xl border flex flex-col justify-center backdrop-blur-md ${
-                    darkMode ? 'bg-sky-950/25 border-sky-800/40 text-sky-100' : 'bg-sky-50/70 border-sky-200/80 text-sky-900'
+                  <div className={`p-2 rounded-xl border flex flex-col justify-center ${
+                    darkMode ? 'bg-sky-950/40 border-sky-800/40 text-sky-100' : 'bg-sky-50/90 border-sky-200/80 text-sky-900'
                   }`}>
                     <span className="text-[9px] text-slate-400 uppercase font-bold">Achieved Today</span>
                     <span className="font-bold text-sky-300 mt-0.5">+{formatCurrency(todaySales)}</span>
                     <span className="text-[9px] text-slate-400">{overviewStats?.today?.BillCount || 0} Bills Completed</span>
                   </div>
-                  <div className={`p-2 rounded-xl border flex flex-col justify-center backdrop-blur-md ${
-                    darkMode ? 'bg-blue-950/25 border-blue-800/40 text-blue-100' : 'bg-blue-50/70 border-blue-200/80 text-blue-900'
+                  <div className={`p-2 rounded-xl border flex flex-col justify-center ${
+                    darkMode ? 'bg-blue-950/40 border-blue-800/40 text-blue-100' : 'bg-blue-50/90 border-blue-200/80 text-blue-900'
                   }`}>
                     <span className="text-[9px] text-slate-400 uppercase font-bold">Remaining Gap</span>
                     <span className={`font-bold mt-0.5 ${isTargetMet ? 'text-emerald-400' : 'text-blue-300'}`}>
@@ -607,7 +607,7 @@ const ExecutiveKpiStrip = ({
                   <button
                     type="button"
                     onClick={() => triggerBreakevenCelebration(true)}
-                    className="px-2 py-0.5 rounded-lg bg-gradient-to-r from-emerald-500 to-amber-500 text-slate-950 font-black text-[9.5px] flex items-center gap-1 shadow-sm cursor-pointer animate-pulse hover:scale-105 transition-transform"
+                    className="px-2 py-0.5 rounded-lg bg-gradient-to-r from-emerald-500 to-amber-500 text-slate-950 font-black text-[9.5px] flex items-center gap-1 shadow-sm cursor-pointer hover:scale-105 transition-transform"
                     title="Replay Breakeven Fanfare & Confetti Explosion"
                   >
                     <Sparkles className="w-3 h-3 text-slate-950 fill-slate-950" /> Fanfare 🎉
@@ -712,15 +712,15 @@ const ExecutiveKpiStrip = ({
               <>
                 {/* Detailed Financial Sub-Grid (OpEx Cost vs Gross Margin) */}
                 <div className="grid grid-cols-2 gap-1.5 pt-1 text-xs font-mono">
-                  <div className={`p-2 rounded-xl border flex flex-col justify-center backdrop-blur-md ${
-                    darkMode ? 'bg-amber-950/25 border-amber-800/40 text-amber-100' : 'bg-amber-50/70 border-amber-200/80 text-amber-900'
+                  <div className={`p-2 rounded-xl border flex flex-col justify-center ${
+                    darkMode ? 'bg-amber-950/40 border-amber-800/40 text-amber-100' : 'bg-amber-50/90 border-amber-200/80 text-amber-900'
                   }`}>
                     <span className="text-[9px] text-slate-400 uppercase font-bold">Base Daily OpEx</span>
                     <span className="font-bold text-amber-200 mt-0.5">₹{DAILY_EXPENSE.toLocaleString('en-IN')}/day</span>
                     <span className="text-[9px] text-slate-400">Fixed Cost ({targetMargin}% Margin)</span>
                   </div>
-                  <div className={`p-2 rounded-xl border flex flex-col justify-center backdrop-blur-md ${
-                    darkMode ? 'bg-emerald-950/25 border-emerald-800/40 text-emerald-100' : 'bg-emerald-50/70 border-emerald-200/80 text-emerald-900'
+                  <div className={`p-2 rounded-xl border flex flex-col justify-center ${
+                    darkMode ? 'bg-emerald-950/40 border-emerald-800/40 text-emerald-100' : 'bg-emerald-50/90 border-emerald-200/80 text-emerald-900'
                   }`}>
                     <span className="text-[9px] text-slate-400 uppercase font-bold">Margin Earned</span>
                     <span className="font-bold text-emerald-400 mt-0.5">+{formatCurrency(todayGrossProfit)}</span>
@@ -843,8 +843,8 @@ const ExecutiveKpiStrip = ({
 
             {/* Detailed Financial Sub-Grid (Fixed OpEx vs MTD Margin Earned) */}
             <div className="grid grid-cols-2 gap-1.5 pt-1 text-xs font-mono">
-              <div className={`p-2 rounded-xl border flex flex-col justify-center backdrop-blur-md ${
-                darkMode ? 'bg-indigo-950/25 border-indigo-800/40 text-indigo-100' : 'bg-indigo-50/70 border-indigo-200/80 text-indigo-900'
+              <div className={`p-2 rounded-xl border flex flex-col justify-center ${
+                darkMode ? 'bg-indigo-950/40 border-indigo-800/40 text-indigo-100' : 'bg-indigo-50/90 border-indigo-200/80 text-indigo-900'
               }`}>
                 <span className="text-[9px] text-slate-400 uppercase font-bold">Monthly OpEx</span>
                 <span className="font-bold text-indigo-200 mt-0.5">₹{monthlyFixedOpEx.toLocaleString('en-IN')}</span>
@@ -852,8 +852,8 @@ const ExecutiveKpiStrip = ({
                   {expCfg?.rent ? `Rent ₹${Math.round(expCfg.rent/1000)}k • Staff ₹${Math.round((expCfg.staffSalary || 45000)/1000)}k` : 'Store Fixed Cost'}
                 </span>
               </div>
-              <div className={`p-2 rounded-xl border flex flex-col justify-center backdrop-blur-md ${
-                darkMode ? 'bg-purple-950/25 border-purple-800/40 text-purple-100' : 'bg-purple-50/70 border-purple-200/80 text-purple-900'
+              <div className={`p-2 rounded-xl border flex flex-col justify-center ${
+                darkMode ? 'bg-purple-950/40 border-purple-800/40 text-purple-100' : 'bg-purple-50/90 border-purple-200/80 text-purple-900'
               }`}>
                 <span className="text-[9px] text-slate-400 uppercase font-bold">MTD Margin Retained</span>
                 <span className="font-bold text-indigo-300 mt-0.5">+{formatCurrency(mtdMarginEarned)}</span>
@@ -942,7 +942,7 @@ const ExecutiveKpiStrip = ({
 
       {/* Feature 4: Modal Trend Chart Overlay */}
       {showTrendChartModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/90 animate-fade-in">
           <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto custom-scrollbar animate-slide-up">
             <DynamicBreakevenTrendChart
               history={dynamicBEPData?.history || []}

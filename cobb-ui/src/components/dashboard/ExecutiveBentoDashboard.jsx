@@ -340,7 +340,7 @@ const ExecutiveBentoDashboard = (props) => {
               <span className="flex items-center gap-1">
                 {isOnline ? (
                   <span className="inline-flex items-center gap-1 text-emerald-500 font-bold">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                     <span>Cloud Sentry Online</span>
                   </span>
                 ) : (
@@ -455,7 +455,6 @@ const ExecutiveBentoDashboard = (props) => {
                     <h2 className="text-xs sm:text-sm font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
                       <span>Live Store Pulse</span>
                       <span className="relative flex h-2 w-2">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                         <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                       </span>
                     </h2>
@@ -890,7 +889,7 @@ const ExecutiveBentoDashboard = (props) => {
                 <div className="min-w-0">
                   <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-2">
                     <span>WhatsApp Customer Automation</span>
-                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
                   </h3>
                   <p className="text-[11px] text-slate-400 truncate">
                     {Array.isArray(automationDispatches) && automationDispatches.length > 0

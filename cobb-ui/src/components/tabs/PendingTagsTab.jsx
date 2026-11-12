@@ -43,6 +43,7 @@ import {
   RotateCcw
 } from 'lucide-react';
 import ThermalTagModal from '../ThermalTagModal';
+import PaginationControls, { usePagination } from '../PaginationControls';
 import ReportDefectModal from '../ReportDefectModal';
 import { db } from '../../utils/firebase';
 import { doc, onSnapshot, setDoc, getDoc } from 'firebase/firestore';
@@ -1735,7 +1736,18 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
     });
 
     return result;
-  }, [tags, statusFilter, searchQuery, sortBy, selectedMrpFilter]);
+  }, [tags, statusFilter, searchQuery, sortBy, selectedMrpFilter, activeCustomerHoldFilter]);
+
+  const tagsResetKey = `${statusFilter}|${activeCustomerHoldFilter || ''}|${selectedMrpFilter ?? ''}|${searchQuery}|${sortBy}`;
+  const {
+    page: tagsPage,
+    setPage: setTagsPage,
+    totalItems: totalTagsCount,
+    totalPages: totalTagsPages,
+    startIndex: tagsStartIdx,
+    endIndex: tagsEndIdx,
+    pageItems: pagedTags
+  } = usePagination(filteredTags, 60, tagsResetKey);
 
   // --- Quick MRP Group Summary (e.g. ₹1,899 (4 pcs), ₹2,499 (3 pcs - Combo Ready!)) ---
   const mrpGroups = useMemo(() => {
@@ -1851,7 +1863,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                 <ShieldAlert className="w-3.5 h-3.5" />
                 <span>⚠️ Damage & Quarantine Desk</span>
                 {damagesSummary.quarantinedCount > 0 ? (
-                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-extrabold bg-white text-red-700 animate-pulse">
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] font-extrabold bg-white text-red-700">
                     {damagesSummary.quarantinedCount}
                   </span>
                 ) : (
@@ -1972,7 +1984,6 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
           <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 font-medium mb-1">
             <span>Active Pending</span>
             <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
             </span>
           </div>
@@ -2602,13 +2613,13 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-xs">
-                {filteredTags.map((tag) => {
+                {pagedTags.map((tag, idx) => {
                   const isBilled = tag.status === 'billed';
                   const isSelected = selectedTagIds.includes(tag.id);
                   return (
                     <tr
                       key={tag.id}
-                      className={`transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/50 ${
+                      className={`transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/50 ${idx >= 12 ? 'deferred-row' : ''} ${
                         isSelected
                           ? 'bg-amber-500/10 dark:bg-amber-500/15'
                           : isBilled
@@ -2749,7 +2760,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                           </div>
                         ) : (
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 flex items-center gap-1 w-fit">
-                            <Clock className="w-3 h-3 animate-pulse" />
+                            <Clock className="w-3 h-3" />
                             <span>Pending</span>
                           </span>
                         )}
@@ -2814,12 +2825,12 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredTags.map((tag) => {
+          {pagedTags.map((tag, idx) => {
             const isBilled = tag.status === 'billed';
             return (
               <div
                 key={tag.id}
-                className={`p-4 rounded-2xl border transition-all relative ${
+                className={`p-4 rounded-2xl border transition-colors relative ${idx >= 12 ? 'deferred-row' : ''} ${
                   isBilled
                     ? 'bg-slate-50/70 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 opacity-80'
                     : 'bg-white dark:bg-slate-900 border-slate-200/90 dark:border-slate-800 shadow-md hover:shadow-lg hover:border-rose-300 dark:hover:border-rose-500/40'
@@ -2868,7 +2879,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                     </span>
                   ) : (
                     <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 flex items-center gap-1 shrink-0">
-                      <Clock className="w-3.5 h-3.5 animate-pulse" />
+                      <Clock className="w-3.5 h-3.5" />
                       <span>Pending</span>
                     </span>
                   )}
@@ -3011,9 +3022,21 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
         </div>
       )}
 
+      <PaginationControls
+        page={tagsPage}
+        totalPages={totalTagsPages}
+        totalItems={totalTagsCount}
+        startIndex={tagsStartIdx}
+        endIndex={tagsEndIdx}
+        onPageChange={setTagsPage}
+        darkMode={darkMode}
+        itemLabel="tags"
+        className="mt-4"
+      />
+
       {/* Floating Bottom Action Dock for Multi-Tag Speed Billing */}
       {selectedTagIds.length > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900/95 text-white backdrop-blur-md px-5 py-3 rounded-2xl shadow-2xl border border-slate-700 flex items-center gap-4 animate-in fade-in slide-in-from-bottom-4">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-slate-900 text-white px-5 py-3 rounded-2xl shadow-2xl border border-slate-700 flex items-center gap-4">
           <div className="flex items-center gap-2">
             <span className="w-6 h-6 rounded-full bg-amber-500 text-slate-950 font-black text-xs flex items-center justify-center">
               {selectedTagIds.length}
@@ -3115,7 +3138,6 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
               <div className="flex items-center justify-between text-xs text-red-600 dark:text-red-400 font-bold mb-1">
                 <span>Quarantined in Bin</span>
                 <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
                 </span>
               </div>
@@ -3374,7 +3396,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                       {isQuarantine && (
                         <div className="p-2 rounded-xl bg-red-500/10 border border-red-500/30 text-[11px] font-bold text-red-600 dark:text-red-400 flex items-center justify-between">
                           <span className="flex items-center gap-1.5">
-                            <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
+                            <span className="h-2 w-2 rounded-full bg-red-500"></span>
                             <span>Quarantined in Damage Bin</span>
                           </span>
                           <span className="text-[10px] text-red-400/80">POS Billing Blocked</span>
@@ -3522,7 +3544,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
 
       {/* --- ADD PENDING TAG MODAL --- */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
           <div className="w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             {/* Modal Header */}
             <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-gradient-to-r from-rose-500/10 to-amber-500/10">
@@ -3926,7 +3948,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
 
       {/* --- B1G2 TRIPLET BILLING & DISCOUNT BREAKDOWN MODAL --- */}
       {tripletBreakdownModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl max-w-3xl w-full max-h-[92vh] flex flex-col overflow-hidden">
             {/* Modal Header */}
             <div className="px-6 py-5 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-r from-amber-500/10 via-rose-500/10 to-transparent flex items-center justify-between">
@@ -4209,7 +4231,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
 
       {/* --- ADMIN TAILOR REPAIR & RESTOCK MODAL --- */}
       {repairNotesModal.isOpen && repairNotesModal.damage && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
           <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 space-y-4 shadow-2xl animate-in zoom-in-95">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -4275,7 +4297,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
 
       {/* --- ADMIN RTV BATCH DISPATCH MODAL --- */}
       {rtvBatchModal.isOpen && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
           <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 space-y-4 shadow-2xl animate-in zoom-in-95">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -4358,7 +4380,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
 
       {/* --- ADMIN CREDIT NOTE SETTLEMENT MODAL --- */}
       {settleModal.isOpen && settleModal.damage && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
           <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 space-y-4 shadow-2xl animate-in zoom-in-95">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -4450,7 +4472,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
 
       {/* --- CUSTOMER HOLD MODAL (FOR SELECTED TAGS) --- */}
       {showHoldModal && (
-        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
           <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-purple-500/30 rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95">
             <div className="p-5 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-r from-purple-500/15 via-indigo-500/10 to-transparent flex items-center justify-between">
               <div className="flex items-center gap-2.5">
@@ -4562,7 +4584,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
 
       {/* --- NEW CUSTOMER HOLD BAG (DIRECT BULK SCAN) MODAL --- */}
       {showNewBagModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4">
+        <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-3 sm:p-4">
           <div className="w-full max-w-2xl bg-white dark:bg-slate-900 border border-purple-500/30 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
             <div className="p-5 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-r from-purple-600/15 via-indigo-600/10 to-transparent flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -4915,7 +4937,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
       {/* --- PHOTO ZOOM MODAL --- */}
       {photoPreviewUrl && (
         <div
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 cursor-pointer"
+          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 cursor-pointer"
           onClick={() => setPhotoPreviewUrl(null)}
         >
           <div className="relative max-w-lg w-full bg-slate-900 rounded-2xl overflow-hidden border border-slate-700 shadow-2xl p-2" onClick={(e) => e.stopPropagation()}>
@@ -4936,7 +4958,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
 
       {/* --- WHATSAPP BRIEF PREVIEW MODAL --- */}
       {whatsAppModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
           <div className="w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95">
             {/* Header */}
             <div className="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-gradient-to-r from-emerald-500/10 to-teal-500/10">

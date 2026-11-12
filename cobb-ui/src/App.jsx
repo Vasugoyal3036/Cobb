@@ -1829,7 +1829,7 @@ export default function App() {
     // Smart, lightweight polling:
     // On remote phones (Firebase link), Firestore onSnapshot pushes checkout & watchdog events in real-time.
     // We relax poll frequency to 30s and pause completely when the user minimizes or locks their phone screen.
-    const pollIntervalTime = isLocalEnvironment ? 10000 : 30000;
+    const pollIntervalTime = isLocalEnvironment ? 30000 : 60000;
     const interval = setInterval(() => {
       if (typeof document !== 'undefined' && document.hidden) return; // Save mobile battery and data
       fetchAutomationStatus();
@@ -2654,62 +2654,7 @@ export default function App() {
           }
         }
 
-        /* AURORA ANIMATIONS */
-        .aurora-blob {
-          position: absolute;
-          border-radius: 50%;
-          filter: blur(100px);
-          opacity: 0.55;
-          animation-timing-function: ease-in-out;
-          animation-iteration-count: infinite;
-          animation-direction: alternate;
-        }
-        .aurora-blob-1 {
-          width: 60%; height: 60%;
-          top: -20%; left: -15%;
-          background: radial-gradient(circle, rgba(99, 102, 241, 0.8), transparent 70%);
-          animation: aurora1 12s infinite alternate ease-in-out;
-        }
-        .aurora-blob-2 {
-          width: 50%; height: 50%;
-          bottom: -20%; right: -10%;
-          background: radial-gradient(circle, rgba(168, 85, 247, 0.7), transparent 70%);
-          animation: aurora2 15s infinite alternate ease-in-out;
-        }
-        .aurora-blob-3 {
-          width: 45%; height: 45%;
-          top: 30%; left: 30%;
-          background: radial-gradient(circle, rgba(14, 165, 233, 0.5), transparent 70%);
-          animation: aurora3 18s infinite alternate ease-in-out;
-        }
-        .aurora-blob-4 {
-          width: 35%; height: 35%;
-          bottom: 10%; left: 10%;
-          background: radial-gradient(circle, rgba(236, 72, 153, 0.4), transparent 70%);
-          animation: aurora4 20s infinite alternate ease-in-out;
-        }
-        @keyframes aurora1 {
-          0%   { transform: translate(0, 0) scale(1); }
-          33%  { transform: translate(8%, 12%) scale(1.08); }
-          66%  { transform: translate(-5%, 6%) scale(0.95); }
-          100% { transform: translate(10%, -8%) scale(1.05); }
-        }
-        @keyframes aurora2 {
-          0%   { transform: translate(0, 0) scale(1); }
-          33%  { transform: translate(-10%, -8%) scale(1.1); }
-          66%  { transform: translate(5%, -12%) scale(0.92); }
-          100% { transform: translate(-8%, 10%) scale(1.06); }
-        }
-        @keyframes aurora3 {
-          0%   { transform: translate(0, 0) scale(1) rotate(0deg); }
-          50%  { transform: translate(-15%, 8%) scale(1.15) rotate(20deg); }
-          100% { transform: translate(12%, -10%) scale(0.9) rotate(-15deg); }
-        }
-        @keyframes aurora4 {
-          0%   { transform: translate(0, 0) scale(1); }
-          40%  { transform: translate(20%, -15%) scale(1.2); }
-          100% { transform: translate(-10%, 10%) scale(0.85); }
-        }
+        /* Static low-CPU utility classes */
         .animate-slide-in {
           animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
@@ -2740,38 +2685,30 @@ export default function App() {
         
         ${getThemeCardCSS(dashTheme)}
 
-        /* EXECUTIVE KPI METRIC TILES (Rich Obsidian Glassmorphism with Signature Accents) */
+        /* EXECUTIVE KPI METRIC TILES (Crisp Low-CPU Obsidian Surfaces with Signature Accents) */
         .dark-mode .kpi-card-revenue {
-          background: rgba(16, 185, 129, 0.04) !important;
-          border: 1px solid rgba(16, 185, 129, 0.22) !important;
-          backdrop-filter: blur(40px) saturate(150%) !important;
-          -webkit-backdrop-filter: blur(40px) saturate(150%) !important;
+          background: rgba(11, 20, 22, 0.94) !important;
+          border: 1px solid rgba(16, 185, 129, 0.28) !important;
           border-radius: 1.5rem !important;
-          box-shadow: 0 4px 24px 0 rgba(0, 0, 0, 0.4), 0 0 20px -4px rgba(16, 185, 129, 0.1), inset 0 1px 0 0 rgba(255, 255, 255, 0.05) !important;
+          box-shadow: 0 4px 18px 0 rgba(0, 0, 0, 0.45), inset 0 1px 0 0 rgba(255, 255, 255, 0.05) !important;
         }
         .dark-mode .kpi-card-target {
-          background: rgba(59, 130, 246, 0.04) !important;
-          border: 1px solid rgba(59, 130, 246, 0.22) !important;
-          backdrop-filter: blur(40px) saturate(150%) !important;
-          -webkit-backdrop-filter: blur(40px) saturate(150%) !important;
+          background: rgba(11, 18, 34, 0.94) !important;
+          border: 1px solid rgba(59, 130, 246, 0.28) !important;
           border-radius: 1.5rem !important;
-          box-shadow: 0 4px 24px 0 rgba(0, 0, 0, 0.4), 0 0 20px -4px rgba(59, 130, 246, 0.1), inset 0 1px 0 0 rgba(255, 255, 255, 0.05) !important;
+          box-shadow: 0 4px 18px 0 rgba(0, 0, 0, 0.45), inset 0 1px 0 0 rgba(255, 255, 255, 0.05) !important;
         }
         .dark-mode .kpi-card-daily-bep {
-          background: rgba(245, 158, 11, 0.04) !important;
-          border: 1px solid rgba(245, 158, 11, 0.25) !important;
-          backdrop-filter: blur(40px) saturate(150%) !important;
-          -webkit-backdrop-filter: blur(40px) saturate(150%) !important;
+          background: rgba(24, 18, 12, 0.94) !important;
+          border: 1px solid rgba(245, 158, 11, 0.3) !important;
           border-radius: 1.5rem !important;
-          box-shadow: 0 4px 24px 0 rgba(0, 0, 0, 0.4), 0 0 24px -4px rgba(245, 158, 11, 0.12), inset 0 1px 0 0 rgba(255, 255, 255, 0.05) !important;
+          box-shadow: 0 4px 18px 0 rgba(0, 0, 0, 0.45), inset 0 1px 0 0 rgba(255, 255, 255, 0.05) !important;
         }
         .dark-mode .kpi-card-monthly-bep {
-          background: rgba(99, 102, 241, 0.04) !important;
-          border: 1px solid rgba(99, 102, 241, 0.25) !important;
-          backdrop-filter: blur(40px) saturate(150%) !important;
-          -webkit-backdrop-filter: blur(40px) saturate(150%) !important;
+          background: rgba(16, 16, 36, 0.94) !important;
+          border: 1px solid rgba(99, 102, 241, 0.3) !important;
           border-radius: 1.5rem !important;
-          box-shadow: 0 4px 24px 0 rgba(0, 0, 0, 0.4), 0 0 24px -4px rgba(99, 102, 241, 0.12), inset 0 1px 0 0 rgba(255, 255, 255, 0.05) !important;
+          box-shadow: 0 4px 18px 0 rgba(0, 0, 0, 0.45), inset 0 1px 0 0 rgba(255, 255, 255, 0.05) !important;
         }
         .dark-mode .kpi-card-revenue:hover {
           border-color: rgba(16, 185, 129, 0.45) !important;
@@ -2810,10 +2747,8 @@ export default function App() {
           border-color: rgba(255, 255, 255, 0.05) !important;
         }
         .dark-mode .bg-white\/85, .dark-mode .bg-white\/80, .dark-mode .bg-white\/90 {
-          background-color: rgba(255, 255, 255, 0.04) !important;
-          border-color: rgba(255, 255, 255, 0.08) !important;
-          backdrop-filter: blur(24px) !important;
-          -webkit-backdrop-filter: blur(24px) !important;
+          background-color: rgba(16, 20, 30, 0.94) !important;
+          border-color: rgba(255, 255, 255, 0.1) !important;
         }
 
         /* HIGHLIGHTED TYPOGRAPHY (Max High Contrast against Pitch Black) */
@@ -3034,13 +2969,13 @@ export default function App() {
           aria-label="Phone notification permission prompt"
           className="fixed top-3 inset-x-3 sm:inset-x-auto sm:right-6 sm:w-96 z-50"
         >
-          <div className={`p-3.5 rounded-2xl shadow-2xl border backdrop-blur-xl flex items-center justify-between gap-3 ${darkMode
+          <div className={`p-3.5 rounded-2xl shadow-2xl border flex items-center justify-between gap-3 ${darkMode
               ? 'bg-[#0f172a]/95 border-indigo-500/40 text-white shadow-indigo-950/50'
               : 'bg-white/95 border-indigo-200 text-slate-900 shadow-indigo-100'
             }`}>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shrink-0 shadow-md shadow-indigo-500/30 text-white">
-                <Bell className="w-5 h-5 animate-pulse" />
+                <Bell className="w-5 h-5" />
               </div>
               <div>
                 <p className="text-[10px] font-black tracking-tight text-indigo-500 uppercase">Phone Alert System</p>
@@ -3282,7 +3217,7 @@ export default function App() {
 
         {/* EOD CASH RECONCILIATION MODAL WITH POCKET KHATA INTEGRATION */}
         {showReconModal && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in">
+          <div className="fixed inset-0 bg-slate-950/80 z-[100] flex items-center justify-center p-4 animate-in fade-in">
             <div className={`rounded-2xl p-6 w-full max-w-md shadow-2xl border ${darkMode ? 'bg-[#000000] border-[#1a1a1f] text-white' : 'bg-white border-slate-200 text-slate-800'}`}>
               <div className="flex justify-between items-start mb-2">
                 <h3 className={`text-xl font-black flex items-center gap-2 ${darkMode ? 'text-white' : 'text-slate-900'}`}>
@@ -3402,7 +3337,7 @@ export default function App() {
 
         {/* EOD WHATSAPP REPORT MODAL */}
         {showEodModal && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-3 sm:p-4 animate-in fade-in">
+          <div className="fixed inset-0 bg-slate-950/80 z-[100] flex items-center justify-center p-3 sm:p-4 animate-in fade-in">
             <div className="bg-white dark:bg-slate-900 rounded-3xl p-5 sm:p-6 w-full max-w-2xl shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 max-h-[90vh] overflow-y-auto custom-scrollbar">
               {/* Header */}
               <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4">
@@ -3523,7 +3458,7 @@ export default function App() {
                       </div>
 
                       <div className="flex sm:flex-col items-end gap-1.5 sm:gap-2">
-                        <div className="px-3 py-1.5 bg-white/10 rounded-xl backdrop-blur-md border border-white/10 text-right">
+                        <div className="px-3 py-1.5 bg-white/10 rounded-xl border border-white/10 text-right">
                           <span className="text-[9px] uppercase tracking-wider text-slate-300 block">Avg Ticket (ABV)</span>
                           <span className="text-sm font-black text-amber-300">
                             ₹{eodSummaryData.billCount > 0 ? Math.round((eodSummaryData.grossSales || 0) / eodSummaryData.billCount).toLocaleString('en-IN') : 0}
@@ -3726,8 +3661,8 @@ export default function App() {
 
         {/* BOTTOM NAVIGATION BAR (Android Material Design — MOBILE ONLY) */}
         <div className={`lg:hidden fixed bottom-0 left-0 right-0 z-50 flex items-end justify-around px-2 pb-safe pt-1 ${darkMode
-            ? 'bg-[#0d1017]/95 border-t border-white/[0.06] backdrop-blur-xl shadow-[0_-8px_24px_rgba(0,0,0,0.4)]'
-            : 'bg-white/95 border-t border-slate-200/80 backdrop-blur-xl shadow-[0_-4px_20px_rgba(0,0,0,0.06)]'
+            ? 'bg-[#0d1017] border-t border-white/[0.06] shadow-[0_-8px_24px_rgba(0,0,0,0.4)]'
+            : 'bg-white border-t border-slate-200/80 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]'
           }`} style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 20px) + 8px)' }}>
 
           {/* DASHBOARD */}

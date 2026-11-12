@@ -1159,7 +1159,7 @@ export default function StaffStockCheckerPage({
       />
 
       {/* --- Sticky Top Header Bar in Swiss Minimalist Boutique --- */}
-      <header className={`sticky top-0 z-40 backdrop-blur-md border-b px-4 py-3 flex items-center justify-between transition-colors ${
+      <header className={`sticky top-0 z-40 border-b px-4 py-3 flex items-center justify-between transition-colors ${
         isObsidian ? 'bg-black/90 border-neutral-800' : 'bg-white/95 border-slate-200 shadow-xs'
       }`}>
         <div className="flex items-center gap-2.5">
@@ -1176,7 +1176,7 @@ export default function StaffStockCheckerPage({
               </span>
             </div>
             <p className={`text-[11px] font-semibold flex items-center gap-1 ${isObsidian ? 'text-neutral-400' : 'text-slate-500'}`}>
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
               <span>Sizes Grouped by Colour • Swiss Boutique</span>
             </p>
           </div>
@@ -2303,7 +2303,7 @@ export default function StaffStockCheckerPage({
       {isCameraActive && (
         <div className="fixed inset-0 z-50 bg-black/95 flex flex-col justify-between animate-in fade-in duration-200">
           {/* Camera Viewfinder Header */}
-          <div className="px-4 py-3 bg-slate-900/90 backdrop-blur-md border-b border-[#EFE9DF] flex items-center justify-between z-10">
+          <div className="px-4 py-3 bg-slate-900 border-b border-[#EFE9DF] flex items-center justify-between z-10">
             <div className="flex items-center gap-2">
               <Camera className={`w-4 h-4 ${scannerMode === 'defect' ? 'text-rose-500' : 'text-amber-400'}`} />
               <div>
@@ -2425,7 +2425,7 @@ export default function StaffStockCheckerPage({
           </div>
 
           {/* Camera Bottom Controls: Shutter Button for instant Number OCR + Cancel */}
-          <div className="p-4 bg-slate-900/90 backdrop-blur-md border-t border-slate-800 flex items-center justify-between gap-3">
+          <div className="p-4 bg-slate-900 border-t border-slate-800 flex items-center justify-between gap-3">
             <button
               type="button"
               onClick={stopCamera}
@@ -2450,7 +2450,7 @@ export default function StaffStockCheckerPage({
 
       {/* --- Pending Tag Details Modal (For a specific size) --- */}
       {selectedPendingSize && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/85 flex items-end sm:items-center justify-center p-4">
           <div className={`rounded-3xl max-w-md w-full p-5 space-y-4 shadow-2xl border max-h-[85vh] overflow-y-auto ${
             isObsidian ? 'bg-[#0D0E12] border-neutral-800 text-white' : 'bg-white border-slate-200 text-slate-900'
           }`}>
@@ -2529,7 +2529,7 @@ export default function StaffStockCheckerPage({
 
       {/* --- All Pending Tags Modal for this Article --- */}
       {showPendingListModal && stockData && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
+        <div className="fixed inset-0 z-50 bg-black/85 flex items-end sm:items-center justify-center p-4">
           <div className={`rounded-3xl max-w-md w-full p-5 space-y-4 shadow-2xl border max-h-[85vh] overflow-y-auto ${
             isObsidian ? 'bg-[#0D0E12] border-neutral-800 text-white' : 'bg-white border-slate-200 text-slate-900'
           }`}>
@@ -2664,7 +2664,7 @@ export default function StaffStockCheckerPage({
       {/* --- Add / Report Pending Tag Modal --- */}
       {showAddPendingModal && stockData && (
         <div className={`fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 ${
-          isObsidian ? 'bg-black/80 backdrop-blur-md' : 'bg-black/50 backdrop-blur-sm'
+          isObsidian ? 'bg-black/85' : 'bg-black/65'
         }`}>
           <div className={`rounded-3xl max-w-md w-full p-5 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto border ${
             isObsidian ? 'bg-[#0E0E12] border-neutral-800 text-white' : 'bg-white border-slate-200 text-slate-900'
@@ -2871,7 +2871,7 @@ export default function StaffStockCheckerPage({
       {/* Install / Shortcut Guidance Modal */}
       {showInstallGuide && (
         <div className={`fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 ${
-          isObsidian ? 'bg-black/80 backdrop-blur-md' : 'bg-black/50 backdrop-blur-sm'
+          isObsidian ? 'bg-black/85' : 'bg-black/65'
         }`}>
           <div className={`rounded-3xl max-w-md w-full p-5 space-y-4 shadow-2xl max-h-[90vh] overflow-y-auto border ${
             isObsidian ? 'bg-[#0E0E12] border-neutral-800 text-white' : 'bg-white border-slate-200 text-slate-900'
@@ -2990,7 +2990,7 @@ export default function StaffStockCheckerPage({
       )}
 
       {/* --- Thumb-Friendly Floor Mobile Bottom Bar --- */}
-      <nav aria-label="Floor Staff Navigation" className={`fixed bottom-0 inset-x-0 z-40 backdrop-blur-md px-3 py-2 flex items-center justify-around gap-2 ${
+      <nav aria-label="Floor Staff Navigation" className={`fixed bottom-0 inset-x-0 z-40 px-3 py-2 flex items-center justify-around gap-2 ${
         isObsidian
           ? 'bg-[#0A0A0E]/95 border-t border-neutral-800 shadow-[0_-4px_20px_rgba(0,0,0,0.8)]'
           : 'bg-white/95 border-t border-slate-200 shadow-[0_-4px_20px_rgba(0,0,0,0.06)]'
