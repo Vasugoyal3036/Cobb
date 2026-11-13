@@ -129,7 +129,6 @@ const navigationItems = [
       { id: "ratings", label: "⭐ Customer Ratings & NPS", icon: Star, colorClass: "text-amber-500 hover:bg-slate-900 hover:text-white font-bold", activeColorClass: "bg-amber-500/15 text-amber-500 font-bold border-l-2 border-amber-500 shadow-sm shadow-amber-500/20" },
       { id: "loyalty", label: "Loyalty & Points", icon: Crown, colorClass: "text-amber-600 dark:text-amber-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-amber-500/15 text-amber-600 dark:text-amber-400 font-bold border-l-2 border-amber-500" },
       { id: "broadcast", label: "Mass Offer Broadcast", icon: Send, colorClass: "text-emerald-600 dark:text-emerald-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold border-l-2 border-emerald-500" },
-      { id: "retention", label: "Retention Radar", icon: Activity, colorClass: "text-rose-600 dark:text-rose-400 hover:bg-slate-900 hover:text-white", activeColorClass: "bg-rose-500/15 text-rose-600 dark:text-rose-400 font-bold border-l-2 border-rose-500" },
       { id: "vip", label: "VIP Profiles", icon: Users },
       { id: "dormant", label: "Dormant Clients", icon: AlertCircle },
     ]

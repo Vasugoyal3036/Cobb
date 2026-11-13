@@ -200,11 +200,8 @@ const deepAnalyticsEndpoints = [
     "/api/financials/pnl",
     "/api/analytics/monthly-products",
     "/api/customers/dormant",
-    "/api/analytics/retention-radar",
     "/api/analytics/wardrobe-profiles",
-    "/api/broadcast/group",
-    "/api/smart-bundles",
-    { url: "/api/inventory/depreciation-clock", docName: "inventory_depreciation-clock" }
+    "/api/broadcast/group"
 ];
 
 const lastPayloadHash = new Map();

@@ -965,11 +965,6 @@ export default function App() {
     }
   }, [currentRole, activeTab]);
 
-  useEffect(() => {
-    if (activeTab === 'smart_bundles') {
-      fetchBundles();
-    }
-  }, [activeTab]);
   const [activeConsole, setActiveConsole] = useState('listener');
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -1396,13 +1391,6 @@ export default function App() {
         }
       }).catch(console.error);
 
-      axios.get(`${API_BASE}/api/inventory`).then(res => {
-        if (!res?.data?.error && Array.isArray(res.data) && res.data.length > 0) {
-          setInventory(res.data);
-          setLocalCache('inventory', res.data);
-        }
-      }).catch(console.error);
-
       // Fetch P&L telemetry & operating expense benchmarks for executive dashboard
       fetchPnl();
     }, 300);
@@ -1412,6 +1400,14 @@ export default function App() {
   useEffect(() => {
     if (['inventory', 'deadstock'].includes(activeTab) && (!deadStock || deadStock.length === 0)) {
       subscribeToData('dead-stock', `${API_BASE}/api/inventory/dead-stock`, setDeadStock);
+    }
+    if (['inventory', 'deadstock'].includes(activeTab) && (!inventory || inventory.length === 0)) {
+      axios.get(`${API_BASE}/api/inventory`).then(res => {
+        if (!res?.data?.error && Array.isArray(res.data) && res.data.length > 0) {
+          setInventory(res.data);
+          setLocalCache('inventory', res.data);
+        }
+      }).catch(console.error);
     }
     if (activeTab === 'monthly') {
       axios.get(`${API_BASE}/api/analytics/monthly-products`).then(res => {
@@ -1471,22 +1467,11 @@ export default function App() {
         }
       }).catch(console.error);
     }
-    if (activeTab === 'smart_bundles' && (!bundles || bundles.length === 0)) {
-      fetchBundles();
-    }
     if (activeTab === 'pnl') {
       axios.get(`${API_BASE}/api/financials/pnl`).then(res => {
         if (!res?.data?.error && res?.data) {
           setPnlData(res.data);
           setLocalCache('pnlData', res.data);
-        }
-      }).catch(console.error);
-    }
-    if (activeTab === 'retention' && (!retentionData || Object.keys(retentionData).length === 0)) {
-      axios.get(`${API_BASE}/api/analytics/retention-radar`).then(res => {
-        if (!res?.data?.error) {
-          setRetentionData(res.data);
-          setLocalCache('retentionData', res.data);
         }
       }).catch(console.error);
     }
@@ -3044,7 +3029,7 @@ export default function App() {
         <div>
           <Suspense fallback={<TabFallback />}>
             {/* 1. COMMAND CENTER */}
-            {['dashboard', 'pnl', 'gst', 'analytics', 'monthly', 'topmovers', 'sizematrix', 'broadcast', 'wardrobe', 'retention'].includes(activeTab) && (
+            {['dashboard', 'pnl', 'gst', 'analytics', 'monthly', 'topmovers', 'sizematrix', 'broadcast', 'wardrobe'].includes(activeTab) && (
               <DashboardTab {...appState} />
             )}
 
