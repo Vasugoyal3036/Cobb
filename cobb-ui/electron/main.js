@@ -83,11 +83,11 @@ function stopBackendServer() {
 
 function createWindow() {
   const iconIco = path.join(process.env.VITE_PUBLIC, 'app.ico');
-  const iconPng = path.join(process.env.VITE_PUBLIC, 'goyal-icon-512.png');
-  const iconLegacy = path.join(process.env.VITE_PUBLIC, 'ors-logo.png');
+  const iconPng = path.join(process.env.VITE_PUBLIC, 'cobb-icon-512.png');
+  const iconLegacy = path.join(process.env.VITE_PUBLIC, 'cobb-logo.png');
   const iconPath = fs.existsSync(iconIco) ? iconIco : (fs.existsSync(iconPng) ? iconPng : iconLegacy);
   win = new BrowserWindow({
-    title: 'Goyal - House Of Fashion | Retail POS & Chain OS',
+    title: 'COBB ITALY | Showroom POS & Intelligence Command Center',
     width: 1280,
     height: 800,
     minWidth: 1024,

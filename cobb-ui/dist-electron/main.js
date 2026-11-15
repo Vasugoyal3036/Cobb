@@ -57,9 +57,9 @@ function y() {
 	_ &&= (console.log("[Electron] Stopping backend server..."), _.kill(), null);
 }
 function b() {
-	let t = s.join(process.env.VITE_PUBLIC, "app.ico"), n = s.join(process.env.VITE_PUBLIC, "goyal-icon-512.png"), r = s.join(process.env.VITE_PUBLIC, "ors-logo.png"), i = l.existsSync(t) ? t : l.existsSync(n) ? n : r;
+	let t = s.join(process.env.VITE_PUBLIC, "app.ico"), n = s.join(process.env.VITE_PUBLIC, "cobb-icon-512.png"), r = s.join(process.env.VITE_PUBLIC, "cobb-logo.png"), i = l.existsSync(t) ? t : l.existsSync(n) ? n : r;
 	g = new e({
-		title: "Goyal - House Of Fashion | Retail POS & Chain OS",
+		title: "COBB ITALY | Showroom POS & Intelligence Command Center",
 		width: 1280,
 		height: 800,
 		minWidth: 1024,

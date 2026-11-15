@@ -1,5 +1,5 @@
 appId: com.cobb.retailcrm
-productName: ORS
+productName: COBB Showroom POS
 directories:
   output: release/${version}
 files:
@@ -8,7 +8,7 @@ files:
 win:
   target:
     - nsis
-  icon: public/favicon.ico
+  icon: public/app.ico
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
