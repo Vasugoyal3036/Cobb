@@ -446,12 +446,12 @@ const Layout = ({
                 const baseColorBg = baseColorText.replace('text-', 'bg-').replace('-400', '-500/15').replace('-600', '-500/15').replace('-500', '-500/15');
 
                 const normalColor = darkMode
-                  ? "text-slate-400 hover:bg-white/[0.08] hover:text-white rounded-full font-medium"
-                  : "text-slate-600 hover:bg-slate-100/80 hover:text-slate-900 rounded-full font-medium";
+                  ? "text-slate-400 hover:bg-white/5 hover:text-white rounded-xl font-medium"
+                  : "text-slate-600 hover:bg-black/5 hover:text-slate-900 rounded-xl font-medium";
 
                 const activeColor = darkMode
-                  ? `${baseColorBg} ${baseColorText} font-bold rounded-full shadow-[inset_0_0_12px_rgba(255,255,255,0.05)] border border-white/[0.05]`
-                  : `${baseColorBg.replace('/15', '/10')} ${baseColorText.replace('-400', '-700')} font-bold rounded-full border border-black/5 shadow-sm`;
+                  ? "bg-[#007aff]/15 text-[#007aff] font-semibold rounded-xl"
+                  : "bg-[#007aff]/10 text-[#007aff] font-semibold rounded-xl";
 
                 return (
                   <button
@@ -459,7 +459,7 @@ const Layout = ({
                     onClick={() => { setActiveTab(item.id); setSearchQuery(''); setIsMobileMenuOpen(false); }}
                     className={`w-full flex items-center ${isLeftSidebarCollapsed ? 'justify-center px-0' : 'px-4'} py-2.5 transition-all duration-200 cursor-pointer relative group text-[13px] ${isActive ? activeColor : normalColor}`}
                   >
-                    <Icon className={`w-[18px] h-[18px] transition-colors shrink-0 ${isLeftSidebarCollapsed ? '' : 'mr-4'} ${isActive ? "" : `opacity-70 group-hover:opacity-100 ${baseColorText}`}`} />
+                    <Icon className={`w-[18px] h-[18px] transition-colors shrink-0 ${isLeftSidebarCollapsed ? '' : 'mr-4'} ${isActive ? "text-[#007aff]" : "opacity-60 group-hover:opacity-100"}`} />
                     <span className={`truncate whitespace-nowrap transition-all duration-500 delay-[0ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isLeftSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none blur-md -translate-y-4' : 'w-full opacity-100 blur-0 translate-y-0'
                       }`}>{item.label}</span>
                   </button>

@@ -321,10 +321,10 @@ const ExecutiveBentoDashboard = (props) => {
       {/* =========================================================================
           TOP COMMAND STRIP: STORE TELEMETRY, SENTRY & PERSPECTIVE SELECTOR
           ========================================================================= */}
-      <div className="glass-card-obsidian p-3.5 sm:p-4 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-lg shadow-black/20 border border-slate-200/80 dark:border-white/[0.08]">
+      <div className="ios-card p-3.5 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
         {/* Left: Brand Identity & Telemetry Status */}
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-md shadow-blue-500/25 shrink-0 border border-white/20">
+          <div className="w-10 h-10 rounded-2xl bg-[#007aff] flex items-center justify-center text-white shadow-none shrink-0">
             <Sparkles className="w-5 h-5" />
           </div>
           <div>

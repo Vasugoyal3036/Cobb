@@ -239,8 +239,8 @@ export default function MobileNav({
       <nav
         className={`pointer-events-auto border-t transition-colors duration-200 ${
           darkMode
-            ? 'bg-[#0a0d16] border-white/10 text-slate-400 shadow-[0_-8px_24px_rgba(0,0,0,0.7)]'
-            : 'bg-white border-slate-200/90 text-slate-500 shadow-[0_-8px_20px_rgba(0,0,0,0.06)]'
+            ? 'bg-[#1c1c1e] border-[#2c2c2e] text-slate-400'
+            : 'bg-white border-[#e5e5ea] text-slate-500 shadow-xs'
         }`}
       >
         <div className="flex items-center justify-around px-3 pt-1 pb-safe">
@@ -259,15 +259,12 @@ export default function MobileNav({
                   title="Universal Search (Ctrl+K)"
                 >
                   <div className="relative">
-                    {/* Ambient Accent Ring */}
-                    <div className="absolute -inset-0.5 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 opacity-50 group-hover:opacity-90 transition-opacity" />
-                    
                     {/* Elevated Button Tile */}
-                    <div className="relative w-11 h-11 rounded-2xl bg-gradient-to-tr from-blue-600 via-indigo-600 to-purple-600 text-white flex items-center justify-center shadow-lg shadow-indigo-600/40 border border-white/30 transform active:scale-90 transition-transform duration-150">
-                      <Icon className="w-5 h-5 text-white drop-shadow" />
+                    <div className="relative w-11 h-11 rounded-2xl bg-[#007aff] text-white flex items-center justify-center shadow-md border border-white/20 transform active:scale-92 transition-transform duration-150">
+                      <Icon className="w-5 h-5 text-white" />
                     </div>
                   </div>
-                  <span className="text-[9.5px] font-black text-indigo-500 dark:text-indigo-300 mt-0.5 tracking-tight">
+                  <span className="text-[9.5px] font-bold text-[#007aff] mt-0.5 tracking-tight">
                     {item.label}
                   </span>
                 </button>
@@ -281,9 +278,7 @@ export default function MobileNav({
                 onClick={item.onClick}
                 className={`flex-1 py-1 flex flex-col items-center justify-center transition-all cursor-pointer focus:outline-none active:scale-92 ${
                   isActive
-                    ? darkMode
-                      ? 'text-white font-bold'
-                      : 'text-slate-950 font-bold'
+                    ? 'text-[#007aff] font-bold'
                     : darkMode
                       ? 'text-slate-400 hover:text-slate-200'
                       : 'text-slate-500 hover:text-slate-800'
@@ -292,24 +287,20 @@ export default function MobileNav({
                 <div
                   className={`relative p-1 rounded-xl transition-all duration-200 ${
                     isActive
-                      ? darkMode
-                        ? 'bg-white/10 text-blue-400'
-                        : 'bg-blue-50 text-blue-600'
+                      ? 'bg-[#007aff]/10 text-[#007aff]'
                       : ''
                   }`}
                 >
                   <Icon className="w-4.5 h-4.5" />
                   {isActive && (
                     <span
-                      className={`absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full ${
-                        darkMode ? 'bg-blue-400 shadow-[0_0_8px_#60a5fa]' : 'bg-blue-600'
-                      }`}
+                      className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-[#007aff]"
                     />
                   )}
                 </div>
                 <span
                   className={`text-[9.5px] mt-0.5 tracking-tight ${
-                    isActive ? 'font-black' : 'font-semibold'
+                    isActive ? 'font-bold' : 'font-medium'
                   }`}
                 >
                   {item.label}

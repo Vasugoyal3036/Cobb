@@ -2185,15 +2185,15 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
 
       {/* Filter, Sort and Search Bar */}
       <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
-        {/* Status Filter Tabs */}
-        <div className="flex items-center bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl border border-slate-200 dark:border-slate-700 overflow-x-auto">
+        {/* Status Filter Tabs - iOS Segmented Control */}
+        <div className="flex items-center bg-slate-200/60 dark:bg-white/10 p-1 rounded-xl overflow-x-auto">
           <button
             type="button"
             onClick={() => { setStatusFilter('active'); setActiveCustomerHoldFilter(null); }}
-            className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+            className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
               statusFilter === 'active'
-                ? 'bg-white dark:bg-slate-900 text-rose-600 dark:text-rose-400 shadow-sm'
-                : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                ? 'bg-white dark:bg-[#1c1c1e] text-slate-900 dark:text-white shadow-xs'
+                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             Active Pending ({summary.activeCount})
@@ -2202,33 +2202,34 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
           <button
             type="button"
             onClick={() => { setStatusFilter('holds'); setActiveCustomerHoldFilter(null); }}
-            className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+            className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
               statusFilter === 'holds'
-                ? 'bg-purple-600 text-white shadow-sm'
-                : 'text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-300'
+                ? 'bg-white dark:bg-[#1c1c1e] text-slate-900 dark:text-white shadow-xs'
+                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
-            <Briefcase className="w-3.5 h-3.5" />
+            <Briefcase className="w-3.5 h-3.5 text-[#007aff]" />
             <span>Customer Hold Bags ({customerHolds.length} Bags / {customerHoldTagsCount} Pcs)</span>
           </button>
 
           <button
             type="button"
             onClick={() => { setStatusFilter('billed'); setActiveCustomerHoldFilter(null); }}
-            className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+            className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
               statusFilter === 'billed'
-                ? 'bg-white dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 shadow-sm'
-                : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                ? 'bg-white dark:bg-[#1c1c1e] text-slate-900 dark:text-white shadow-xs'
+                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             Auto-Billed / Resolved ({summary.billedCount})
           </button>
+
           <button
             onClick={() => setStatusFilter('all')}
-            className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${
+            className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
               statusFilter === 'all'
-                ? 'bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm'
-                : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                ? 'bg-white dark:bg-[#1c1c1e] text-slate-900 dark:text-white shadow-xs'
+                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             All Tags ({tags.length})
@@ -2649,11 +2650,11 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
           )}
         </div>
       ) : viewMode === 'list' ? (
-        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+        <div className="ios-card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                <tr className="bg-slate-50 dark:bg-white/5 border-b border-[#e5e5ea] dark:border-[#2c2c2e] text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   <th className="py-3 px-3 w-10 text-center">
                     <button
                       onClick={() => {
@@ -2674,7 +2675,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                       )}
                     </button>
                   </th>
-                  <th className="py-3 px-4 text-amber-600 dark:text-amber-400 font-black cursor-pointer select-none" onClick={() => setSortBy(sortBy === 'low_to_high' ? 'high_to_low' : 'low_to_high')} title="Click to sort by MRP">
+                  <th className="py-3 px-4 text-[#007aff] font-bold cursor-pointer select-none" onClick={() => setSortBy(sortBy === 'low_to_high' ? 'high_to_low' : 'low_to_high')} title="Click to sort by MRP">
                     <div className="flex items-center gap-1.5">
                       <span>TAG MRP</span>
                       {sortBy === 'low_to_high' ? (
@@ -2695,18 +2696,18 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-xs">
+              <tbody className="divide-y divide-[#e5e5ea] dark:divide-[#2c2c2e] text-xs">
                 {pagedTags.map((tag, idx) => {
                   const isBilled = tag.status === 'billed';
                   const isSelected = selectedTagIds.includes(tag.id);
                   return (
                     <tr
                       key={tag.id}
-                      className={`transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/50 ${idx >= 12 ? 'deferred-row' : ''} ${
+                      className={`transition-colors hover:bg-slate-50/80 dark:hover:bg-white/5 ${idx >= 12 ? 'deferred-row' : ''} ${
                         isSelected
                           ? 'bg-amber-500/10 dark:bg-amber-500/15'
                           : isBilled
-                          ? 'bg-slate-50/40 dark:bg-slate-900/40 opacity-70'
+                          ? 'bg-slate-50/40 dark:bg-white/5 opacity-70'
                           : ''
                       }`}
                     >
@@ -2923,10 +2924,10 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
             return (
               <div
                 key={tag.id}
-                className={`p-4 rounded-2xl border transition-colors relative ${idx >= 12 ? 'deferred-row' : ''} ${
+                className={`ios-card p-4 transition-colors relative ${idx >= 12 ? 'deferred-row' : ''} ${
                   isBilled
-                    ? 'bg-slate-50/70 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 opacity-80'
-                    : 'bg-white dark:bg-slate-900 border-slate-200/90 dark:border-slate-800 shadow-md hover:shadow-lg hover:border-rose-300 dark:hover:border-rose-500/40'
+                    ? 'opacity-60'
+                    : 'hover:border-slate-300 dark:hover:border-slate-600'
                 }`}
               >
                 {/* Header: Article Name & Status */}
