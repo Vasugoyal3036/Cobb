@@ -260,11 +260,11 @@ export default function MobileNav({
                 >
                   <div className="relative">
                     {/* Elevated Button Tile */}
-                    <div className="relative w-11 h-11 rounded-2xl bg-gradient-to-tr from-rose-600 to-rose-500 text-white flex items-center justify-center shadow-lg shadow-rose-950/40 border border-white/20 transform active:scale-92 transition-transform duration-150">
+                    <div className="relative w-11 h-11 cobb-emblem-red text-white flex items-center justify-center shadow-lg border border-white/20 transform active:scale-92 transition-transform duration-150">
                       <Icon className="w-5 h-5 text-white" />
                     </div>
                   </div>
-                  <span className="text-[9.5px] font-bold text-rose-500 mt-0.5 tracking-tight">
+                  <span className="text-[9.5px] font-black text-rose-500 mt-0.5 tracking-tight uppercase">
                     {item.label}
                   </span>
                 </button>

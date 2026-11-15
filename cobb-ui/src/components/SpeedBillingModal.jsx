@@ -1024,13 +1024,15 @@ _Thank you for choosing Cobb! For sizing alterations or exchanges, please quote 
       <header className="h-16 px-6 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between shadow-lg shrink-0">
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2.5">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-600 to-yellow-400 flex items-center justify-center text-slate-950 font-black shadow-md shadow-amber-500/20">
-              <Zap className="w-6 h-6 fill-current" />
+            <div className="w-10 h-10 rounded-xl cobb-emblem-red flex flex-col items-center justify-center text-white shrink-0 shadow-md shadow-rose-950/40 font-black">
+              <span className="text-[12px] font-black tracking-tighter leading-none">COBB</span>
+              <span className="text-[6.5px] font-bold tracking-widest text-rose-200 leading-none mt-0.5 uppercase">POS</span>
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <h1 className="text-lg font-black tracking-wide bg-gradient-to-r from-amber-400 via-yellow-200 to-amber-500 bg-clip-text text-transparent">
-                  COBB SPEED POS
+                <h1 className="text-lg font-black tracking-wide text-white flex items-center gap-1.5">
+                  <span>COBB SPEED POS</span>
+                  <span className="text-[9px] font-black tracking-widest cobb-gold-badge px-2 py-0.5 rounded-full uppercase">ITALY</span>
                 </h1>
                 <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>

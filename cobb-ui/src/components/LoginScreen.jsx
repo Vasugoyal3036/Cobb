@@ -206,29 +206,24 @@ const LoginScreen = ({ onSetup }) => {
           </span>
         </div>
 
-        <div className="flex justify-center mb-2">
-          <OrsLogo size={58} />
+        <div className="flex justify-center mb-3">
+          <div className="w-16 h-16 rounded-2xl cobb-emblem-red flex flex-col items-center justify-center text-white font-black shadow-xl border border-white/30 select-none">
+            <span className="text-xl font-black tracking-tighter leading-none">COBB</span>
+            <span className="text-[9px] font-black tracking-widest text-rose-200 leading-none mt-1 uppercase">ITALY</span>
+          </div>
         </div>
 
-        {(() => {
-          const isCobb = activeStoreObj?.brand === 'Cobb' || (activeStoreObj?.name && activeStoreObj.name.toLowerCase().includes('cobb'));
-          const brandTitle = isCobb ? 'COBB STORE' : (activeStoreObj?.brand || 'GOYAL - HOUSE OF FASHION');
-          const badgeTitle = isCobb ? 'CRM POS' : 'CHAIN OS';
-          return (
-            <h1 className="text-lg sm:text-xl font-black tracking-tight text-white flex items-center justify-center gap-2">
-              <span>{brandTitle}</span>
-              <span className={`px-2 py-0.5 text-[10px] font-black rounded-lg uppercase tracking-widest text-white ${
-                isCobb 
-                  ? 'bg-gradient-to-r from-blue-600 to-indigo-600' 
-                  : 'bg-gradient-to-r from-amber-500 via-rose-500 to-indigo-600'
-              }`}>
-                {badgeTitle}
-              </span>
-            </h1>
-          );
-        })()}
-        <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-widest mt-0.5">
-          Multi-Store Retail &amp; Fashion Telemetry
+        <h1 className="text-xl sm:text-2xl font-black tracking-wider text-white flex items-center justify-center gap-2">
+          <span>COBB STORE</span>
+          <span className="px-2 py-0.5 text-[10px] font-black rounded-lg uppercase tracking-widest cobb-emblem-red text-white shadow-xs">
+            CRM POS
+          </span>
+          <span className="px-1.5 py-0.5 text-[9px] font-black rounded uppercase tracking-widest cobb-gold-badge">
+            ITALY
+          </span>
+        </h1>
+        <p className="text-[11px] font-bold text-amber-400/90 uppercase tracking-widest mt-0.5">
+          Pundri Showroom • House of Fashion
         </p>
       </header>
 

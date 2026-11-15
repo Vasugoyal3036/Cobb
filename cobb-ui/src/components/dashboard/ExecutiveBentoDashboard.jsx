@@ -324,29 +324,30 @@ const ExecutiveBentoDashboard = (props) => {
       <div className="obsidian-card p-3.5 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
         {/* Left: Brand Identity & Telemetry Status */}
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-rose-600 flex items-center justify-center text-white shadow-sm shadow-rose-950/40 shrink-0">
-            <Sparkles className="w-5 h-5" />
+          <div className="w-11 h-11 rounded-2xl cobb-emblem-red flex flex-col items-center justify-center text-white shrink-0 shadow-md">
+            <span className="text-[12px] font-black tracking-tighter leading-none">COBB</span>
+            <span className="text-[6.5px] font-black tracking-widest text-rose-200 leading-none mt-0.5 uppercase">ITALY</span>
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-sm sm:text-base font-black tracking-tight text-white uppercase flex items-center gap-1.5">
-                <span>Executive Command Center</span>
+                <span>COBB Showroom Command Desk</span>
               </h1>
-              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-400 border border-rose-500/25">
-                {activeStore || 'DEMO_STORE_001'}
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full cobb-gold-badge">
+                {activeStore ? `SHOWROOM #${activeStore}` : 'PUNDRI SHOWROOM #001'}
               </span>
             </div>
             <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-400 font-medium">
               <span className="flex items-center gap-1">
                 {isOnline ? (
                   <span className="inline-flex items-center gap-1 text-emerald-400 font-bold">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                    <span>Cloud Sentry Online</span>
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
+                    <span>Showroom Counter Live</span>
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1 text-rose-400 font-bold">
                     <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                    <span>Offline (Local Cache)</span>
+                    <span>Offline Mode (Local Tills)</span>
                   </span>
                 )}
               </span>

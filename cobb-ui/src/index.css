@@ -34,30 +34,30 @@ body {
 
 html.dark, .dark, .dark-mode {
   color-scheme: dark;
-  --obsidian-bg: #0a0c10;
+  --obsidian-bg: #090a0f;
   --obsidian-sidebar: #0c0e14;
-  --obsidian-card: #12151d;
-  --obsidian-card-hover: #181d27;
+  --obsidian-card: #11141e;
+  --obsidian-card-hover: #161b26;
   --obsidian-border: rgba(255, 255, 255, 0.08);
   --obsidian-border-subtle: rgba(255, 255, 255, 0.05);
-  --obsidian-input: #12151d;
+  --obsidian-input: #11141e;
   --obsidian-input-border: rgba(255, 255, 255, 0.12);
 
   /* Remap Tailwind slate and gray tokens in dark mode for Modern Luxury surfaces */
-  --color-slate-950: #0a0c10;
-  --color-slate-900: #12151d;
-  --color-slate-850: #151922;
-  --color-slate-800: #181d27;
-  --color-slate-700: #232836;
-  --color-gray-950: #0a0c10;
-  --color-gray-900: #12151d;
-  --color-gray-800: #181d27;
+  --color-slate-950: #090a0f;
+  --color-slate-900: #11141e;
+  --color-slate-850: #141722;
+  --color-slate-800: #161b26;
+  --color-slate-700: #222838;
+  --color-gray-950: #090a0f;
+  --color-gray-900: #11141e;
+  --color-gray-800: #161b26;
 }
 
 html.dark body,
 body.dark,
 body.dark-mode {
-  background-color: #0a0c10 !important;
+  background-color: #090a0f !important;
   color: #f8fafc;
 }
 
@@ -193,27 +193,51 @@ body {
 .animate-blur-backdrop { animation: blurBackdrop 0.5s ease-out forwards; }
 
 /* ============================================================
-   MODERN LUXURY OBSIDIAN & COBB CRIMSON SYSTEM
+   COBB SHOWROOM BESPOKE BRAND & SWING TAG SYSTEM
    ============================================================ */
+
+/* Red Acrylic Emblem (Showroom Signboard Identity) */
+.cobb-emblem-red {
+  background: linear-gradient(135deg, #e11d48 0%, #be123c 55%, #881337 100%);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  box-shadow: 0 4px 16px -2px rgba(225, 29, 72, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+  border-radius: 0.75rem;
+}
+
+/* Warm Showroom Brass/Gold Accent Badge */
+.cobb-gold-badge {
+  background-color: rgba(245, 158, 11, 0.14);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.32);
+}
+
+/* Illuminated Showroom Counter Card with subtle top downlight highlight */
+.cobb-counter-card,
 .obsidian-card,
 .ios-card {
-  background-color: #ffffff;
+  background: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 0.875rem;
   overflow: hidden;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
+.dark .cobb-counter-card,
+.dark-mode .cobb-counter-card,
+html.dark .cobb-counter-card,
 .dark .obsidian-card,
 .dark-mode .obsidian-card,
 html.dark .obsidian-card,
 .dark .ios-card,
 .dark-mode .ios-card,
 html.dark .ios-card {
-  background-color: #12151d;
+  background: linear-gradient(180deg, rgba(225, 29, 72, 0.035) 0%, #11141e 16%, #11141e 100%);
   border-color: rgba(255, 255, 255, 0.08);
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 4px 22px -3px rgba(0, 0, 0, 0.55);
 }
+.dark .cobb-counter-card:hover,
+.dark-mode .cobb-counter-card:hover,
+html.dark .cobb-counter-card:hover,
 .dark .obsidian-card:hover,
 .dark-mode .obsidian-card:hover,
 html.dark .obsidian-card:hover,
@@ -223,6 +247,30 @@ html.dark .ios-card:hover {
   border-color: rgba(255, 255, 255, 0.16);
 }
 
+/* Authentic Cobb Garment Swing Tag Ticket */
+.cobb-swing-tag {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.875rem;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.dark .cobb-swing-tag,
+.dark-mode .cobb-swing-tag,
+html.dark .cobb-swing-tag {
+  background: #11141e;
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 18px -2px rgba(0, 0, 0, 0.5);
+}
+.dark .cobb-swing-tag:hover,
+.dark-mode .cobb-swing-tag:hover,
+html.dark .cobb-swing-tag:hover {
+  border-color: rgba(225, 29, 72, 0.4);
+  box-shadow: 0 6px 24px -2px rgba(225, 29, 72, 0.2);
+  transform: translateY(-1px);
+}
+
 .obsidian-subtle {
   background-color: #f8fafc;
   border: 1px solid #e2e8f0;
@@ -230,7 +278,7 @@ html.dark .ios-card:hover {
 .dark .obsidian-subtle,
 .dark-mode .obsidian-subtle,
 html.dark .obsidian-subtle {
-  background-color: #181d27;
+  background-color: #161b26;
   border-color: rgba(255, 255, 255, 0.06);
 }
 

@@ -355,14 +355,21 @@ const Layout = ({
       <div className={`fixed lg:static inset-y-0 left-0 lg:my-4 lg:ml-4 lg:mr-2 lg:h-[calc(100vh-32px)] lg:rounded-[2rem] flex flex-col z-40 transition-all duration-300 ${isMobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0'} ${isLeftSidebarCollapsed ? 'w-[80px]' : 'w-[85vw] max-w-xs lg:w-64'} ${darkMode ? 'bg-[#0c0e14] border-r lg:border border-white/[0.08] shadow-[0_8px_24px_0_rgba(0,0,0,0.6)]' : 'bg-white border-r lg:border border-slate-200/80 shadow-[0_8px_24px_rgb(0,0,0,0.06)]'}`}>
         <div className={`p-4 lg:p-5 pb-3 flex items-center border-b transition-all duration-500 pt-safe ${isLeftSidebarCollapsed ? 'justify-center px-2' : 'justify-between'} ${darkMode ? 'border-white/[0.06]' : 'border-slate-100'}`}>
           <div className="flex items-center gap-2.5">
-            <OrsLogo size={38} />
+            {/* Cobb Red Acrylic Showroom Emblem */}
+            <div className="w-10 h-10 rounded-xl cobb-emblem-red flex flex-col items-center justify-center shrink-0 text-white font-black select-none shadow-md">
+              <span className="text-[13px] font-black tracking-tighter leading-none">COBB</span>
+              <span className="text-[7px] font-black tracking-widest text-rose-200 leading-none mt-0.5 uppercase">ITALY</span>
+            </div>
             <div className={`flex-1 min-w-0 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isLeftSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none blur-md -translate-y-4' : 'w-full opacity-100 blur-0 translate-y-0'}`}>
               <div className="flex items-center gap-1.5">
-                <span className={`text-base font-black tracking-wider leading-none uppercase ${darkMode ? 'text-white' : 'text-slate-900'}`}>GOYAL</span>
-                <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-500 dark:text-amber-400 border border-amber-500/25">FASHION</span>
+                <span className={`text-base font-black tracking-wider leading-none uppercase ${darkMode ? 'text-white' : 'text-slate-900'}`}>COBB</span>
+                <span className="text-[8px] font-black tracking-widest uppercase px-1.5 py-0.5 rounded cobb-emblem-red text-white shadow-xs">ITALY</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" title="Showroom Counter Live" />
               </div>
-              <p className={`text-[9px] font-bold tracking-tight uppercase truncate mt-0.5 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
-                House Of Fashion • Chain OS
+              <p className="text-[9px] font-bold tracking-tight uppercase truncate mt-0.5 text-amber-400/90 flex items-center gap-1">
+                <span>Pundri Showroom</span>
+                <span className="text-slate-500">•</span>
+                <span className="text-slate-400">House Of Fashion</span>
               </p>
             </div>
           </div>
@@ -526,18 +533,20 @@ const Layout = ({
               </button>
 
               <div className="flex items-center gap-1.5 min-w-0">
-                <OrsLogo size={24} showGlow={false} />
+                <div className="w-6 h-6 rounded-md cobb-emblem-red flex items-center justify-center shrink-0 text-white font-black text-[9px] select-none shadow-xs">
+                  C
+                </div>
                 <div className="min-w-0 leading-tight">
                   <div className="flex items-center gap-1.5">
                     <span className={`font-black text-xs tracking-tight truncate ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-                      {AVAILABLE_STORES.find(s => s.id === activeStore)?.shortName || 'Goyal Pundri'}
+                      COBB • {AVAILABLE_STORES.find(s => s.id === activeStore)?.shortName || 'Pundri Showroom'}
                     </span>
                     <span className="relative flex h-2 w-2 shrink-0">
-                      <span className={`relative inline-flex rounded-full h-2 w-2 ${(systemStatus?.isOnline ?? true) ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                      <span className={`relative inline-flex rounded-full h-2 w-2 ${(systemStatus?.isOnline ?? true) ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]' : 'bg-rose-500'}`} />
                     </span>
                   </div>
-                  <span className="text-[9.5px] font-bold text-slate-400 tracking-tight block truncate">
-                    {currentRole === 'owner' ? '👑 Owner' : currentRole === 'manager' ? '👔 Manager' : '🧾 Cashier'} • POS Live
+                  <span className="text-[9.5px] font-bold text-amber-400/90 tracking-tight block truncate">
+                    {currentRole === 'owner' ? '👑 Owner' : currentRole === 'manager' ? '👔 Manager' : '🧾 Cashier'} • Showroom POS Live
                   </span>
                 </div>
               </div>

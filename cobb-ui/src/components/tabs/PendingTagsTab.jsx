@@ -2924,13 +2924,36 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
             return (
               <div
                 key={tag.id}
-                className={`obsidian-card p-4 transition-colors relative ${idx >= 12 ? 'deferred-row' : ''} ${
+                className={`cobb-swing-tag p-4 transition-all relative ${idx >= 12 ? 'deferred-row' : ''} ${
                   isBilled
                     ? 'opacity-60'
-                    : 'hover:border-white/16'
+                    : 'hover:border-rose-500/30'
                 }`}
               >
-                {/* Header: Article Name & Status */}
+                {/* Cobb Brand Header Strip on Physical Swing Tag */}
+                <div className="flex items-center justify-between pb-2 mb-2 border-b border-white/8 text-[10px]">
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-1.5 py-0.5 rounded cobb-emblem-red text-[8px] font-black tracking-widest text-white uppercase">
+                      COBB APPAREL
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-semibold tracking-wide">
+                      AUTHENTIC GARMENT
+                    </span>
+                  </div>
+                  {isBilled ? (
+                    <span className="px-2 py-0.5 rounded-full text-[9.5px] font-black bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                      <CheckCircle2 className="w-3 h-3" />
+                      <span>Billed</span>
+                    </span>
+                  ) : (
+                    <span className="px-2 py-0.5 rounded-full text-[9.5px] font-black bg-rose-500/15 text-rose-400 border border-rose-500/30 flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      <span>Pending Tag</span>
+                    </span>
+                  )}
+                </div>
+
+                {/* Header: Article Name & Details */}
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div className="flex items-start gap-2.5 flex-1">
                     {!isBilled && (
@@ -2947,59 +2970,47 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                       </button>
                     )}
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-sm sm:text-base text-slate-900 dark:text-slate-100 truncate">
+                      <h4 className="font-bold text-sm sm:text-base text-white truncate">
                         {tag.articleName || tag.articleNo || 'Apparel'}
                       </h4>
                       <div className="flex items-center gap-1.5 mt-1 text-[11px] flex-wrap">
-                        <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-semibold border border-slate-200 dark:border-slate-700">
+                        <span className="px-2 py-0.5 rounded-md bg-white/5 text-slate-300 font-semibold border border-white/10">
                           {tag.section}
                         </span>
-                        <span className="px-2 py-0.5 rounded-md bg-purple-500/15 text-purple-700 dark:text-purple-300 font-bold border border-purple-500/30">
+                        <span className="px-2 py-0.5 rounded-md bg-rose-500/15 text-rose-300 font-bold border border-rose-500/30">
                           Size: {tag.size}
                         </span>
                         {tag.color && (
-                          <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                          <span className="px-2 py-0.5 rounded-md bg-white/5 text-slate-400">
                             {tag.color}
                           </span>
                         )}
                       </div>
                     </div>
                   </div>
-
-                  {isBilled ? (
-                    <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 flex items-center gap-1 shrink-0">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>Billed</span>
-                    </span>
-                  ) : (
-                    <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 flex items-center gap-1 shrink-0">
-                      <Clock className="w-3.5 h-3.5" />
-                      <span>Pending</span>
-                    </span>
-                  )}
                 </div>
 
-                {/* HERO FOCUS: LARGE HIGH-CONTRAST MRP CONTAINER */}
-                <div className="my-2.5 p-3.5 rounded-2xl bg-gradient-to-br from-amber-500/10 via-amber-500/5 to-slate-100/50 dark:from-amber-500/15 dark:via-slate-800 dark:to-slate-800/80 border-2 border-amber-400/60 dark:border-amber-500/40 shadow-sm">
+                {/* HERO FOCUS: COBB RETAIL MRP TICKET */}
+                <div className="my-2.5 p-3 rounded-xl bg-[#161b26] border border-white/8 shadow-sm">
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 dark:text-amber-300 bg-amber-500/20 px-2 py-0.5 rounded-md border border-amber-500/30">
-                          TAG MRP
+                        <span className="text-[9.5px] font-black uppercase tracking-wider text-amber-300 bg-amber-500/15 px-1.5 py-0.5 rounded border border-amber-500/25">
+                          COBB MRP
                         </span>
-                        <span className="text-[11px] text-slate-500 dark:text-slate-400 font-semibold">Original Price</span>
+                        <span className="text-[10.5px] text-slate-400 font-semibold">Retail Price</span>
                       </div>
-                      <div className="text-3xl font-black text-slate-900 dark:text-white tracking-tight mt-1 font-mono">
+                      <div className="text-2xl sm:text-3xl font-black text-white tracking-tight mt-1 font-mono">
                         ₹{Number(tag.mrp || 0).toLocaleString('en-IN')}
                       </div>
                     </div>
 
                     <div className="flex flex-col items-end justify-center">
-                      <span className="px-2.5 py-1 rounded-xl text-xs font-black bg-rose-500 text-white shadow-sm shadow-rose-500/30">
+                      <span className="px-2 py-0.5 rounded-lg text-xs font-black cobb-emblem-red text-white shadow-xs">
                         -{tag.discountPercent}% OFF
                       </span>
-                      <div className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 font-medium">
-                        Sold At: <span className="font-black text-emerald-600 dark:text-emerald-400 text-sm">₹{Number(tag.soldPrice || 0).toLocaleString('en-IN')}</span>
+                      <div className="text-xs text-slate-400 mt-1.5 font-medium">
+                        Sold At: <span className="font-black text-emerald-400 text-sm font-mono">₹{Number(tag.soldPrice || 0).toLocaleString('en-IN')}</span>
                       </div>
                     </div>
                   </div>

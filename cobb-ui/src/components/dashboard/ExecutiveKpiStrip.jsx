@@ -261,12 +261,12 @@ const ExecutiveKpiStrip = ({
         {/* =========================================================================
             CARD 1: REVENUE CARD WITH TRENDS & PAYMENT BREAKDOWN
             ========================================================================= */}
-        <div ref={topCardRef} className="obsidian-card col-span-1 p-4 sm:p-5 flex flex-col justify-between transition-all">
+        <div ref={topCardRef} className="cobb-counter-card col-span-1 p-4 sm:p-5 flex flex-col justify-between transition-all">
           <div className="flex justify-between items-start gap-2">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Today's Revenue</span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-white/10 text-slate-300">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Showroom Revenue</span>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold cobb-gold-badge">
                   <Calendar className="w-2.5 h-2.5" />
                   {wowDayBenchmark.dayName}
                 </span>
@@ -323,11 +323,10 @@ const ExecutiveKpiStrip = ({
                 const isUp = diff >= 0;
                 return (
                   <>
-                    <span className={`font-mono font-bold text-[11px] px-1.5 py-0.5 rounded-md ${
-                      isUp 
-                        ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10' 
-                        : 'text-rose-600 dark:text-rose-400 bg-rose-500/10'
-                    }`}>
+                    <span className={`font-mono font-bold text-[11px] px-1.5 py-0.5 rounded-md ${isUp
+                      ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10'
+                      : 'text-rose-600 dark:text-rose-400 bg-rose-500/10'
+                      }`}>
                       {isUp ? '↑' : '↓'} {Math.abs(diff)}%
                     </span>
                     <span className="text-slate-400 text-xs font-medium">vs yest</span>
@@ -344,11 +343,10 @@ const ExecutiveKpiStrip = ({
                 const isUp = diff >= 0;
                 return (
                   <>
-                    <span className={`font-mono font-bold text-[11px] px-1.5 py-0.5 rounded-md ${
-                      isUp 
-                        ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10' 
-                        : 'text-rose-600 dark:text-rose-400 bg-rose-500/10'
-                    }`}>
+                    <span className={`font-mono font-bold text-[11px] px-1.5 py-0.5 rounded-md ${isUp
+                      ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10'
+                      : 'text-rose-600 dark:text-rose-400 bg-rose-500/10'
+                      }`}>
                       {isUp ? '↑' : '↓'} {Math.abs(diff)}%
                     </span>
                     <span className="text-slate-400 text-xs font-medium">WoW</span>
@@ -365,11 +363,10 @@ const ExecutiveKpiStrip = ({
                 const isUp = diff >= 0;
                 return (
                   <>
-                    <span className={`font-mono font-bold text-[11px] px-1.5 py-0.5 rounded-md ${
-                      isUp 
-                        ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10' 
-                        : 'text-rose-600 dark:text-rose-400 bg-rose-500/10'
-                    }`}>
+                    <span className={`font-mono font-bold text-[11px] px-1.5 py-0.5 rounded-md ${isUp
+                      ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10'
+                      : 'text-rose-600 dark:text-rose-400 bg-rose-500/10'
+                      }`}>
                       {isUp ? '↑' : '↓'} {Math.abs(diff)}%
                     </span>
                     <span className="text-slate-400 text-xs font-medium">MoM</span>
@@ -412,14 +409,14 @@ const ExecutiveKpiStrip = ({
         {/* =========================================================================
             CARD 2: DAILY SALES TARGET / PACE (APPLE WATCH RINGS OR BAR)
             ========================================================================= */}
-        <div className="obsidian-card col-span-1 p-4 sm:p-5 flex flex-col justify-between transition-all relative overflow-hidden">
+        <div className="cobb-counter-card col-span-1 p-4 sm:p-5 flex flex-col justify-between transition-all relative overflow-hidden">
           <div className="space-y-2 relative z-10">
             {/* Header */}
             <div className="flex justify-between items-start">
               <div>
                 <div className="flex items-center gap-1.5">
                   <Target className="w-3.5 h-3.5 text-rose-500" />
-                  <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider block">Daily Target</span>
+                  <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider block">Showroom Target</span>
                   {userRole === 'owner' && (
                     <button
                       type="button"
@@ -549,14 +546,14 @@ const ExecutiveKpiStrip = ({
         {/* =========================================================================
             CARD 3: DAILY BREAKEVEN (DETAILED 2-WAY DYNAMIC METRIC ENGINE + SIMULATOR)
             ========================================================================= */}
-        <div id="dashboard-breakeven-card" className="obsidian-card col-span-1 p-4 sm:p-5 flex flex-col justify-between transition-all relative overflow-hidden">
+        <div id="dashboard-breakeven-card" className="cobb-counter-card col-span-1 p-4 sm:p-5 flex flex-col justify-between transition-all relative overflow-hidden">
           <div className="space-y-2 relative z-10">
             {/* Header */}
             <div className="flex justify-between items-start">
               <div>
                 <div className="flex items-center gap-1.5">
                   <Scale className="w-3.5 h-3.5 text-amber-500" />
-                  <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider block">Daily Breakeven</span>
+                  <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider block">Showroom Breakeven (Daily)</span>
                   {userRole === 'owner' && (
                     <button
                       type="button"
@@ -587,17 +584,16 @@ const ExecutiveKpiStrip = ({
                     <Sparkles className="w-3 h-3 fill-white" /> Met 🎉
                   </button>
                 ) : (
-                  <span className={`text-[10px] font-bold font-mono px-2 py-0.5 rounded-full ${
-                    isSurplus 
-                      ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
-                      : isDeficit 
-                        ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400'
-                        : 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
-                  }`}>
-                    {isSurplus 
-                      ? `+${formatCurrency(surplusProfit)} Cushion` 
-                      : isDeficit 
-                        ? `+${formatCurrency(carriedDeficit)} Deficit` 
+                  <span className={`text-[10px] font-bold font-mono px-2 py-0.5 rounded-full ${isSurplus
+                    ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                    : isDeficit
+                      ? 'bg-rose-500/15 text-rose-600 dark:text-rose-400'
+                      : 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
+                    }`}>
+                    {isSurplus
+                      ? `+${formatCurrency(surplusProfit)} Cushion`
+                      : isDeficit
+                        ? `+${formatCurrency(carriedDeficit)} Deficit`
                         : 'Base Target'}
                   </span>
                 )}
@@ -781,14 +777,14 @@ const ExecutiveKpiStrip = ({
         {/* =========================================================================
             CARD 4: MONTHLY BREAKEVEN (DETAILED MTD OPEX RECOVERY & CUMULATIVE HEALTH)
             ========================================================================= */}
-        <div className="obsidian-card col-span-1 p-4 sm:p-5 flex flex-col justify-between transition-all relative overflow-hidden">
+        <div className="cobb-counter-card col-span-1 p-4 sm:p-5 flex flex-col justify-between transition-all relative overflow-hidden">
           <div className="space-y-2 relative z-10">
             {/* Header */}
             <div className="flex justify-between items-start">
               <div>
                 <div className="flex items-center gap-1.5">
                   <Calendar className="w-3.5 h-3.5 text-rose-500" />
-                  <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider block">Monthly Breakeven</span>
+                  <span className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider block">Showroom Breakeven (Monthly)</span>
                 </div>
                 <h3 className="text-xl sm:text-2xl lg:text-3xl font-extrabold font-mono tracking-tight text-white mt-0.5">
                   {formatCurrency(monthlyBEP)}
