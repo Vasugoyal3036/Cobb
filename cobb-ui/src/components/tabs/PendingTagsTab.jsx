@@ -337,6 +337,33 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
   const [newBagScanLoading, setNewBagScanLoading] = useState(false);
   const [newBagScanError, setNewBagScanError] = useState('');
 
+  // --- Add/Remove Items for Existing Customer Hold Bag ---
+  const [bagToAddItemTo, setBagToAddItemTo] = useState(null); // When opening "+ Add Item" modal for an existing bag
+  const [itemToRemoveFromBag, setItemToRemoveFromBag] = useState(null); // { item, bag } when confirming removal
+  const [addBagTab, setAddBagTab] = useState('scan'); // 'scan' | 'rack'
+  const [addBagScanQuery, setAddBagScanQuery] = useState('');
+  const [addBagScanLoading, setAddBagScanLoading] = useState(false);
+  const [addBagScanError, setAddBagScanError] = useState('');
+  const [addBagStagedItem, setAddBagStagedItem] = useState(null);
+  const [rackSearchQuery, setRackSearchQuery] = useState('');
+  const [bagMutationLoading, setBagMutationLoading] = useState(false);
+
+  // Unassigned active tags currently on general counter rack (eligible to move into customer bags)
+  const unassignedRackTags = useMemo(() => {
+    return tags.filter(t => t.status === 'active' && !t.holdForCustomer);
+  }, [tags]);
+
+  const filteredUnassignedRackTags = useMemo(() => {
+    if (!rackSearchQuery.trim()) return unassignedRackTags;
+    const q = rackSearchQuery.trim().toLowerCase();
+    return unassignedRackTags.filter(t =>
+      (t.barcode && t.barcode.toLowerCase().includes(q)) ||
+      (t.articleNo && t.articleNo.toLowerCase().includes(q)) ||
+      (t.articleName && t.articleName.toLowerCase().includes(q)) ||
+      (t.size && t.size.toLowerCase().includes(q))
+    );
+  }, [unassignedRackTags, rackSearchQuery]);
+
   // --- Grouped Customer Hold Bags Calculation ---
   const customerHolds = useMemo(() => {
     const active = tags.filter(t => t.status === 'active' && t.holdForCustomer === true);
@@ -862,6 +889,289 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
       setStatusFilter('holds');
     } catch (err) {
       setNewBagScanError('Failed to save bag: ' + err.message);
+    }
+  };
+
+  // --- Remove Item from Customer Bag (Release to Counter or Delete Completely) ---
+  const handleRemoveItemFromBag = async (item, bag, mode = 'release') => {
+    if (!item || !bag) return;
+    setBagMutationLoading(true);
+    const now = new Date().toISOString();
+
+    try {
+      if (mode === 'release') {
+        try {
+          const res = await axios.post(`${API_BASE}/api/pending-tags/release-customer-hold`, {
+            tagIds: [item.id]
+          });
+          await assertApiSuccess(res);
+        } catch (apiErr) {
+          if (db) {
+            const docRef = doc(db, 'stores', targetStoreId, 'data', 'pending_tags');
+            const snap = await getDoc(docRef);
+            if (snap.exists()) {
+              const list = snap.data().tags || [];
+              const updated = list.map(t => t.id === item.id ? {
+                ...t,
+                holdForCustomer: false,
+                holdBatchId: null,
+                holdCustomerName: null,
+                holdCustomerPhone: null,
+                holdBagNo: null,
+                holdNotes: null,
+                holdCreatedAt: null,
+                updatedAt: now
+              } : t);
+              await setDoc(docRef, { tags: updated, activeCount: updated.filter(x => x.status === 'active').length, lastUpdated: now }, { merge: true });
+              setTags(updated);
+            }
+          } else {
+            throw apiErr;
+          }
+        }
+        showToastMsg(`Released "${item.articleName || item.barcode}" back to counter rack!`, 'success');
+      } else {
+        try {
+          const res = await axios.delete(`${API_BASE}/api/pending-tags/${item.id}`);
+          await assertApiSuccess(res);
+        } catch (apiErr) {
+          if (db) {
+            const docRef = doc(db, 'stores', targetStoreId, 'data', 'pending_tags');
+            const snap = await getDoc(docRef);
+            if (snap.exists()) {
+              const list = snap.data().tags || [];
+              const updated = list.filter(t => t.id !== item.id);
+              await setDoc(docRef, { tags: updated, activeCount: updated.filter(x => x.status === 'active').length, lastUpdated: now }, { merge: true });
+              setTags(updated);
+            }
+          } else {
+            throw apiErr;
+          }
+        }
+        showToastMsg(`Deleted tag "${item.barcode}" permanently.`, 'success');
+      }
+
+      fetchTags();
+      setItemToRemoveFromBag(null);
+    } catch (err) {
+      showToastMsg(`Action failed: ${err.message}`, 'error');
+    } finally {
+      setBagMutationLoading(false);
+    }
+  };
+
+  // --- Scan New Garment for an Existing Customer Bag ---
+  const handleScanItemForExistingBag = async (e) => {
+    if (e) e.preventDefault();
+    if (!bagToAddItemTo) return;
+    const candidate = addBagScanQuery.trim();
+    if (!candidate) return;
+
+    if (bagToAddItemTo.tags.some(it => isBarcodeDuplicate(it.barcode, candidate))) {
+      setAddBagScanError(`This barcode (${candidate}) is already in this customer bag!`);
+      return;
+    }
+
+    const activeExisting = tags.find(t => t.status === 'active' && isBarcodeDuplicate(t.barcode, candidate));
+    if (activeExisting) {
+      if (activeExisting.holdForCustomer && activeExisting.holdBatchId !== bagToAddItemTo.batchId) {
+        setAddBagScanError(`Already in Another Bag: Barcode "${candidate}" is held in another customer's bag!`);
+        return;
+      }
+      if (!activeExisting.holdForCustomer) {
+        setAddBagStagedItem({
+          ...activeExisting,
+          existingRackTagId: activeExisting.id
+        });
+        showToastMsg(`Found existing rack tag for "${candidate}". Click "+ Confirm & Add" to move into bag.`, 'success');
+        setAddBagScanLoading(false);
+        return;
+      }
+    }
+
+    setAddBagScanLoading(true);
+    setAddBagScanError('');
+    setAddBagStagedItem(null);
+
+    try {
+      let matchedData = null;
+      try {
+        const res = await axios.get(`${API_BASE}/api/inventory/quick-scan?q=${encodeURIComponent(candidate)}&mode=single`, { timeout: 12000 });
+        if (res.data?.isBilled || res.data?.variants?.[0]?.isBilled) {
+          const bInfo = res.data?.billedInfo || res.data?.variants?.[0]?.billedInfo;
+          setAddBagScanError(`Already Billed in POS: Barcode "${candidate}" was billed in Bill #${bInfo?.billNo || 'POS-BILL'}! Cannot add an already billed garment.`);
+          return;
+        }
+        if (res.data?.success && res.data.variants && res.data.variants.length > 0) {
+          matchedData = res.data.variants.find(v => isBarcodeDuplicate(v.barcode, candidate)) || res.data.variants[0];
+        } else if (res.data?.success && res.data.data) {
+          matchedData = res.data.data;
+        }
+      } catch (err) {
+        matchedData = await lookupBarcodeInCloudFallback(candidate, activeStore);
+      }
+
+      const mrpVal = Number(matchedData?.mrp || 2999);
+      const discVal = 60;
+      const soldVal = Math.round(mrpVal * (1 - discVal / 100));
+
+      const staged = {
+        barcode: matchedData?.barcode || candidate,
+        articleNo: matchedData?.articleNo || candidate,
+        articleName: matchedData?.itemName || 'Cobb Apparel Item',
+        size: matchedData?.size || 'Free',
+        color: matchedData?.color || 'Standard',
+        section: matchedData?.sectionName || matchedData?.subSectionName || 'Men Apparel',
+        mrp: mrpVal,
+        discountPercent: discVal,
+        soldPrice: soldVal,
+        salesperson: 'Floor Staff',
+        fromDb: !!matchedData
+      };
+
+      setAddBagStagedItem(staged);
+      if (matchedData) {
+        showToastMsg(`Found "${staged.articleName}" (MRP ₹${mrpVal}). Review and confirm below.`, 'success');
+      } else {
+        setAddBagScanError(`Notice: Item not in catalog for "${candidate}". Details estimated below. Click "+ Confirm & Add" to proceed.`);
+      }
+    } catch (err) {
+      setAddBagScanError('Error searching inventory: ' + err.message);
+    } finally {
+      setAddBagScanLoading(false);
+    }
+  };
+
+  // --- Add Staged Scanned Item to Existing Customer Bag ---
+  const handleAddStagedItemToExistingBag = async () => {
+    if (!addBagStagedItem || !bagToAddItemTo) return;
+    setBagMutationLoading(true);
+    setAddBagScanError('');
+    const now = new Date().toISOString();
+
+    try {
+      if (addBagStagedItem.existingRackTagId) {
+        await handleAssignRackTagToExistingBag(addBagStagedItem, bagToAddItemTo);
+        setAddBagStagedItem(null);
+        setAddBagScanQuery('');
+        setBagMutationLoading(false);
+        return;
+      }
+
+      const payload = {
+        barcode: addBagStagedItem.barcode,
+        articleNo: addBagStagedItem.articleNo,
+        articleName: addBagStagedItem.articleName,
+        size: addBagStagedItem.size,
+        color: addBagStagedItem.color,
+        section: addBagStagedItem.section,
+        mrp: addBagStagedItem.mrp,
+        discountPercent: addBagStagedItem.discountPercent,
+        soldPrice: addBagStagedItem.soldPrice,
+        customerName: bagToAddItemTo.customerName,
+        customerPhone: bagToAddItemTo.customerPhone,
+        salesperson: 'Floor Staff',
+        notes: bagToAddItemTo.notes,
+        holdForCustomer: true,
+        holdBatchId: bagToAddItemTo.batchId,
+        holdCustomerName: bagToAddItemTo.customerName,
+        holdCustomerPhone: bagToAddItemTo.customerPhone,
+        holdBagNo: bagToAddItemTo.bagNo,
+        holdNotes: bagToAddItemTo.notes,
+        holdCreatedAt: bagToAddItemTo.createdAt || now
+      };
+
+      try {
+        const res = await axios.post(`${API_BASE}/api/pending-tags/add`, payload);
+        await assertApiSuccess(res);
+      } catch (apiErr) {
+        if (apiErr.response?.status === 409 || apiErr.response?.data?.duplicate || apiErr.response?.data?.billed) {
+          throw apiErr;
+        }
+        if (db) {
+          const docRef = doc(db, 'stores', targetStoreId, 'data', 'pending_tags');
+          const snap = await getDoc(docRef);
+          const curTags = snap.exists() ? (snap.data().tags || []) : [];
+          const newEntry = {
+            id: 'ptag_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+            ...payload,
+            status: 'active',
+            createdAt: now,
+            updatedAt: now,
+            date: now.split('T')[0]
+          };
+          const updated = [...curTags, newEntry];
+          await setDoc(docRef, {
+            tags: updated,
+            activeCount: updated.filter(t => t.status === 'active').length,
+            lastUpdated: now
+          }, { merge: true });
+          setTags(updated);
+        } else {
+          throw apiErr;
+        }
+      }
+
+      fetchTags();
+      showToastMsg(`Added "${addBagStagedItem.articleName}" to ${bagToAddItemTo.customerName}'s bag!`, 'success');
+      setAddBagStagedItem(null);
+      setAddBagScanQuery('');
+    } catch (err) {
+      setAddBagScanError('Failed to add garment: ' + err.message);
+    } finally {
+      setBagMutationLoading(false);
+    }
+  };
+
+  // --- Assign Existing Rack Tag into Customer Bag ---
+  const handleAssignRackTagToExistingBag = async (rackTag, bag) => {
+    if (!rackTag || !bag) return;
+    setBagMutationLoading(true);
+    const now = new Date().toISOString();
+    const targetTagId = rackTag.id || rackTag.existingRackTagId;
+
+    try {
+      try {
+        const res = await axios.post(`${API_BASE}/api/pending-tags/create-customer-hold`, {
+          tagIds: [targetTagId],
+          customerName: bag.customerName,
+          customerPhone: bag.customerPhone,
+          bagNo: bag.bagNo,
+          notes: bag.notes,
+          holdBatchId: bag.batchId
+        });
+        await assertApiSuccess(res);
+      } catch (apiErr) {
+        if (db) {
+          const docRef = doc(db, 'stores', targetStoreId, 'data', 'pending_tags');
+          const snap = await getDoc(docRef);
+          if (snap.exists()) {
+            const list = snap.data().tags || [];
+            const updated = list.map(t => t.id === targetTagId ? {
+              ...t,
+              holdForCustomer: true,
+              holdBatchId: bag.batchId,
+              holdCustomerName: bag.customerName,
+              holdCustomerPhone: bag.customerPhone,
+              holdBagNo: bag.bagNo,
+              holdNotes: bag.notes,
+              holdCreatedAt: bag.createdAt || now,
+              updatedAt: now
+            } : t);
+            await setDoc(docRef, { tags: updated, activeCount: updated.filter(x => x.status === 'active').length, lastUpdated: now }, { merge: true });
+            setTags(updated);
+          }
+        } else {
+          throw apiErr;
+        }
+      }
+
+      fetchTags();
+      showToastMsg(`Added "${rackTag.articleName || rackTag.barcode}" into ${bag.customerName}'s bag!`, 'success');
+    } catch (err) {
+      showToastMsg('Failed to add rack tag: ' + err.message, 'error');
+    } finally {
+      setBagMutationLoading(false);
     }
   };
 
@@ -2498,36 +2808,36 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
               {customerHolds.map((bag) => (
                 <div
                   key={bag.batchId}
-                  className="p-5 rounded-2xl border border-purple-500/30 bg-white dark:bg-slate-900 shadow-md hover:shadow-xl transition-all flex flex-col justify-between space-y-4"
+                  className="p-5 rounded-2xl border border-red-500/25 bg-[#0D0E12] shadow-xl hover:border-red-500/40 transition-all flex flex-col justify-between space-y-4"
                 >
                   <div className="space-y-3">
                     {/* Header */}
-                    <div className="flex items-start justify-between gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+                    <div className="flex items-start justify-between gap-2 border-b border-white/8 pb-3">
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="px-2.5 py-0.5 rounded-md text-xs font-black bg-purple-600 text-white shadow-xs">
+                          <span className="px-2.5 py-0.5 rounded-md text-xs font-black bg-red-600 text-white shadow-xs">
                             {bag.bagNo ? `BAG #${bag.bagNo}` : 'HOLD BAG'}
                           </span>
                           <span className="text-xs font-semibold text-slate-400">
                             {new Date(bag.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
-                        <h4 className="text-base font-extrabold text-slate-900 dark:text-white mt-1.5 flex items-center gap-1.5">
-                          <User className="w-4 h-4 text-purple-500" />
+                        <h4 className="text-base font-extrabold text-white mt-1.5 flex items-center gap-1.5">
+                          <User className="w-4 h-4 text-red-500" />
                           <span>{bag.customerName}</span>
                         </h4>
                         {bag.customerPhone && (
-                          <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 mt-0.5">
+                          <div className="text-xs text-slate-400 flex items-center gap-1 mt-0.5">
                             <Phone className="w-3 h-3 text-slate-400" />
                             <span>{bag.customerPhone}</span>
                           </div>
                         )}
                       </div>
                       <div className="text-right">
-                        <div className="text-xl font-black text-purple-600 dark:text-purple-400">
+                        <div className="text-xl font-black text-red-500">
                           {bag.count} <span className="text-xs font-semibold text-slate-400">pcs</span>
                         </div>
-                        <div className="text-xs font-extrabold text-slate-800 dark:text-slate-200 mt-0.5">
+                        <div className="text-xs font-extrabold text-slate-200 mt-0.5">
                           ₹{bag.totalMrp.toLocaleString('en-IN')} MRP
                         </div>
                       </div>
@@ -2535,24 +2845,47 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
 
                     {/* Notes if any */}
                     {bag.notes && (
-                      <div className="p-2 rounded-lg bg-purple-500/10 border border-purple-500/20 text-[11px] text-purple-900 dark:text-purple-200 font-medium">
+                      <div className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-[11px] text-red-300 font-medium">
                         📝 {bag.notes}
                       </div>
                     )}
+
+                    {/* Items List in Bag Header + Add Item Action */}
+                    <div className="flex items-center justify-between pt-1 pb-0.5 border-t border-white/5">
+                      <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                        Garments in Bag ({bag.count})
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBagToAddItemTo(bag);
+                          setAddBagTab('scan');
+                          setAddBagScanQuery('');
+                          setAddBagScanError('');
+                          setAddBagStagedItem(null);
+                          setRackSearchQuery('');
+                        }}
+                        className="px-2 py-0.5 rounded-lg bg-red-600/15 hover:bg-red-600 text-red-500 hover:text-white border border-red-500/30 text-[10px] font-bold flex items-center gap-1 transition-all"
+                        title="Add garments into this customer bag"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>+ Add Item</span>
+                      </button>
+                    </div>
 
                     {/* Items List in Bag */}
                     <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
                       {bag.tags.map((item, idx) => (
                         <div
                           key={item.id || idx}
-                          className="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 text-xs"
+                          className="flex items-center justify-between p-2 rounded-xl bg-black/40 border border-white/5 text-xs hover:border-white/10 transition-colors"
                         >
                           <div className="min-w-0 pr-2">
-                            <div className="font-bold text-slate-800 dark:text-slate-200 truncate">
+                            <div className="font-bold text-slate-200 truncate">
                               {item.articleName || item.articleNo}
                             </div>
                             <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-mono mt-0.5">
-                              <span>{item.barcode}</span>
+                              <span className="text-white/80">{item.barcode}</span>
                               <span>•</span>
                               <span>Size {item.size || 'Free'}</span>
                               {item.color && (
@@ -2563,13 +2896,23 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                               )}
                             </div>
                           </div>
-                          <div className="text-right shrink-0">
-                            <div className="font-black text-slate-900 dark:text-white">
-                              ₹{Number(item.mrp || 0).toLocaleString('en-IN')}
+                          <div className="flex items-center gap-2 shrink-0">
+                            <div className="text-right">
+                              <div className="font-black text-white">
+                                ₹{Number(item.mrp || 0).toLocaleString('en-IN')}
+                              </div>
+                              <div className="text-[10px] text-red-400 font-bold">
+                                ₹{Number(item.soldPrice || 0).toLocaleString('en-IN')}
+                              </div>
                             </div>
-                            <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
-                              ₹{Number(item.soldPrice || 0).toLocaleString('en-IN')}
-                            </div>
+                            <button
+                              type="button"
+                              onClick={() => setItemToRemoveFromBag({ item, bag })}
+                              className="p-1 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                              title="Remove garment from this customer bag"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         </div>
                       ))}
@@ -5149,6 +5492,275 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                   Save & Hold Bag ({newBagScannedItems.length})
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- REMOVE ITEM FROM CUSTOMER BAG MODAL --- */}
+      {itemToRemoveFromBag && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+          <div className="w-full max-w-md bg-[#0D0E12] border border-red-500/30 rounded-3xl shadow-2xl p-6 space-y-5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="p-3 rounded-2xl bg-red-600/20 text-red-500 border border-red-500/30">
+                  <Trash2 className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-black text-base text-white">
+                    Remove Garment from Bag
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    BAG #{itemToRemoveFromBag.bag.bagNo || 'HOLD'} • {itemToRemoveFromBag.bag.customerName}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setItemToRemoveFromBag(null)}
+                className="p-1 rounded-full text-slate-400 hover:text-white hover:bg-white/10"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-black/60 border border-white/10 space-y-1 text-xs">
+              <div className="font-extrabold text-white text-sm">
+                {itemToRemoveFromBag.item.articleName || itemToRemoveFromBag.item.articleNo}
+              </div>
+              <div className="flex items-center gap-2 text-slate-400 font-mono text-[11px]">
+                <span>Barcode: {itemToRemoveFromBag.item.barcode}</span>
+                <span>•</span>
+                <span>Size: {itemToRemoveFromBag.item.size || 'Free'}</span>
+                <span>•</span>
+                <span className="text-white font-bold">₹{Number(itemToRemoveFromBag.item.mrp || 0).toLocaleString('en-IN')} MRP</span>
+              </div>
+              {itemToRemoveFromBag.bag.tags.length === 1 && (
+                <div className="text-[11px] text-amber-400 font-bold mt-2 pt-2 border-t border-white/5">
+                  ⚠️ Note: This is the only garment in this bag. Removing it will clear the customer hold.
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2.5">
+              <button
+                type="button"
+                disabled={bagMutationLoading}
+                onClick={() => handleRemoveItemFromBag(itemToRemoveFromBag.item, itemToRemoveFromBag.bag, 'release')}
+                className="w-full py-2.5 px-4 rounded-xl bg-white/10 hover:bg-white/15 text-white font-bold text-xs flex items-center justify-center gap-2 border border-white/10 transition-all active:scale-98"
+              >
+                <RotateCcw className="w-4 h-4 text-emerald-400" />
+                <span>Release to Counter Rack (Keep Active)</span>
+              </button>
+              <button
+                type="button"
+                disabled={bagMutationLoading}
+                onClick={() => handleRemoveItemFromBag(itemToRemoveFromBag.item, itemToRemoveFromBag.bag, 'delete')}
+                className="w-full py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-red-600/30 transition-all active:scale-98"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Delete Tag Permanently</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setItemToRemoveFromBag(null)}
+                className="w-full py-2 rounded-xl text-slate-400 hover:text-white text-xs font-semibold"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- ADD ITEMS TO CUSTOMER BAG MODAL --- */}
+      {bagToAddItemTo && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
+          <div className="w-full max-w-2xl bg-[#0D0E12] border border-red-500/30 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            {/* Header */}
+            <div className="p-5 border-b border-white/10 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-red-600 text-white shadow-md">
+                  <ShoppingBag className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-black text-base text-white">
+                    Add Garments to Bag #{bagToAddItemTo.bagNo || 'HOLD'}
+                  </h3>
+                  <p className="text-xs text-red-400 font-semibold mt-0.5">
+                    Customer: {bagToAddItemTo.customerName} {bagToAddItemTo.customerPhone ? `(${bagToAddItemTo.customerPhone})` : ''} • Currently {bagToAddItemTo.tags.length} garments
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setBagToAddItemTo(null)}
+                className="p-1.5 rounded-full hover:bg-white/10 text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Tabs: Scan New vs Pick from Rack */}
+            <div className="px-5 pt-4 pb-2 border-b border-white/10 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setAddBagTab('scan')}
+                className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                  addBagTab === 'scan'
+                    ? 'bg-red-600 text-white shadow-md shadow-red-600/30'
+                    : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                ⚡ Scan New Garment
+              </button>
+              <button
+                type="button"
+                onClick={() => setAddBagTab('rack')}
+                className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                  addBagTab === 'rack'
+                    ? 'bg-red-600 text-white shadow-md shadow-red-600/30'
+                    : 'bg-white/5 text-slate-400 hover:text-white hover:bg-white/10'
+                }`}
+              >
+                🏷️ Pick from Counter Rack ({unassignedRackTags.length} Available)
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 space-y-4 overflow-y-auto flex-1">
+              {addBagTab === 'scan' ? (
+                <div className="space-y-4">
+                  <form onSubmit={handleScanItemForExistingBag} className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Barcode className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="text"
+                        autoFocus
+                        placeholder="Scan or enter Barcode / Article No..."
+                        value={addBagScanQuery}
+                        onChange={(e) => setAddBagScanQuery(e.target.value)}
+                        className="w-full pl-10 pr-3.5 py-2.5 text-xs rounded-xl border border-white/10 bg-black/60 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-600"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={addBagScanLoading || !addBagScanQuery.trim()}
+                      className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-red-600/20 active:scale-95 transition-all shrink-0"
+                    >
+                      {addBagScanLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                      <span>Scan & Lookup</span>
+                    </button>
+                  </form>
+
+                  {addBagScanError && (
+                    <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-xs text-red-400 flex items-center gap-2">
+                      <AlertTriangle className="w-4 h-4 shrink-0" />
+                      <span>{addBagScanError}</span>
+                    </div>
+                  )}
+
+                  {addBagStagedItem && (
+                    <div className="p-4 rounded-2xl bg-black/50 border border-red-500/30 space-y-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-red-600/20 text-red-400 border border-red-500/30">
+                            Garment Identified
+                          </span>
+                          <h4 className="text-sm font-extrabold text-white mt-1.5">
+                            {addBagStagedItem.articleName}
+                          </h4>
+                          <div className="flex items-center gap-2 text-xs text-slate-400 font-mono mt-0.5">
+                            <span>Barcode: {addBagStagedItem.barcode}</span>
+                            <span>•</span>
+                            <span>Size: {addBagStagedItem.size || 'Free'}</span>
+                            {addBagStagedItem.color && <span>• Color: {addBagStagedItem.color}</span>}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-sm font-black text-white">
+                            ₹{addBagStagedItem.mrp.toLocaleString('en-IN')} MRP
+                          </div>
+                          <div className="text-xs text-emerald-400 font-bold">
+                            ₹{addBagStagedItem.soldPrice.toLocaleString('en-IN')} ({addBagStagedItem.discountPercent}% Off)
+                          </div>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled={bagMutationLoading}
+                        onClick={handleAddStagedItemToExistingBag}
+                        className="w-full py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg shadow-red-600/30 transition-all active:scale-98"
+                      >
+                        {bagMutationLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                        <span>+ Confirm & Add into Bag #{bagToAddItemTo.bagNo}</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="relative">
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      placeholder="Search rack garments by barcode, article, or size..."
+                      value={rackSearchQuery}
+                      onChange={(e) => setRackSearchQuery(e.target.value)}
+                      className="w-full pl-9 pr-3.5 py-2 text-xs rounded-xl border border-white/10 bg-black/60 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-600"
+                    />
+                  </div>
+
+                  {filteredUnassignedRackTags.length === 0 ? (
+                    <div className="py-10 text-center text-xs text-slate-400 border border-dashed border-white/10 rounded-2xl">
+                      No unassigned garments found on counter rack matching query.
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                      {filteredUnassignedRackTags.map((tag) => (
+                        <div
+                          key={tag.id}
+                          className="p-3 rounded-xl bg-black/40 border border-white/5 hover:border-white/15 flex items-center justify-between gap-3 transition-colors text-xs"
+                        >
+                          <div className="min-w-0">
+                            <div className="font-bold text-white truncate">
+                              {tag.articleName || tag.articleNo}
+                            </div>
+                            <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-mono mt-0.5">
+                              <span className="text-white/80">{tag.barcode}</span>
+                              <span>•</span>
+                              <span>Size {tag.size || 'Free'}</span>
+                              <span>•</span>
+                              <span>₹{Number(tag.mrp || 0).toLocaleString('en-IN')} MRP</span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            disabled={bagMutationLoading}
+                            onClick={() => handleAssignRackTagToExistingBag(tag, bagToAddItemTo)}
+                            className="px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-[11px] font-bold flex items-center gap-1 shrink-0 transition-all active:scale-95 shadow-sm"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Move to Bag</span>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 border-t border-white/10 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setBagToAddItemTo(null)}
+                className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-bold transition-colors"
+              >
+                Done / Close
+              </button>
             </div>
           </div>
         </div>

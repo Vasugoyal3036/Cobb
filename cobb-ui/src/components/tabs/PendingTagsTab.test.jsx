@@ -348,6 +348,49 @@ describe('PendingTagsTab - Duplicate Barcode Prevention', () => {
       });
     });
 
+    it('allows opening Add Garment modal and Remove Garment dialog from customer hold bag card', async () => {
+      render(<PendingTagsTab />);
+
+      await waitFor(() => {
+        expect(screen.getByText(/Customer Hold Bags/i)).toBeDefined();
+      });
+
+      // Switch to Customer Hold Bags vault
+      fireEvent.click(screen.getByText(/Customer Hold Bags/i));
+
+      await waitFor(() => {
+        expect(screen.getByText(/Customer Hold Vault/i)).toBeDefined();
+        expect(screen.getByText('Rajesh Sharma')).toBeDefined();
+      });
+
+      // Find "+ Add Item" button on customer bag card
+      const addBtns = screen.getAllByRole('button', { name: /\+ Add Item/i });
+      expect(addBtns.length).toBeGreaterThan(0);
+      fireEvent.click(addBtns[0]);
+
+      // Add Garments to Bag modal should open
+      await waitFor(() => {
+        expect(screen.getByText(/Add Garments to Bag/i)).toBeDefined();
+        expect(screen.getByText(/⚡ Scan New Garment/i)).toBeDefined();
+        expect(screen.getByText(/Pick from Counter Rack/i)).toBeDefined();
+      });
+
+      // Close modal
+      fireEvent.click(screen.getByRole('button', { name: /Done \/ Close/i }));
+
+      // Find remove button (title: "Remove garment from this customer bag")
+      const removeBtns = screen.getAllByTitle(/Remove garment from this customer bag/i);
+      expect(removeBtns.length).toBeGreaterThan(0);
+      fireEvent.click(removeBtns[0]);
+
+      // Removal dialog should open
+      await waitFor(() => {
+        expect(screen.getByText(/Remove Garment from Bag/i)).toBeDefined();
+        expect(screen.getByText(/Release to Counter Rack/i)).toBeDefined();
+        expect(screen.getByText(/Delete Tag Permanently/i)).toBeDefined();
+      });
+    });
+
     it('fetches item details from database via button in Add Pending Tag modal', async () => {
       render(<PendingTagsTab />);
 

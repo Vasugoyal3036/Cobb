@@ -1115,7 +1115,7 @@ router.post('/create-customer-hold', async (req, res) => {
             return res.status(400).json({ success: false, error: 'At least one tag must be selected to hold' });
         }
 
-        const batchId = 'hold_batch_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+        const batchId = String(req.body.holdBatchId || '').trim() || ('hold_batch_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5));
         const now = new Date().toISOString();
 
         const modifiedCount = await withTagsLock(async () => {
@@ -1164,10 +1164,12 @@ router.post('/release-customer-hold', async (req, res) => {
             const localTags = readTags();
             const { tags } = await mergeTagsWithCloud(localTags);
             let count = 0;
+            const isTagSpecific = Array.isArray(tagIds) && tagIds.length > 0;
             for (const tag of tags) {
-                const matchesBatch = holdBatchId && tag.holdBatchId === holdBatchId;
-                const matchesTag = Array.isArray(tagIds) && tagIds.includes(tag.id);
-                if (matchesBatch || matchesTag) {
+                const matches = isTagSpecific
+                    ? tagIds.includes(tag.id)
+                    : (holdBatchId && tag.holdBatchId === holdBatchId);
+                if (matches) {
                     tag.holdForCustomer = false;
                     tag.holdBatchId = null;
                     tag.holdCustomerName = null;
