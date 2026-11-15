@@ -612,14 +612,10 @@ export default function ExchangeTab(props) {
                     <span>{copiedSlip ? 'Exchange Slip Copied!' : 'Copy Digital Exchange Slip'}</span>
                   </button>
 
-                  <button
-                    onClick={handleOpenWhatsApp}
-                    disabled={!selectedBill || !selectedItemToExchange || !selectedBill.Phone}
-                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-sm shadow-md shadow-emerald-600/20 transition-all flex items-center justify-center gap-2 disabled:opacity-40 cursor-pointer"
-                  >
-                    <Send className="w-4 h-4" />
-                    <span>Send Slip via WhatsApp to {selectedBill?.Phone || 'Customer'}</span>
-                  </button>
+                  <div className="w-full py-2.5 px-3 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 text-center text-xs text-slate-500 dark:text-slate-400 font-semibold flex items-center justify-center gap-2">
+                    <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0" />
+                    <span>Customer WhatsApp exchange messages disabled per store policy</span>
+                  </div>
                 </div>
 
                 {/* STORE ADDRESS & GOOGLE REVIEW SETTINGS ACCORDION */}

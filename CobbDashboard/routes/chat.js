@@ -1435,7 +1435,7 @@ async function handleRetailIntent(queryText) {
             answer += `3. **Scan Replacement or Credit Note:**\n`;
             answer += `   - **Even Exchange:** Scan new replacement article of equal or higher value.\n`;
             answer += `   - **Credit Note:** If customer chooses not to buy today, issue an official store credit slip valid for **90 days**.\n`;
-            answer += `4. **WhatsApp Slip:** The customer automatically receives an **Official Exchange Slip & Receipt** on their WhatsApp.\n\n`;
+            answer += `4. **Customer Notice:** Physical slip is printed; customer WhatsApp exchange messages are disabled per store policy.\n\n`;
             answer += `⚠️ **Non-Exchangeable Categories:** Altered garments, innerwear/socks, and washed/perfumed items cannot be exchanged.`;
 
             return {
@@ -1445,7 +1445,7 @@ async function handleRetailIntent(queryText) {
                     { label: 'Exchange Window', value: '14 Days', color: 'blue' },
                     { label: 'Tag Mandatory', value: 'Yes (Original)', color: 'amber' },
                     { label: 'Credit Note Validity', value: '90 Days', color: 'emerald' },
-                    { label: 'WhatsApp Slip', value: 'Automatic', color: 'purple' }
+                    { label: 'Customer WA Slip', value: 'Disabled', color: 'slate' }
                 ],
                 actions: [
                     { type: 'NAVIGATE', tab: 'dashboard', label: '⚡ Open Speed Billing POS / Returns' }

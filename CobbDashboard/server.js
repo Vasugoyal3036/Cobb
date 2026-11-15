@@ -2143,13 +2143,15 @@ app.get('/api/automation/status', async (req, res) => {
         const sentCount = checkoutsSent + exchangesSent;
         const totalAttempted = sentCount + notOnWhatsAppCount + noPhoneCount;
 
-        const validTodayEvents = resolvedTodayDispatches.filter(d => d.status === 'sent' || d.status === 'not_on_whatsapp' || d.status === 'no_phone');
+        const validTodayEvents = resolvedTodayDispatches.filter(d => d.status === 'sent' || d.status === 'not_on_whatsapp' || d.status === 'no_phone' || d.status === 'skipped');
 
-        let latestReason = 'Monitoring checkouts & exchanges...';
+        let latestReason = 'Monitoring checkouts & pos...';
         if (validTodayEvents.length > 0) {
             const latest = validTodayEvents[validTodayEvents.length - 1];
             if (latest.status === 'not_on_whatsapp') {
                 latestReason = `⚠️ ${latest.customerName} (${latest.phone}) is not on WhatsApp`;
+            } else if (latest.status === 'skipped') {
+                latestReason = `Latest: 🔄 Exchange Bill #${latest.billNo?.trim()} skipped (Customer WhatsApp disabled)`;
             } else if (latest.status === 'sent') {
                 latestReason = latest.reason === 'exchange' 
                     ? `Latest: 🔄 Exchange Slip sent to ${latest.customerName}` 

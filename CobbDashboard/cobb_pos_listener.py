@@ -547,8 +547,16 @@ def send_whatsapp_message(phone_number, customer_name, dedupe_key=None, amount=N
         log_engine(f"[ERROR] Connecting to WhatsApp sender (port 3000): {e}")
         return {'status': 'client_not_ready', 'detail': str(e)}
 
+# --- STORE POLICY TOGGLES ---
+# Set to False to stop sending exchange messages to customers
+ENABLE_CUSTOMER_EXCHANGE_WHATSAPP = False
+
 def send_exchange_whatsapp_slip(phone_number, customer_name, bill_no, bill_time, net_amount, returned_items, replacement_items, dedupe_key=None):
     """Sends official digital exchange slip for product exchanges."""
+    if not ENABLE_CUSTOMER_EXCHANGE_WHATSAPP:
+        log_engine(f"[EXCHANGE SUPPRESSED] Customer exchange messages disabled by store policy for {phone_number} (Bill #{bill_no})")
+        return {'status': 'skipped', 'detail': 'Customer exchange messages disabled by store policy'}
+
     clean_phone = normalize_phone_number(phone_number)
     if not clean_phone or len(clean_phone) < 10:
         return {'status': 'no_phone', 'detail': 'Invalid phone number format'}
@@ -840,13 +848,18 @@ def run_listener():
                         record_dispatch_event(bill_no, cm_id_str, name, phone, 'exchange' if is_exchange else 'checkout', 'no_phone', 'No valid phone attached to invoice')
                         success = True
                     elif is_exchange:
-                        log_engine(f"[NEW EXCHANGE DETECTED] Bill #{bill_no} | Phone: {clean_phone} | Returned: {len(returned_items)} | Replaced: {len(replacement_items)}")
-                        res = send_exchange_whatsapp_slip(clean_phone, name, bill_no, bill_time, amount, returned_items, replacement_items, cm_id_str)
-                        if res.get('status') == 'client_not_ready':
-                            log_engine(f"[GATEWAY WAITING] WhatsApp Client is reconnecting. Will retry Bill #{bill_no} once gateway is ready.")
-                            break
-                        record_dispatch_event(bill_no, cm_id_str, name, display_phone, 'exchange', res['status'], res['detail'])
-                        success = res['status'] in ('sent', 'not_on_whatsapp')
+                        if not ENABLE_CUSTOMER_EXCHANGE_WHATSAPP:
+                            log_engine(f"[EXCHANGE DETECTED - SUPPRESSED] Bill #{bill_no} | Phone: {clean_phone} | Customer exchange messages disabled by store policy.")
+                            record_dispatch_event(bill_no, cm_id_str, name, display_phone, 'exchange', 'skipped', 'Customer exchange messages disabled by store policy')
+                            success = True
+                        else:
+                            log_engine(f"[NEW EXCHANGE DETECTED] Bill #{bill_no} | Phone: {clean_phone} | Returned: {len(returned_items)} | Replaced: {len(replacement_items)}")
+                            res = send_exchange_whatsapp_slip(clean_phone, name, bill_no, bill_time, amount, returned_items, replacement_items, cm_id_str)
+                            if res.get('status') == 'client_not_ready':
+                                log_engine(f"[GATEWAY WAITING] WhatsApp Client is reconnecting. Will retry Bill #{bill_no} once gateway is ready.")
+                                break
+                            record_dispatch_event(bill_no, cm_id_str, name, display_phone, 'exchange', res['status'], res['detail'])
+                            success = res['status'] in ('sent', 'not_on_whatsapp')
                     else:
                         log_engine(f"[NEW BILL DETECTED] Bill #{bill_no} | Rs.{amount} | Phone: {clean_phone}")
                         res = send_whatsapp_message(clean_phone, name, cm_id_str, amount=amount, bill_no=bill_no)
