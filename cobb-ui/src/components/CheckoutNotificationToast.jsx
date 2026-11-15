@@ -86,23 +86,22 @@ const CheckoutNotificationToast = ({ notification, onClose, onOpenBill, onOpenEo
 
         <div className="relative flex items-start gap-3">
           {/* Status Icon */}
-          <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-lg ring-2 ${
-            isSystemStatus
-              ? isOnline
-                ? 'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/30 ring-emerald-400/30 text-white'
-                : isPowerCut
-                  ? 'bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-500/30 ring-amber-400/30 text-white'
-                  : 'bg-gradient-to-br from-rose-500 to-red-600 shadow-rose-500/30 ring-rose-400/30 text-white'
-              : isBigTicket
-                ? 'bg-gradient-to-br from-purple-500 via-indigo-600 to-amber-500 shadow-purple-500/40 ring-purple-400/40 text-amber-200'
-                : isHeavyDiscount
-                  ? 'bg-gradient-to-br from-amber-500 to-rose-600 shadow-amber-500/40 ring-amber-400/40 text-white'
-                  : isCancelledBill
-                    ? 'bg-gradient-to-br from-rose-600 to-red-800 shadow-rose-500/40 ring-rose-400/40 text-white'
-                    : isEodSummary
-                      ? 'bg-gradient-to-br from-cyan-500 to-blue-600 shadow-cyan-500/40 ring-cyan-400/40 text-white'
-                      : 'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/30 ring-emerald-400/30 text-white'
-          }`}>
+          <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-lg ring-2 ${isSystemStatus
+            ? isOnline
+              ? 'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/30 ring-emerald-400/30 text-white'
+              : isPowerCut
+                ? 'bg-gradient-to-br from-amber-500 to-orange-600 shadow-amber-500/30 ring-amber-400/30 text-white'
+                : 'bg-gradient-to-br from-rose-500 to-red-600 shadow-rose-500/30 ring-rose-400/30 text-white'
+            : isBigTicket
+              ? 'bg-gradient-to-br from-purple-500 via-indigo-600 to-amber-500 shadow-purple-500/40 ring-purple-400/40 text-amber-200'
+              : isHeavyDiscount
+                ? 'bg-gradient-to-br from-amber-500 to-rose-600 shadow-amber-500/40 ring-amber-400/40 text-white'
+                : isCancelledBill
+                  ? 'bg-gradient-to-br from-rose-600 to-red-800 shadow-rose-500/40 ring-rose-400/40 text-white'
+                  : isEodSummary
+                    ? 'bg-gradient-to-br from-cyan-500 to-blue-600 shadow-cyan-500/40 ring-cyan-400/40 text-white'
+                    : 'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/30 ring-emerald-400/30 text-white'
+            }`}>
             {isSystemStatus ? (
               isOnline ? (
                 <Power className="w-5 h-5 animate-pulse" />
@@ -126,23 +125,22 @@ const CheckoutNotificationToast = ({ notification, onClose, onOpenBill, onOpenEo
 
           <div className="flex-1 min-w-0 pr-6">
             <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold border uppercase tracking-wider ${
-                isSystemStatus
-                  ? isOnline
-                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-                    : isPowerCut
-                      ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
-                      : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
-                  : isBigTicket
-                    ? 'bg-purple-500/25 text-purple-200 border-purple-400/40 ring-1 ring-purple-400/20'
-                    : isHeavyDiscount
-                      ? 'bg-amber-500/25 text-amber-200 border-amber-400/40 ring-1 ring-amber-400/20'
-                      : isCancelledBill
-                        ? 'bg-rose-500/25 text-rose-200 border-rose-400/40 ring-1 ring-rose-400/20'
-                        : isEodSummary
-                          ? 'bg-cyan-500/25 text-cyan-200 border-cyan-400/40 ring-1 ring-cyan-400/20'
-                          : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-              }`}>
+              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold border uppercase tracking-wider ${isSystemStatus
+                ? isOnline
+                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                  : isPowerCut
+                    ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                    : 'bg-rose-500/20 text-rose-300 border-rose-500/30'
+                : isBigTicket
+                  ? 'bg-purple-500/25 text-purple-200 border-purple-400/40 ring-1 ring-purple-400/20'
+                  : isHeavyDiscount
+                    ? 'bg-amber-500/25 text-amber-200 border-amber-400/40 ring-1 ring-amber-400/20'
+                    : isCancelledBill
+                      ? 'bg-rose-500/25 text-rose-200 border-rose-400/40 ring-1 ring-rose-400/20'
+                      : isEodSummary
+                        ? 'bg-cyan-500/25 text-cyan-200 border-cyan-400/40 ring-1 ring-cyan-400/20'
+                        : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                }`}>
                 {isSystemStatus ? (
                   isOnline ? '🟢 System Online' : isPowerCut ? '⚠️ Power Cut / Offline' : '🔴 System Closed'
                 ) : isBigTicket ? (
@@ -202,17 +200,16 @@ const CheckoutNotificationToast = ({ notification, onClose, onOpenBill, onOpenEo
               <button
                 type="button"
                 onClick={handleActionClick}
-                className={`mt-3 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-md ${
-                  isBigTicket
-                    ? 'bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-400 hover:to-indigo-500 text-white shadow-purple-500/30'
-                    : isHeavyDiscount
-                      ? 'bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white shadow-amber-500/30'
-                      : isCancelledBill
-                        ? 'bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-500 hover:to-red-600 text-white shadow-rose-500/30'
-                        : isEodSummary
-                          ? 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-cyan-500/30'
-                          : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-500/20'
-                }`}
+                className={`mt-3 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-md ${isBigTicket
+                  ? 'bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-400 hover:to-indigo-500 text-white shadow-purple-500/30'
+                  : isHeavyDiscount
+                    ? 'bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white shadow-amber-500/30'
+                    : isCancelledBill
+                      ? 'bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-500 hover:to-red-600 text-white shadow-rose-500/30'
+                      : isEodSummary
+                        ? 'bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white shadow-cyan-500/30'
+                        : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-500/20'
+                  }`}
               >
                 <span>
                   {isEodSummary ? 'Open Full Closing Digest' : isCancelledBill ? 'Inspect Voided Bill' : isHeavyDiscount ? 'Audit Discount Details' : isBigTicket ? 'View VIP Bill Details' : 'View Bill Breakdown'}
@@ -236,17 +233,16 @@ const CheckoutNotificationToast = ({ notification, onClose, onOpenBill, onOpenEo
         {/* Progress Bar */}
         <div className="absolute bottom-0 left-0 right-0 h-1 bg-white/10">
           <div
-            className={`h-full transition-all duration-75 ${
-              isBigTicket
-                ? 'bg-gradient-to-r from-purple-400 to-amber-300'
-                : isHeavyDiscount
-                  ? 'bg-gradient-to-r from-amber-400 to-orange-400'
-                  : isCancelledBill
-                    ? 'bg-gradient-to-r from-rose-500 to-red-400'
-                    : isEodSummary
-                      ? 'bg-gradient-to-r from-cyan-400 to-blue-400'
-                      : 'bg-gradient-to-r from-emerald-400 to-teal-300'
-            }`}
+            className={`h-full transition-all duration-75 ${isBigTicket
+              ? 'bg-gradient-to-r from-purple-400 to-amber-300'
+              : isHeavyDiscount
+                ? 'bg-gradient-to-r from-amber-400 to-orange-400'
+                : isCancelledBill
+                  ? 'bg-gradient-to-r from-rose-500 to-red-400'
+                  : isEodSummary
+                    ? 'bg-gradient-to-r from-cyan-400 to-blue-400'
+                    : 'bg-gradient-to-r from-emerald-400 to-teal-300'
+              }`}
             style={{ width: `${progress}%` }}
           />
         </div>

@@ -321,30 +321,30 @@ const ExecutiveBentoDashboard = (props) => {
       {/* =========================================================================
           TOP COMMAND STRIP: STORE TELEMETRY, SENTRY & PERSPECTIVE SELECTOR
           ========================================================================= */}
-      <div className="ios-card p-3.5 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div className="obsidian-card p-3.5 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
         {/* Left: Brand Identity & Telemetry Status */}
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-[#007aff] flex items-center justify-center text-white shadow-none shrink-0">
+          <div className="w-10 h-10 rounded-2xl bg-rose-600 flex items-center justify-center text-white shadow-sm shadow-rose-950/40 shrink-0">
             <Sparkles className="w-5 h-5" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-sm sm:text-base font-black tracking-tight text-slate-900 dark:text-white uppercase flex items-center gap-1.5">
+              <h1 className="text-sm sm:text-base font-black tracking-tight text-white uppercase flex items-center gap-1.5">
                 <span>Executive Command Center</span>
               </h1>
-              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-blue-500/10 dark:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/25">
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-400 border border-rose-500/25">
                 {activeStore || 'DEMO_STORE_001'}
               </span>
             </div>
-            <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-500 dark:text-slate-400 font-medium">
+            <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-400 font-medium">
               <span className="flex items-center gap-1">
                 {isOnline ? (
-                  <span className="inline-flex items-center gap-1 text-emerald-500 font-bold">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  <span className="inline-flex items-center gap-1 text-emerald-400 font-bold">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                     <span>Cloud Sentry Online</span>
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 text-rose-500 font-bold">
+                  <span className="inline-flex items-center gap-1 text-rose-400 font-bold">
                     <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
                     <span>Offline (Local Cache)</span>
                   </span>

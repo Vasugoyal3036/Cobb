@@ -239,7 +239,7 @@ export default function MobileNav({
       <nav
         className={`pointer-events-auto border-t transition-colors duration-200 ${
           darkMode
-            ? 'bg-[#1c1c1e] border-[#2c2c2e] text-slate-400'
+            ? 'bg-[#12151d]/95 backdrop-blur-md border-white/8 text-slate-400'
             : 'bg-white border-[#e5e5ea] text-slate-500 shadow-xs'
         }`}
       >
@@ -260,11 +260,11 @@ export default function MobileNav({
                 >
                   <div className="relative">
                     {/* Elevated Button Tile */}
-                    <div className="relative w-11 h-11 rounded-2xl bg-[#007aff] text-white flex items-center justify-center shadow-md border border-white/20 transform active:scale-92 transition-transform duration-150">
+                    <div className="relative w-11 h-11 rounded-2xl bg-gradient-to-tr from-rose-600 to-rose-500 text-white flex items-center justify-center shadow-lg shadow-rose-950/40 border border-white/20 transform active:scale-92 transition-transform duration-150">
                       <Icon className="w-5 h-5 text-white" />
                     </div>
                   </div>
-                  <span className="text-[9.5px] font-bold text-[#007aff] mt-0.5 tracking-tight">
+                  <span className="text-[9.5px] font-bold text-rose-500 mt-0.5 tracking-tight">
                     {item.label}
                   </span>
                 </button>
@@ -278,7 +278,7 @@ export default function MobileNav({
                 onClick={item.onClick}
                 className={`flex-1 py-1 flex flex-col items-center justify-center transition-all cursor-pointer focus:outline-none active:scale-92 ${
                   isActive
-                    ? 'text-[#007aff] font-bold'
+                    ? 'text-rose-500 font-bold'
                     : darkMode
                       ? 'text-slate-400 hover:text-slate-200'
                       : 'text-slate-500 hover:text-slate-800'
@@ -287,14 +287,14 @@ export default function MobileNav({
                 <div
                   className={`relative p-1 rounded-xl transition-all duration-200 ${
                     isActive
-                      ? 'bg-[#007aff]/10 text-[#007aff]'
+                      ? 'bg-rose-500/15 text-rose-500'
                       : ''
                   }`}
                 >
                   <Icon className="w-4.5 h-4.5" />
                   {isActive && (
                     <span
-                      className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-[#007aff]"
+                      className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-rose-500"
                     />
                   )}
                 </div>

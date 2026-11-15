@@ -2192,8 +2192,8 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
             onClick={() => { setStatusFilter('active'); setActiveCustomerHoldFilter(null); }}
             className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
               statusFilter === 'active'
-                ? 'bg-white dark:bg-[#1c1c1e] text-slate-900 dark:text-white shadow-xs'
-                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                ? 'bg-[#181d27] text-white border border-rose-500/40 shadow-xs'
+                : 'text-slate-400 hover:text-white'
             }`}
           >
             Active Pending ({summary.activeCount})
@@ -2204,11 +2204,11 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
             onClick={() => { setStatusFilter('holds'); setActiveCustomerHoldFilter(null); }}
             className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap flex items-center gap-1.5 ${
               statusFilter === 'holds'
-                ? 'bg-white dark:bg-[#1c1c1e] text-slate-900 dark:text-white shadow-xs'
-                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                ? 'bg-[#181d27] text-white border border-rose-500/40 shadow-xs'
+                : 'text-slate-400 hover:text-white'
             }`}
           >
-            <Briefcase className="w-3.5 h-3.5 text-[#007aff]" />
+            <Briefcase className="w-3.5 h-3.5 text-rose-500" />
             <span>Customer Hold Bags ({customerHolds.length} Bags / {customerHoldTagsCount} Pcs)</span>
           </button>
 
@@ -2217,8 +2217,8 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
             onClick={() => { setStatusFilter('billed'); setActiveCustomerHoldFilter(null); }}
             className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
               statusFilter === 'billed'
-                ? 'bg-white dark:bg-[#1c1c1e] text-slate-900 dark:text-white shadow-xs'
-                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                ? 'bg-[#181d27] text-white border border-rose-500/40 shadow-xs'
+                : 'text-slate-400 hover:text-white'
             }`}
           >
             Auto-Billed / Resolved ({summary.billedCount})
@@ -2228,8 +2228,8 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
             onClick={() => setStatusFilter('all')}
             className={`flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap ${
               statusFilter === 'all'
-                ? 'bg-white dark:bg-[#1c1c1e] text-slate-900 dark:text-white shadow-xs'
-                : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'
+                ? 'bg-[#181d27] text-white border border-rose-500/40 shadow-xs'
+                : 'text-slate-400 hover:text-white'
             }`}
           >
             All Tags ({tags.length})
@@ -2650,11 +2650,11 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
           )}
         </div>
       ) : viewMode === 'list' ? (
-        <div className="ios-card overflow-hidden">
+        <div className="obsidian-card overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-slate-50 dark:bg-white/5 border-b border-[#e5e5ea] dark:border-[#2c2c2e] text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                <tr className="bg-[#181d27] border-b border-white/8 text-[11px] font-bold uppercase tracking-wider text-slate-400">
                   <th className="py-3 px-3 w-10 text-center">
                     <button
                       onClick={() => {
@@ -2675,13 +2675,13 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                       )}
                     </button>
                   </th>
-                  <th className="py-3 px-4 text-[#007aff] font-bold cursor-pointer select-none" onClick={() => setSortBy(sortBy === 'low_to_high' ? 'high_to_low' : 'low_to_high')} title="Click to sort by MRP">
+                  <th className="py-3 px-4 text-rose-400 font-bold cursor-pointer select-none" onClick={() => setSortBy(sortBy === 'low_to_high' ? 'high_to_low' : 'low_to_high')} title="Click to sort by MRP">
                     <div className="flex items-center gap-1.5">
                       <span>TAG MRP</span>
                       {sortBy === 'low_to_high' ? (
-                        <span className="text-[10px] text-rose-500 font-bold flex items-center">↑ Low</span>
+                        <span className="text-[10px] text-rose-400 font-bold flex items-center">↑ Low</span>
                       ) : sortBy === 'high_to_low' ? (
-                        <span className="text-[10px] text-rose-500 font-bold flex items-center">↓ High</span>
+                        <span className="text-[10px] text-rose-400 font-bold flex items-center">↓ High</span>
                       ) : (
                         <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
                       )}
@@ -2696,18 +2696,18 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                   <th className="py-3 px-4 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#e5e5ea] dark:divide-[#2c2c2e] text-xs">
+              <tbody className="divide-y divide-white/6 text-xs">
                 {pagedTags.map((tag, idx) => {
                   const isBilled = tag.status === 'billed';
                   const isSelected = selectedTagIds.includes(tag.id);
                   return (
                     <tr
                       key={tag.id}
-                      className={`transition-colors hover:bg-slate-50/80 dark:hover:bg-white/5 ${idx >= 12 ? 'deferred-row' : ''} ${
+                      className={`transition-colors hover:bg-[#181d27]/70 ${idx >= 12 ? 'deferred-row' : ''} ${
                         isSelected
-                          ? 'bg-amber-500/10 dark:bg-amber-500/15'
+                          ? 'bg-amber-500/10'
                           : isBilled
-                          ? 'bg-slate-50/40 dark:bg-white/5 opacity-70'
+                          ? 'bg-white/5 opacity-70'
                           : ''
                       }`}
                     >
@@ -2874,7 +2874,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                             <>
                               <button
                                 onClick={() => handleBillInSpeedBilling([tag], 'b1g2')}
-                                className="px-2.5 py-1 rounded-lg bg-amber-500 text-slate-950 font-black text-xs flex items-center gap-1 hover:bg-amber-400 shadow-sm active:scale-95 transition-all"
+                                className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center gap-1 shadow-sm shadow-rose-950/40 active:scale-95 transition-all"
                                 title="Bill this item in Speed Billing POS"
                               >
                                 <Zap className="w-3.5 h-3.5 fill-current" />
@@ -2883,7 +2883,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
 
                               <button
                                 onClick={() => handleMarkBilled(tag.id)}
-                                className="px-2.5 py-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold"
+                                className="px-2.5 py-1 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-400 text-xs font-bold"
                                 title="Mark as billed manually"
                               >
                                 Mark Billed
@@ -2894,7 +2894,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                           {tag.status === 'active' && (
                             <button
                               onClick={() => { setExchangeModal({ tag }); setExchangeNewBarcode(''); setExchangeNewItem(null); setExchangeSearchError(''); setExchangeNewSoldPrice(''); }}
-                              className="p-1.5 rounded-lg hover:bg-blue-500/15 text-slate-400 hover:text-blue-500 transition-colors"
+                              className="p-1.5 rounded-lg hover:bg-rose-500/15 text-slate-400 hover:text-rose-400 transition-colors"
                               title="Exchange item (swap unbilled garment)"
                             >
                               <ArrowLeftRight className="w-3.5 h-3.5" />
@@ -2924,10 +2924,10 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
             return (
               <div
                 key={tag.id}
-                className={`ios-card p-4 transition-colors relative ${idx >= 12 ? 'deferred-row' : ''} ${
+                className={`obsidian-card p-4 transition-colors relative ${idx >= 12 ? 'deferred-row' : ''} ${
                   isBilled
                     ? 'opacity-60'
-                    : 'hover:border-slate-300 dark:hover:border-slate-600'
+                    : 'hover:border-white/16'
                 }`}
               >
                 {/* Header: Article Name & Status */}
@@ -3084,7 +3084,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                       <>
                         <button
                           onClick={() => handleBillInSpeedBilling([tag], 'b1g2')}
-                          className="px-2.5 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-600 dark:text-amber-400 text-xs font-bold flex items-center gap-1 transition-all"
+                          className="px-2.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center gap-1 shadow-sm shadow-rose-950/40 active:scale-95 transition-all"
                           title="Load this garment into Speed Billing POS"
                         >
                           <Zap className="w-3.5 h-3.5 fill-current" />
@@ -3093,7 +3093,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
 
                         <button
                           onClick={() => handleMarkBilled(tag.id)}
-                          className="px-2.5 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold transition-all"
+                          className="px-2.5 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-400 text-xs font-bold transition-all"
                           title="Mark as billed if manually combined in POS"
                         >
                           Mark Billed
@@ -3104,7 +3104,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                     {tag.status === 'active' && (
                       <button
                         onClick={() => { setExchangeModal({ tag }); setExchangeNewBarcode(''); setExchangeNewItem(null); setExchangeSearchError(''); setExchangeNewSoldPrice(''); }}
-                        className="p-1.5 rounded-lg hover:bg-blue-500/15 text-slate-400 hover:text-blue-500 transition-all"
+                        className="p-1.5 rounded-lg hover:bg-rose-500/15 text-slate-400 hover:text-rose-400 transition-all"
                         title="Exchange item (swap unbilled garment)"
                       >
                         <ArrowLeftRight className="w-3.5 h-3.5" />

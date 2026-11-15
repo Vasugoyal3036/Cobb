@@ -422,15 +422,13 @@ export default function GlobalCommandBar({
 
       {/* Main Command Bar Modal */}
       <div
-        className={`relative w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border transition-all duration-200 animate-in zoom-in-95 flex flex-col max-h-[85vh] ${
-          darkMode ? 'bg-[#0e1320] border-slate-700/80 text-white' : 'bg-white border-slate-200 text-slate-900'
-        }`}
+        className={`relative w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border transition-all duration-200 animate-in zoom-in-95 flex flex-col max-h-[85vh] ${darkMode ? 'bg-[#0e1320] border-slate-700/80 text-white' : 'bg-white border-slate-200 text-slate-900'
+          }`}
         onClick={e => e.stopPropagation()}
       >
         {/* Top Search Input Row */}
-        <div className={`flex items-center px-4 sm:px-5 py-3.5 sm:py-4 border-b gap-3 shrink-0 ${
-          darkMode ? 'border-white/10 bg-[#121828]' : 'border-slate-100 bg-slate-50/80'
-        }`}>
+        <div className={`flex items-center px-4 sm:px-5 py-3.5 sm:py-4 border-b gap-3 shrink-0 ${darkMode ? 'border-white/10 bg-[#121828]' : 'border-slate-100 bg-slate-50/80'
+          }`}>
           <div className="p-2 rounded-xl bg-blue-500/10 text-blue-500 shrink-0">
             {isLoadingRemote ? (
               <Loader2 className="w-5 h-5 animate-spin" />
@@ -445,9 +443,8 @@ export default function GlobalCommandBar({
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleInputKeyDown}
             placeholder="Universal Search: Customer phone, Invoice #, Article, or Barcode..."
-            className={`w-full bg-transparent border-none outline-none text-sm sm:text-base placeholder-slate-400 font-medium ${
-              darkMode ? 'text-white' : 'text-slate-900'
-            }`}
+            className={`w-full bg-transparent border-none outline-none text-sm sm:text-base placeholder-slate-400 font-medium ${darkMode ? 'text-white' : 'text-slate-900'
+              }`}
           />
           {query && (
             <button
@@ -460,9 +457,8 @@ export default function GlobalCommandBar({
           )}
           <button
             onClick={onClose}
-            className={`px-2.5 py-1.5 rounded-xl border text-xs font-bold transition-colors cursor-pointer shrink-0 ${
-              darkMode ? 'bg-slate-800 border-slate-700 text-slate-300 hover:text-white' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
-            }`}
+            className={`px-2.5 py-1.5 rounded-xl border text-xs font-bold transition-colors cursor-pointer shrink-0 ${darkMode ? 'bg-slate-800 border-slate-700 text-slate-300 hover:text-white' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
+              }`}
           >
             ESC
           </button>
@@ -470,9 +466,8 @@ export default function GlobalCommandBar({
 
         {/* Category Filter Pills (When search active) */}
         {query.trim().length > 0 && (
-          <div className={`flex items-center gap-1.5 px-4 py-2 border-b overflow-x-auto no-scrollbar shrink-0 text-xs font-bold ${
-            darkMode ? 'bg-[#0a0d16] border-white/5' : 'bg-slate-100/60 border-slate-100'
-          }`}>
+          <div className={`flex items-center gap-1.5 px-4 py-2 border-b overflow-x-auto no-scrollbar shrink-0 text-xs font-bold ${darkMode ? 'bg-[#0a0d16] border-white/5' : 'bg-slate-100/60 border-slate-100'
+            }`}>
             {[
               { id: 'ALL', label: `All (${results.length})` },
               { id: 'CUSTOMERS', label: `👥 Customers (${counts.CUSTOMERS})`, disabled: counts.CUSTOMERS === 0 },
@@ -485,13 +480,12 @@ export default function GlobalCommandBar({
                 type="button"
                 disabled={tab.disabled}
                 onClick={() => setActiveCategory(tab.id)}
-                className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer whitespace-nowrap active:scale-95 disabled:opacity-30 disabled:pointer-events-none ${
-                  activeCategory === tab.id
-                    ? 'bg-blue-600 text-white shadow-xs'
-                    : darkMode
-                      ? 'bg-slate-900 text-slate-400 hover:text-white'
-                      : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200/60'
-                }`}
+                className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer whitespace-nowrap active:scale-95 disabled:opacity-30 disabled:pointer-events-none ${activeCategory === tab.id
+                  ? 'bg-blue-600 text-white shadow-xs'
+                  : darkMode
+                    ? 'bg-slate-900 text-slate-400 hover:text-white'
+                    : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200/60'
+                  }`}
               >
                 {tab.label}
               </button>
@@ -510,15 +504,14 @@ export default function GlobalCommandBar({
                 <button
                   key={idx}
                   data-index={idx}
-                  className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl transition-all text-left group cursor-pointer border ${
-                    isSelected
-                      ? darkMode
-                        ? 'bg-blue-600/20 border-blue-500/50 shadow-md shadow-blue-950/40 text-white ring-1 ring-blue-500/40'
-                        : 'bg-blue-50 border-blue-300 shadow-xs text-slate-950 ring-1 ring-blue-400'
-                      : darkMode
-                        ? 'bg-[#121828]/60 border-slate-800/80 hover:bg-[#161f33] hover:border-slate-700'
-                        : 'bg-white border-slate-200/80 hover:bg-slate-50 hover:border-slate-300'
-                  }`}
+                  className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl transition-all text-left group cursor-pointer border ${isSelected
+                    ? darkMode
+                      ? 'bg-blue-600/20 border-blue-500/50 shadow-md shadow-blue-950/40 text-white ring-1 ring-blue-500/40'
+                      : 'bg-blue-50 border-blue-300 shadow-xs text-slate-950 ring-1 ring-blue-400'
+                    : darkMode
+                      ? 'bg-[#121828]/60 border-slate-800/80 hover:bg-[#161f33] hover:border-slate-700'
+                      : 'bg-white border-slate-200/80 hover:bg-slate-50 hover:border-slate-300'
+                    }`}
                   onClick={() => item.action && item.action()}
                 >
                   {/* Category Icon */}
@@ -529,26 +522,23 @@ export default function GlobalCommandBar({
                   {/* Title & Sub details */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className={`text-sm font-bold truncate ${
-                        isSelected
-                          ? darkMode ? 'text-white' : 'text-blue-950 font-black'
-                          : darkMode ? 'text-slate-200 group-hover:text-white' : 'text-slate-800'
-                      }`}>
+                      <p className={`text-sm font-bold truncate ${isSelected
+                        ? darkMode ? 'text-white' : 'text-blue-950 font-black'
+                        : darkMode ? 'text-slate-200 group-hover:text-white' : 'text-slate-800'
+                        }`}>
                         {item.title}
                       </p>
                       {item.badge && (
-                        <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full shrink-0 ${
-                          darkMode ? 'bg-white/10 text-slate-300' : 'bg-slate-100 text-slate-600'
-                        }`}>
+                        <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full shrink-0 ${darkMode ? 'bg-white/10 text-slate-300' : 'bg-slate-100 text-slate-600'
+                          }`}>
                           {item.badge}
                         </span>
                       )}
                     </div>
-                    <p className={`text-xs truncate mt-0.5 ${
-                      isSelected
-                        ? darkMode ? 'text-blue-200' : 'text-blue-700'
-                        : 'text-slate-400'
-                    }`}>
+                    <p className={`text-xs truncate mt-0.5 ${isSelected
+                      ? darkMode ? 'text-blue-200' : 'text-blue-700'
+                      : 'text-slate-400'
+                      }`}>
                       {item.sub}
                     </p>
                   </div>
@@ -591,9 +581,8 @@ export default function GlobalCommandBar({
         </div>
 
         {/* Footer Navigation Bar */}
-        <div className={`px-4 py-3 border-t text-xs flex justify-between items-center shrink-0 ${
-          darkMode ? 'border-white/10 bg-[#121828] text-slate-400' : 'border-slate-100 bg-white text-slate-500'
-        }`}>
+        <div className={`px-4 py-3 border-t text-xs flex justify-between items-center shrink-0 ${darkMode ? 'border-white/10 bg-[#121828] text-slate-400' : 'border-slate-100 bg-white text-slate-500'
+          }`}>
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1 font-mono">
               <kbd className={`px-1.5 py-0.5 rounded text-[10px] ${darkMode ? 'bg-white/10' : 'bg-slate-100 border'}`}>↑</kbd>

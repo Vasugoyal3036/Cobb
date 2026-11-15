@@ -352,7 +352,7 @@ const Layout = ({
       )}
 
       {/* Sidebar Navigation - Crisp Solid Low-CPU Theme */}
-      <div className={`fixed lg:static inset-y-0 left-0 lg:my-4 lg:ml-4 lg:mr-2 lg:h-[calc(100vh-32px)] lg:rounded-[2rem] flex flex-col z-40 transition-all duration-300 ${isMobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0'} ${isLeftSidebarCollapsed ? 'w-[80px]' : 'w-[85vw] max-w-xs lg:w-64'} ${darkMode ? 'bg-[#0d111a] border-r lg:border border-white/[0.08] shadow-[0_8px_24px_0_rgba(0,0,0,0.6)]' : 'bg-white border-r lg:border border-slate-200/80 shadow-[0_8px_24px_rgb(0,0,0,0.06)]'}`}>
+      <div className={`fixed lg:static inset-y-0 left-0 lg:my-4 lg:ml-4 lg:mr-2 lg:h-[calc(100vh-32px)] lg:rounded-[2rem] flex flex-col z-40 transition-all duration-300 ${isMobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0'} ${isLeftSidebarCollapsed ? 'w-[80px]' : 'w-[85vw] max-w-xs lg:w-64'} ${darkMode ? 'bg-[#0c0e14] border-r lg:border border-white/[0.08] shadow-[0_8px_24px_0_rgba(0,0,0,0.6)]' : 'bg-white border-r lg:border border-slate-200/80 shadow-[0_8px_24px_rgb(0,0,0,0.06)]'}`}>
         <div className={`p-4 lg:p-5 pb-3 flex items-center border-b transition-all duration-500 pt-safe ${isLeftSidebarCollapsed ? 'justify-center px-2' : 'justify-between'} ${darkMode ? 'border-white/[0.06]' : 'border-slate-100'}`}>
           <div className="flex items-center gap-2.5">
             <OrsLogo size={38} />
@@ -450,8 +450,8 @@ const Layout = ({
                   : "text-slate-600 hover:bg-black/5 hover:text-slate-900 rounded-xl font-medium";
 
                 const activeColor = darkMode
-                  ? "bg-[#007aff]/15 text-[#007aff] font-semibold rounded-xl"
-                  : "bg-[#007aff]/10 text-[#007aff] font-semibold rounded-xl";
+                  ? "bg-[#181d27] text-white border-l-2 border-rose-500 font-bold rounded-xl shadow-xs"
+                  : "bg-rose-50 text-rose-700 border-l-2 border-rose-600 font-bold rounded-xl shadow-xs";
 
                 return (
                   <button
@@ -459,7 +459,7 @@ const Layout = ({
                     onClick={() => { setActiveTab(item.id); setSearchQuery(''); setIsMobileMenuOpen(false); }}
                     className={`w-full flex items-center ${isLeftSidebarCollapsed ? 'justify-center px-0' : 'px-4'} py-2.5 transition-all duration-200 cursor-pointer relative group text-[13px] ${isActive ? activeColor : normalColor}`}
                   >
-                    <Icon className={`w-[18px] h-[18px] transition-colors shrink-0 ${isLeftSidebarCollapsed ? '' : 'mr-4'} ${isActive ? "text-[#007aff]" : "opacity-60 group-hover:opacity-100"}`} />
+                    <Icon className={`w-[18px] h-[18px] transition-colors shrink-0 ${isLeftSidebarCollapsed ? '' : 'mr-4'} ${isActive ? "text-rose-500" : "opacity-60 group-hover:opacity-100"}`} />
                     <span className={`truncate whitespace-nowrap transition-all duration-500 delay-[0ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isLeftSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none blur-md -translate-y-4' : 'w-full opacity-100 blur-0 translate-y-0'
                       }`}>{item.label}</span>
                   </button>
