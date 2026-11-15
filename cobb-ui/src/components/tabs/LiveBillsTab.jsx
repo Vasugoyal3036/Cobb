@@ -599,13 +599,14 @@ const LiveBillsTab = (props) => {
       {/* Header Section */}
       <div className="glass-header-bar p-4 sm:p-5 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-md mb-6">
         <div className="flex items-center">
-          <div className={`p-3 rounded-2xl mr-3.5 shadow-sm border ${darkMode ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' : 'bg-blue-50 border-blue-200 text-blue-600'}`}>
+          <div className={`p-3 rounded-2xl mr-3.5 shadow-sm border ${darkMode ? 'bg-red-500/15 border-red-500/30 text-red-500' : 'bg-red-50 border-red-200 text-red-600'}`}>
             <Receipt className="w-7 h-7" />
           </div>
           <div>
             <div className="flex items-center gap-2.5">
-              <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
-                Transaction History &amp; Bills
+              <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-1">
+                <span className="text-white">COB</span><span className="text-red-600">B</span>
+                <span className="ml-1 text-xl sm:text-2xl text-zinc-100 font-extrabold">Bills &amp; Transactions</span>
               </h2>
               {dateFilter === 'today' && (
                 <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 animate-pulse">

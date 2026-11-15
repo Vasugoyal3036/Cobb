@@ -669,11 +669,12 @@ export default function StaffLeaderboardTab({ API_BASE = 'http://localhost:5000'
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-amber-500/10 via-orange-500/5 to-transparent p-6 rounded-3xl border border-amber-500/20 shadow-sm">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <div className="p-2 bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-xl">
+            <div className="p-2 bg-red-600/20 text-red-500 rounded-xl">
               <Trophy className="w-5 h-5" />
             </div>
-            <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white">
-              Sales Staff Leaderboard & Daily Records
+            <h1 className="text-2xl font-black tracking-tight text-slate-900 dark:text-white flex items-center gap-1">
+              <span className="text-white">COB</span><span className="text-red-600">B</span>
+              <span className="ml-1 text-xl sm:text-2xl text-zinc-100 font-extrabold">Floor Staff Leaderboard</span>
             </h1>
           </div>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -699,7 +700,7 @@ export default function StaffLeaderboardTab({ API_BASE = 'http://localhost:5000'
               onClick={() => setActiveView('leaderboard')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition ${
                 activeView === 'leaderboard'
-                  ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20'
+                  ? 'bg-red-600 text-white shadow-md shadow-red-600/30'
                   : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
               }`}
             >
@@ -710,7 +711,7 @@ export default function StaffLeaderboardTab({ API_BASE = 'http://localhost:5000'
               onClick={() => setActiveView('daily_logs')}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition ${
                 activeView === 'daily_logs'
-                  ? 'bg-amber-500 text-white shadow-md shadow-amber-500/20'
+                  ? 'bg-red-600 text-white shadow-md shadow-red-600/30'
                   : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
               }`}
             >

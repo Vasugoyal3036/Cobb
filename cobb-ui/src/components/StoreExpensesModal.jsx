@@ -485,19 +485,22 @@ export default function StoreExpensesModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative w-full max-w-3xl max-h-[94vh] flex flex-col rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="relative w-full max-w-3xl max-h-[94vh] flex flex-col rounded-3xl bg-white dark:bg-[#0d0e12] border border-slate-200 dark:border-white/10 shadow-2xl overflow-hidden">
         
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-950/50">
+        <div className="px-6 py-4 border-b border-slate-200 dark:border-white/10 flex items-center justify-between bg-slate-50/70 dark:bg-[#14161d]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shadow-md shadow-emerald-500/20">
+            <div className="w-10 h-10 rounded-2xl bg-red-600 text-white flex items-center justify-center shadow-md shadow-red-600/30">
               <Calculator className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-lg font-black text-slate-900 dark:text-white">Store Expenses &amp; Daily OpEx</h3>
-                <span className="px-2 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-1">
+                  <span className="text-white">COB</span><span className="text-red-600">B</span>
+                  <span className="ml-1 text-zinc-100 font-extrabold">Store OpEx &amp; Expenses</span>
+                </h3>
+                <span className="px-2 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-md bg-red-500/10 text-red-500 border border-red-500/20">
                   {activeStore === 'ALL' ? 'Main Store' : activeStore}
                 </span>
               </div>

@@ -1160,20 +1160,23 @@ export default function StaffStockCheckerPage({
       <header className={`sticky top-0 z-40 border-b px-4 py-3 flex items-center justify-between transition-colors ${isObsidian ? 'bg-black/90 border-neutral-800' : 'bg-white/95 border-slate-200 shadow-xs'
         }`}>
         <div className="flex items-center gap-2.5">
-          <div className="shrink-0">
-            <OrsLogo size={36} showGlow={isObsidian} />
+          <div className="w-9 h-9 rounded-xl bg-black border border-red-600/40 overflow-hidden flex items-center justify-center shrink-0 shadow-md shadow-red-600/20 select-none">
+            <img src="/cobb-logo.png" alt="COBB ITALY" className="w-full h-full object-contain" />
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className={`font-black text-sm tracking-tight ${isObsidian ? 'text-white' : 'text-[#111827]'}`}>COBB STAFF</span>
-              <span className={`px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${isObsidian ? 'bg-amber-500 text-black' : 'bg-slate-900 text-white'
-                }`}>
+              <span className="font-black text-sm tracking-tight flex items-center">
+                <span className="text-white">COB</span><span className="text-red-600">B</span>
+                <span className="ml-1 text-zinc-300 font-extrabold">STAFF</span>
+                <span className="sr-only">COBB STAFF</span>
+              </span>
+              <span className="px-1.5 py-0.5 rounded text-[10px] font-black uppercase tracking-wider bg-red-600 text-white shadow-xs">
                 Stock Checker
               </span>
             </div>
-            <p className={`text-[11px] font-semibold flex items-center gap-1 ${isObsidian ? 'text-neutral-400' : 'text-slate-500'}`}>
+            <p className="text-[11px] font-semibold flex items-center gap-1 text-zinc-400">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-              <span>Sizes Grouped by Colour • Swiss Boutique</span>
+              <span>Sizes Grouped by Colour • Cobb Showroom</span>
             </p>
           </div>
         </div>

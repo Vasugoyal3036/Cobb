@@ -214,23 +214,24 @@ const GoodsInTransitTab = ({ darkMode, API_BASE }) => {
     <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 h-[calc(100vh-140px)] animate-in fade-in slide-in-from-bottom-4 duration-500 w-full max-w-[1600px] mx-auto">
       
       {/* LAYER 2: Master List (Middle Pane) */}
-      <div className={`w-full lg:w-[380px] shrink-0 flex flex-col rounded-2xl border shadow-sm overflow-hidden ${darkMode ? 'bg-[#0f1115] border-[#1c2436]' : 'bg-white border-slate-200'}`}>
+      <div className={`w-full lg:w-[380px] shrink-0 flex flex-col rounded-2xl border shadow-sm overflow-hidden ${darkMode ? 'bg-[#0d0e12] border-white/10' : 'bg-white border-slate-200'}`}>
         
         {/* Header / Stats */}
-        <div className={`p-5 border-b ${darkMode ? 'border-[#1c2436]' : 'border-slate-100'}`}>
+        <div className={`p-5 border-b ${darkMode ? 'border-white/10' : 'border-slate-100'}`}>
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-orange-500 flex items-center justify-center text-white shadow-lg shadow-orange-500/30">
+            <div className="w-10 h-10 rounded-xl bg-red-600 flex items-center justify-center text-white shadow-lg shadow-red-600/30">
               <Truck className="w-5 h-5" />
             </div>
             <div>
-              <h2 className={`text-lg font-black tracking-tight leading-tight ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-                Inward Velocity
+              <h2 className={`text-lg font-black tracking-tight leading-tight flex items-center gap-1 ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+                <span className="text-white">COB</span><span className="text-red-600">B</span>
+                <span className="ml-1 text-zinc-100 font-extrabold">Inward Velocity</span>
               </h2>
-              <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>HO Central Warehouse</p>
+              <p className={`text-xs ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>HO Central Warehouse • Cobb Pundri</p>
             </div>
           </div>
 
-          <div className={`rounded-xl p-3 flex justify-between ${darkMode ? 'bg-slate-900/50' : 'bg-slate-50'}`}>
+          <div className={`rounded-xl p-3 flex justify-between ${darkMode ? 'bg-[#14161d]' : 'bg-slate-50'}`}>
             <div>
               <p className={`text-[10px] font-bold uppercase tracking-wider mb-1 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Month Inflow</p>
               <p className={`text-lg font-black ${darkMode ? 'text-white' : 'text-slate-900'}`}>{data.summary?.monthPieces?.toLocaleString('en-IN') || '1,021'} <span className="text-xs text-slate-500 font-semibold">Pcs</span></p>

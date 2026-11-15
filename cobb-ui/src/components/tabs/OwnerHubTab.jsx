@@ -534,21 +534,24 @@ export default function OwnerHubTab({
                 ←
               </button>
             )}
-            <div className="shrink-0">
-              <OrsLogo size={38} showGlow={isObsidian} />
+            <div className="w-10 h-10 rounded-xl bg-black border border-red-600/40 overflow-hidden flex items-center justify-center shrink-0 shadow-md shadow-red-600/20 select-none">
+              <img src="/cobb-logo.png" alt="COBB ITALY" className="w-full h-full object-contain" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-base sm:text-lg font-black tracking-tight leading-tight">Store Control Hub</h1>
+                <h1 className="text-base sm:text-lg font-black tracking-tight leading-tight flex items-center">
+                  <span className="text-white">COB</span><span className="text-red-600">B</span>
+                  <span className="ml-1.5 text-zinc-100 font-extrabold">Store Control Hub</span>
+                </h1>
                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider flex items-center gap-1 ${
-                  isObsidian ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                  isObsidian ? 'bg-red-500/15 text-red-400 border border-red-500/30' : 'bg-red-50 text-red-700 border border-red-200'
                 }`}>
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                   Live Inputs
                 </span>
               </div>
               <p className={`text-xs ${textDim}`}>
-                {branchName} • Swiss Minimalist Boutique
+                {branchName} • Cobb Showroom Operations
               </p>
             </div>
           </div>

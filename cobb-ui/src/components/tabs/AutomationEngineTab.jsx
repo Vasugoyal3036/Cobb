@@ -101,7 +101,7 @@ const AutomationEngineTab = (props) => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   {/* WhatsApp Gateway Card with Live Embedded QR */}
-                  <div className="bg-slate-900 text-white p-4 sm:p-6 lg:p-8 rounded-2xl border border-slate-800 shadow-xl flex flex-col justify-between">
+                  <div className="bg-[#0d0e12] text-white p-4 sm:p-6 lg:p-8 rounded-2xl border border-white/10 shadow-xl flex flex-col justify-between">
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-[10px] uppercase font-black tracking-widest text-blue-400">Step 1: Sender Gateway</span>
@@ -168,7 +168,7 @@ const AutomationEngineTab = (props) => {
                   </div>
 
                   {/* POS Listener Card */}
-                  <div className="bg-slate-900 text-white p-4 sm:p-6 lg:p-8 rounded-2xl border border-slate-800 shadow-xl flex flex-col justify-between">
+                  <div className="bg-[#0d0e12] text-white p-4 sm:p-6 lg:p-8 rounded-2xl border border-white/10 shadow-xl flex flex-col justify-between">
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-[10px] uppercase font-black tracking-widest text-purple-400">Step 2: Bill Detector</span>
@@ -222,7 +222,7 @@ const AutomationEngineTab = (props) => {
                   )}
                 </div>
 
-                <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
+                <div className="bg-white dark:bg-[#0d0e12] p-6 rounded-2xl border border-slate-200 dark:border-white/10 shadow-sm">
                   <div className="flex items-center justify-between mb-4">
                     <h4 className="font-bold text-slate-800 dark:text-white text-base flex items-center">
                       <MessageSquare className="w-5 h-5 mr-2 text-green-600 dark:text-green-400" /> Send Instant Test WhatsApp Message

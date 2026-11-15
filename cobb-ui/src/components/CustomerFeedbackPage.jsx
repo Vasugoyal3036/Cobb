@@ -329,30 +329,31 @@ export default function CustomerFeedbackPage({ onClose }) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-start p-4 sm:p-6 font-sans antialiased selection:bg-amber-500 selection:text-slate-950">
+    <div className="min-h-screen bg-[#050505] text-slate-100 flex flex-col items-center justify-start p-4 sm:p-6 font-sans antialiased selection:bg-red-600 selection:text-white">
       {/* Background Ambient Glows */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[650px] h-[380px] bg-gradient-to-b from-amber-500/12 via-orange-500/5 to-transparent blur-3xl -z-10" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[650px] h-[380px] bg-gradient-to-b from-red-600/12 via-red-950/5 to-transparent blur-3xl -z-10" />
       </div>
 
       <div className="w-full max-w-xl mx-auto space-y-4 py-3">
         {/* Top Brand Banner */}
         <header className="text-center space-y-2">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-black tracking-wide uppercase">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-600/10 border border-red-600/30 text-red-400 text-xs font-black tracking-wide uppercase">
             <Award className="w-3.5 h-3.5" />
-            <span>Official Cobb Store Feedback</span>
+            <span>Official Cobb Italy Customer Experience</span>
           </div>
 
           <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white flex items-center justify-center gap-2">
-            <span>Cobb Apparels</span>
-            <span className="text-xs px-2 py-0.5 rounded-md bg-amber-500/15 border border-amber-500/30 text-amber-400 font-mono font-bold">
-              PUNDRI FLAGSHIP
+            <span className="text-white font-black">COB</span><span className="text-red-600 font-black">B</span>
+            <span className="text-zinc-200 font-bold">ITALY</span>
+            <span className="text-xs px-2 py-0.5 rounded-md bg-red-600/15 border border-red-600/30 text-red-400 font-mono font-bold">
+              PUNDRI SHOWROOM
             </span>
           </h1>
 
-          <p className="text-xs text-slate-400 flex items-center justify-center gap-1.5">
-            <MapPin className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-            <span>Main Market, Near Clock Tower, Pundri (Haryana)</span>
+          <p className="text-xs text-zinc-400 flex items-center justify-center gap-1.5">
+            <MapPin className="w-3.5 h-3.5 text-red-500 shrink-0" />
+            <span>flying colors of fashion • Main Market, Pundri</span>
           </p>
 
           {/* Verified Shopping Visit Pill if Bill No present */}

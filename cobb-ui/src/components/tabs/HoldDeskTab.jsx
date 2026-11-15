@@ -353,8 +353,8 @@ export default function HoldDeskTab({ darkMode }) {
                     type="button"
                     onClick={() => setForm(f => ({ ...f, windowHours: opt.value }))}
                     className={`px-4 py-1.5 rounded-xl text-xs font-bold border transition-all ${form.windowHours === opt.value
-                      ? 'bg-amber-600 text-white border-amber-500 shadow-lg shadow-amber-500/20'
-                      : 'border-slate-700 text-slate-400 hover:border-amber-500 hover:text-amber-400'}`}
+                      ? 'bg-red-600 text-white border-red-500 shadow-lg shadow-red-500/20'
+                      : 'border-white/10 text-zinc-400 hover:border-red-500 hover:text-red-400'}`}
                   >
                     {opt.label}
                   </button>
@@ -366,7 +366,7 @@ export default function HoldDeskTab({ darkMode }) {
               <button
                 type="submit"
                 disabled={submitting}
-                className="flex-1 py-2.5 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white rounded-xl font-bold text-sm transition-all"
+                className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-xl font-bold text-sm shadow-lg shadow-red-600/30 transition-all cursor-pointer"
               >
                 {submitting ? 'Creating Hold...' : '🏷️ Create Hold Slip'}
               </button>

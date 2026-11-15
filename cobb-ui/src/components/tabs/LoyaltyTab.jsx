@@ -108,12 +108,12 @@ export default function LoyaltyTab(props) {
     const rank = leaderboard.findIndex(l => l.phone === cust.phone) + 1;
     return (
       <>
-        <div className={`p-6 lg:p-8 border-b flex justify-between items-start ${darkMode ? 'border-[#232e47] bg-slate-900/50' : 'border-slate-100 bg-slate-50'}`}>
+        <div className={`p-6 lg:p-8 border-b flex justify-between items-start ${darkMode ? 'border-white/10 bg-[#0d0e12]' : 'border-slate-100 bg-slate-50'}`}>
           <div>
-            <span className="text-[10px] uppercase font-black text-amber-600 tracking-widest">VIP Member Profile</span>
+            <span className="text-[10px] uppercase font-black text-red-500 tracking-widest">VIP Member Profile</span>
             <h3 className={`text-2xl lg:text-3xl font-black mt-2 flex items-center gap-3 ${darkMode ? 'text-white' : 'text-slate-800'}`}>
               {cust.customerName}
-              {rank <= 3 && <Trophy className="w-6 h-6 text-amber-500" />}
+              {rank <= 3 && <Trophy className="w-6 h-6 text-red-500" />}
             </h3>
             <p className={`mt-1 font-mono text-sm ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>{cust.phone}</p>
           </div>
@@ -122,8 +122,8 @@ export default function LoyaltyTab(props) {
             disabled={sentStatus[cust.phone]}
             className={`px-5 py-2.5 rounded-xl font-bold flex items-center transition-all ${
               sentStatus[cust.phone] 
-                ? 'bg-green-100 text-green-700 cursor-not-allowed' 
-                : 'bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-500/30'
+                ? 'bg-emerald-950/40 text-emerald-400 border border-emerald-500/30 cursor-not-allowed' 
+                : 'bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/30 cursor-pointer'
             }`}
           >
             {sentStatus[cust.phone] ? <CheckCircle2 className="w-5 h-5 mr-2"/> : <Send className="w-5 h-5 mr-2" />}
@@ -133,16 +133,16 @@ export default function LoyaltyTab(props) {
 
         <div className="flex-1 overflow-y-auto custom-scrollbar p-6 lg:p-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <div className={`p-6 rounded-2xl border relative overflow-hidden flex flex-col justify-center items-center text-center ${darkMode ? 'bg-[#1a2333] border-[#232e47]' : 'bg-white border-slate-200 shadow-sm'}`}>
+            <div className={`p-6 rounded-2xl border relative overflow-hidden flex flex-col justify-center items-center text-center ${darkMode ? 'bg-[#14161d] border-white/10' : 'bg-white border-slate-200 shadow-sm'}`}>
               <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ background: cust.tierColor }}></div>
               <Crown className="w-12 h-12 mb-3" style={{ color: cust.tierColor }} />
-              <div className="inline-block px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full text-xs font-bold uppercase tracking-widest mb-2" style={{ color: cust.tierColor }}>
+              <div className="inline-block px-3 py-1 bg-slate-100 dark:bg-black/40 rounded-full text-xs font-bold uppercase tracking-widest mb-2" style={{ color: cust.tierColor }}>
                 {cust.tier} TIER
               </div>
               <p className={`text-xs font-bold uppercase mt-2 ${darkMode ? 'text-slate-500' : 'text-slate-400'}`}>Rank: #{rank}</p>
             </div>
 
-            <div className={`p-6 rounded-2xl border flex flex-col justify-center gap-6 ${darkMode ? 'bg-[#1a2333] border-[#232e47]' : 'bg-slate-50 border-slate-200'}`}>
+            <div className={`p-6 rounded-2xl border flex flex-col justify-center gap-6 ${darkMode ? 'bg-[#14161d] border-white/10' : 'bg-slate-50 border-slate-200'}`}>
               <div>
                 <div className={`text-xs font-bold uppercase ${darkMode ? 'text-slate-500' : 'text-slate-500'}`}>Current Points Balance</div>
                 <div className="text-3xl font-black text-amber-500 mt-1">{cust.points.toLocaleString('en-IN')}</div>

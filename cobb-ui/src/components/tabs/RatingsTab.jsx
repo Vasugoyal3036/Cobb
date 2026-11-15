@@ -330,7 +330,7 @@ export default function RatingsTab({
 
       {/* WhatsApp Review Bot (2-Step Funnel) Control & Health Card */}
       <div className={`p-4 rounded-2xl border transition-all ${
-        darkMode ? 'bg-[#0f1422] border-slate-800' : 'bg-white border-slate-200 shadow-sm'
+        darkMode ? 'bg-[#0d0e12] border-white/10' : 'bg-white border-slate-200 shadow-sm'
       }`}>
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="flex items-start sm:items-center gap-3">
@@ -379,7 +379,7 @@ export default function RatingsTab({
             <button
               type="button"
               onClick={() => setIsPromptModalOpen(true)}
-              className="px-4 py-2 rounded-xl text-xs font-black bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 transition-all flex items-center gap-2 cursor-pointer shadow-lg shadow-amber-500/20 active:scale-95"
+              className="px-4 py-2 rounded-xl text-xs font-black bg-red-600 hover:bg-red-700 text-white transition-all flex items-center gap-2 cursor-pointer shadow-lg shadow-red-600/30 active:scale-95"
             >
               <Send className="w-3.5 h-3.5" />
               <span>Send Review Survey</span>

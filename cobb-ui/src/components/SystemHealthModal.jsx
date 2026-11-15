@@ -238,13 +238,13 @@ export default function SystemHealthModal({ isOpen, onClose, API_BASE = 'http://
 
         {/* Tab Navigation */}
         <div className={`px-5 pt-3 border-b flex items-center gap-4 shrink-0 text-xs font-bold ${
-          darkMode ? 'border-[#1f293d] bg-[#0c101a]' : 'border-slate-100 bg-white'
+          darkMode ? 'border-white/10 bg-[#0d0e12]' : 'border-slate-100 bg-white'
         }`}>
           <button
             onClick={() => setActiveTab('health')}
             className={`pb-2.5 border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'health'
-                ? 'border-blue-500 text-blue-400 font-black'
+                ? 'border-red-600 text-red-500 font-black'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
@@ -256,14 +256,14 @@ export default function SystemHealthModal({ isOpen, onClose, API_BASE = 'http://
             onClick={() => setActiveTab('alerts')}
             className={`pb-2.5 border-b-2 transition-all cursor-pointer flex items-center gap-1.5 relative ${
               activeTab === 'alerts'
-                ? 'border-blue-500 text-blue-400 font-black'
+                ? 'border-red-600 text-red-500 font-black'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >
             <MessageCircle className="w-3.5 h-3.5" />
             <span>Customer Inbound Alerts</span>
             {unreadAlertsCount > 0 && (
-              <span className="px-1.5 py-0.2 text-[9px] font-black rounded-full bg-rose-500 text-white animate-pulse">
+              <span className="px-1.5 py-0.2 text-[9px] font-black rounded-full bg-red-600 text-white animate-pulse">
                 {unreadAlertsCount}
               </span>
             )}
@@ -273,7 +273,7 @@ export default function SystemHealthModal({ isOpen, onClose, API_BASE = 'http://
             onClick={() => setActiveTab('anniversaries')}
             className={`pb-2.5 border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'anniversaries'
-                ? 'border-blue-500 text-blue-400 font-black'
+                ? 'border-red-600 text-red-500 font-black'
                 : 'border-transparent text-slate-400 hover:text-slate-200'
             }`}
           >

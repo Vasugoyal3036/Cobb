@@ -358,7 +358,7 @@ html.dark .ios-row {
 }
 
 .ios-btn-blue {
-  background-color: #e11d48;
+  background-color: #dc2626;
   color: #ffffff;
   font-weight: 700;
   border-radius: 0.625rem;
@@ -384,9 +384,9 @@ html.dark .ios-row {
 .dark .glass-card-obsidian,
 .dark-mode .glass-card-obsidian,
 html.dark .glass-card-obsidian {
-  background: rgba(11, 15, 25, 0.96);
+  background: #0d0e12;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 6px 24px -4px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 6px 24px -4px rgba(0, 0, 0, 0.7);
 }
 
 .glass-card-obsidian:hover {
@@ -396,8 +396,8 @@ html.dark .glass-card-obsidian {
 .dark .glass-card-obsidian:hover,
 .dark-mode .glass-card-obsidian:hover,
 html.dark .glass-card-obsidian:hover {
-  border-color: rgba(255, 255, 255, 0.15);
-  box-shadow: 0 8px 28px -4px rgba(0, 0, 0, 0.6);
+  border-color: rgba(220, 38, 38, 0.35);
+  box-shadow: 0 8px 28px -4px rgba(220, 38, 38, 0.15);
 }
 
 .glass-header-bar {
@@ -408,9 +408,22 @@ html.dark .glass-card-obsidian:hover {
 .dark .glass-header-bar,
 .dark-mode .glass-header-bar,
 html.dark .glass-header-bar {
-  background: rgba(10, 14, 23, 0.97);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.5);
+  background: #0d0e12;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.7);
+}
+
+/* Form Inputs in Dark Mode */
+.dark input, .dark-mode input, html.dark input,
+.dark select, .dark-mode select, html.dark select,
+.dark textarea, .dark-mode textarea, html.dark textarea {
+  color-scheme: dark;
+}
+.dark input:focus, .dark-mode input:focus, html.dark input:focus,
+.dark select:focus, .dark-mode select:focus, html.dark select:focus,
+.dark textarea:focus, .dark-mode textarea:focus, html.dark textarea:focus {
+  border-color: rgba(220, 38, 38, 0.6) !important;
+  box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.25) !important;
 }
 
 /* Defer off-screen rendering for paginated below-the-fold rows/cards */

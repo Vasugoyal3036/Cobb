@@ -120,8 +120,11 @@ export default function InterBranchTransferTab({ API_BASE, darkMode, activeStore
   };
 
   const renderLookup = () => (
-    <div className={`p-6 rounded-2xl border ${darkMode ? 'bg-[#000000] border-white/10' : 'bg-white border-slate-200'} shadow-sm`}>
-      <h2 className={`text-xl font-black mb-4 ${darkMode ? 'text-white' : 'text-slate-900'}`}>Live Branch Stock Lookup</h2>
+    <div className={`p-6 rounded-2xl border ${darkMode ? 'bg-[#0d0e12] border-white/10' : 'bg-white border-slate-200'} shadow-sm`}>
+      <h2 className={`text-xl font-black mb-4 flex items-center gap-1 ${darkMode ? 'text-white' : 'text-slate-900'}`}>
+        <span className="text-white">COB</span><span className="text-red-600">B</span>
+        <span className="ml-1 text-zinc-100 font-extrabold">Live Branch Stock Lookup</span>
+      </h2>
       <p className={`text-sm mb-6 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Search for an article or barcode to check availability across sister branches.</p>
       
       <form onSubmit={handleSearch} className="flex gap-3 mb-8">
@@ -132,14 +135,14 @@ export default function InterBranchTransferTab({ API_BASE, darkMode, activeStore
             placeholder="Scan Barcode or Type Article (e.g. Navy Blazer Size 40)..." 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className={`w-full pl-10 pr-4 py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-blue-500 font-medium ${
-              darkMode ? 'bg-[#0a0a0a] border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+            className={`w-full pl-10 pr-4 py-3 rounded-xl border focus:outline-none focus:ring-2 focus:ring-red-600 font-medium ${
+              darkMode ? 'bg-[#08080a] border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
             }`}
           />
         </div>
         <button 
           type="submit"
-          className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-colors shadow-lg shadow-blue-500/20"
+          className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl transition-colors shadow-lg shadow-red-600/30 cursor-pointer"
         >
           {isSearching ? 'Checking...' : 'Find Stock'}
         </button>
@@ -251,20 +254,20 @@ export default function InterBranchTransferTab({ API_BASE, darkMode, activeStore
     <div className="max-w-6xl mx-auto space-y-6 pb-20 animate-in fade-in duration-500">
       
       {/* Tab Header */}
-      <div className={`p-4 rounded-2xl flex items-center gap-4 shadow-sm border ${darkMode ? 'bg-[#000000] border-white/10' : 'bg-white border-slate-200'}`}>
+      <div className={`p-4 rounded-2xl flex items-center gap-4 shadow-sm border ${darkMode ? 'bg-[#0d0e12] border-white/10' : 'bg-white border-slate-200'}`}>
         <div className="flex gap-2">
           <button 
             onClick={() => setActiveTab('lookup')}
-            className={`px-4 py-2 rounded-xl font-bold text-sm transition-colors ${activeTab === 'lookup' ? (darkMode ? 'bg-white/10 text-white' : 'bg-slate-900 text-white') : (darkMode ? 'text-slate-400 hover:text-white hover:bg-white/5' : 'text-slate-600 hover:bg-slate-100')}`}
+            className={`px-4 py-2 rounded-xl font-bold text-sm transition-colors ${activeTab === 'lookup' ? (darkMode ? 'bg-red-600 text-white shadow-md shadow-red-600/30' : 'bg-red-600 text-white') : (darkMode ? 'text-zinc-400 hover:text-white hover:bg-white/5' : 'text-slate-600 hover:bg-slate-100')}`}
           >
             Live Lookup
           </button>
           <button 
             onClick={() => setActiveTab('intransit')}
-            className={`px-4 py-2 rounded-xl font-bold text-sm transition-colors flex items-center gap-2 ${activeTab === 'intransit' ? (darkMode ? 'bg-white/10 text-white' : 'bg-slate-900 text-white') : (darkMode ? 'text-slate-400 hover:text-white hover:bg-white/5' : 'text-slate-600 hover:bg-slate-100')}`}
+            className={`px-4 py-2 rounded-xl font-bold text-sm transition-colors flex items-center gap-2 ${activeTab === 'intransit' ? (darkMode ? 'bg-red-600 text-white shadow-md shadow-red-600/30' : 'bg-red-600 text-white') : (darkMode ? 'text-zinc-400 hover:text-white hover:bg-white/5' : 'text-slate-600 hover:bg-slate-100')}`}
           >
             In-Transit / Gate Passes
-            <span className="w-5 h-5 rounded-full bg-blue-500 text-white text-[10px] flex items-center justify-center border border-white/20">
+            <span className="w-5 h-5 rounded-full bg-red-600 text-white text-[10px] flex items-center justify-center border border-white/20">
               {inTransit.length}
             </span>
           </button>

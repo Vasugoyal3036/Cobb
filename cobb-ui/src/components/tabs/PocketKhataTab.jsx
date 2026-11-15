@@ -396,14 +396,14 @@ export default function PocketKhataTab(props) {
       </div>
 
       {/* View Switcher: Expense Journal vs Customer Udhar vs Dynamic Breakeven */}
-      <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-slate-900/60 border border-slate-800 w-full sm:w-fit overflow-x-auto">
+      <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-[#0d0e12] border border-white/10 w-full sm:w-fit overflow-x-auto">
         <button
           type="button"
           onClick={() => setActiveSubView('khata')}
           className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
             activeSubView === 'khata'
-              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-              : 'text-slate-400 hover:text-slate-200'
+              ? 'bg-red-600 text-white shadow-md shadow-red-600/30'
+              : 'text-zinc-400 hover:text-white'
           }`}
         >
           <Wallet className="w-3.5 h-3.5" />
@@ -415,13 +415,13 @@ export default function PocketKhataTab(props) {
           onClick={() => setActiveSubView('customer_khata')}
           className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
             activeSubView === 'customer_khata'
-              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-              : 'text-slate-400 hover:text-slate-200'
+              ? 'bg-red-600 text-white shadow-md shadow-red-600/30'
+              : 'text-zinc-400 hover:text-white'
           }`}
         >
           <BookOpen className="w-3.5 h-3.5" />
           <span>Customer Udhar &amp; Credit Ledger</span>
-          <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-md bg-rose-500/20 text-rose-300 border border-rose-500/30">
+          <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-md bg-red-500/20 text-red-300 border border-red-500/30">
             Passbook
           </span>
         </button>
@@ -431,8 +431,8 @@ export default function PocketKhataTab(props) {
           onClick={() => setActiveSubView('breakeven')}
           className={`px-4 py-2 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center gap-2 shrink-0 ${
             activeSubView === 'breakeven'
-              ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-              : 'text-slate-400 hover:text-slate-200'
+              ? 'bg-red-600 text-white shadow-md shadow-red-600/30'
+              : 'text-zinc-400 hover:text-white'
           }`}
         >
           <Scale className="w-3.5 h-3.5" />

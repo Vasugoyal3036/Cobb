@@ -422,14 +422,14 @@ export default function GlobalCommandBar({
 
       {/* Main Command Bar Modal */}
       <div
-        className={`relative w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border transition-all duration-200 animate-in zoom-in-95 flex flex-col max-h-[85vh] ${darkMode ? 'bg-[#0e1320] border-slate-700/80 text-white' : 'bg-white border-slate-200 text-slate-900'
+        className={`relative w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden border transition-all duration-200 animate-in zoom-in-95 flex flex-col max-h-[85vh] ${darkMode ? 'bg-[#0d0e12] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
           }`}
         onClick={e => e.stopPropagation()}
       >
         {/* Top Search Input Row */}
-        <div className={`flex items-center px-4 sm:px-5 py-3.5 sm:py-4 border-b gap-3 shrink-0 ${darkMode ? 'border-white/10 bg-[#121828]' : 'border-slate-100 bg-slate-50/80'
+        <div className={`flex items-center px-4 sm:px-5 py-3.5 sm:py-4 border-b gap-3 shrink-0 ${darkMode ? 'border-white/10 bg-[#14161d]' : 'border-slate-100 bg-slate-50/80'
           }`}>
-          <div className="p-2 rounded-xl bg-blue-500/10 text-blue-500 shrink-0">
+          <div className="p-2 rounded-xl bg-red-600/15 text-red-500 shrink-0">
             {isLoadingRemote ? (
               <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
@@ -457,7 +457,7 @@ export default function GlobalCommandBar({
           )}
           <button
             onClick={onClose}
-            className={`px-2.5 py-1.5 rounded-xl border text-xs font-bold transition-colors cursor-pointer shrink-0 ${darkMode ? 'bg-slate-800 border-slate-700 text-slate-300 hover:text-white' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
+            className={`px-2.5 py-1.5 rounded-xl border text-xs font-bold transition-colors cursor-pointer shrink-0 ${darkMode ? 'bg-zinc-800 border-white/10 text-zinc-300 hover:text-white' : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
               }`}
           >
             ESC
@@ -466,7 +466,7 @@ export default function GlobalCommandBar({
 
         {/* Category Filter Pills (When search active) */}
         {query.trim().length > 0 && (
-          <div className={`flex items-center gap-1.5 px-4 py-2 border-b overflow-x-auto no-scrollbar shrink-0 text-xs font-bold ${darkMode ? 'bg-[#0a0d16] border-white/5' : 'bg-slate-100/60 border-slate-100'
+          <div className={`flex items-center gap-1.5 px-4 py-2 border-b overflow-x-auto no-scrollbar shrink-0 text-xs font-bold ${darkMode ? 'bg-[#08080a] border-white/5' : 'bg-slate-100/60 border-slate-100'
             }`}>
             {[
               { id: 'ALL', label: `All (${results.length})` },
@@ -481,9 +481,9 @@ export default function GlobalCommandBar({
                 disabled={tab.disabled}
                 onClick={() => setActiveCategory(tab.id)}
                 className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer whitespace-nowrap active:scale-95 disabled:opacity-30 disabled:pointer-events-none ${activeCategory === tab.id
-                  ? 'bg-blue-600 text-white shadow-xs'
+                  ? 'bg-red-600 text-white shadow-xs'
                   : darkMode
-                    ? 'bg-slate-900 text-slate-400 hover:text-white'
+                    ? 'bg-zinc-900 text-zinc-400 hover:text-white'
                     : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200/60'
                   }`}
               >
@@ -494,7 +494,7 @@ export default function GlobalCommandBar({
         )}
 
         {/* Scrollable Results List */}
-        <div ref={listRef} className={`overflow-y-auto flex-1 p-2 sm:p-3 space-y-1.5 ${darkMode ? 'bg-[#0a0d17]' : 'bg-slate-50/50'}`}>
+        <div ref={listRef} className={`overflow-y-auto flex-1 p-2 sm:p-3 space-y-1.5 ${darkMode ? 'bg-[#08080a]' : 'bg-slate-50/50'}`}>
           {filteredResults.length > 0 ? (
             filteredResults.map((item, idx) => {
               const Icon = item.icon;
@@ -506,10 +506,10 @@ export default function GlobalCommandBar({
                   data-index={idx}
                   className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl transition-all text-left group cursor-pointer border ${isSelected
                     ? darkMode
-                      ? 'bg-blue-600/20 border-blue-500/50 shadow-md shadow-blue-950/40 text-white ring-1 ring-blue-500/40'
-                      : 'bg-blue-50 border-blue-300 shadow-xs text-slate-950 ring-1 ring-blue-400'
+                      ? 'bg-red-600/15 border-red-500/50 shadow-md shadow-red-950/40 text-white ring-1 ring-red-500/40'
+                      : 'bg-red-50 border-red-300 shadow-xs text-slate-950 ring-1 ring-red-400'
                     : darkMode
-                      ? 'bg-[#121828]/60 border-slate-800/80 hover:bg-[#161f33] hover:border-slate-700'
+                      ? 'bg-[#111319]/80 border-white/5 hover:bg-[#161922] hover:border-red-600/30'
                       : 'bg-white border-slate-200/80 hover:bg-slate-50 hover:border-slate-300'
                     }`}
                   onClick={() => item.action && item.action()}
