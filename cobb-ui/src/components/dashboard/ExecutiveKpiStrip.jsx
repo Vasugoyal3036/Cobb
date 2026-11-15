@@ -266,7 +266,7 @@ const ExecutiveKpiStrip = ({
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Showroom Revenue</span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold cobb-gold-badge">
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold cobb-red-badge">
                   <Calendar className="w-2.5 h-2.5" />
                   {wowDayBenchmark.dayName}
                 </span>
@@ -275,11 +275,10 @@ const ExecutiveKpiStrip = ({
                 {formatCurrency(todaySales)}
               </h3>
             </div>
-            <div className={`p-2 rounded-xl shrink-0 ${
-              wowDayBenchmark.isAhead
-                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-            }`}>
+            <div className={`p-2 rounded-xl shrink-0 ${wowDayBenchmark.isAhead
+              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+              : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+              }`}>
               <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
           </div>
@@ -297,16 +296,14 @@ const ExecutiveKpiStrip = ({
                 </span>
               </div>
               <div className="flex items-center gap-1 font-mono">
-                <span className={`px-2 py-0.5 rounded-full text-[10.5px] font-bold ${
-                  wowDayBenchmark.isAhead
-                    ? 'text-emerald-300 bg-emerald-500/15'
-                    : 'text-rose-300 bg-rose-500/15'
-                }`}>
+                <span className={`px-2 py-0.5 rounded-full text-[10.5px] font-bold ${wowDayBenchmark.isAhead
+                  ? 'text-emerald-300 bg-emerald-500/15'
+                  : 'text-rose-300 bg-rose-500/15'
+                  }`}>
                   {wowDayBenchmark.isAhead ? '+' : ''}{wowDayBenchmark.pctChange}% {wowDayBenchmark.isAhead ? '▲' : '▼'}
                 </span>
-                <span className={`text-[10.5px] font-bold ${
-                  wowDayBenchmark.isAhead ? 'text-emerald-400' : 'text-rose-400'
-                }`}>
+                <span className={`text-[10.5px] font-bold ${wowDayBenchmark.isAhead ? 'text-emerald-400' : 'text-rose-400'
+                  }`}>
                   ({wowDayBenchmark.diff >= 0 ? '+' : '-'}{formatCurrency(Math.abs(wowDayBenchmark.diff))})
                 </span>
               </div>

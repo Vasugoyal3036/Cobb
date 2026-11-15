@@ -189,27 +189,26 @@ const LoginScreen = ({ onSetup }) => {
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#07090e] text-white flex flex-col justify-between py-6 px-4 sm:px-6 relative overflow-hidden select-none font-sans">
+    <div className="min-h-screen w-full bg-[#050505] text-white flex flex-col justify-between py-6 px-4 sm:px-6 relative overflow-hidden select-none font-sans">
       {/* Ambient background glows */}
-      <div className="absolute top-[-15%] left-[-15%] w-[55vw] h-[55vw] rounded-full bg-blue-600/10 blur-[130px] pointer-events-none" />
-      <div className="absolute bottom-[-15%] right-[-15%] w-[55vw] h-[55vw] rounded-full bg-amber-600/10 blur-[130px] pointer-events-none" />
+      <div className="absolute top-[-15%] left-[-15%] w-[55vw] h-[55vw] rounded-full bg-red-600/10 blur-[130px] pointer-events-none" />
+      <div className="absolute bottom-[-15%] right-[-15%] w-[55vw] h-[55vw] rounded-full bg-red-600/5 blur-[130px] pointer-events-none" />
 
       {/* Top Header Branding */}
       <header className="w-full max-w-md mx-auto text-center z-10 pt-2 sm:pt-4">
-        <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-slate-900/90 border border-white/10 mb-3 shadow-lg">
+        <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-black/90 border border-white/10 mb-3 shadow-lg">
           <span className="w-2 h-2 rounded-full bg-emerald-400" />
-          <span className="text-[11px] font-bold tracking-wide text-slate-300">
+          <span className="text-[11px] font-bold tracking-wide text-zinc-300">
             {activeStoreObj?.name}
           </span>
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400 font-mono">
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/20 text-red-400 font-mono">
             {activeStoreObj?.code}
           </span>
         </div>
 
         <div className="flex justify-center mb-3">
-          <div className="w-16 h-16 rounded-2xl cobb-emblem-red flex flex-col items-center justify-center text-white font-black shadow-xl border border-white/30 select-none">
-            <span className="text-xl font-black tracking-tighter leading-none">COBB</span>
-            <span className="text-[9px] font-black tracking-widest text-rose-200 leading-none mt-1 uppercase">ITALY</span>
+          <div className="w-20 h-20 rounded-2xl bg-black border border-red-600/40 overflow-hidden flex items-center justify-center shadow-xl shadow-red-600/20 select-none p-1">
+            <img src="/cobb-logo.png" alt="COBB ITALY" className="w-full h-full object-contain" />
           </div>
         </div>
 
@@ -218,19 +217,19 @@ const LoginScreen = ({ onSetup }) => {
           <span className="px-2 py-0.5 text-[10px] font-black rounded-lg uppercase tracking-widest cobb-emblem-red text-white shadow-xs">
             CRM POS
           </span>
-          <span className="px-1.5 py-0.5 text-[9px] font-black rounded uppercase tracking-widest cobb-gold-badge">
+          <span className="px-1.5 py-0.5 text-[9px] font-black rounded uppercase tracking-widest cobb-red-badge">
             ITALY
           </span>
         </h1>
-        <p className="text-[11px] font-bold text-amber-400/90 uppercase tracking-widest mt-0.5">
-          Pundri Showroom • House of Fashion
+        <p className="text-[11px] font-semibold text-red-500 tracking-wider uppercase mt-1">
+          flying colors of fashion • Pundri Showroom
         </p>
       </header>
 
       {/* Main Authentication Card */}
       <main className="w-full max-w-md mx-auto my-auto z-10 py-3">
         {/* Role Selector Tabs */}
-        <div className="grid grid-cols-3 gap-2 p-1 bg-slate-900/90 border border-white/10 rounded-2xl mb-4 shadow-xl">
+        <div className="grid grid-cols-3 gap-2 p-1 bg-[#0d0e12] border border-white/10 rounded-2xl mb-4 shadow-xl">
           {ROLES.map((r) => {
             const isSelected = selectedRole === r.id;
             return (
@@ -241,7 +240,7 @@ const LoginScreen = ({ onSetup }) => {
                 className={`py-2 px-1 sm:px-2 rounded-xl text-center transition-all cursor-pointer relative active:scale-95 ${
                   isSelected
                     ? `bg-gradient-to-b ${r.color} shadow-lg ring-1 ${r.ring}`
-                    : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
+                    : 'text-zinc-400 hover:text-white hover:bg-white/[0.04]'
                 }`}
               >
                 <div className="text-xs sm:text-sm font-black truncate">{r.title}</div>
@@ -252,7 +251,7 @@ const LoginScreen = ({ onSetup }) => {
         </div>
 
         {/* PIN Entry Box */}
-        <div className={`bg-slate-900 border border-white/10 rounded-3xl p-5 sm:p-6 shadow-2xl relative transition-colors duration-200 ${
+        <div className={`bg-[#0d0e12] border border-white/10 rounded-3xl p-5 sm:p-6 shadow-2xl relative transition-colors duration-200 ${
           shake ? 'translate-x-2 border-red-500/60' : ''
         }`}>
           {/* User Header */}

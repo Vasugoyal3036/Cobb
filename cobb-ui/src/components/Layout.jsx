@@ -355,21 +355,21 @@ const Layout = ({
       <div className={`fixed lg:static inset-y-0 left-0 lg:my-4 lg:ml-4 lg:mr-2 lg:h-[calc(100vh-32px)] lg:rounded-[2rem] flex flex-col z-40 transition-all duration-300 ${isMobileMenuOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full lg:translate-x-0'} ${isLeftSidebarCollapsed ? 'w-[80px]' : 'w-[85vw] max-w-xs lg:w-64'} ${darkMode ? 'bg-[#0c0e14] border-r lg:border border-white/[0.08] shadow-[0_8px_24px_0_rgba(0,0,0,0.6)]' : 'bg-white border-r lg:border border-slate-200/80 shadow-[0_8px_24px_rgb(0,0,0,0.06)]'}`}>
         <div className={`p-4 lg:p-5 pb-3 flex items-center border-b transition-all duration-500 pt-safe ${isLeftSidebarCollapsed ? 'justify-center px-2' : 'justify-between'} ${darkMode ? 'border-white/[0.06]' : 'border-slate-100'}`}>
           <div className="flex items-center gap-2.5">
-            {/* Cobb Red Acrylic Showroom Emblem */}
-            <div className="w-10 h-10 rounded-xl cobb-emblem-red flex flex-col items-center justify-center shrink-0 text-white font-black select-none shadow-md">
-              <span className="text-[13px] font-black tracking-tighter leading-none">COBB</span>
-              <span className="text-[7px] font-black tracking-widest text-rose-200 leading-none mt-0.5 uppercase">ITALY</span>
+            {/* Authentic Cobb Official Logo Emblem */}
+            <div className="w-10 h-10 rounded-xl bg-black border border-red-600/30 overflow-hidden flex items-center justify-center shrink-0 select-none shadow-md shadow-red-600/20">
+              <img src="/cobb-logo.png" alt="Cobb Italy" className="w-full h-full object-contain" />
             </div>
             <div className={`flex-1 min-w-0 transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isLeftSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none blur-md -translate-y-4' : 'w-full opacity-100 blur-0 translate-y-0'}`}>
               <div className="flex items-center gap-1.5">
-                <span className={`text-base font-black tracking-wider leading-none uppercase ${darkMode ? 'text-white' : 'text-slate-900'}`}>COBB</span>
-                <span className="text-[8px] font-black tracking-widest uppercase px-1.5 py-0.5 rounded cobb-emblem-red text-white shadow-xs">ITALY</span>
+                <span className="text-lg font-black tracking-wider leading-none uppercase text-white">COB</span>
+                <span className="text-lg font-black tracking-wider leading-none uppercase text-red-600 -ml-1">B</span>
+                <span className="text-[8px] font-black tracking-widest uppercase px-1.5 py-0.5 rounded bg-red-600/20 border border-red-600/40 text-red-400">ITALY</span>
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" title="Showroom Counter Live" />
               </div>
-              <p className="text-[9px] font-bold tracking-tight uppercase truncate mt-0.5 text-amber-400/90 flex items-center gap-1">
-                <span>Pundri Showroom</span>
-                <span className="text-slate-500">•</span>
-                <span className="text-slate-400">House Of Fashion</span>
+              <p className="text-[8.5px] font-semibold tracking-tight truncate mt-0.5 text-zinc-400 flex items-center gap-1">
+                <span className="text-red-500 font-bold">flying colors of fashion</span>
+                <span className="text-zinc-600">•</span>
+                <span>Pundri</span>
               </p>
             </div>
           </div>
@@ -453,12 +453,12 @@ const Layout = ({
                 const baseColorBg = baseColorText.replace('text-', 'bg-').replace('-400', '-500/15').replace('-600', '-500/15').replace('-500', '-500/15');
 
                 const normalColor = darkMode
-                  ? "text-slate-400 hover:bg-white/5 hover:text-white rounded-xl font-medium"
+                  ? "text-zinc-400 hover:bg-white/5 hover:text-white rounded-xl font-medium"
                   : "text-slate-600 hover:bg-black/5 hover:text-slate-900 rounded-xl font-medium";
 
                 const activeColor = darkMode
-                  ? "bg-[#181d27] text-white border-l-2 border-rose-500 font-bold rounded-xl shadow-xs"
-                  : "bg-rose-50 text-rose-700 border-l-2 border-rose-600 font-bold rounded-xl shadow-xs";
+                  ? "bg-red-600/15 text-white border-l-2 border-red-600 font-bold rounded-xl shadow-xs shadow-red-600/20"
+                  : "bg-red-50 text-red-700 border-l-2 border-red-600 font-bold rounded-xl shadow-xs";
 
                 return (
                   <button
@@ -466,7 +466,7 @@ const Layout = ({
                     onClick={() => { setActiveTab(item.id); setSearchQuery(''); setIsMobileMenuOpen(false); }}
                     className={`w-full flex items-center ${isLeftSidebarCollapsed ? 'justify-center px-0' : 'px-4'} py-2.5 transition-all duration-200 cursor-pointer relative group text-[13px] ${isActive ? activeColor : normalColor}`}
                   >
-                    <Icon className={`w-[18px] h-[18px] transition-colors shrink-0 ${isLeftSidebarCollapsed ? '' : 'mr-4'} ${isActive ? "text-rose-500" : "opacity-60 group-hover:opacity-100"}`} />
+                    <Icon className={`w-[18px] h-[18px] transition-colors shrink-0 ${isLeftSidebarCollapsed ? '' : 'mr-4'} ${isActive ? "text-red-500" : "opacity-60 group-hover:opacity-100"}`} />
                     <span className={`truncate whitespace-nowrap transition-all duration-500 delay-[0ms] ease-[cubic-bezier(0.34,1.56,0.64,1)] ${isLeftSidebarCollapsed ? 'w-0 opacity-0 pointer-events-none blur-md -translate-y-4' : 'w-full opacity-100 blur-0 translate-y-0'
                       }`}>{item.label}</span>
                   </button>
@@ -512,11 +512,11 @@ const Layout = ({
       </div>
 
       {/* Main Content Area */}
-      <div className={`flex-1 overflow-auto relative min-w-0 pb-28 lg:pb-0 transition-colors duration-200 lg:my-4 lg:mx-2 lg:rounded-[2rem] border ${darkMode ? 'bg-[#0f1115] border-white/[0.05] shadow-[inset_0_0_40px_rgba(0,0,0,0.5)]' : 'bg-white border-slate-200/50 shadow-sm'}`}>
+      <div className={`flex-1 overflow-auto relative min-w-0 pb-28 lg:pb-0 transition-colors duration-200 lg:my-4 lg:mx-2 lg:rounded-[2rem] border ${darkMode ? 'bg-[#050505] border-white/[0.05] shadow-[inset_0_0_40px_rgba(0,0,0,0.5)]' : 'bg-white border-slate-200/50 shadow-sm'}`}>
 
         {/* Top App Bar (Mobile Only — Native Mobile App Bar with Crisp Controls) */}
         <header className={`lg:hidden px-3.5 py-2.5 border-b sticky top-0 z-30 transition-colors select-none pt-safe ${
-          darkMode ? 'bg-[#0d1017] border-white/[0.08] text-white shadow-sm' : 'bg-white border-slate-200/90 text-slate-800 shadow-xs'
+          darkMode ? 'bg-[#050505]/95 backdrop-blur-md border-white/[0.08] text-white shadow-sm' : 'bg-white border-slate-200/90 text-slate-800 shadow-xs'
         }`}>
           <div className="flex items-center justify-between gap-2 max-w-full">
             {/* Left: Hamburger Drawer + Branch Name & Live Indicator */}
@@ -532,20 +532,20 @@ const Layout = ({
                 <Menu className="w-5 h-5" />
               </button>
 
-              <div className="flex items-center gap-1.5 min-w-0">
-                <div className="w-6 h-6 rounded-md cobb-emblem-red flex items-center justify-center shrink-0 text-white font-black text-[9px] select-none shadow-xs">
-                  C
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-black border border-red-600/30 overflow-hidden flex items-center justify-center shrink-0 select-none shadow-xs">
+                  <img src="/cobb-logo.png" alt="Cobb" className="w-full h-full object-contain" />
                 </div>
                 <div className="min-w-0 leading-tight">
                   <div className="flex items-center gap-1.5">
-                    <span className={`font-black text-xs tracking-tight truncate ${darkMode ? 'text-white' : 'text-slate-900'}`}>
-                      COBB • {AVAILABLE_STORES.find(s => s.id === activeStore)?.shortName || 'Pundri Showroom'}
+                    <span className="font-black text-xs tracking-tight truncate">
+                      <span className="text-white">COB</span><span className="text-red-600">B</span> <span className="text-zinc-400 font-normal">• {AVAILABLE_STORES.find(s => s.id === activeStore)?.shortName || 'Pundri Showroom'}</span>
                     </span>
                     <span className="relative flex h-2 w-2 shrink-0">
-                      <span className={`relative inline-flex rounded-full h-2 w-2 ${(systemStatus?.isOnline ?? true) ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]' : 'bg-rose-500'}`} />
+                      <span className={`relative inline-flex rounded-full h-2 w-2 ${(systemStatus?.isOnline ?? true) ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]' : 'bg-red-500'}`} />
                     </span>
                   </div>
-                  <span className="text-[9.5px] font-bold text-amber-400/90 tracking-tight block truncate">
+                  <span className="text-[9px] font-bold text-red-500 tracking-wider uppercase block truncate">
                     {currentRole === 'owner' ? '👑 Owner' : currentRole === 'manager' ? '👔 Manager' : '🧾 Cashier'} • Showroom POS Live
                   </span>
                 </div>

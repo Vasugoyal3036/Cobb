@@ -239,7 +239,7 @@ export default function MobileNav({
       <nav
         className={`pointer-events-auto border-t transition-colors duration-200 ${
           darkMode
-            ? 'bg-[#12151d]/95 backdrop-blur-md border-white/8 text-slate-400'
+            ? 'bg-[#050505]/95 backdrop-blur-md border-white/8 text-zinc-400'
             : 'bg-white border-[#e5e5ea] text-slate-500 shadow-xs'
         }`}
       >
@@ -264,7 +264,7 @@ export default function MobileNav({
                       <Icon className="w-5 h-5 text-white" />
                     </div>
                   </div>
-                  <span className="text-[9.5px] font-black text-rose-500 mt-0.5 tracking-tight uppercase">
+                  <span className="text-[9.5px] font-black text-red-500 mt-0.5 tracking-tight uppercase">
                     {item.label}
                   </span>
                 </button>
@@ -278,23 +278,23 @@ export default function MobileNav({
                 onClick={item.onClick}
                 className={`flex-1 py-1 flex flex-col items-center justify-center transition-all cursor-pointer focus:outline-none active:scale-92 ${
                   isActive
-                    ? 'text-rose-500 font-bold'
+                    ? 'text-red-500 font-bold'
                     : darkMode
-                      ? 'text-slate-400 hover:text-slate-200'
+                      ? 'text-zinc-400 hover:text-zinc-200'
                       : 'text-slate-500 hover:text-slate-800'
                 }`}
               >
                 <div
                   className={`relative p-1 rounded-xl transition-all duration-200 ${
                     isActive
-                      ? 'bg-rose-500/15 text-rose-500'
+                      ? 'bg-red-500/15 text-red-500'
                       : ''
                   }`}
                 >
                   <Icon className="w-4.5 h-4.5" />
                   {isActive && (
                     <span
-                      className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-rose-500"
+                      className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-red-500"
                     />
                   )}
                 </div>

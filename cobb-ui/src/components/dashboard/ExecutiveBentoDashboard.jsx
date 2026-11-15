@@ -324,20 +324,20 @@ const ExecutiveBentoDashboard = (props) => {
       <div className="obsidian-card p-3.5 sm:p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
         {/* Left: Brand Identity & Telemetry Status */}
         <div className="flex items-center gap-3">
-          <div className="w-11 h-11 rounded-2xl cobb-emblem-red flex flex-col items-center justify-center text-white shrink-0 shadow-md">
-            <span className="text-[12px] font-black tracking-tighter leading-none">COBB</span>
-            <span className="text-[6.5px] font-black tracking-widest text-rose-200 leading-none mt-0.5 uppercase">ITALY</span>
+          <div className="w-11 h-11 rounded-2xl bg-black border border-red-600/30 overflow-hidden flex items-center justify-center shrink-0 shadow-md shadow-red-600/20 select-none">
+            <img src="/cobb-logo.png" alt="COBB ITALY" className="w-full h-full object-contain" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-sm sm:text-base font-black tracking-tight text-white uppercase flex items-center gap-1.5">
-                <span>COBB Showroom Command Desk</span>
+              <h1 className="text-sm sm:text-base font-black tracking-tight uppercase flex items-center">
+                <span className="text-white">COB</span><span className="text-red-600">B</span>
+                <span className="ml-1.5 text-xs text-zinc-300 font-extrabold">Showroom Command Desk</span>
               </h1>
-              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full cobb-gold-badge">
+              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full cobb-red-badge">
                 {activeStore ? `SHOWROOM #${activeStore}` : 'PUNDRI SHOWROOM #001'}
               </span>
             </div>
-            <div className="flex items-center gap-2 mt-0.5 text-xs text-slate-400 font-medium">
+            <div className="flex items-center gap-2 mt-0.5 text-xs text-zinc-400 font-medium">
               <span className="flex items-center gap-1">
                 {isOnline ? (
                   <span className="inline-flex items-center gap-1 text-emerald-400 font-bold">
@@ -345,8 +345,8 @@ const ExecutiveBentoDashboard = (props) => {
                     <span>Showroom Counter Live</span>
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 text-rose-400 font-bold">
-                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
+                  <span className="inline-flex items-center gap-1 text-red-400 font-bold">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
                     <span>Offline Mode (Local Tills)</span>
                   </span>
                 )}

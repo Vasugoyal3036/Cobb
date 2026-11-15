@@ -2933,10 +2933,10 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                 {/* Cobb Brand Header Strip on Physical Swing Tag */}
                 <div className="flex items-center justify-between pb-2 mb-2 border-b border-white/8 text-[10px]">
                   <div className="flex items-center gap-1.5">
-                    <span className="px-1.5 py-0.5 rounded cobb-emblem-red text-[8px] font-black tracking-widest text-white uppercase">
+                    <span className="px-1.5 py-0.5 rounded bg-red-600 text-[8px] font-black tracking-widest text-white uppercase shadow-xs">
                       COBB APPAREL
                     </span>
-                    <span className="text-[10px] text-slate-400 font-semibold tracking-wide">
+                    <span className="text-[10px] text-zinc-400 font-semibold tracking-wide">
                       AUTHENTIC GARMENT
                     </span>
                   </div>
@@ -2946,7 +2946,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                       <span>Billed</span>
                     </span>
                   ) : (
-                    <span className="px-2 py-0.5 rounded-full text-[9.5px] font-black bg-rose-500/15 text-rose-400 border border-rose-500/30 flex items-center gap-1">
+                    <span className="px-2 py-0.5 rounded-full text-[9.5px] font-black bg-red-500/15 text-red-400 border border-red-500/30 flex items-center gap-1">
                       <Clock className="w-3 h-3" />
                       <span>Pending Tag</span>
                     </span>
@@ -2959,11 +2959,11 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                     {!isBilled && (
                       <button
                         onClick={() => toggleSelectTag(tag.id)}
-                        className="mt-0.5 text-slate-400 hover:text-amber-500 transition-colors shrink-0"
+                        className="mt-0.5 text-slate-400 hover:text-red-500 transition-colors shrink-0"
                         title={selectedTagIds.includes(tag.id) ? "Deselect" : "Select tag to bill"}
                       >
                         {selectedTagIds.includes(tag.id) ? (
-                          <CheckSquare className="w-5 h-5 text-amber-500" />
+                          <CheckSquare className="w-5 h-5 text-red-500" />
                         ) : (
                           <Square className="w-5 h-5" />
                         )}
@@ -2977,7 +2977,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                         <span className="px-2 py-0.5 rounded-md bg-white/5 text-slate-300 font-semibold border border-white/10">
                           {tag.section}
                         </span>
-                        <span className="px-2 py-0.5 rounded-md bg-rose-500/15 text-rose-300 font-bold border border-rose-500/30">
+                        <span className="px-2 py-0.5 rounded-md bg-red-500/15 text-red-300 font-bold border border-red-500/30">
                           Size: {tag.size}
                         </span>
                         {tag.color && (
@@ -2991,11 +2991,11 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                 </div>
 
                 {/* HERO FOCUS: COBB RETAIL MRP TICKET */}
-                <div className="my-2.5 p-3 rounded-xl bg-[#161b26] border border-white/8 shadow-sm">
+                <div className="my-2.5 p-3 rounded-xl bg-[#0d0e12] border border-white/10 shadow-sm">
                   <div className="flex items-center justify-between">
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="text-[9.5px] font-black uppercase tracking-wider text-amber-300 bg-amber-500/15 px-1.5 py-0.5 rounded border border-amber-500/25">
+                        <span className="text-[9.5px] font-black uppercase tracking-wider text-red-400 bg-red-950/40 px-1.5 py-0.5 rounded border border-red-600/40 font-mono">
                           COBB MRP
                         </span>
                         <span className="text-[10.5px] text-slate-400 font-semibold">Retail Price</span>
