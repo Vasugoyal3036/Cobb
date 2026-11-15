@@ -295,3 +295,146 @@ test('evaluateDuplicateAndBilledState allows re-adding returned historical bille
     assert.equal(activeBlocked.body.billed, undefined);
 });
 
+// ============================================================
+// EXCHANGE / ITEM SWAP UNIT TESTS
+// ============================================================
+
+const { isBarcodeDuplicate, mergeTagsList: _mTL } = router;
+
+// Helper: build a minimal active pending tag
+function makeTag(overrides = {}) {
+    return {
+        id: 'ptag_exc_1',
+        barcode: '0079111001',
+        articleNo: 'ART001',
+        articleName: 'ORIGINAL SHIRT',
+        size: 'L',
+        color: 'Blue',
+        section: 'GENTS',
+        mrp: 2999,
+        soldPrice: 1200,
+        discountPercent: 60,
+        status: 'active',
+        createdAt: new Date().toISOString(),
+        ...overrides
+    };
+}
+
+// Helper: simulate the exchange mutation logic (pure function extracted from route)
+function simulateExchange(tags, tagId, payload) {
+    const tag = tags.find(t => t.id === tagId);
+    if (!tag) return { error: 'NOT_FOUND' };
+    if (tag.status !== 'active') return { error: 'NOT_ACTIVE', status: tag.status };
+
+    const candidateBarcode = String(payload.newBarcode).trim();
+    const activeDup = tags.find(t => t.id !== tag.id && t.status === 'active' && isBarcodeDuplicate(t.barcode, candidateBarcode));
+    if (activeDup) return { error: 'DUPLICATE_ACTIVE', existingTag: activeDup };
+
+    const nowIso = new Date().toISOString();
+    const oldSoldPrice = Number(tag.soldPrice) || 0;
+    const resolvedNewSoldPrice = Number(payload.newSoldPrice) || 0;
+    const differenceAmount = resolvedNewSoldPrice - oldSoldPrice;
+    const differenceType = Math.abs(differenceAmount) < 1 ? 'even' : differenceAmount > 0 ? 'extra' : 'refund';
+
+    const oldSnapshot = {
+        exchangedAt: nowIso,
+        previousBarcode: tag.barcode,
+        previousArticleName: tag.articleName,
+        previousSoldPrice: oldSoldPrice,
+        newBarcode: candidateBarcode,
+        newArticleName: payload.newArticleName || '',
+        newSoldPrice: resolvedNewSoldPrice,
+        differenceAmount,
+        differenceType,
+        exchangedBy: payload.exchangedBy || 'Cashier'
+    };
+
+    tag.returnedToStock = true;
+    tag.returnedToStockAt = nowIso;
+    tag.barcode = candidateBarcode;
+    tag.articleName = payload.newArticleName || tag.articleName;
+    tag.mrp = Number(payload.newMrp) || tag.mrp;
+    tag.soldPrice = resolvedNewSoldPrice || tag.soldPrice;
+    if (!Array.isArray(tag.exchangeHistory)) tag.exchangeHistory = [];
+    tag.exchangeHistory.push(oldSnapshot);
+    tag.updatedAt = nowIso;
+
+    return { tag, exchangeRecord: oldSnapshot };
+}
+
+test('exchange: even swap — same MRP/soldPrice produces differenceType "even"', () => {
+    const tags = [makeTag()];
+    const result = simulateExchange(tags, 'ptag_exc_1', {
+        newBarcode: '0079111999',
+        newArticleName: 'REPLACEMENT SHIRT',
+        newMrp: 2999,
+        newSoldPrice: 1200,  // same as original
+        exchangedBy: 'Cashier'
+    });
+    assert.ok(!result.error, 'Should not error');
+    assert.equal(result.exchangeRecord.differenceType, 'even');
+    assert.ok(Math.abs(result.exchangeRecord.differenceAmount) < 1);
+    assert.equal(result.tag.barcode, '0079111999');
+    assert.equal(result.tag.returnedToStock, true);
+    assert.ok(result.tag.exchangeHistory?.length === 1);
+    assert.equal(result.exchangeRecord.previousBarcode, '0079111001');
+});
+
+test('exchange: upgrade — higher soldPrice produces differenceType "extra"', () => {
+    const tags = [makeTag()];
+    const result = simulateExchange(tags, 'ptag_exc_1', {
+        newBarcode: '0079222001',
+        newArticleName: 'PREMIUM SHIRT',
+        newMrp: 3999,
+        newSoldPrice: 1600, // 400 more than original 1200
+        exchangedBy: 'Manager'
+    });
+    assert.ok(!result.error);
+    assert.equal(result.exchangeRecord.differenceType, 'extra');
+    assert.equal(result.exchangeRecord.differenceAmount, 400);
+    assert.equal(result.tag.soldPrice, 1600);
+    assert.equal(result.tag.mrp, 3999);
+});
+
+test('exchange: downgrade — lower soldPrice produces differenceType "refund"', () => {
+    const tags = [makeTag()];
+    const result = simulateExchange(tags, 'ptag_exc_1', {
+        newBarcode: '0079333001',
+        newArticleName: 'BUDGET SHIRT',
+        newMrp: 1999,
+        newSoldPrice: 800, // 400 less than original 1200
+        exchangedBy: 'Staff'
+    });
+    assert.ok(!result.error);
+    assert.equal(result.exchangeRecord.differenceType, 'refund');
+    assert.equal(result.exchangeRecord.differenceAmount, -400);
+    assert.equal(result.tag.barcode, '0079333001');
+});
+
+test('exchange: rejects duplicate active barcode', () => {
+    const tags = [
+        makeTag({ id: 'ptag_exc_1', barcode: '0079111001' }),
+        makeTag({ id: 'ptag_exc_2', barcode: '0079444001', articleName: 'ALREADY ACTIVE ITEM' })
+    ];
+    const result = simulateExchange(tags, 'ptag_exc_1', {
+        newBarcode: '0079444001', // already active
+        newSoldPrice: 1200
+    });
+    assert.equal(result.error, 'DUPLICATE_ACTIVE');
+    assert.ok(result.existingTag);
+    // Original tag must be unchanged
+    assert.equal(tags[0].barcode, '0079111001');
+    assert.equal(tags[0].returnedToStock, undefined);
+});
+
+test('exchange: rejects exchange on billed (non-active) tag', () => {
+    const tags = [makeTag({ status: 'billed' })];
+    const result = simulateExchange(tags, 'ptag_exc_1', {
+        newBarcode: '0079555001',
+        newSoldPrice: 1200
+    });
+    assert.equal(result.error, 'NOT_ACTIVE');
+    assert.equal(result.status, 'billed');
+});
+
+

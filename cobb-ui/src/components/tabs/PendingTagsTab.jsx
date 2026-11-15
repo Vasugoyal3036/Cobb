@@ -40,7 +40,8 @@ import {
   Eye,
   FileCheck,
   Briefcase,
-  RotateCcw
+  RotateCcw,
+  ArrowLeftRight
 } from 'lucide-react';
 const ThermalTagModal = React.lazy(() => import('../ThermalTagModal'));
 import PaginationControls, { usePagination } from '../PaginationControls';
@@ -286,6 +287,15 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
   const [barcodeMatchError, setBarcodeMatchError] = useState('');
   const [posBilledInfo, setPosBilledInfo] = useState(null);
   const [posVerifiedUnbilled, setPosVerifiedUnbilled] = useState(false);
+
+  // --- Exchange / Item Swap State ---
+  const [exchangeModal, setExchangeModal] = useState(null); // { tag } or null
+  const [exchangeNewBarcode, setExchangeNewBarcode] = useState('');
+  const [exchangeNewItem, setExchangeNewItem] = useState(null); // fetched item from quick-scan
+  const [exchangeNewSoldPrice, setExchangeNewSoldPrice] = useState('');
+  const [exchangeSearching, setExchangeSearching] = useState(false);
+  const [exchangeSearchError, setExchangeSearchError] = useState('');
+  const [exchangeResult, setExchangeResult] = useState(null); // success banner data
 
   const findBlockingPendingTag = (tagsList, candidate, posConfirmedAvailable = false) => {
     const q = (candidate || '').trim();
@@ -1360,6 +1370,76 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
       soldPrice: price,
       discountPercent: disc
     }));
+  };
+
+  // --- Exchange / Item Swap Handlers ---
+  const handleExchangeLookup = async (barcode) => {
+    if (!barcode?.trim()) return;
+    setExchangeSearching(true);
+    setExchangeSearchError('');
+    setExchangeNewItem(null);
+    try {
+      const res = await axios.get(`${API_BASE}/api/inventory/quick-scan?q=${encodeURIComponent(barcode.trim())}&mode=single`, { timeout: 12000 });
+      if (res.data?.success && res.data.variants?.length > 0) {
+        const item = res.data.variants.find(v => isBarcodeDuplicate(v.barcode, barcode.trim())) || res.data.variants[0];
+        if (item.isBilled) {
+          setExchangeSearchError(`🚫 Barcode "${barcode}" is already billed in POS (Bill #${item.billedInfo?.billNo || 'POS'}). Cannot exchange to a billed item.`);
+          return;
+        }
+        setExchangeNewItem(item);
+        const disc = exchangeModal?.tag?.discountPercent || 60;
+        const newSold = item.mrp > 0 ? Math.round(item.mrp * (1 - disc / 100)) : '';
+        setExchangeNewSoldPrice(String(newSold));
+      } else {
+        setExchangeSearchError(`No product found for "${barcode}". Enter details manually.`);
+      }
+    } catch (err) {
+      setExchangeSearchError('Lookup failed: ' + (err.message || 'Network error'));
+    } finally {
+      setExchangeSearching(false);
+    }
+  };
+
+  const handleConfirmExchange = async () => {
+    if (!exchangeModal?.tag || !exchangeNewItem) return;
+    const tag = exchangeModal.tag;
+    const disc = tag.discountPercent || 60;
+    const soldPrice = Number(exchangeNewSoldPrice) || Math.round((exchangeNewItem.mrp || 0) * (1 - disc / 100));
+    try {
+      const res = await axios.post(`${API_BASE}/api/pending-tags/${tag.id}/exchange`, {
+        newBarcode: exchangeNewItem.barcode,
+        newArticleNo: exchangeNewItem.articleNo || '',
+        newArticleName: exchangeNewItem.itemName || '',
+        newSize: exchangeNewItem.size || '',
+        newColor: exchangeNewItem.color || '',
+        newSection: exchangeNewItem.sectionName || tag.section || '',
+        newMrp: exchangeNewItem.mrp || 0,
+        newSoldPrice: soldPrice,
+        newDiscountPercent: disc,
+        exchangedBy: tag.salesperson || 'Cashier'
+      });
+      if (res.data?.success) {
+        const diff = soldPrice - (Number(tag.soldPrice) || 0);
+        setExchangeResult({
+          tag,
+          exchangeRecord: res.data.exchangeRecord,
+          newItem: exchangeNewItem,
+          soldPrice,
+          diff,
+          diffType: Math.abs(diff) < 1 ? 'even' : diff > 0 ? 'extra' : 'refund',
+          customerPhone: tag.customerPhone || tag.holdCustomerPhone || '',
+          customerName: tag.customerName || tag.holdCustomerName || ''
+        });
+        setExchangeModal(null);
+        setExchangeNewBarcode('');
+        setExchangeNewItem(null);
+        fetchTags();
+      } else {
+        showToastMsg('Exchange failed: ' + (res.data?.error || 'Unknown error'), 'error');
+      }
+    } catch (err) {
+      showToastMsg('Exchange error: ' + (err.response?.data?.error || err.message), 'error');
+    }
   };
 
     // --- Submit New Pending Tag ---
@@ -2810,6 +2890,16 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                             </>
                           )}
 
+                          {tag.status === 'active' && (
+                            <button
+                              onClick={() => { setExchangeModal({ tag }); setExchangeNewBarcode(''); setExchangeNewItem(null); setExchangeSearchError(''); setExchangeNewSoldPrice(''); }}
+                              className="p-1.5 rounded-lg hover:bg-blue-500/15 text-slate-400 hover:text-blue-500 transition-colors"
+                              title="Exchange item (swap unbilled garment)"
+                            >
+                              <ArrowLeftRight className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+
                           <button
                             onClick={() => handleDeleteTag(tag.id)}
                             className="p-1.5 rounded-lg hover:bg-rose-500/15 text-slate-400 hover:text-rose-500 transition-colors"
@@ -3008,6 +3098,16 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                           Mark Billed
                         </button>
                       </>
+                    )}
+
+                    {tag.status === 'active' && (
+                      <button
+                        onClick={() => { setExchangeModal({ tag }); setExchangeNewBarcode(''); setExchangeNewItem(null); setExchangeSearchError(''); setExchangeNewSoldPrice(''); }}
+                        className="p-1.5 rounded-lg hover:bg-blue-500/15 text-slate-400 hover:text-blue-500 transition-all"
+                        title="Exchange item (swap unbilled garment)"
+                      >
+                        <ArrowLeftRight className="w-3.5 h-3.5" />
+                      </button>
                     )}
 
                     <button
@@ -3949,6 +4049,208 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                   </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* --- EXCHANGE / ITEM SWAP MODAL --- */}
+      {exchangeModal && (
+        <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl max-w-lg w-full max-h-[92vh] flex flex-col overflow-hidden">
+            {/* Header */}
+            <div className="px-6 py-5 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-transparent flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-blue-500 to-indigo-600 text-white shadow-md shadow-blue-500/30">
+                  <ArrowLeftRight className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-tight">Exchange / Swap Item</h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Swap unbilled pending garment for a different one</p>
+                </div>
+              </div>
+              <button onClick={() => setExchangeModal(null)} className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-5">
+              {/* Original Item */}
+              <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-900/20 border border-rose-200/80 dark:border-rose-700/40">
+                <div className="text-[11px] font-black text-rose-500 uppercase tracking-wider mb-2">🔴 Original (Being Returned)</div>
+                <div className="font-bold text-slate-900 dark:text-white text-sm">{exchangeModal.tag.articleName || '—'}</div>
+                <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex flex-wrap gap-2">
+                  <span>BC: {exchangeModal.tag.barcode}</span>
+                  <span>Size: {exchangeModal.tag.size || '—'}</span>
+                  <span>MRP: ₹{(exchangeModal.tag.mrp || 0).toLocaleString('en-IN')}</span>
+                  <span>Sold: ₹{(exchangeModal.tag.soldPrice || 0).toLocaleString('en-IN')}</span>
+                </div>
+              </div>
+
+              {/* New Item Scan */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">📦 New Replacement Item Barcode</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={exchangeNewBarcode}
+                    onChange={e => setExchangeNewBarcode(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleExchangeLookup(exchangeNewBarcode)}
+                    placeholder="Scan or type barcode..."
+                    className="flex-1 px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                    autoFocus
+                  />
+                  <button
+                    onClick={() => handleExchangeLookup(exchangeNewBarcode)}
+                    disabled={exchangeSearching || !exchangeNewBarcode.trim()}
+                    className="px-4 py-2 rounded-xl bg-blue-500 text-white font-bold text-sm hover:bg-blue-600 disabled:opacity-50 transition-colors flex items-center gap-1"
+                  >
+                    {exchangeSearching ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                    Find
+                  </button>
+                </div>
+                {exchangeSearchError && (
+                  <div className="mt-2 p-2.5 rounded-xl bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-700/40 text-rose-600 dark:text-rose-400 text-xs">{exchangeSearchError}</div>
+                )}
+              </div>
+
+              {/* New Item Preview */}
+              {exchangeNewItem && (
+                <div className="p-4 rounded-2xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200/80 dark:border-emerald-700/40 space-y-3">
+                  <div className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">✅ New Replacement Item Found</div>
+                  <div className="font-bold text-slate-900 dark:text-white text-sm">{exchangeNewItem.itemName || '—'}</div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400 flex flex-wrap gap-2">
+                    <span>BC: {exchangeNewItem.barcode}</span>
+                    <span>Size: {exchangeNewItem.size || '—'}</span>
+                    <span>MRP: ₹{(exchangeNewItem.mrp || 0).toLocaleString('en-IN')}</span>
+                  </div>
+
+                  {/* Price Difference Badge */}
+                  {(() => {
+                    const disc = exchangeModal.tag.discountPercent || 60;
+                    const proposed = Number(exchangeNewSoldPrice) || Math.round((exchangeNewItem.mrp || 0) * (1 - disc / 100));
+                    const diff = proposed - (Number(exchangeModal.tag.soldPrice) || 0);
+                    const absD = Math.abs(diff);
+                    if (absD < 1) return <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-xs font-bold">⚖️ Even Exchange</div>;
+                    if (diff > 0) return <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 text-xs font-bold">⬆️ Collect Extra ₹{absD.toLocaleString('en-IN')}</div>;
+                    return <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-xs font-bold">⬇️ Refund ₹{absD.toLocaleString('en-IN')}</div>;
+                  })()}
+
+                  {/* Sold Price Override */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-600 dark:text-slate-400 mb-1">Sold Price for New Item (₹)</label>
+                    <input
+                      type="number"
+                      value={exchangeNewSoldPrice}
+                      onChange={e => setExchangeNewSoldPrice(e.target.value)}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/40"
+                      min="0"
+                    />
+                    <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-1">Auto-calculated at {exchangeModal.tag.discountPercent || 60}% discount. Override if needed.</div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-800 flex gap-3 justify-end bg-slate-50/50 dark:bg-slate-900/50">
+              <button
+                onClick={() => setExchangeModal(null)}
+                className="px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-sm font-bold hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmExchange}
+                disabled={!exchangeNewItem}
+                className="px-5 py-2 rounded-xl bg-blue-500 text-white font-black text-sm hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+              >
+                <ArrowLeftRight className="w-4 h-4" />
+                Confirm Exchange
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- EXCHANGE SUCCESS BANNER --- */}
+      {exchangeResult && (
+        <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl max-w-md w-full overflow-hidden">
+            {/* Success Header */}
+            <div className="px-6 py-6 bg-gradient-to-br from-emerald-500/15 via-blue-500/10 to-transparent text-center border-b border-slate-200 dark:border-slate-800">
+              <div className="text-4xl mb-2">🔄</div>
+              <h2 className="text-xl font-black text-slate-900 dark:text-white">Exchange Successful!</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                {exchangeResult.customerName && `${exchangeResult.customerName} · `}Pending tag updated
+              </p>
+            </div>
+
+            <div className="p-6 space-y-4">
+              {/* Old → New */}
+              <div className="flex items-center gap-3">
+                <div className="flex-1 p-3 rounded-xl bg-rose-50 dark:bg-rose-900/20 border border-rose-200/80 dark:border-rose-700/40">
+                  <div className="text-[10px] font-black text-rose-500 uppercase mb-1">Returned</div>
+                  <div className="text-xs font-bold text-slate-800 dark:text-white truncate">{exchangeResult.exchangeRecord.previousArticleName || exchangeResult.tag.barcode}</div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400">₹{(exchangeResult.exchangeRecord.previousSoldPrice || 0).toLocaleString('en-IN')}</div>
+                </div>
+                <ArrowLeftRight className="w-5 h-5 text-slate-400 flex-shrink-0" />
+                <div className="flex-1 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200/80 dark:border-emerald-700/40">
+                  <div className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase mb-1">New Item</div>
+                  <div className="text-xs font-bold text-slate-800 dark:text-white truncate">{exchangeResult.exchangeRecord.newArticleName || exchangeResult.exchangeRecord.newBarcode}</div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400">₹{(exchangeResult.soldPrice || 0).toLocaleString('en-IN')}</div>
+                </div>
+              </div>
+
+              {/* Price Difference */}
+              <div className={`p-3 rounded-xl text-center font-black text-sm ${
+                exchangeResult.diffType === 'even' ? 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300' :
+                exchangeResult.diffType === 'extra' ? 'bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/40 text-amber-700 dark:text-amber-400' :
+                'bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700/40 text-blue-700 dark:text-blue-400'
+              }`}>
+                {exchangeResult.diffType === 'even' && '⚖️ Even Exchange — No payment needed'}
+                {exchangeResult.diffType === 'extra' && `⬆️ Collect Extra ₹${Math.abs(exchangeResult.diff).toLocaleString('en-IN')} from customer`}
+                {exchangeResult.diffType === 'refund' && `⬇️ Refund ₹${Math.abs(exchangeResult.diff).toLocaleString('en-IN')} to customer`}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-2">
+                {exchangeResult.customerPhone && (
+                  <button
+                    onClick={() => {
+                      const phone = String(exchangeResult.customerPhone).replace(/\D/g, '');
+                      const name = exchangeResult.customerName || 'Customer';
+                      const prevItem = exchangeResult.exchangeRecord.previousArticleName || 'previous item';
+                      const newItem2 = exchangeResult.exchangeRecord.newArticleName || 'new item';
+                      const diffMsg = exchangeResult.diffType === 'even'
+                        ? 'No extra payment needed.'
+                        : exchangeResult.diffType === 'extra'
+                          ? `Please collect ₹${Math.abs(exchangeResult.diff).toLocaleString('en-IN')} extra at billing.`
+                          : `₹${Math.abs(exchangeResult.diff).toLocaleString('en-IN')} will be refunded at billing.`;
+                      const msg = `Hi ${name}! 🔄 Your pending item *${prevItem}* has been exchanged for *${newItem2}* (₹${(exchangeResult.soldPrice || 0).toLocaleString('en-IN')}). ${diffMsg} - Cobb Store`;
+                      window.open(`https://wa.me/91${phone.slice(-10)}?text=${encodeURIComponent(msg)}`, '_blank');
+                    }}
+                    className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-emerald-600 transition-colors"
+                  >
+                    <Phone className="w-3.5 h-3.5" />
+                    WhatsApp Slip
+                  </button>
+                )}
+                <button
+                  onClick={() => window.print()}
+                  className="flex-1 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  Print Slip
+                </button>
+              </div>
+
+              <button
+                onClick={() => setExchangeResult(null)}
+                className="w-full py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 font-bold text-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                Done
+              </button>
+            </div>
           </div>
         </div>
       )}

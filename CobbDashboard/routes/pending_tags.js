@@ -930,6 +930,125 @@ router.delete('/:id', async (req, res) => {
     }
 });
 
+// POST /api/pending-tags/:id/exchange — Swap unbilled pending tag for a different garment
+router.post('/:id/exchange', async (req, res) => {
+    try {
+        const {
+            newBarcode,
+            newArticleNo = '',
+            newArticleName = '',
+            newSize = '',
+            newColor = '',
+            newSection = '',
+            newMrp = 0,
+            newSoldPrice = 0,
+            newDiscountPercent,
+            exchangedBy = 'Cashier'
+        } = req.body;
+
+        if (!newBarcode || !String(newBarcode).trim()) {
+            return res.status(400).json({ success: false, error: 'New garment barcode is required for exchange' });
+        }
+
+        const candidateBarcode = String(newBarcode).trim();
+
+        // Live POS check: new barcode must NOT already be billed with positive net quantity
+        const { preSqlCheck } = await verifyPosStockAndNetBilled(candidateBarcode);
+        if (preSqlCheck) {
+            return res.status(409).json({
+                success: false,
+                billed: true,
+                error: `Cannot exchange to barcode "${candidateBarcode}" — it was already billed in POS (Bill #${preSqlCheck.billNo})!`,
+                billedInfo: preSqlCheck
+            });
+        }
+
+        const result = await withTagsLock(async () => {
+            const localTags = readTags();
+            const { tags } = await mergeTagsWithCloud(localTags);
+
+            const tag = tags.find(t => t.id === req.params.id);
+            if (!tag) return { error: 'NOT_FOUND' };
+            if (tag.status !== 'active') return { error: 'NOT_ACTIVE', status: tag.status };
+
+            // New barcode must not already be an active duplicate on the rack
+            const activeDup = tags.find(t => t.id !== tag.id && t.status === 'active' && isBarcodeDuplicate(t.barcode, candidateBarcode));
+            if (activeDup) {
+                return { error: 'DUPLICATE_ACTIVE', existingTag: activeDup };
+            }
+
+            const nowIso = new Date().toISOString();
+            const oldSoldPrice = Number(tag.soldPrice) || 0;
+            const resolvedNewSoldPrice = Number(newSoldPrice) || 0;
+            const differenceAmount = resolvedNewSoldPrice - oldSoldPrice;
+            const differenceType = Math.abs(differenceAmount) < 1 ? 'even' : differenceAmount > 0 ? 'extra' : 'refund';
+
+            const oldSnapshot = {
+                exchangedAt: nowIso,
+                previousBarcode: tag.barcode,
+                previousArticleNo: tag.articleNo,
+                previousArticleName: tag.articleName,
+                previousSize: tag.size,
+                previousColor: tag.color,
+                previousMrp: tag.mrp,
+                previousSoldPrice: oldSoldPrice,
+                previousDiscountPercent: tag.discountPercent,
+                newBarcode: candidateBarcode,
+                newArticleNo,
+                newArticleName,
+                newSize,
+                newColor,
+                newMrp: Number(newMrp) || 0,
+                newSoldPrice: resolvedNewSoldPrice,
+                differenceAmount,
+                differenceType,
+                exchangedBy
+            };
+
+            // Release old barcode back to store stock
+            tag.returnedToStock = true;
+            tag.returnedToStockAt = nowIso;
+
+            // Update tag with new garment details
+            tag.barcode = candidateBarcode;
+            tag.articleNo = newArticleNo || tag.articleNo;
+            tag.articleName = newArticleName || tag.articleName;
+            tag.size = newSize || tag.size;
+            tag.color = newColor || tag.color;
+            tag.section = newSection || tag.section;
+            tag.mrp = Number(newMrp) || tag.mrp;
+            tag.soldPrice = resolvedNewSoldPrice || tag.soldPrice;
+            if (newDiscountPercent !== undefined) tag.discountPercent = Number(newDiscountPercent);
+            tag.updatedAt = nowIso;
+
+            // Append to exchange history
+            if (!Array.isArray(tag.exchangeHistory)) tag.exchangeHistory = [];
+            tag.exchangeHistory.push(oldSnapshot);
+
+            writeTags(tags);
+            appendAuditLog('TAG_EXCHANGED_UNBILLED', {
+                tagId: tag.id,
+                ...oldSnapshot
+            });
+            return { tag, exchangeRecord: oldSnapshot };
+        });
+
+        if (result?.error === 'NOT_FOUND') return res.status(404).json({ success: false, error: 'Tag not found' });
+        if (result?.error === 'NOT_ACTIVE') return res.status(409).json({ success: false, error: `Tag is not active (status: ${result.status}). Only active pending tags can be exchanged.` });
+        if (result?.error === 'DUPLICATE_ACTIVE') return res.status(409).json({ success: false, duplicate: true, error: `Barcode "${candidateBarcode}" is already an active pending tag on the rack!`, existingTag: result.existingTag });
+
+        res.json({
+            success: true,
+            message: `Tag exchanged successfully! ${result.exchangeRecord.previousArticleName} → ${result.exchangeRecord.newArticleName}`,
+            tag: result.tag,
+            exchangeRecord: result.exchangeRecord
+        });
+    } catch (err) {
+        console.error('[PendingTags exchange error]', err);
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 // GET /api/pending-tags/combos — Smart B1G2 Combo Suggester
 // Identifies sets of 3 pending tags in similar categories/MRPs that can be billed together
 router.get('/combos', (req, res) => {
