@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, act, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import CurtainWipe from './CurtainWipe';
 import LoginUpwardAscent from './LoginUpwardAscent';
 import LoginScreen from './LoginScreen';
 import { useAuth } from '../context/AuthContext';
@@ -9,7 +10,7 @@ vi.mock('../context/AuthContext', () => ({
   useAuth: vi.fn(),
 }));
 
-describe('Frontend Component Tests: LoginScreen Animations & Upward Drift', () => {
+describe('Frontend Component Tests: LoginScreen Animations, Curtain Wipe & Upward Drift', () => {
   const mockLogin = vi.fn();
   const mockOnSetup = vi.fn();
 
@@ -64,18 +65,36 @@ describe('Frontend Component Tests: LoginScreen Animations & Upward Drift', () =
     expect(screen.getByText('Cashier')).toBeDefined();
   });
 
-  it('mounts LoginUpwardAscent at bottom, then slowly drifts upward and triggers onComplete', () => {
+  it('mounts CurtainWipe, parts curtains open while logo slowly drifts upward, then triggers onComplete', () => {
+    const mockOnComplete = vi.fn();
+    const { container } = render(<CurtainWipe onComplete={mockOnComplete} />);
+
+    // Initially contains the seal and authenticated message
+    expect(screen.getByText(/AUTHENTICATED/i)).toBeDefined();
+    expect(screen.getByText(/COBB SHOWROOM/i)).toBeDefined();
+    expect(screen.getByText(/ENTERING COMMAND CENTER/i)).toBeDefined();
+
+    // Verify presence of left and right velvet drape panels
+    const drapes = container.querySelectorAll('.w-1\\/2');
+    expect(drapes.length).toBe(2);
+
+    // Fast-forward past the 1750ms relaxed transition timer
+    act(() => {
+      vi.advanceTimersByTime(1800);
+    });
+
+    expect(mockOnComplete).toHaveBeenCalledTimes(1);
+  });
+
+  it('supports LoginUpwardAscent alias seamlessly with complete upward transition', () => {
     const mockOnComplete = vi.fn();
     render(<LoginUpwardAscent onComplete={mockOnComplete} />);
 
-    // Initially contains the seal and authenticated message
-    expect(screen.getByText(/AUTHENTICATED • ACCESS GRANTED/i)).toBeDefined();
+    expect(screen.getByText(/AUTHENTICATED/i)).toBeDefined();
     expect(screen.getByText(/COBB SHOWROOM POS/i)).toBeDefined();
-    expect(screen.getByText(/Entering Command Center/i)).toBeDefined();
 
-    // Fast-forward past the 1550ms relaxed upward ascent timer
     act(() => {
-      vi.advanceTimersByTime(1600);
+      vi.advanceTimersByTime(1800);
     });
 
     expect(mockOnComplete).toHaveBeenCalledTimes(1);
