@@ -1,18 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { playCheckoutChime } from '../utils/sound';
 
 /**
  * CurtainWipe: Luxury Showroom Fabric Curtain Unfurl Wipe
  * Plays a bespoke showroom drapery transition parting open into the POS Command Center
- * with cubic-bezier(0.77, 0, 0.175, 1) and harmonic audio chime.
+ * with cubic-bezier(0.77, 0, 0.175, 1).
  */
 const CurtainWipe = ({ onComplete }) => {
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    // Play the luxury showroom chime
-    playCheckoutChime();
-
     // Trigger curtain separation after brief paint cycle
     const openTimer = setTimeout(() => {
       setIsOpen(true);

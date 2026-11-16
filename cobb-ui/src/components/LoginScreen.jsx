@@ -3,7 +3,6 @@ import { useAuth } from '../context/AuthContext';
 import { ShieldCheck, UserCheck, ShoppingBag, Delete, AlertCircle, Sparkles, Check, Lock, Fingerprint, Info, X } from 'lucide-react';
 import OrsLogo from './OrsLogo';
 import { getEnrolledPasskey, registerDeviceBiometrics, authenticateWithBiometrics } from '../utils/webauthn';
-import { playSound, playIntroSwoosh } from '../utils/sound';
 
 const ROLES = [
   {
@@ -72,23 +71,20 @@ const LoginScreen = ({ onSetup, initialSkipIntro = null }) => {
   useEffect(() => {
     if (introStage !== 'playing') return;
 
-    // Small tick to trigger visual entrance & swoosh sound
+    // Small tick to trigger visual entrance
     const revealTimer = setTimeout(() => {
       setIntroRevealed(true);
-      playIntroSwoosh();
     }, 60);
 
     // After 1.65s, transition emblem to header and reveal login inputs
     const completeTimer = setTimeout(() => {
       setIntroStage('complete');
-      playSound('checkout');
     }, 1650);
 
     const handleKeyDown = () => {
       clearTimeout(revealTimer);
       clearTimeout(completeTimer);
       setIntroStage('complete');
-      playSound('checkout');
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -103,7 +99,6 @@ const LoginScreen = ({ onSetup, initialSkipIntro = null }) => {
   const handleSkipIntro = () => {
     if (introStage === 'playing') {
       setIntroStage('complete');
-      playSound('checkout');
     }
   };
 
@@ -139,15 +134,11 @@ const LoginScreen = ({ onSetup, initialSkipIntro = null }) => {
     try {
       const res = await login(selectedRole, username, password);
       if (!res.success) {
-        playSound('error');
         setError(res.message || 'Incorrect credentials. Try again.');
         setShake(true);
         setTimeout(() => setShake(false), 500);
-      } else {
-        playSound('checkout');
       }
     } catch (e) {
-      playSound('error');
       setError('Connection error occurred during verification.');
       setShake(true);
       setTimeout(() => setShake(false), 500);
@@ -162,15 +153,11 @@ const LoginScreen = ({ onSetup, initialSkipIntro = null }) => {
     try {
       const res = await login('cashier');
       if (!res.success) {
-        playSound('error');
         setError(res.message || 'Error logging in.');
         setShake(true);
         setTimeout(() => setShake(false), 500);
-      } else {
-        playSound('checkout');
       }
     } catch (e) {
-      playSound('error');
       setError('Connection error occurred.');
       setShake(true);
       setTimeout(() => setShake(false), 500);
@@ -181,7 +168,6 @@ const LoginScreen = ({ onSetup, initialSkipIntro = null }) => {
 
   const handleBiometricLogin = async () => {
     if (!window.PublicKeyCredential) {
-      playSound('error');
       setError('Biometrics not supported on this device/browser.');
       setShake(true);
       setTimeout(() => setShake(false), 500);
@@ -199,14 +185,11 @@ const LoginScreen = ({ onSetup, initialSkipIntro = null }) => {
         try {
           const res = await login(selectedRole, username, password);
           if (!res.success) {
-            playSound('error');
             setError(res.message || 'Incorrect credentials to enroll biometrics.');
             setShake(true);
             setTimeout(() => setShake(false), 500);
             return;
           }
-
-          playSound('checkout');
 
           // Prompt the device's fingerprint / passkey creation
           try {
@@ -217,7 +200,6 @@ const LoginScreen = ({ onSetup, initialSkipIntro = null }) => {
           }
           return;
         } catch (e) {
-          playSound('error');
           setError('Biometric registration failed.');
           setShake(true);
           setTimeout(() => setShake(false), 500);
@@ -239,16 +221,12 @@ const LoginScreen = ({ onSetup, initialSkipIntro = null }) => {
       await authenticateWithBiometrics();
       const res = await loginWithBiometrics(enrolled.username);
       if (!res.success) {
-        playSound('error');
         setError(res.message || 'Biometric authentication failed.');
         setShake(true);
         setTimeout(() => setShake(false), 500);
-      } else {
-        playSound('checkout');
       }
     } catch (e) {
       console.error(e);
-      playSound('error');
       if (e.name === 'NotAllowedError') {
         setError('Biometric verification cancelled.');
       } else {
