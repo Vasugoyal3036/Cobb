@@ -168,6 +168,36 @@ export const playCheckoutChime = (externalCtx = null) => {
 };
 
 /**
+ * Subtle laser-seam swoosh for pre-login brand intro
+ */
+export const playIntroSwoosh = (externalCtx = null) => {
+  const { soundEnabled } = getSoundSettings();
+  if (!soundEnabled) return;
+  if (typeof window === 'undefined' || (!window.AudioContext && !window.webkitAudioContext)) return;
+
+  try {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    const ctx = externalCtx || new AudioContextClass();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(1200, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(340, ctx.currentTime + 0.32);
+
+    gain.gain.setValueAtTime(0.01, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.18, ctx.currentTime + 0.04);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.32);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + 0.32);
+  } catch (e) {}
+};
+
+/**
  * Text-to-speech counter announcement (Soundbox mode)
  */
 export const speakCheckoutVoice = ({ amount, paymentMode = 'UPI' }) => {

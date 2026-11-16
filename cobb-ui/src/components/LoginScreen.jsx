@@ -3,8 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { ShieldCheck, UserCheck, ShoppingBag, Delete, AlertCircle, Sparkles, Check, Lock, Fingerprint, Info, X } from 'lucide-react';
 import OrsLogo from './OrsLogo';
 import { getEnrolledPasskey, registerDeviceBiometrics, authenticateWithBiometrics } from '../utils/webauthn';
-import FabricConstellation from './FabricConstellation';
-import { playSound } from '../utils/sound';
+import { playSound, playIntroSwoosh } from '../utils/sound';
 
 const ROLES = [
   {
@@ -39,9 +38,14 @@ const ROLES = [
   }
 ];
 
-const LoginScreen = ({ onSetup }) => {
+const LoginScreen = ({ onSetup, initialSkipIntro = null }) => {
   const { login, loginWithBiometrics, activeStore, AVAILABLE_STORES } = useAuth();
   
+  const isTestEnv = typeof process !== 'undefined' && (process.env?.NODE_ENV === 'test' || Boolean(process.env?.VITEST));
+  const shouldSkipIntro = initialSkipIntro !== null ? initialSkipIntro : isTestEnv;
+  const [introStage, setIntroStage] = useState(shouldSkipIntro ? 'complete' : 'playing');
+  const [introRevealed, setIntroRevealed] = useState(false);
+
   const [selectedRole, setSelectedRole] = useState('owner');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -64,6 +68,44 @@ const LoginScreen = ({ onSetup }) => {
   useEffect(() => {
     setEnrolledPasskey(getEnrolledPasskey());
   }, []);
+
+  useEffect(() => {
+    if (introStage !== 'playing') return;
+
+    // Small tick to trigger visual entrance & swoosh sound
+    const revealTimer = setTimeout(() => {
+      setIntroRevealed(true);
+      playIntroSwoosh();
+    }, 60);
+
+    // After 1.65s, transition emblem to header and reveal login inputs
+    const completeTimer = setTimeout(() => {
+      setIntroStage('complete');
+      playSound('checkout');
+    }, 1650);
+
+    const handleKeyDown = () => {
+      clearTimeout(revealTimer);
+      clearTimeout(completeTimer);
+      setIntroStage('complete');
+      playSound('checkout');
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      clearTimeout(revealTimer);
+      clearTimeout(completeTimer);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [introStage]);
+
+  const handleSkipIntro = () => {
+    if (introStage === 'playing') {
+      setIntroStage('complete');
+      playSound('checkout');
+    }
+  };
 
   const handleRequestSubmit = async (e) => {
     e.preventDefault();
@@ -219,17 +261,60 @@ const LoginScreen = ({ onSetup }) => {
     }
   };
 
+  if (introStage === 'playing') {
+    return (
+      <div 
+        onClick={handleSkipIntro}
+        className="fixed inset-0 z-50 bg-[#050505] text-white flex flex-col items-center justify-center p-6 cursor-pointer select-none overflow-hidden font-sans"
+      >
+        {/* Breathing ambient crimson aura */}
+        <div className="absolute w-72 h-72 sm:w-96 sm:h-96 rounded-full bg-red-600/20 blur-[110px] animate-intro-aura pointer-events-none" />
+
+        {/* Laser-thin crimson seam line slicing across center */}
+        <div className="absolute w-full max-w-md h-[1.5px] bg-gradient-to-r from-transparent via-red-500 to-transparent shadow-[0_0_15px_#ef4444] animate-seam-slice pointer-events-none" />
+
+        {/* Central Emblem & Brand Reveal */}
+        <div className={`relative z-10 flex flex-col items-center text-center transition-all duration-700 ease-out transform ${
+          introRevealed ? 'opacity-100 scale-100' : 'opacity-0 scale-90'
+        }`}>
+          {/* Logo container with metallic shimmer */}
+          <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-black border-2 border-red-600/50 p-2 flex items-center justify-center shadow-2xl shadow-red-600/30 overflow-hidden mb-5">
+            <img src="/cobb-logo.png" alt="COBB ITALY" className="w-full h-full object-contain relative z-10" />
+            <div className="absolute inset-0 w-[60%] h-[200%] bg-gradient-to-r from-transparent via-white/40 to-transparent pointer-events-none animate-logo-shimmer z-20" />
+          </div>
+
+          <div className="space-y-1">
+            <h1 className="text-xl sm:text-2xl font-black tracking-[0.25em] text-white uppercase flex items-center justify-center gap-2">
+              <span>COBB</span>
+              <span className="text-red-600">ITALY</span>
+            </h1>
+            <p className="text-xs sm:text-sm font-black tracking-[0.2em] text-red-500 uppercase">
+              Flying Colors Of Fashion
+            </p>
+            <p className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase pt-1">
+              {activeStoreObj?.name || 'Pundri Showroom Flagship'}
+            </p>
+          </div>
+        </div>
+
+        {/* Skip hint */}
+        <div className="absolute bottom-8 text-center">
+          <span className="text-[10px] font-mono tracking-widest uppercase text-zinc-600 hover:text-zinc-400 transition-colors">
+            Tap anywhere to skip • ESC
+          </span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen w-full bg-[#050505] text-white flex flex-col justify-between py-6 px-4 sm:px-6 relative overflow-hidden select-none font-sans">
       {/* Ambient background glows */}
       <div className="absolute top-[-15%] left-[-15%] w-[55vw] h-[55vw] rounded-full bg-red-600/15 blur-[140px] pointer-events-none" />
       <div className="absolute bottom-[-15%] right-[-15%] w-[55vw] h-[55vw] rounded-full bg-red-600/10 blur-[140px] pointer-events-none" />
 
-      {/* Interactive Woven Italian Fabric Constellation Canvas */}
-      <FabricConstellation />
-
       {/* Top Header Branding */}
-      <header className="w-full max-w-md mx-auto text-center z-10 pt-2 sm:pt-4">
+      <header className="w-full max-w-md mx-auto text-center z-10 pt-2 sm:pt-4 animate-header-entrance">
         <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-black/90 border border-white/10 mb-3 shadow-lg">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
           <span className="text-[11px] font-bold tracking-wide text-zinc-300">
@@ -263,7 +348,7 @@ const LoginScreen = ({ onSetup }) => {
       </header>
 
       {/* Main Authentication Card */}
-      <main className="w-full max-w-md mx-auto my-auto z-10 py-3">
+      <main className="w-full max-w-md mx-auto my-auto z-10 py-3 animate-card-entrance">
         {/* Role Selector Tabs */}
         <div className="grid grid-cols-3 gap-2 p-1 bg-[#0d0e12] border border-white/10 rounded-2xl mb-4 shadow-xl">
           {ROLES.map((r) => {
@@ -432,6 +517,16 @@ const LoginScreen = ({ onSetup }) => {
           <span>Every Owner & Manager login is recorded with timestamp & device telemetry</span>
         </p>
         <div className="flex justify-center gap-4 mt-2">
+          <button
+            type="button"
+            onClick={() => {
+              setIntroStage('playing');
+              setIntroRevealed(false);
+            }}
+            className="text-[11px] text-zinc-500 hover:text-zinc-300 underline cursor-pointer"
+          >
+            Replay Intro
+          </button>
           <button
             type="button"
             onClick={() => setShowRequestModal(true)}
