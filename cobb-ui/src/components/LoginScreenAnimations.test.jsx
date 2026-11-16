@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen, act, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import CurtainWipe from './CurtainWipe';
+import LoginUpwardAscent from './LoginUpwardAscent';
 import LoginScreen from './LoginScreen';
 import { useAuth } from '../context/AuthContext';
 
@@ -9,13 +9,7 @@ vi.mock('../context/AuthContext', () => ({
   useAuth: vi.fn(),
 }));
 
-vi.mock('../utils/sound', () => ({
-  playCheckoutChime: vi.fn(),
-  playIntroSwoosh: vi.fn(),
-  playSound: vi.fn(),
-}));
-
-describe('Frontend Component Tests: LoginScreen Animations & Pre-Login Intro', () => {
+describe('Frontend Component Tests: LoginScreen Animations & Upward Drift', () => {
   const mockLogin = vi.fn();
   const mockOnSetup = vi.fn();
 
@@ -43,9 +37,9 @@ describe('Frontend Component Tests: LoginScreen Animations & Pre-Login Intro', (
     expect(screen.getByText(/Tap anywhere to skip/i)).toBeDefined();
     expect(screen.getAllByText(/Flying Colors Of Fashion/i).length).toBeGreaterThan(0);
 
-    // Fast forward past the 3.0s intro timer
+    // Fast forward past the 3.8s intro timer + 1.2s dissolve
     act(() => {
-      vi.advanceTimersByTime(3500);
+      vi.advanceTimersByTime(5100);
     });
 
     // Login inputs and role selectors are now revealed
@@ -70,18 +64,18 @@ describe('Frontend Component Tests: LoginScreen Animations & Pre-Login Intro', (
     expect(screen.getByText('Cashier')).toBeDefined();
   });
 
-  it('mounts CurtainWipe closed, then opens and triggers onComplete', () => {
+  it('mounts LoginUpwardAscent at bottom, then slowly drifts upward and triggers onComplete', () => {
     const mockOnComplete = vi.fn();
-    render(<CurtainWipe onComplete={mockOnComplete} />);
+    render(<LoginUpwardAscent onComplete={mockOnComplete} />);
 
     // Initially contains the seal and authenticated message
-    expect(screen.getByText('AUTHENTICATED')).toBeDefined();
-    expect(screen.getByText('COBB SHOWROOM')).toBeDefined();
-    expect(screen.getByText('ENTERING COMMAND CENTER')).toBeDefined();
+    expect(screen.getByText(/AUTHENTICATED • ACCESS GRANTED/i)).toBeDefined();
+    expect(screen.getByText(/COBB SHOWROOM POS/i)).toBeDefined();
+    expect(screen.getByText(/Entering Command Center/i)).toBeDefined();
 
-    // Fast-forward past open delay (40ms) and finish timer (850ms)
+    // Fast-forward past the 1550ms relaxed upward ascent timer
     act(() => {
-      vi.advanceTimersByTime(900);
+      vi.advanceTimersByTime(1600);
     });
 
     expect(mockOnComplete).toHaveBeenCalledTimes(1);

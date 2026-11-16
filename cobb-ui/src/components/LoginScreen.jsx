@@ -72,7 +72,7 @@ const LoginScreen = ({ onSetup, initialSkipIntro = null }) => {
     setIntroStage('dissolving');
     setTimeout(() => {
       setIntroStage('complete');
-    }, 950);
+    }, 1200);
   }, []);
 
   useEffect(() => {
@@ -81,12 +81,12 @@ const LoginScreen = ({ onSetup, initialSkipIntro = null }) => {
     // Smooth entrance of logo and typography
     const revealTimer = setTimeout(() => {
       setIntroRevealed(true);
-    }, 80);
+    }, 100);
 
-    // After 3.0s, trigger the relaxed 950ms Apple-style upward drift cross-fade
+    // After 3.8s, trigger the relaxed 1200ms Apple-style upward drift cross-fade
     const dissolveTimer = setTimeout(() => {
       triggerDissolve();
-    }, 3000);
+    }, 3800);
 
     const handleKeyDown = () => {
       clearTimeout(revealTimer);

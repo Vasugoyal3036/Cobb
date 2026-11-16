@@ -470,7 +470,7 @@ html.dark .glass-header-bar {
 }
 
 .animate-seam-slice {
-  animation: seamSlice 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: seamSlice 2.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 @keyframes introAuraPulse {
