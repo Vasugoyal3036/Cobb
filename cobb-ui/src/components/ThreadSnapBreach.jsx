@@ -1,22 +1,30 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 
 /**
- * ThreadSnapBreach: 100% GPU-Composited Ultra-Smooth Dual Thread Rupture & Snap
+ * ThreadSnapBreach: 100% GPU-Composited Cinematic 3.2-Second Dual Thread Snap
  * 
- * Performance & Reliability Architecture:
- * 1. GPU Compositor Driven: Animated purely via CSS keyframes with transform: translate3d and will-change: transform.
- *    Runs on the browser's GPU compositor thread, guaranteeing liquid 60/120 FPS even while React mounts heavy dashboard tabs.
- * 2. Mount-Time Click & Key Debounce: Ignores stray clicks or Enter keyup events from the login screen during the first 250ms
- *    so the transition NEVER cancels prematurely and is guaranteed to play fully.
- * 3. Photorealistic SVG Braided Silk Cords: Left (Crimson) and Right (Amber) silk cords stretch under high tension,
- *    hum with vibration, violently snap in two with whip-curl recoil, detonate shockwave blast rings, and breach forward.
- * 4. 1-Tap / Key Urgent Counter Bypass: Enabled after the 250ms mount debounce for instant cashier access.
- * 5. Audio: Completely silent (0 sound effects).
+ * Pacing Choreography (Total 3.2s):
+ * 1. High-Tension Stretch & Strain Buildup (0ms – 1800ms / 1.8s):
+ *    - Braided silk cords stretch and tremble with sine-wave vibration.
+ *    - Strain gauge smoothly climbs from 420 MPa to 1,480 MPa [Critical Yield].
+ * 2. Cataclysmic Macro Snap & Shockwave (1800ms – 2800ms / 1.0s):
+ *    - Threads violently snap with slow-motion whipping wave recoil to screen edges.
+ *    - Supersonic expanding shockwave blast rings surge outward.
+ *    - 360° cloud of luminous silk fiber sparks bursts outward.
+ *    - Screen recoil camera shake.
+ * 3. Emblem Breaching & POS Dashboard Reveal (2400ms – 3200ms / 0.8s):
+ *    - Central Cobb tailoring clamp emblem dissolves outward into camera (scale(4.2)).
+ *    - POS Command Center punches through in crisp focus.
+ * 4. Bypass & Audio:
+ *    - 250ms mount debounce prevents accidental login submit cut-offs.
+ *    - 1-tap/click anywhere or any keypress bypasses instantly.
+ *    - Completely silent (0 audio).
  */
 const ThreadSnapBreach = ({ onComplete }) => {
   const mountTimeRef = useRef(Date.now());
   const completedRef = useRef(false);
   const [stage, setStage] = useState('tension'); // 'tension' | 'snapped' | 'revealed'
+  const [tensionProgress, setTensionProgress] = useState(false);
 
   const isTestEnv = typeof process !== 'undefined' &&
     (process.env?.NODE_ENV === 'test' || Boolean(process.env?.VITEST));
@@ -30,7 +38,7 @@ const ThreadSnapBreach = ({ onComplete }) => {
   // Safe user bypass handler: blocks accidental click-through from the login button
   const handleUserBypass = useCallback(() => {
     if (!isTestEnv && Date.now() - mountTimeRef.current < 250) {
-      return; // Ignore stray click from login submit
+      return;
     }
     handleFinish();
   }, [handleFinish, isTestEnv]);
@@ -46,20 +54,26 @@ const ThreadSnapBreach = ({ onComplete }) => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleFinish, isTestEnv]);
 
-  // Sequence Choreography Timers
+  // 3.2-Second Sequence Choreography
   useEffect(() => {
-    // 1. Snap detonates at 750ms
+    // Start tension bar transition on next frame
+    const startProgressTimer = setTimeout(() => {
+      setTensionProgress(true);
+    }, 50);
+
+    // 1. Explosive Snap occurs at 1800ms (1.8s)
     const snapTimer = setTimeout(() => {
       setStage('snapped');
-    }, 750);
+    }, 1800);
 
-    // 2. Full transition completes at 1650ms, cleanly unmasking the POS
+    // 2. Full transition completes at 3200ms (3.2s)
     const completeTimer = setTimeout(() => {
       setStage('revealed');
       handleFinish();
-    }, 1650);
+    }, 3200);
 
     return () => {
+      clearTimeout(startProgressTimer);
       clearTimeout(snapTimer);
       clearTimeout(completeTimer);
     };
@@ -68,7 +82,7 @@ const ThreadSnapBreach = ({ onComplete }) => {
   return (
     <div
       onClick={handleUserBypass}
-      className={`fixed inset-0 z-50 overflow-hidden cursor-pointer select-none transition-opacity duration-500 will-change-transform ${
+      className={`fixed inset-0 z-50 overflow-hidden cursor-pointer select-none transition-opacity duration-700 will-change-transform ${
         stage === 'revealed' ? 'opacity-0 pointer-events-none' : 'opacity-100 pointer-events-auto'
       }`}
       style={{
@@ -81,17 +95,17 @@ const ThreadSnapBreach = ({ onComplete }) => {
         /* GPU Compositor Recoil Screen Shake */
         @keyframes gpuScreenRecoil {
           0% { transform: translate3d(0, 0, 0); }
-          15% { transform: translate3d(-5px, 4px, 0); }
-          30% { transform: translate3d(4px, -3px, 0); }
-          50% { transform: translate3d(-2px, 2px, 0); }
-          75% { transform: translate3d(1px, -1px, 0); }
+          12% { transform: translate3d(-6px, 5px, 0); }
+          25% { transform: translate3d(5px, -4px, 0); }
+          45% { transform: translate3d(-3px, 3px, 0); }
+          70% { transform: translate3d(2px, -1px, 0); }
           100% { transform: translate3d(0, 0, 0); }
         }
         .animate-screen-recoil {
-          animation: gpuScreenRecoil 0.45s cubic-bezier(0.25, 1, 0.5, 1) both;
+          animation: gpuScreenRecoil 0.55s cubic-bezier(0.25, 1, 0.5, 1) both;
         }
 
-        /* High-Tension Sine Hum Vibration */
+        /* High-Tension Sine Hum Vibration (Slow-motion pacing) */
         @keyframes threadTensionHum {
           0%, 100% { transform: translate3d(0, 0, 0); }
           25% { transform: translate3d(0, -2.5px, 0); }
@@ -99,91 +113,102 @@ const ThreadSnapBreach = ({ onComplete }) => {
           75% { transform: translate3d(0, -1.5px, 0); }
         }
         .animate-tension-hum {
-          animation: threadTensionHum 0.06s linear infinite;
+          animation: threadTensionHum 0.08s linear infinite;
         }
 
-        /* Left Thread Elastic Whipping Recoil */
-        @keyframes cordWhipLeft {
+        /* Left Thread Slow-Motion Whipping Recoil (1.0s duration) */
+        @keyframes cordWhipLeftSloMo {
           0% {
             transform: translate3d(0, 0, 0) scaleX(1);
             opacity: 1;
           }
-          30% {
-            transform: translate3d(-25vw, -40px, 0) scaleX(0.7) rotate(-6deg);
-            opacity: 0.95;
+          25% {
+            transform: translate3d(-20vw, -45px, 0) scaleX(0.75) rotate(-8deg);
+            opacity: 0.98;
           }
-          65% {
-            transform: translate3d(-55vw, 25px, 0) scaleX(0.4) rotate(4deg);
-            opacity: 0.7;
+          55% {
+            transform: translate3d(-50vw, 30px, 0) scaleX(0.45) rotate(5deg);
+            opacity: 0.85;
+          }
+          80% {
+            transform: translate3d(-80vw, -10px, 0) scaleX(0.25) rotate(-2deg);
+            opacity: 0.5;
           }
           100% {
-            transform: translate3d(-100vw, 0, 0) scaleX(0.1) rotate(0deg);
+            transform: translate3d(-105vw, 0, 0) scaleX(0.08) rotate(0deg);
             opacity: 0;
           }
         }
         .animate-cord-whip-left {
-          animation: cordWhipLeft 0.65s cubic-bezier(0.15, 0.85, 0.35, 1.2) forwards;
+          animation: cordWhipLeftSloMo 1.05s cubic-bezier(0.12, 0.9, 0.28, 1.15) forwards;
         }
 
-        /* Right Thread Elastic Whipping Recoil */
-        @keyframes cordWhipRight {
+        /* Right Thread Slow-Motion Whipping Recoil (1.0s duration) */
+        @keyframes cordWhipRightSloMo {
           0% {
             transform: translate3d(0, 0, 0) scaleX(1);
             opacity: 1;
           }
-          30% {
-            transform: translate3d(25vw, -40px, 0) scaleX(0.7) rotate(6deg);
-            opacity: 0.95;
+          25% {
+            transform: translate3d(20vw, -45px, 0) scaleX(0.75) rotate(8deg);
+            opacity: 0.98;
           }
-          65% {
-            transform: translate3d(55vw, 25px, 0) scaleX(0.4) rotate(-4deg);
-            opacity: 0.7;
+          55% {
+            transform: translate3d(50vw, 30px, 0) scaleX(0.45) rotate(-5deg);
+            opacity: 0.85;
+          }
+          80% {
+            transform: translate3d(80vw, -10px, 0) scaleX(0.25) rotate(2deg);
+            opacity: 0.5;
           }
           100% {
-            transform: translate3d(100vw, 0, 0) scaleX(0.1) rotate(0deg);
+            transform: translate3d(105vw, 0, 0) scaleX(0.08) rotate(0deg);
             opacity: 0;
           }
         }
         .animate-cord-whip-right {
-          animation: cordWhipRight 0.65s cubic-bezier(0.15, 0.85, 0.35, 1.2) forwards;
+          animation: cordWhipRightSloMo 1.05s cubic-bezier(0.12, 0.9, 0.28, 1.15) forwards;
         }
 
-        /* Supersonic Expanding Shockwave Rings */
-        @keyframes shockwaveBlastRing {
+        /* Supersonic Expanding Shockwave Blast Rings (1.1s duration) */
+        @keyframes shockwaveBlastRingSloMo {
           0% {
             transform: scale(0.1) translate3d(0, 0, 0);
             opacity: 1;
             border-width: 6px;
           }
-          50% {
-            opacity: 0.8;
+          45% {
+            opacity: 0.85;
           }
           100% {
-            transform: scale(5.5) translate3d(0, 0, 0);
+            transform: scale(6.2) translate3d(0, 0, 0);
             opacity: 0;
             border-width: 1px;
           }
         }
         .animate-shockwave-ring-1 {
-          animation: shockwaveBlastRing 0.75s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
+          animation: shockwaveBlastRingSloMo 1.1s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
         }
         .animate-shockwave-ring-2 {
-          animation: shockwaveBlastRing 0.75s cubic-bezier(0.1, 0.9, 0.2, 1) 0.08s forwards;
+          animation: shockwaveBlastRingSloMo 1.1s cubic-bezier(0.1, 0.9, 0.2, 1) 0.12s forwards;
         }
 
-        /* Shrapnel Fiber Sparks Explosion */
-        @keyframes fiberShrapnelBurst {
+        /* Shrapnel Fiber Sparks Explosion (1.1s duration) */
+        @keyframes fiberShrapnelBurstSloMo {
           0% {
-            transform: translate3d(0, 0, 0) scale(0.5);
+            transform: translate3d(0, 0, 0) scale(0.4);
             opacity: 1;
           }
+          70% {
+            opacity: 0.8;
+          }
           100% {
-            transform: translate3d(var(--tx), var(--ty), 0) scale(1.4) rotate(var(--rot));
+            transform: translate3d(var(--tx), var(--ty), 0) scale(1.3) rotate(var(--rot));
             opacity: 0;
           }
         }
         .animate-shrapnel {
-          animation: fiberShrapnelBurst 0.75s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          animation: fiberShrapnelBurstSloMo 1.1s cubic-bezier(0.12, 0.95, 0.25, 1) forwards;
         }
       `}</style>
 
@@ -197,7 +222,7 @@ const ThreadSnapBreach = ({ onComplete }) => {
         <div
           className="absolute inset-0 pointer-events-none"
           style={{
-            background: 'radial-gradient(circle at 50% 50%, rgba(255, 230, 220, 0.07) 0%, rgba(220, 38, 38, 0.04) 30%, transparent 65%)'
+            background: 'radial-gradient(circle at 50% 50%, rgba(255, 230, 220, 0.08) 0%, rgba(220, 38, 38, 0.04) 30%, transparent 65%)'
           }}
         />
 
@@ -217,7 +242,6 @@ const ThreadSnapBreach = ({ onComplete }) => {
                   <stop offset="100%" stopColor="#fca5a5" stopOpacity="1" />
                 </linearGradient>
               </defs>
-              {/* Outer Bloom Stroke */}
               <path
                 d="M 0,30 Q 250,28 500,30"
                 fill="none"
@@ -225,7 +249,6 @@ const ThreadSnapBreach = ({ onComplete }) => {
                 strokeWidth="10"
                 strokeLinecap="round"
               />
-              {/* Braided Core Stroke */}
               <path
                 d="M 0,30 Q 250,30 500,30"
                 fill="none"
@@ -233,7 +256,6 @@ const ThreadSnapBreach = ({ onComplete }) => {
                 strokeWidth="4"
                 strokeLinecap="round"
               />
-              {/* Specular Highlight Filament */}
               <path
                 d="M 0,29 Q 250,29 500,29"
                 fill="none"
@@ -258,7 +280,6 @@ const ThreadSnapBreach = ({ onComplete }) => {
                   <stop offset="100%" stopColor="#b45309" stopOpacity="0.8" />
                 </linearGradient>
               </defs>
-              {/* Outer Bloom Stroke */}
               <path
                 d="M 0,30 Q 250,28 500,30"
                 fill="none"
@@ -266,7 +287,6 @@ const ThreadSnapBreach = ({ onComplete }) => {
                 strokeWidth="10"
                 strokeLinecap="round"
               />
-              {/* Braided Core Stroke */}
               <path
                 d="M 0,30 Q 250,30 500,30"
                 fill="none"
@@ -274,7 +294,6 @@ const ThreadSnapBreach = ({ onComplete }) => {
                 strokeWidth="4"
                 strokeLinecap="round"
               />
-              {/* Specular Highlight Filament */}
               <path
                 d="M 0,29 Q 250,29 500,29"
                 fill="none"
@@ -294,20 +313,20 @@ const ThreadSnapBreach = ({ onComplete }) => {
 
             {/* 360° Fiber Shrapnel Sparks Burst */}
             {[
-              { x: -140, y: -90, r: 45, c: '#ef4444', w: '24px' },
-              { x: 150, y: -80, r: -35, c: '#f59e0b', w: '28px' },
-              { x: -180, y: 40, r: 85, c: '#ffffff', w: '18px' },
-              { x: 190, y: 70, r: -70, c: '#ef4444', w: '26px' },
-              { x: -70, y: -160, r: -20, c: '#f59e0b', w: '22px' },
-              { x: 80, y: -170, r: 30, c: '#ef4444', w: '20px' },
-              { x: -60, y: 160, r: -60, c: '#f59e0b', w: '25px' },
-              { x: 90, y: 150, r: 50, c: '#ffffff', w: '22px' },
-              { x: -220, y: -10, r: 15, c: '#ef4444', w: '32px' },
-              { x: 230, y: 10, r: -25, c: '#f59e0b', w: '30px' },
-              { x: -120, y: 130, r: 40, c: '#ef4444', w: '18px' },
-              { x: 130, y: -120, r: -45, c: '#ffffff', w: '20px' },
-              { x: -190, y: -110, r: -75, c: '#f59e0b', w: '24px' },
-              { x: 180, y: 120, r: 65, c: '#ef4444', w: '22px' }
+              { x: -160, y: -100, r: 45, c: '#ef4444', w: '26px' },
+              { x: 170, y: -90, r: -35, c: '#f59e0b', w: '30px' },
+              { x: -200, y: 50, r: 85, c: '#ffffff', w: '20px' },
+              { x: 210, y: 80, r: -70, c: '#ef4444', w: '28px' },
+              { x: -80, y: -180, r: -20, c: '#f59e0b', w: '24px' },
+              { x: 90, y: -190, r: 30, c: '#ef4444', w: '22px' },
+              { x: -70, y: 180, r: -60, c: '#f59e0b', w: '26px' },
+              { x: 100, y: 170, r: 50, c: '#ffffff', w: '24px' },
+              { x: -240, y: -15, r: 15, c: '#ef4444', w: '34px' },
+              { x: 250, y: 15, r: -25, c: '#f59e0b', w: '32px' },
+              { x: -140, y: 140, r: 40, c: '#ef4444', w: '20px' },
+              { x: 150, y: -140, r: -45, c: '#ffffff', w: '22px' },
+              { x: -210, y: -120, r: -75, c: '#f59e0b', w: '26px' },
+              { x: 200, y: 130, r: 65, c: '#ef4444', w: '24px' }
             ].map((sp, idx) => (
               <div
                 key={idx}
@@ -315,7 +334,7 @@ const ThreadSnapBreach = ({ onComplete }) => {
                 style={{
                   width: sp.w,
                   backgroundColor: sp.c,
-                  boxShadow: `0 0 12px ${sp.c}`,
+                  boxShadow: `0 0 14px ${sp.c}`,
                   '--tx': `${sp.x}px`,
                   '--ty': `${sp.y}px`,
                   '--rot': `${sp.r}deg`
@@ -327,7 +346,7 @@ const ThreadSnapBreach = ({ onComplete }) => {
 
         {/* 5. CENTRAL COBB TAILORING CLAMP EMBLEM */}
         <div
-          className={`relative z-40 flex flex-col items-center transition-all duration-700 ease-out will-change-transform ${
+          className={`relative z-40 flex flex-col items-center transition-all duration-800 ease-out will-change-transform ${
             stage === 'snapped'
               ? 'scale-[4.2] opacity-0 pointer-events-none'
               : 'scale-100 opacity-100'
@@ -355,15 +374,17 @@ const ThreadSnapBreach = ({ onComplete }) => {
           <div className="mt-4 text-center font-mono space-y-1">
             <div className="w-48 h-1.5 rounded-full bg-zinc-900 border border-zinc-800 overflow-hidden mx-auto">
               <div
-                className={`h-full bg-gradient-to-r from-amber-500 via-rose-500 to-red-600 transition-all duration-700 ease-out will-change-transform ${
-                  stage === 'tension' ? 'w-[90%]' : 'w-full'
-                }`}
+                className="h-full bg-gradient-to-r from-amber-500 via-rose-500 to-red-600 will-change-transform"
+                style={{
+                  width: stage === 'snapped' ? '100%' : (tensionProgress ? '95%' : '25%'),
+                  transition: 'width 1750ms cubic-bezier(0.2, 0.8, 0.25, 1)'
+                }}
               />
             </div>
 
             <div className="text-xs font-black tracking-widest uppercase transition-colors">
               <span className={stage === 'snapped' ? 'text-emerald-400' : 'text-red-400 animate-pulse'}>
-                {stage === 'snapped' ? 'STRUCTURAL RUPTURE COMPLETE' : 'TENSILE LOAD: 1,420 MPa'}
+                {stage === 'snapped' ? 'STRUCTURAL RUPTURE COMPLETE' : 'TENSILE LOAD: 1,480 MPa'}
               </span>
             </div>
 
