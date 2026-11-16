@@ -1,0 +1,90 @@
+[
+  {
+    "id": 1793596713807,
+    "date": "2026-11-02T05:18:33.807Z",
+    "dateFormatted": "02/11/2026",
+    "denominations": {
+      "10": 43,
+      "20": 50,
+      "50": 0,
+      "100": 22,
+      "200": 26,
+      "500": 63,
+      "2000": 0,
+      "coins": 0
+    },
+    "physicalCash": 40330,
+    "openingCash": 0,
+    "expectedCash": 0,
+    "variance": 40330,
+    "closingCashInDrawer": 40330,
+    "notes": "",
+    "managerName": "Store Manager"
+  },
+  {
+    "id": 1793596715772,
+    "date": "2026-11-02T05:18:35.772Z",
+    "dateFormatted": "02/11/2026",
+    "denominations": {
+      "10": 43,
+      "20": 50,
+      "50": 0,
+      "100": 22,
+      "200": 26,
+      "500": 63,
+      "2000": 0,
+      "coins": 0
+    },
+    "physicalCash": 40330,
+    "openingCash": 0,
+    "expectedCash": 0,
+    "variance": 40330,
+    "closingCashInDrawer": 40330,
+    "notes": "",
+    "managerName": "Store Manager"
+  },
+  {
+    "id": 1793596716291,
+    "date": "2026-11-02T05:18:36.291Z",
+    "dateFormatted": "02/11/2026",
+    "denominations": {
+      "10": 43,
+      "20": 50,
+      "50": 0,
+      "100": 22,
+      "200": 26,
+      "500": 63,
+      "2000": 0,
+      "coins": 0
+    },
+    "physicalCash": 40330,
+    "openingCash": 0,
+    "expectedCash": 0,
+    "variance": 40330,
+    "closingCashInDrawer": 40330,
+    "notes": "",
+    "managerName": "Store Manager"
+  },
+  {
+    "id": 1793596717610,
+    "date": "2026-11-02T05:18:37.610Z",
+    "dateFormatted": "02/11/2026",
+    "denominations": {
+      "10": 43,
+      "20": 50,
+      "50": 0,
+      "100": 22,
+      "200": 26,
+      "500": 63,
+      "2000": 0,
+      "coins": 0
+    },
+    "physicalCash": 40330,
+    "openingCash": 0,
+    "expectedCash": 0,
+    "variance": 40330,
+    "closingCashInDrawer": 40330,
+    "notes": "",
+    "managerName": "Store Manager"
+  }
+]

@@ -1,5 +1,18 @@
 [
   {
+    "id": "exp_1793687055519_sgfh",
+    "date": "2026-11-03",
+    "time": "11:54:15",
+    "category": "chai",
+    "categoryLabel": "Chai & Refreshments",
+    "categoryIcon": "☕",
+    "amount": 10,
+    "description": "Chai: Vikas (+1 cup)",
+    "loggedBy": "Vikas",
+    "storeId": "DEMO_STORE_001",
+    "createdAt": "2026-11-03T06:24:15.518Z"
+  },
+  {
     "id": "exp_1791813668632_tmze",
     "date": "2026-10-12",
     "time": "19:31:08",

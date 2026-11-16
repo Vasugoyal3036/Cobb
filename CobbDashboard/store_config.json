@@ -3,8 +3,16 @@
   "presetId": "goyal",
   "firmBrand": "Goyal - House Of Fashion",
   "storeProfile": {
-    "storeName": "Goyal - House Of Fashion (Pundri Flagship)",
-    "branch": "Pundri Flagship"
+    "storeName": "Urban Threads",
+    "branch": "Pundri",
+    "currency": "₹",
+    "helplinePhone": "9138122820",
+    "ownerPhones": [
+      "9138122820",
+      "8708788707",
+      "9034522000",
+      "9466422821"
+    ]
   },
   "operatingExpenses": {
     "rent": 40000,
@@ -23,45 +31,45 @@
     "monthlyBreakEvenSales": 396000,
     "salesmanSalaries": [
       {
+        "name": "Vikas",
+        "mtdSales": 0,
         "isActive": true,
         "salary": 15000,
-        "name": "Vikas",
         "id": "2800003",
-        "empCode": "2800003",
-        "mtdSales": 0
+        "empCode": "2800003"
       },
       {
-        "isActive": true,
         "name": "Pawan",
-        "salary": 9000,
+        "empCode": "3200014",
         "id": "3200014",
-        "mtdSales": 0,
-        "empCode": "3200014"
+        "isActive": true,
+        "salary": 9000,
+        "mtdSales": 0
       },
       {
         "name": "Simran",
-        "mtdSales": 0,
-        "salary": 10000,
+        "id": "0001001",
         "empCode": "0001001",
+        "salary": 10000,
         "isActive": true,
-        "id": "0001001"
+        "mtdSales": 0
       },
       {
-        "isActive": false,
-        "salary": "",
-        "name": "Akhil",
-        "id": "0000180",
         "empCode": "0000180",
-        "mtdSales": 0
+        "mtdSales": 0,
+        "isActive": false,
+        "salary": 0,
+        "id": "0000180",
+        "name": "Akhil"
       }
     ],
     "staffSalariesBreakdown": {
-      "dynamicStaffSalaries": 46000,
+      "incentiveMode": "target",
       "totalIncentives": 12000,
-      "targetPerSalesman": 400000,
-      "totalBaseSalaries": 34000,
+      "dynamicStaffSalaries": 46000,
       "activeSalesmenCount": 3,
-      "incentiveMode": "target"
+      "totalBaseSalaries": 34000,
+      "targetPerSalesman": 400000
     }
   },
   "database": {
@@ -74,5 +82,28 @@
     "password": "",
     "port": 1433
   },
-  "lastUpdated": "2026-11-03T05:50:00.791Z"
+  "lastUpdated": "2026-11-16T12:45:26.096Z",
+  "promotions": {
+    "b1g2": {
+      "enabled": true,
+      "label": "Buy 1 Get 2 Free",
+      "note": "MRP based calculation"
+    },
+    "flat50": {
+      "rate": 50,
+      "label": "Flat 50% Off",
+      "enabled": true
+    },
+    "flat60": {
+      "label": "Flat 60% Off",
+      "rate": 60,
+      "enabled": true
+    },
+    "b3_70": {
+      "rate": 70,
+      "enabled": true,
+      "label": "Buy 3 Get 70% Off"
+    },
+    "storeAnnouncement": "Diwali Festive Collection Active | Instant Alterations within 2 hours"
+  }
 }
