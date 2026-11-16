@@ -500,6 +500,51 @@ html.dark .glass-header-bar {
   animation: slideInFromTop 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* Cyber Hacker Login Breach Animations */
+@keyframes cyberGridRush {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 80px; }
+}
+
+.animate-grid-rush {
+  animation: cyberGridRush 0.8s linear infinite;
+}
+
+@keyframes cyberReticleRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-reticle-slow {
+  animation: cyberReticleRotate 8s linear infinite;
+}
+
+.animate-reticle-rev {
+  animation: cyberReticleRotate 5s linear infinite reverse;
+}
+
+@keyframes cyberGlitchPulse {
+  0%, 100% { transform: translate(0); filter: none; }
+  25% { transform: translate(-2px, 1.5px); filter: drop-shadow(2px 0 #ef4444) drop-shadow(-2px 0 #06b6d4); }
+  50% { transform: translate(2px, -1.5px); filter: drop-shadow(-2px 0 #ef4444) drop-shadow(2px 0 #06b6d4); }
+  75% { transform: translate(-1.5px, -1px); }
+}
+
+.animate-cyber-glitch {
+  animation: cyberGlitchPulse 0.3s linear infinite;
+}
+
+@keyframes shockwaveRushForward {
+  0% { transform: scale(0.3); opacity: 0; }
+  50% { opacity: 0.85; }
+  100% { transform: scale(3.2); opacity: 0; }
+}
+
+.animate-cyber-shockwave-1 { animation: shockwaveRushForward 1.3s cubic-bezier(0.1, 0.8, 0.3, 1) infinite; }
+.animate-cyber-shockwave-2 { animation: shockwaveRushForward 1.3s cubic-bezier(0.1, 0.8, 0.3, 1) infinite 0.45s; }
+.animate-cyber-shockwave-3 { animation: shockwaveRushForward 1.3s cubic-bezier(0.1, 0.8, 0.3, 1) infinite 0.9s; }
+
+
 
 
 

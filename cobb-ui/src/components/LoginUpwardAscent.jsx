@@ -1,7 +1,7 @@
-import CurtainWipe from './CurtainWipe';
+import CyberHackerBreach from './CyberHackerBreach';
 
 /**
- * LoginUpwardAscent: Alias for CurtainWipe
- * Combines the luxury curtain separation with upward logo drift
+ * LoginUpwardAscent: Aliased to CyberHackerBreach
+ * Rushes forward in 3D hyperspace directly into the POS Command Center.
  */
-export default CurtainWipe;
+export default CyberHackerBreach;

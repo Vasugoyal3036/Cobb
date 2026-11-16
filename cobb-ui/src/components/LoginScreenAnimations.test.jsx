@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, act, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import CyberHackerBreach from './CyberHackerBreach';
 import CurtainWipe from './CurtainWipe';
 import LoginUpwardAscent from './LoginUpwardAscent';
 import LoginScreen from './LoginScreen';
@@ -10,7 +11,7 @@ vi.mock('../context/AuthContext', () => ({
   useAuth: vi.fn(),
 }));
 
-describe('Frontend Component Tests: LoginScreen Animations, Curtain Wipe & Forward Prismatic Scatter', () => {
+describe('Frontend Component Tests: LoginScreen Animations & Cyber Hacker Breach Transition', () => {
   const mockLogin = vi.fn();
   const mockOnSetup = vi.fn();
 
@@ -65,26 +66,17 @@ describe('Frontend Component Tests: LoginScreen Animations, Curtain Wipe & Forwa
     expect(screen.getByText('Cashier')).toBeDefined();
   });
 
-  it('mounts CurtainWipe, drifts logo forward towards user, scatters into prismatic shards, and triggers onComplete', () => {
+  it('mounts CyberHackerBreach, initializes warp tunnel & cyber telemetry, then triggers onComplete', () => {
     const mockOnComplete = vi.fn();
-    const { container } = render(<CurtainWipe onComplete={mockOnComplete} />);
+    render(<CyberHackerBreach onComplete={mockOnComplete} />);
 
-    // Initially contains the seal and authenticated message
-    expect(screen.getByText(/AUTHENTICATED/i)).toBeDefined();
-    expect(screen.getByText(/COBB SHOWROOM/i)).toBeDefined();
-    expect(screen.getByText(/ENTERING COMMAND CENTER/i)).toBeDefined();
-    expect(screen.getByText(/Tap or press any key to skip/i)).toBeDefined();
+    // Initially contains the cyber breach header, status badge and skip hint
+    expect(screen.getByText(/COBB_BREACH_PROTOCOL/i)).toBeDefined();
+    expect(screen.getByText(/WARPING INTO COMMAND DECK/i)).toBeDefined();
+    expect(screen.getByText(/ROOT_OVERRIDE/i)).toBeDefined();
+    expect(screen.getByText(/TAP ANYWHERE TO BYPASS WARP STREAM/i)).toBeDefined();
 
-    // Verify presence of left and right velvet drape panels
-    const drapes = container.querySelectorAll('.w-1\\/2');
-    expect(drapes.length).toBe(2);
-
-    // Fast-forward past 1800ms mark (forward drift & scatter point)
-    act(() => {
-      vi.advanceTimersByTime(1850);
-    });
-
-    // Fast-forward remaining transition time to full 3800ms completion
+    // Fast-forward past the 1900ms supersonic warp zoom-through timer
     act(() => {
       vi.advanceTimersByTime(2000);
     });
@@ -92,9 +84,9 @@ describe('Frontend Component Tests: LoginScreen Animations, Curtain Wipe & Forwa
     expect(mockOnComplete).toHaveBeenCalledTimes(1);
   });
 
-  it('allows 1-tap skip on CurtainWipe to immediately enter Command Center', () => {
+  it('allows 1-tap instant skip on CyberHackerBreach to enter Command Center immediately', () => {
     const mockOnComplete = vi.fn();
-    const { container } = render(<CurtainWipe onComplete={mockOnComplete} />);
+    const { container } = render(<CyberHackerBreach onComplete={mockOnComplete} />);
 
     // Click anywhere on the overlay
     fireEvent.click(container.firstChild);
@@ -102,15 +94,14 @@ describe('Frontend Component Tests: LoginScreen Animations, Curtain Wipe & Forwa
     expect(mockOnComplete).toHaveBeenCalledTimes(1);
   });
 
-  it('supports LoginUpwardAscent alias seamlessly with complete forward transition', () => {
+  it('supports CurtainWipe and LoginUpwardAscent aliases seamlessly with cyber breach transition', () => {
     const mockOnComplete = vi.fn();
-    render(<LoginUpwardAscent onComplete={mockOnComplete} />);
+    render(<CurtainWipe onComplete={mockOnComplete} />);
 
-    expect(screen.getByText(/AUTHENTICATED/i)).toBeDefined();
-    expect(screen.getByText(/COBB SHOWROOM POS/i)).toBeDefined();
+    expect(screen.getByText(/WARPING INTO COMMAND DECK/i)).toBeDefined();
 
     act(() => {
-      vi.advanceTimersByTime(3900);
+      vi.advanceTimersByTime(2000);
     });
 
     expect(mockOnComplete).toHaveBeenCalledTimes(1);
