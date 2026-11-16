@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { ShieldCheck, UserCheck, ShoppingBag, Delete, AlertCircle, Sparkles, Check, Lock, Fingerprint, Info, X } from 'lucide-react';
 import OrsLogo from './OrsLogo';
@@ -68,6 +68,13 @@ const LoginScreen = ({ onSetup, initialSkipIntro = null }) => {
     setEnrolledPasskey(getEnrolledPasskey());
   }, []);
 
+  const triggerDissolve = useCallback(() => {
+    setIntroStage('dissolving');
+    setTimeout(() => {
+      setIntroStage('complete');
+    }, 700);
+  }, []);
+
   useEffect(() => {
     if (introStage !== 'playing') return;
 
@@ -76,29 +83,29 @@ const LoginScreen = ({ onSetup, initialSkipIntro = null }) => {
       setIntroRevealed(true);
     }, 60);
 
-    // After 1.65s, transition emblem to header and reveal login inputs
-    const completeTimer = setTimeout(() => {
-      setIntroStage('complete');
+    // After 1.65s, trigger the smooth 700ms Apple-style upward drift cross-fade
+    const dissolveTimer = setTimeout(() => {
+      triggerDissolve();
     }, 1650);
 
     const handleKeyDown = () => {
       clearTimeout(revealTimer);
-      clearTimeout(completeTimer);
-      setIntroStage('complete');
+      clearTimeout(dissolveTimer);
+      triggerDissolve();
     };
 
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
       clearTimeout(revealTimer);
-      clearTimeout(completeTimer);
+      clearTimeout(dissolveTimer);
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [introStage]);
+  }, [introStage, triggerDissolve]);
 
   const handleSkipIntro = () => {
     if (introStage === 'playing') {
-      setIntroStage('complete');
+      triggerDissolve();
     }
   };
 
@@ -239,51 +246,7 @@ const LoginScreen = ({ onSetup, initialSkipIntro = null }) => {
     }
   };
 
-  if (introStage === 'playing') {
-    return (
-      <div 
-        onClick={handleSkipIntro}
-        className="fixed inset-0 z-50 bg-[#050505] text-white flex flex-col items-center justify-center p-6 cursor-pointer select-none overflow-hidden font-sans"
-      >
-        {/* Breathing ambient crimson aura */}
-        <div className="absolute w-72 h-72 sm:w-96 sm:h-96 rounded-full bg-red-600/20 blur-[110px] animate-intro-aura pointer-events-none" />
-
-        {/* Laser-thin crimson seam line slicing across center */}
-        <div className="absolute w-full max-w-md h-[1.5px] bg-gradient-to-r from-transparent via-red-500 to-transparent shadow-[0_0_15px_#ef4444] animate-seam-slice pointer-events-none" />
-
-        {/* Central Emblem & Brand Reveal */}
-        <div className={`relative z-10 flex flex-col items-center text-center transition-all duration-700 ease-out transform ${
-          introRevealed ? 'opacity-100 scale-100' : 'opacity-0 scale-90'
-        }`}>
-          {/* Logo container with metallic shimmer */}
-          <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-black border-2 border-red-600/50 p-2 flex items-center justify-center shadow-2xl shadow-red-600/30 overflow-hidden mb-5">
-            <img src="/cobb-logo.png" alt="COBB ITALY" className="w-full h-full object-contain relative z-10" />
-            <div className="absolute inset-0 w-[60%] h-[200%] bg-gradient-to-r from-transparent via-white/40 to-transparent pointer-events-none animate-logo-shimmer z-20" />
-          </div>
-
-          <div className="space-y-1">
-            <h1 className="text-xl sm:text-2xl font-black tracking-[0.25em] text-white uppercase flex items-center justify-center gap-2">
-              <span>COBB</span>
-              <span className="text-red-600">ITALY</span>
-            </h1>
-            <p className="text-xs sm:text-sm font-black tracking-[0.2em] text-red-500 uppercase">
-              Flying Colors Of Fashion
-            </p>
-            <p className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase pt-1">
-              {activeStoreObj?.name || 'Pundri Showroom Flagship'}
-            </p>
-          </div>
-        </div>
-
-        {/* Skip hint */}
-        <div className="absolute bottom-8 text-center">
-          <span className="text-[10px] font-mono tracking-widest uppercase text-zinc-600 hover:text-zinc-400 transition-colors">
-            Tap anywhere to skip • ESC
-          </span>
-        </div>
-      </div>
-    );
-  }
+  const isDissolvingOrComplete = introStage === 'dissolving' || introStage === 'complete';
 
   return (
     <div className="min-h-screen w-full bg-[#050505] text-white flex flex-col justify-between py-6 px-4 sm:px-6 relative overflow-hidden select-none font-sans">
@@ -291,8 +254,10 @@ const LoginScreen = ({ onSetup, initialSkipIntro = null }) => {
       <div className="absolute top-[-15%] left-[-15%] w-[55vw] h-[55vw] rounded-full bg-red-600/15 blur-[140px] pointer-events-none" />
       <div className="absolute bottom-[-15%] right-[-15%] w-[55vw] h-[55vw] rounded-full bg-red-600/10 blur-[140px] pointer-events-none" />
 
-      {/* Top Header Branding */}
-      <header className="w-full max-w-md mx-auto text-center z-10 pt-2 sm:pt-4 animate-header-entrance">
+      {/* Top Header Branding with Apple-style smooth upward cross-fade */}
+      <header className={`w-full max-w-md mx-auto text-center z-10 pt-2 sm:pt-4 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+        isDissolvingOrComplete ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
+      }`}>
         <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-black/90 border border-white/10 mb-3 shadow-lg">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
           <span className="text-[11px] font-bold tracking-wide text-zinc-300">
@@ -325,8 +290,10 @@ const LoginScreen = ({ onSetup, initialSkipIntro = null }) => {
         </p>
       </header>
 
-      {/* Main Authentication Card */}
-      <main className="w-full max-w-md mx-auto my-auto z-10 py-3 animate-card-entrance">
+      {/* Main Authentication Card with Apple-style smooth upward cross-fade */}
+      <main className={`w-full max-w-md mx-auto my-auto z-10 py-3 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+        isDissolvingOrComplete ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+      }`}>
         {/* Role Selector Tabs */}
         <div className="grid grid-cols-3 gap-2 p-1 bg-[#0d0e12] border border-white/10 rounded-2xl mb-4 shadow-xl">
           {ROLES.map((r) => {
@@ -488,8 +455,10 @@ const LoginScreen = ({ onSetup, initialSkipIntro = null }) => {
         </div>
       </main>
 
-      {/* Footer Info */}
-      <footer className="w-full max-w-md mx-auto text-center z-10 pt-2 pb-1 text-slate-500 text-[11px] space-y-1">
+      {/* Footer Info with smooth fade */}
+      <footer className={`w-full max-w-md mx-auto text-center z-10 pt-2 pb-1 text-slate-500 text-[11px] space-y-1 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+        isDissolvingOrComplete ? 'opacity-100' : 'opacity-0'
+      }`}>
         <p className="flex items-center justify-center gap-1.5">
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
           <span>Every Owner & Manager login is recorded with timestamp & device telemetry</span>
@@ -596,6 +565,61 @@ const LoginScreen = ({ onSetup, initialSkipIntro = null }) => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Dual-Layer Apple-Style Cinematic Pre-Login Intro Overlay */}
+      {introStage !== 'complete' && (
+        <div 
+          onClick={handleSkipIntro}
+          className={`fixed inset-0 z-50 bg-[#050505] text-white flex flex-col items-center justify-center p-6 cursor-pointer select-none overflow-hidden font-sans transition-opacity duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            introStage === 'dissolving' ? 'opacity-0 pointer-events-none' : 'opacity-100'
+          }`}
+        >
+          {/* Breathing ambient crimson aura */}
+          <div className={`absolute w-72 h-72 sm:w-96 sm:h-96 rounded-full bg-red-600/20 blur-[110px] animate-intro-aura pointer-events-none transition-opacity duration-700 ${
+            introStage === 'dissolving' ? 'opacity-0' : 'opacity-100'
+          }`} />
+
+          {/* Laser-thin crimson seam line slicing across center */}
+          <div className="absolute w-full max-w-md h-[1.5px] bg-gradient-to-r from-transparent via-red-500 to-transparent shadow-[0_0_15px_#ef4444] animate-seam-slice pointer-events-none" />
+
+          {/* Central Emblem & Brand Reveal with Upward Drift Cross-Fade */}
+          <div className={`relative z-10 flex flex-col items-center text-center transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] transform ${
+            introStage === 'dissolving'
+              ? '-translate-y-12 opacity-0'
+              : introRevealed
+                ? 'opacity-100 scale-100 translate-y-0'
+                : 'opacity-0 scale-90 translate-y-0'
+          }`}>
+            {/* Logo container with metallic shimmer */}
+            <div className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-black border-2 border-red-600/50 p-2 flex items-center justify-center shadow-2xl shadow-red-600/30 overflow-hidden mb-5">
+              <img src="/cobb-logo.png" alt="COBB ITALY" className="w-full h-full object-contain relative z-10" />
+              <div className="absolute inset-0 w-[60%] h-[200%] bg-gradient-to-r from-transparent via-white/40 to-transparent pointer-events-none animate-logo-shimmer z-20" />
+            </div>
+
+            <div className="space-y-1">
+              <h1 className="text-xl sm:text-2xl font-black tracking-[0.25em] text-white uppercase flex items-center justify-center gap-2">
+                <span>COBB</span>
+                <span className="text-red-600">ITALY</span>
+              </h1>
+              <p className="text-xs sm:text-sm font-black tracking-[0.2em] text-red-500 uppercase">
+                Flying Colors Of Fashion
+              </p>
+              <p className="text-[10px] font-mono tracking-widest text-zinc-500 uppercase pt-1">
+                {activeStoreObj?.name || 'Pundri Showroom Flagship'}
+              </p>
+            </div>
+          </div>
+
+          {/* Skip hint */}
+          <div className={`absolute bottom-8 text-center transition-opacity duration-300 ${
+            introStage === 'dissolving' ? 'opacity-0' : 'opacity-100'
+          }`}>
+            <span className="text-[10px] font-mono tracking-widest uppercase text-zinc-600 hover:text-zinc-400 transition-colors">
+              Tap anywhere to skip • ESC
+            </span>
           </div>
         </div>
       )}

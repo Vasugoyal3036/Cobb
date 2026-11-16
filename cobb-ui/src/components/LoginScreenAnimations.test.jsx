@@ -41,7 +41,7 @@ describe('Frontend Component Tests: LoginScreen Animations & Pre-Login Intro', (
 
     // Shows intro elements
     expect(screen.getByText(/Tap anywhere to skip/i)).toBeDefined();
-    expect(screen.getByText(/Flying Colors Of Fashion/i)).toBeDefined();
+    expect(screen.getAllByText(/Flying Colors Of Fashion/i).length).toBeGreaterThan(0);
 
     // Fast forward past the 1.65s intro timer
     act(() => {
