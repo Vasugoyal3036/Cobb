@@ -35,7 +35,7 @@ import { fetchWithOfflineFallback, subscribeToData } from './utils/offlineDb';
 
 import Layout from './components/Layout';
 import LoginScreen from './components/LoginScreen';
-import CyberHackerBreach from './components/CyberHackerBreach';
+import ThreadSnapBreach from './components/ThreadSnapBreach';
 import CheckoutNotificationToast from './components/CheckoutNotificationToast';
 import {
   subscribeToCheckoutNotifications,
@@ -2637,7 +2637,7 @@ export default function App() {
   return (
     <div className={`flex h-screen ${darkMode ? 'dark' : ''} font-sans transition-colors duration-300 overflow-hidden relative ${darkMode ? 'dark-mode text-white' : 'bg-slate-50 text-slate-800'}`}>
       {showCurtainWipe && (
-        <CyberHackerBreach onComplete={() => setShowCurtainWipe(false)} />
+        <ThreadSnapBreach onComplete={() => setShowCurtainWipe(false)} />
       )}
 
       {darkMode && <DashboardBackground theme={dashTheme} />}

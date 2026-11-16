@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, act, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import ThreadSnapBreach from './ThreadSnapBreach';
 import CyberHackerBreach from './CyberHackerBreach';
 import CurtainWipe from './CurtainWipe';
 import LoginUpwardAscent from './LoginUpwardAscent';
@@ -11,7 +12,7 @@ vi.mock('../context/AuthContext', () => ({
   useAuth: vi.fn(),
 }));
 
-describe('Frontend Component Tests: LoginScreen Animations & Cyber Hacker Breach Transition', () => {
+describe('Frontend Component Tests: LoginScreen Animations & Photorealistic Thread Snap Transition (0.25x Slo-Mo)', () => {
   const mockLogin = vi.fn();
   const mockOnSetup = vi.fn();
 
@@ -66,27 +67,27 @@ describe('Frontend Component Tests: LoginScreen Animations & Cyber Hacker Breach
     expect(screen.getByText('Cashier')).toBeDefined();
   });
 
-  it('mounts CyberHackerBreach, initializes warp tunnel & cyber telemetry, then triggers onComplete', () => {
+  it('mounts ThreadSnapBreach, runs 0.25x macro slo-mo tension & rupture, then triggers onComplete', () => {
     const mockOnComplete = vi.fn();
-    render(<CyberHackerBreach onComplete={mockOnComplete} />);
+    render(<ThreadSnapBreach onComplete={mockOnComplete} />);
 
-    // Initially contains the cyber breach header, status badge and skip hint
-    expect(screen.getByText(/COBB_BREACH_PROTOCOL/i)).toBeDefined();
-    expect(screen.getByText(/WARPING INTO COMMAND DECK/i)).toBeDefined();
-    expect(screen.getByText(/ROOT_OVERRIDE/i)).toBeDefined();
-    expect(screen.getByText(/TAP ANYWHERE TO BYPASS WARP STREAM/i)).toBeDefined();
+    // Renders mode badge, tensile load telemetry, 3-ply silk description, and bypass hint
+    expect(screen.getByText(/0.25x MACRO SLO-MO/i)).toBeDefined();
+    expect(screen.getByText(/TENSILE LOAD:/i)).toBeDefined();
+    expect(screen.getByText(/3-Ply Braided Twist/i)).toBeDefined();
+    expect(screen.getByText(/TAP ANYWHERE OR PRESS ANY KEY TO BYPASS/i)).toBeDefined();
 
-    // Fast-forward past the 1900ms supersonic warp zoom-through timer
+    // Fast-forward past the 3600ms complete timer
     act(() => {
-      vi.advanceTimersByTime(2000);
+      vi.advanceTimersByTime(3800);
     });
 
     expect(mockOnComplete).toHaveBeenCalledTimes(1);
   });
 
-  it('allows 1-tap instant skip on CyberHackerBreach to enter Command Center immediately', () => {
+  it('allows 1-tap instant skip on ThreadSnapBreach to enter Command Center immediately', () => {
     const mockOnComplete = vi.fn();
-    const { container } = render(<CyberHackerBreach onComplete={mockOnComplete} />);
+    const { container } = render(<ThreadSnapBreach onComplete={mockOnComplete} />);
 
     // Click anywhere on the overlay
     fireEvent.click(container.firstChild);
@@ -94,14 +95,23 @@ describe('Frontend Component Tests: LoginScreen Animations & Cyber Hacker Breach
     expect(mockOnComplete).toHaveBeenCalledTimes(1);
   });
 
-  it('supports CurtainWipe and LoginUpwardAscent aliases seamlessly with cyber breach transition', () => {
+  it('allows any keypress instant skip on ThreadSnapBreach', () => {
+    const mockOnComplete = vi.fn();
+    render(<ThreadSnapBreach onComplete={mockOnComplete} />);
+
+    fireEvent.keyDown(window, { key: 'Enter' });
+
+    expect(mockOnComplete).toHaveBeenCalledTimes(1);
+  });
+
+  it('supports CurtainWipe, CyberHackerBreach, and LoginUpwardAscent aliases seamlessly', () => {
     const mockOnComplete = vi.fn();
     render(<CurtainWipe onComplete={mockOnComplete} />);
 
-    expect(screen.getByText(/WARPING INTO COMMAND DECK/i)).toBeDefined();
+    expect(screen.getByText(/0.25x MACRO SLO-MO/i)).toBeDefined();
 
     act(() => {
-      vi.advanceTimersByTime(2000);
+      vi.advanceTimersByTime(3800);
     });
 
     expect(mockOnComplete).toHaveBeenCalledTimes(1);

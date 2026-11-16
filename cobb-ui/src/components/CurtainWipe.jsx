@@ -1,8 +1,8 @@
-import CyberHackerBreach from './CyberHackerBreach';
+import ThreadSnapBreach from './ThreadSnapBreach';
 
 /**
- * CurtainWipe: Aliased to CyberHackerBreach
- * Replaces the static curtain with the dynamic 3D Cyber Hacker Warp Breach transition
- * that rushes directly forward toward the user screen into the Command Center.
+ * CurtainWipe: Aliased to ThreadSnapBreach
+ * Features photorealistic 0.25x macro slo-mo textile thread snap transition
+ * with 3-ply braided silk cords, Verlet recoil wave dynamics, and micro-fiber lint shrapnel.
  */
-export default CyberHackerBreach;
+export default ThreadSnapBreach;

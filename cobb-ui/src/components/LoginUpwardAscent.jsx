@@ -1,7 +1,7 @@
-import CyberHackerBreach from './CyberHackerBreach';
+import ThreadSnapBreach from './ThreadSnapBreach';
 
 /**
- * LoginUpwardAscent: Aliased to CyberHackerBreach
- * Rushes forward in 3D hyperspace directly into the POS Command Center.
+ * LoginUpwardAscent: Aliased to ThreadSnapBreach
+ * Features photorealistic 0.25x macro slo-mo textile thread snap transition.
  */
-export default CyberHackerBreach;
+export default ThreadSnapBreach;
