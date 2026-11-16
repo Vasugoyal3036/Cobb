@@ -32,7 +32,6 @@ import {
   ExternalLink,
   MessageSquare
 } from 'lucide-react';
-import QRCode from 'qrcode';
 import { db } from '../../utils/firebase';
 import { doc, getDoc, setDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '../../context/ToastContext';
@@ -257,6 +256,7 @@ export default function CustomerKhataLedger({
     }
     const upiUri = generateUpiUrl(amt, `Khata Dues ${activeCustomer?.name || ''}`);
     try {
+      const { default: QRCode } = await import('qrcode');
       const dataUrl = await QRCode.toDataURL(upiUri, {
         width: 260,
         margin: 2,

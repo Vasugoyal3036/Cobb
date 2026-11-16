@@ -34,7 +34,7 @@ export default defineConfig({
             if (id.includes('react') || id.includes('react-dom')) {
               return 'vendor-react';
             }
-            if (id.includes('qrcode') || id.includes('react-barcode')) {
+            if (id.includes('qrcode')) {
               return 'vendor-codes';
             }
             return 'vendor-misc';

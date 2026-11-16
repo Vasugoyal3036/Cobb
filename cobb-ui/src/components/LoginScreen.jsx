@@ -41,7 +41,7 @@ const LoginScreen = ({ onSetup, initialSkipIntro = null }) => {
   const { login, loginWithBiometrics, activeStore, AVAILABLE_STORES } = useAuth();
   
   const isTestEnv = typeof process !== 'undefined' && (process.env?.NODE_ENV === 'test' || Boolean(process.env?.VITEST));
-  const shouldSkipIntro = initialSkipIntro !== null ? initialSkipIntro : isTestEnv;
+  const shouldSkipIntro = initialSkipIntro !== null ? initialSkipIntro : true;
   const [introStage, setIntroStage] = useState(shouldSkipIntro ? 'complete' : 'playing');
   const [introRevealed, setIntroRevealed] = useState(false);
 

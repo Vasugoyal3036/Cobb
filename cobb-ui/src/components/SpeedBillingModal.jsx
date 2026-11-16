@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import QRCode from 'qrcode';
 import {
   Zap,
   Search,
@@ -434,6 +433,7 @@ export default function SpeedBillingModal({
     const cleanAmount = Number(amount || calculations.finalPayable || 0);
     const upiUrl = `upi://pay?pa=${encodeURIComponent(vpa)}&pn=${encodeURIComponent(storeName)}&am=${cleanAmount}&cu=INR&tn=Bill-${billNumber}`;
     try {
+      const { default: QRCode } = await import('qrcode');
       const qrDataUrl = await QRCode.toDataURL(upiUrl, {
         width: 240,
         margin: 1,
@@ -452,6 +452,7 @@ export default function SpeedBillingModal({
     const cleanAmount = Math.max(0, Number(upiAmount || 0));
     const upiUrl = `upi://pay?pa=${encodeURIComponent(vpa)}&pn=${encodeURIComponent(storeName)}&am=${cleanAmount}&cu=INR&tn=Split-Bill-${billNumber}`;
     try {
+      const { default: QRCode } = await import('qrcode');
       const qrDataUrl = await QRCode.toDataURL(upiUrl, {
         width: 220,
         margin: 1,

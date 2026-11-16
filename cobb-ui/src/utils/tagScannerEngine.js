@@ -115,32 +115,10 @@ export const cropAndPreprocessFrame = (videoElement, cropRatio = { x: 0.1, y: 0.
 };
 
 /**
- * Lazy initialize Tesseract worker in the background
+ * Background OCR worker stub - heavyweight tesseract removed in favor of native BarcodeDetector / TextDetector
  */
 export const getOcrWorker = async () => {
-  if (cachedWorker) return cachedWorker;
-  if (isWorkerInitializing) {
-    // Wait briefly for in-progress initialization
-    await new Promise(r => setTimeout(r, 200));
-    return cachedWorker;
-  }
-
-  try {
-    isWorkerInitializing = true;
-    const { createWorker } = await import('tesseract.js');
-    const worker = await createWorker('eng');
-    await worker.setParameters({
-      tessedit_char_whitelist: '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-',
-      tessedit_pageseg_mode: '7' // Single text line / single block
-    });
-    cachedWorker = worker;
-    return cachedWorker;
-  } catch (err) {
-    console.warn('[TagScanner] Failed to initialize Tesseract worker:', err);
-    return null;
-  } finally {
-    isWorkerInitializing = false;
-  }
+  return null;
 };
 
 /**

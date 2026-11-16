@@ -1,6 +1,5 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
 
 // Firebase configuration - loaded from environment variables.
 // If no Firebase project is configured, the app runs fully offline (local SQL only).
@@ -29,7 +28,6 @@ if (hasConfig) {
     firestoreDb = initializeFirestore(app, {
       localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
     });
-    firebaseStorage = getStorage(app);
     authPromise = import('firebase/auth').then(({ getAuth, signInAnonymously }) => {
        const auth = getAuth(app);
        return signInAnonymously(auth).then(() => console.log('Firebase Anonymous Auth successful.')).catch(e => console.error('Anonymous Auth Failed:', e));
@@ -43,7 +41,16 @@ if (hasConfig) {
 }
 
 export const db = firestoreDb;
-export const storage = firebaseStorage;
+
+// Lazy-loaded Firebase Storage instance to keep initial bundle ultra-lightweight
+export const getFirebaseStorage = async () => {
+  if (firebaseStorage) return firebaseStorage;
+  if (!app) return null;
+  const { getStorage } = await import('firebase/storage');
+  firebaseStorage = getStorage(app);
+  return firebaseStorage;
+};
+export const storage = null; // Deprecated static export
 
 // Queue WhatsApp message to Firestore if online, or local array if offline.
 export const queueWhatsAppMessage = async (phone, message) => {

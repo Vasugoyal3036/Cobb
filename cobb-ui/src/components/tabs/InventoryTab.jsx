@@ -6,9 +6,8 @@ import {
   Plus, ExternalLink, Loader2, Info, ClipboardCheck
 } from 'lucide-react';
 import axios from 'axios';
-import { db, storage } from '../../utils/firebase';
+import { db, getFirebaseStorage } from '../../utils/firebase';
 import { doc, getDoc, setDoc, updateDoc, onSnapshot } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import PaginationControls, { usePagination } from '../PaginationControls';
 import RackAuditModal from '../RackAuditModal';
 
@@ -202,8 +201,11 @@ const InventoryTab = (props) => {
     setUploadingKey(key);
 
     try {
-      // 1. Upload file to Firebase Storage
-      const storageRef = ref(storage, `catalog/${activeStoreId}_${encodeURIComponent(targetItem.articleNo || key)}_${Date.now()}`);
+      // 1. Upload file to Firebase Storage (Lazy-loaded on demand)
+      const storageInstance = await getFirebaseStorage();
+      if (!storageInstance) throw new Error('Firebase Storage is offline or unconfigured.');
+      const { ref, uploadBytes, getDownloadURL } = await import('firebase/storage');
+      const storageRef = ref(storageInstance, `catalog/${activeStoreId}_${encodeURIComponent(targetItem.articleNo || key)}_${Date.now()}`);
       await uploadBytes(storageRef, file);
       const downloadURL = await getDownloadURL(storageRef);
 
