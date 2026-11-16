@@ -3,6 +3,8 @@ import { useAuth } from '../context/AuthContext';
 import { ShieldCheck, UserCheck, ShoppingBag, Delete, AlertCircle, Sparkles, Check, Lock, Fingerprint, Info, X } from 'lucide-react';
 import OrsLogo from './OrsLogo';
 import { getEnrolledPasskey, registerDeviceBiometrics, authenticateWithBiometrics } from '../utils/webauthn';
+import FabricConstellation from './FabricConstellation';
+import { playSound } from '../utils/sound';
 
 const ROLES = [
   {
@@ -95,12 +97,18 @@ const LoginScreen = ({ onSetup }) => {
     try {
       const res = await login(selectedRole, username, password);
       if (!res.success) {
+        playSound('error');
         setError(res.message || 'Incorrect credentials. Try again.');
         setShake(true);
         setTimeout(() => setShake(false), 500);
+      } else {
+        playSound('checkout');
       }
     } catch (e) {
+      playSound('error');
       setError('Connection error occurred during verification.');
+      setShake(true);
+      setTimeout(() => setShake(false), 500);
     } finally {
       setIsLoading(false);
     }
@@ -111,9 +119,19 @@ const LoginScreen = ({ onSetup }) => {
     setError('');
     try {
       const res = await login('cashier');
-      if (!res.success) setError(res.message || 'Error logging in.');
+      if (!res.success) {
+        playSound('error');
+        setError(res.message || 'Error logging in.');
+        setShake(true);
+        setTimeout(() => setShake(false), 500);
+      } else {
+        playSound('checkout');
+      }
     } catch (e) {
+      playSound('error');
       setError('Connection error occurred.');
+      setShake(true);
+      setTimeout(() => setShake(false), 500);
     } finally {
       setIsLoading(false);
     }
@@ -121,7 +139,10 @@ const LoginScreen = ({ onSetup }) => {
 
   const handleBiometricLogin = async () => {
     if (!window.PublicKeyCredential) {
+      playSound('error');
       setError('Biometrics not supported on this device/browser.');
+      setShake(true);
+      setTimeout(() => setShake(false), 500);
       return;
     }
     
@@ -136,11 +157,14 @@ const LoginScreen = ({ onSetup }) => {
         try {
           const res = await login(selectedRole, username, password);
           if (!res.success) {
+            playSound('error');
             setError(res.message || 'Incorrect credentials to enroll biometrics.');
             setShake(true);
             setTimeout(() => setShake(false), 500);
             return;
           }
+
+          playSound('checkout');
 
           // Prompt the device's fingerprint / passkey creation
           try {
@@ -151,7 +175,10 @@ const LoginScreen = ({ onSetup }) => {
           }
           return;
         } catch (e) {
+          playSound('error');
           setError('Biometric registration failed.');
+          setShake(true);
+          setTimeout(() => setShake(false), 500);
         } finally {
           setIsLoading(false);
         }
@@ -170,12 +197,16 @@ const LoginScreen = ({ onSetup }) => {
       await authenticateWithBiometrics();
       const res = await loginWithBiometrics(enrolled.username);
       if (!res.success) {
+        playSound('error');
         setError(res.message || 'Biometric authentication failed.');
         setShake(true);
         setTimeout(() => setShake(false), 500);
+      } else {
+        playSound('checkout');
       }
     } catch (e) {
       console.error(e);
+      playSound('error');
       if (e.name === 'NotAllowedError') {
         setError('Biometric verification cancelled.');
       } else {
@@ -191,13 +222,16 @@ const LoginScreen = ({ onSetup }) => {
   return (
     <div className="min-h-screen w-full bg-[#050505] text-white flex flex-col justify-between py-6 px-4 sm:px-6 relative overflow-hidden select-none font-sans">
       {/* Ambient background glows */}
-      <div className="absolute top-[-15%] left-[-15%] w-[55vw] h-[55vw] rounded-full bg-red-600/10 blur-[130px] pointer-events-none" />
-      <div className="absolute bottom-[-15%] right-[-15%] w-[55vw] h-[55vw] rounded-full bg-red-600/5 blur-[130px] pointer-events-none" />
+      <div className="absolute top-[-15%] left-[-15%] w-[55vw] h-[55vw] rounded-full bg-red-600/15 blur-[140px] pointer-events-none" />
+      <div className="absolute bottom-[-15%] right-[-15%] w-[55vw] h-[55vw] rounded-full bg-red-600/10 blur-[140px] pointer-events-none" />
+
+      {/* Interactive Woven Italian Fabric Constellation Canvas */}
+      <FabricConstellation />
 
       {/* Top Header Branding */}
       <header className="w-full max-w-md mx-auto text-center z-10 pt-2 sm:pt-4">
         <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-black/90 border border-white/10 mb-3 shadow-lg">
-          <span className="w-2 h-2 rounded-full bg-emerald-400" />
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
           <span className="text-[11px] font-bold tracking-wide text-zinc-300">
             {activeStoreObj?.name}
           </span>
@@ -207,8 +241,10 @@ const LoginScreen = ({ onSetup }) => {
         </div>
 
         <div className="flex justify-center mb-3">
-          <div className="w-20 h-20 rounded-2xl bg-black border border-red-600/40 overflow-hidden flex items-center justify-center shadow-xl shadow-red-600/20 select-none p-1">
-            <img src="/cobb-logo.png" alt="COBB ITALY" className="w-full h-full object-contain" />
+          <div className="relative w-20 h-20 rounded-2xl bg-black border border-red-600/40 p-1 flex items-center justify-center shadow-xl shadow-red-600/25 overflow-hidden group">
+            <img src="/cobb-logo.png" alt="COBB ITALY" className="w-full h-full object-contain relative z-10" />
+            {/* Metallic Silk Shimmer Sweep */}
+            <div className="absolute inset-0 w-[60%] h-[200%] bg-gradient-to-r from-transparent via-white/35 to-transparent pointer-events-none animate-logo-shimmer z-20" />
           </div>
         </div>
 
@@ -251,8 +287,8 @@ const LoginScreen = ({ onSetup }) => {
         </div>
 
         {/* PIN Entry Box */}
-        <div className={`bg-[#0d0e12] border border-white/10 rounded-3xl p-5 sm:p-6 shadow-2xl relative transition-colors duration-200 ${
-          shake ? 'translate-x-2 border-red-500/60' : ''
+        <div className={`bg-[#0c0d12]/85 backdrop-blur-xl border border-white/10 rounded-3xl p-5 sm:p-6 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85)] relative transition-all duration-300 ${
+          shake ? 'animate-error-shake border-red-500/80 shadow-[0_0_35px_rgba(239,68,68,0.4)]' : 'hover:border-white/20'
         }`}>
           {/* User Header */}
           <div className="flex items-center justify-between pb-4 border-b border-white/[0.07] mb-4">
@@ -316,7 +352,7 @@ const LoginScreen = ({ onSetup }) => {
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder={`Enter ${roleConfig.name} ID`}
                   autoComplete="username"
-                  className="w-full h-12 sm:h-14 px-4 rounded-2xl bg-white/[0.04] border border-white/[0.07] focus:border-blue-500/50 focus:bg-white/[0.06] text-white text-sm sm:text-base outline-none transition-all placeholder:text-slate-600"
+                  className="w-full h-12 sm:h-14 px-4 rounded-2xl bg-black/60 border border-white/15 focus:border-red-500/70 focus:bg-black/85 focus:ring-1 focus:ring-red-500/30 text-white text-sm sm:text-base outline-none transition-all placeholder:text-zinc-500"
                   required
                 />
               </div>
@@ -332,7 +368,7 @@ const LoginScreen = ({ onSetup }) => {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter Password"
                   autoComplete="current-password"
-                  className="w-full h-12 sm:h-14 px-4 rounded-2xl bg-white/[0.04] border border-white/[0.07] focus:border-blue-500/50 focus:bg-white/[0.06] text-white text-sm sm:text-base outline-none transition-all placeholder:text-slate-600"
+                  className="w-full h-12 sm:h-14 px-4 rounded-2xl bg-black/60 border border-white/15 focus:border-red-500/70 focus:bg-black/85 focus:ring-1 focus:ring-red-500/30 text-white text-sm sm:text-base outline-none transition-all placeholder:text-zinc-500"
                   required
                 />
               </div>
@@ -341,7 +377,7 @@ const LoginScreen = ({ onSetup }) => {
                 <button
                   type="submit"
                   disabled={isLoading || !username || !password}
-                  className="flex-1 h-12 sm:h-14 rounded-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black text-sm tracking-wider uppercase shadow-lg shadow-blue-500/20 transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+                  className="flex-1 h-12 sm:h-14 rounded-2xl bg-gradient-to-r from-red-600 to-red-700 hover:from-red-500 hover:to-red-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black text-sm tracking-wider uppercase shadow-lg shadow-red-600/30 transition-all active:scale-95 cursor-pointer flex items-center justify-center gap-2"
                 >
                   {isLoading ? (
                     <span className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
@@ -356,13 +392,13 @@ const LoginScreen = ({ onSetup }) => {
                   title="Sign in with Face ID / Fingerprint"
                   className={`w-12 sm:w-14 h-12 sm:h-14 shrink-0 rounded-2xl border disabled:opacity-50 font-black flex items-center justify-center transition-all active:scale-95 cursor-pointer relative ${
                     enrolledPasskey
-                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/20 shadow-lg shadow-emerald-500/10'
-                      : 'bg-white/5 border-white/10 hover:bg-white/10 text-blue-400'
+                      ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/25 shadow-lg shadow-emerald-500/20'
+                      : 'bg-white/5 border-white/10 hover:bg-white/10 text-red-400 hover:text-red-300'
                   }`}
                 >
                   <Fingerprint className="w-6 h-6" />
                   {enrolledPasskey && (
-                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-slate-900" />
+                    <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-slate-900 animate-pulse" />
                   )}
                 </button>
               </div>

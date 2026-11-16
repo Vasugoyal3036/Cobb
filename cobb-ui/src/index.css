@@ -438,3 +438,27 @@ html.dark .glass-header-bar {
   }
 }
 
+/* ============================================================
+   COBB BESPOKE LOGIN SCREEN ANIMATIONS
+   ============================================================ */
+@keyframes logoShimmer {
+  0% { transform: translateX(-150%) rotate(25deg); opacity: 0; }
+  15% { opacity: 0.85; }
+  35%, 100% { transform: translateX(250%) rotate(25deg); opacity: 0; }
+}
+
+.animate-logo-shimmer {
+  animation: logoShimmer 4.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes loginErrorShake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-8px); }
+  40%, 80% { transform: translateX(8px); }
+}
+
+.animate-error-shake {
+  animation: loginErrorShake 0.45s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+
