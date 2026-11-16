@@ -65,6 +65,9 @@ const {
 const damagesRouter = require('./routes/damages');
 app.use('/api/damages', damagesRouter);
 
+const rackAuditRouter = require('./routes/rack_audit');
+app.use('/api/inventory/rack-audit', rackAuditRouter);
+
 const GlobalNodeCache = require('node-cache');
 const globalApiCache = new GlobalNodeCache({ stdTTL: 180 }); // Default fallback
 app.locals.globalApiCache = globalApiCache;

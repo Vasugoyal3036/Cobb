@@ -3,13 +3,14 @@ import {
   Package, Search, Filter, Camera, UploadCloud, Eye, X, Download, Printer,
   Sparkles, Wand2, Send, CheckCircle2, RefreshCw, Barcode, ChevronRight,
   Layers, Tag, Image as ImageIcon, Grid, Table as TableIcon, ArrowUpDown,
-  Plus, ExternalLink, Loader2, Info
+  Plus, ExternalLink, Loader2, Info, ClipboardCheck
 } from 'lucide-react';
 import axios from 'axios';
 import { db, storage } from '../../utils/firebase';
 import { doc, getDoc, setDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import PaginationControls, { usePagination } from '../PaginationControls';
+import RackAuditModal from '../RackAuditModal';
 
 // Base data using the format provided in the user's screenshot
 const INITIAL_CATEGORY_DATA = [
@@ -75,6 +76,13 @@ const InventoryTab = (props) => {
   const [uploadingKey, setUploadingKey] = useState(null);
   const [zoomImage, setZoomImage] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [showRackAuditModal, setShowRackAuditModal] = useState(false);
+
+  useEffect(() => {
+    const handleOpenRackAudit = () => setShowRackAuditModal(true);
+    window.addEventListener('cobb_open_rack_audit', handleOpenRackAudit);
+    return () => window.removeEventListener('cobb_open_rack_audit', handleOpenRackAudit);
+  }, []);
 
   useEffect(() => {
     if (typeof props.searchQuery === 'string') {
@@ -458,8 +466,17 @@ const InventoryTab = (props) => {
           </button>
         </div>
 
-        {/* Right actions: Export CSV & Print */}
+        {/* Right actions: Rack Cycle Count, Export CSV & Print */}
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowRackAuditModal(true)}
+            className="px-3.5 py-1.5 rounded-xl bg-red-600 hover:bg-red-500 active:scale-95 text-white font-black text-xs flex items-center gap-1.5 shadow-md shadow-red-600/25 transition cursor-pointer"
+            title="Start physical rack barcode audit / cycle count"
+          >
+            <ClipboardCheck className="w-3.5 h-3.5 text-white" />
+            <span>📋 Rack Cycle Count</span>
+          </button>
+
           <button
             onClick={handleExportCSV}
             className={`px-3 py-1.5 rounded-xl border flex items-center gap-1.5 font-bold transition ${
@@ -1046,6 +1063,20 @@ const InventoryTab = (props) => {
             <img src={zoomImage} alt="Preview" className="w-full h-auto max-h-[75vh] object-contain bg-black" />
           </div>
         </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* 5. PHYSICAL RACK INVENTORY AUDIT / CYCLE COUNT MODAL            */}
+      {/* ============================================================== */}
+      {showRackAuditModal && (
+        <RackAuditModal
+          isOpen={showRackAuditModal}
+          onClose={() => setShowRackAuditModal(false)}
+          API_BASE={API_BASE}
+          darkMode={darkMode}
+          activeStore={activeStoreId}
+          initialSection={selectedSection !== 'ALL' ? selectedSection : ''}
+        />
       )}
 
     </div>

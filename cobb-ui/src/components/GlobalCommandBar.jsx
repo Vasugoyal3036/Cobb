@@ -21,7 +21,8 @@ import {
   Tag,
   Crown,
   Tv,
-  Barcode
+  Barcode,
+  ClipboardCheck
 } from 'lucide-react';
 
 export default function GlobalCommandBar({
@@ -137,6 +138,7 @@ export default function GlobalCommandBar({
     // System Navigation Shortcuts
     const appActions = [
       { id: 'gun_scanner', title: '🔫 Handheld Gun Matrix Scanner [F3]', sub: 'Instant barcode scan, size matrix, velocity & offer quote', icon: Barcode, keywords: ['gun', 'scanner', 'barcode', 'sku', 'matrix', 'size', 'f3', 'laser', 'stock', 'check'], customAction: () => window.dispatchEvent(new CustomEvent('cobb_open_gun_scanner')) },
+      { id: 'rack_audit', title: '📋 Physical Rack Audit & Cycle Count', sub: 'Rapid gun scan physical inventory vs system stock, find missing & wrong rack items', icon: ClipboardCheck, keywords: ['rack', 'audit', 'cycle', 'count', 'inventory', 'physical', 'missing', 'shrinkage', 'wrong rack'], customAction: () => window.dispatchEvent(new CustomEvent('cobb_open_rack_audit')) },
       { id: 'speed_billing', title: '⚡ Speed Billing (F1-POS)', sub: 'Rapid barcode scan & thermal checkout', icon: Zap, tab: 'speed_billing', keywords: ['pos', 'bill', 'counter', 'checkout', 'sale', 'fast'] },
       { id: 'dashboard', title: '📊 Executive Command Center', sub: 'Live sales pulse, counter operations & operating KPIs', icon: Sparkles, tab: 'dashboard', keywords: ['home', 'sales', 'pulse', 'kpi', 'overview', 'dashboard'] },
       { id: 'live', title: '🧾 Live Transactions & Invoices', sub: 'Search bills, reprints & payment modes', icon: Receipt, tab: 'live', keywords: ['bills', 'receipt', 'invoice', 'payment', 'cash', 'upi'] },

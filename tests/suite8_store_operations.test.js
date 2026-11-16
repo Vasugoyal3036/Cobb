@@ -180,4 +180,87 @@ describe('Suite 8: Store Operations (Alterations Desk, Holds 24h Expiry & GIT Pa
             assert.equal(res.status, 'Arrived Today');
         });
     });
+
+    describe('4. Physical Rack Inventory Audit & Cycle Count Variance Engine', () => {
+        function computeRackAuditMetrics({ expectedItems = [], scannedBarcodes = [], allInventoryMap = {} }) {
+            const expectedMap = new Map();
+            for (const item of expectedItems) {
+                expectedMap.set(String(item.barcode).trim().toUpperCase(), item);
+            }
+
+            const verifiedMatches = [];
+            const surpriseItems = [];
+            const scannedCountMap = new Map();
+
+            for (const code of scannedBarcodes) {
+                const upper = String(code).trim().toUpperCase();
+                scannedCountMap.set(upper, (scannedCountMap.get(upper) || 0) + 1);
+
+                if (expectedMap.has(upper)) {
+                    if (scannedCountMap.get(upper) === 1) {
+                        verifiedMatches.push(expectedMap.get(upper));
+                    }
+                } else {
+                    const lookup = allInventoryMap[upper] || { barcode: upper, sectionName: 'UNKNOWN', subSectionName: 'UNKNOWN' };
+                    surpriseItems.push(lookup);
+                }
+            }
+
+            const missingItems = expectedItems.filter(item => !scannedCountMap.has(String(item.barcode).trim().toUpperCase()));
+            const totalExpected = expectedItems.reduce((s, r) => s + (r.expectedQty || 1), 0);
+            const verifiedCount = verifiedMatches.length;
+            const accuracyPct = totalExpected === 0 ? 100 : Math.round((Math.min(verifiedCount, totalExpected) / totalExpected) * 100);
+
+            return {
+                totalExpected,
+                verifiedCount,
+                missingCount: missingItems.length,
+                surpriseCount: surpriseItems.length,
+                accuracyPct,
+                missingItems,
+                surpriseItems,
+                verifiedMatches
+            };
+        }
+
+        it('should correctly calculate expected: 48, scanned: 46, missing: 2, surprise: 1 with 96% accuracy', () => {
+            const expectedItems = [];
+            for (let i = 1; i <= 48; i++) {
+                expectedItems.push({
+                    barcode: `008229${1000 + i}`,
+                    articleNo: `FSRF${1000 + i}`,
+                    itemName: "Men's Formal Shirt",
+                    mrp: 2499,
+                    expectedQty: 1
+                });
+            }
+
+            // Staff scans 46 out of 48 expected items
+            const scannedBarcodes = expectedItems.slice(0, 46).map(item => item.barcode);
+
+            // PLUS 1 surprise garment found on this rack from Men's Denim
+            scannedBarcodes.push('0099999999');
+            const allInventoryMap = {
+                '0099999999': {
+                    barcode: '0099999999',
+                    articleNo: 'DNM01',
+                    itemName: "Men's Denim Slim Fit",
+                    sectionName: 'MENSWEAR',
+                    subSectionName: 'DENIM',
+                    mrp: 3199
+                }
+            };
+
+            const metrics = computeRackAuditMetrics({ expectedItems, scannedBarcodes, allInventoryMap });
+
+            assert.equal(metrics.totalExpected, 48);
+            assert.equal(metrics.verifiedCount, 46);
+            assert.equal(metrics.missingCount, 2);
+            assert.equal(metrics.surpriseCount, 1);
+            assert.equal(metrics.accuracyPct, 96);
+            assert.equal(metrics.missingItems[0].barcode, expectedItems[46].barcode);
+            assert.equal(metrics.missingItems[1].barcode, expectedItems[47].barcode);
+            assert.equal(metrics.surpriseItems[0].subSectionName, 'DENIM');
+        });
+    });
 });

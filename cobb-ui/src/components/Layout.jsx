@@ -88,6 +88,7 @@ import {
 const BiometricModal = lazy(() => import('./BiometricModal'));
 const GlobalCommandBar = lazy(() => import('./GlobalCommandBar'));
 const ActionCenterModal = lazy(() => import('./ActionCenterModal'));
+const RackAuditModal = lazy(() => import('./RackAuditModal'));
 import MobileNav from './MobileNav';
 import { getEnrolledPasskey } from '../utils/webauthn';
 import { THEMES } from './DashboardBackground';
@@ -214,9 +215,16 @@ const Layout = ({
   const [showBiometricModal, setShowBiometricModal] = useState(false);
   const [showCommandBar, setShowCommandBar] = useState(false);
   const [showActionCenter, setShowActionCenter] = useState(false);
+  const [showRackAuditModal, setShowRackAuditModal] = useState(false);
   const [showBiometricBanner, setShowBiometricBanner] = useState(() => {
     try { return !getEnrolledPasskey(); } catch { return false; }
   });
+
+  useEffect(() => {
+    const handleOpenRackAudit = () => setShowRackAuditModal(true);
+    window.addEventListener('cobb_open_rack_audit', handleOpenRackAudit);
+    return () => window.removeEventListener('cobb_open_rack_audit', handleOpenRackAudit);
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -1380,6 +1388,19 @@ const Layout = ({
           <BiometricModal
             isOpen={showBiometricModal}
             onClose={() => setShowBiometricModal(false)}
+          />
+        </Suspense>
+      )}
+
+      {/* Universal Physical Rack Inventory Audit / Cycle Count Modal */}
+      {showRackAuditModal && (
+        <Suspense fallback={null}>
+          <RackAuditModal
+            isOpen={showRackAuditModal}
+            onClose={() => setShowRackAuditModal(false)}
+            API_BASE={API_BASE}
+            darkMode={darkMode}
+            activeStore={activeStore}
           />
         </Suspense>
       )}
