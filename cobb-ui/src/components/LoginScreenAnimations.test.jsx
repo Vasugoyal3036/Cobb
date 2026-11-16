@@ -43,9 +43,9 @@ describe('Frontend Component Tests: LoginScreen Animations & Pre-Login Intro', (
     expect(screen.getByText(/Tap anywhere to skip/i)).toBeDefined();
     expect(screen.getAllByText(/Flying Colors Of Fashion/i).length).toBeGreaterThan(0);
 
-    // Fast forward past the 1.65s intro timer
+    // Fast forward past the 3.0s intro timer
     act(() => {
-      vi.advanceTimersByTime(1700);
+      vi.advanceTimersByTime(3500);
     });
 
     // Login inputs and role selectors are now revealed

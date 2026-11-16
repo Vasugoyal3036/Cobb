@@ -464,13 +464,13 @@ html.dark .glass-header-bar {
 /* Pre-Login Intro Animations */
 @keyframes seamSlice {
   0% { transform: scaleX(0); opacity: 0; }
-  30% { opacity: 1; }
-  85% { opacity: 0.9; }
+  25% { opacity: 1; }
+  75% { opacity: 0.9; }
   100% { transform: scaleX(1); opacity: 0; }
 }
 
 .animate-seam-slice {
-  animation: seamSlice 1.1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: seamSlice 1.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
 @keyframes introAuraPulse {

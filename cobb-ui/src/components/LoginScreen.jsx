@@ -72,21 +72,21 @@ const LoginScreen = ({ onSetup, initialSkipIntro = null }) => {
     setIntroStage('dissolving');
     setTimeout(() => {
       setIntroStage('complete');
-    }, 700);
+    }, 950);
   }, []);
 
   useEffect(() => {
     if (introStage !== 'playing') return;
 
-    // Small tick to trigger visual entrance
+    // Smooth entrance of logo and typography
     const revealTimer = setTimeout(() => {
       setIntroRevealed(true);
-    }, 60);
+    }, 80);
 
-    // After 1.65s, trigger the smooth 700ms Apple-style upward drift cross-fade
+    // After 3.0s, trigger the relaxed 950ms Apple-style upward drift cross-fade
     const dissolveTimer = setTimeout(() => {
       triggerDissolve();
-    }, 1650);
+    }, 3000);
 
     const handleKeyDown = () => {
       clearTimeout(revealTimer);
@@ -255,7 +255,7 @@ const LoginScreen = ({ onSetup, initialSkipIntro = null }) => {
       <div className="absolute bottom-[-15%] right-[-15%] w-[55vw] h-[55vw] rounded-full bg-red-600/10 blur-[140px] pointer-events-none" />
 
       {/* Top Header Branding with Apple-style smooth upward cross-fade */}
-      <header className={`w-full max-w-md mx-auto text-center z-10 pt-2 sm:pt-4 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+      <header className={`w-full max-w-md mx-auto text-center z-10 pt-2 sm:pt-4 transition-all duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] ${
         isDissolvingOrComplete ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
       }`}>
         <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-black/90 border border-white/10 mb-3 shadow-lg">
@@ -291,7 +291,7 @@ const LoginScreen = ({ onSetup, initialSkipIntro = null }) => {
       </header>
 
       {/* Main Authentication Card with Apple-style smooth upward cross-fade */}
-      <main className={`w-full max-w-md mx-auto my-auto z-10 py-3 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+      <main className={`w-full max-w-md mx-auto my-auto z-10 py-3 transition-all duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] ${
         isDissolvingOrComplete ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
       }`}>
         {/* Role Selector Tabs */}
@@ -456,7 +456,7 @@ const LoginScreen = ({ onSetup, initialSkipIntro = null }) => {
       </main>
 
       {/* Footer Info with smooth fade */}
-      <footer className={`w-full max-w-md mx-auto text-center z-10 pt-2 pb-1 text-slate-500 text-[11px] space-y-1 transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+      <footer className={`w-full max-w-md mx-auto text-center z-10 pt-2 pb-1 text-slate-500 text-[11px] space-y-1 transition-all duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] ${
         isDissolvingOrComplete ? 'opacity-100' : 'opacity-0'
       }`}>
         <p className="flex items-center justify-center gap-1.5">
@@ -573,12 +573,12 @@ const LoginScreen = ({ onSetup, initialSkipIntro = null }) => {
       {introStage !== 'complete' && (
         <div 
           onClick={handleSkipIntro}
-          className={`fixed inset-0 z-50 bg-[#050505] text-white flex flex-col items-center justify-center p-6 cursor-pointer select-none overflow-hidden font-sans transition-opacity duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+          className={`fixed inset-0 z-50 bg-[#050505] text-white flex flex-col items-center justify-center p-6 cursor-pointer select-none overflow-hidden font-sans transition-opacity duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] ${
             introStage === 'dissolving' ? 'opacity-0 pointer-events-none' : 'opacity-100'
           }`}
         >
           {/* Breathing ambient crimson aura */}
-          <div className={`absolute w-72 h-72 sm:w-96 sm:h-96 rounded-full bg-red-600/20 blur-[110px] animate-intro-aura pointer-events-none transition-opacity duration-700 ${
+          <div className={`absolute w-72 h-72 sm:w-96 sm:h-96 rounded-full bg-red-600/20 blur-[110px] animate-intro-aura pointer-events-none transition-opacity duration-1000 ${
             introStage === 'dissolving' ? 'opacity-0' : 'opacity-100'
           }`} />
 
@@ -586,7 +586,7 @@ const LoginScreen = ({ onSetup, initialSkipIntro = null }) => {
           <div className="absolute w-full max-w-md h-[1.5px] bg-gradient-to-r from-transparent via-red-500 to-transparent shadow-[0_0_15px_#ef4444] animate-seam-slice pointer-events-none" />
 
           {/* Central Emblem & Brand Reveal with Upward Drift Cross-Fade */}
-          <div className={`relative z-10 flex flex-col items-center text-center transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] transform ${
+          <div className={`relative z-10 flex flex-col items-center text-center transition-all duration-1000 ease-[cubic-bezier(0.16,1,0.3,1)] transform ${
             introStage === 'dissolving'
               ? '-translate-y-12 opacity-0'
               : introRevealed
@@ -614,7 +614,7 @@ const LoginScreen = ({ onSetup, initialSkipIntro = null }) => {
           </div>
 
           {/* Skip hint */}
-          <div className={`absolute bottom-8 text-center transition-opacity duration-300 ${
+          <div className={`absolute bottom-8 text-center transition-opacity duration-500 ${
             introStage === 'dissolving' ? 'opacity-0' : 'opacity-100'
           }`}>
             <span className="text-[10px] font-mono tracking-widest uppercase text-zinc-600 hover:text-zinc-400 transition-colors">
