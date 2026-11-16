@@ -10,7 +10,7 @@ vi.mock('../context/AuthContext', () => ({
   useAuth: vi.fn(),
 }));
 
-describe('Frontend Component Tests: LoginScreen Animations, Curtain Wipe & Upward Drift', () => {
+describe('Frontend Component Tests: LoginScreen Animations, Curtain Wipe & Forward Prismatic Scatter', () => {
   const mockLogin = vi.fn();
   const mockOnSetup = vi.fn();
 
@@ -65,7 +65,7 @@ describe('Frontend Component Tests: LoginScreen Animations, Curtain Wipe & Upwar
     expect(screen.getByText('Cashier')).toBeDefined();
   });
 
-  it('mounts CurtainWipe, parts curtains open while logo slowly drifts upward, then triggers onComplete', () => {
+  it('mounts CurtainWipe, drifts logo forward towards user, scatters into prismatic shards, and triggers onComplete', () => {
     const mockOnComplete = vi.fn();
     const { container } = render(<CurtainWipe onComplete={mockOnComplete} />);
 
@@ -79,9 +79,14 @@ describe('Frontend Component Tests: LoginScreen Animations, Curtain Wipe & Upwar
     const drapes = container.querySelectorAll('.w-1\\/2');
     expect(drapes.length).toBe(2);
 
-    // Fast-forward past the 3800ms ultra-cinematic transition timer
+    // Fast-forward past 1800ms mark (forward drift & scatter point)
     act(() => {
-      vi.advanceTimersByTime(3900);
+      vi.advanceTimersByTime(1850);
+    });
+
+    // Fast-forward remaining transition time to full 3800ms completion
+    act(() => {
+      vi.advanceTimersByTime(2000);
     });
 
     expect(mockOnComplete).toHaveBeenCalledTimes(1);
@@ -97,7 +102,7 @@ describe('Frontend Component Tests: LoginScreen Animations, Curtain Wipe & Upwar
     expect(mockOnComplete).toHaveBeenCalledTimes(1);
   });
 
-  it('supports LoginUpwardAscent alias seamlessly with complete upward transition', () => {
+  it('supports LoginUpwardAscent alias seamlessly with complete forward transition', () => {
     const mockOnComplete = vi.fn();
     render(<LoginUpwardAscent onComplete={mockOnComplete} />);
 
