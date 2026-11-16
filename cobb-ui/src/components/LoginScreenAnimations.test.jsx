@@ -73,15 +73,26 @@ describe('Frontend Component Tests: LoginScreen Animations, Curtain Wipe & Upwar
     expect(screen.getByText(/AUTHENTICATED/i)).toBeDefined();
     expect(screen.getByText(/COBB SHOWROOM/i)).toBeDefined();
     expect(screen.getByText(/ENTERING COMMAND CENTER/i)).toBeDefined();
+    expect(screen.getByText(/Tap or press any key to skip/i)).toBeDefined();
 
     // Verify presence of left and right velvet drape panels
     const drapes = container.querySelectorAll('.w-1\\/2');
     expect(drapes.length).toBe(2);
 
-    // Fast-forward past the 1750ms relaxed transition timer
+    // Fast-forward past the 3800ms ultra-cinematic transition timer
     act(() => {
-      vi.advanceTimersByTime(1800);
+      vi.advanceTimersByTime(3900);
     });
+
+    expect(mockOnComplete).toHaveBeenCalledTimes(1);
+  });
+
+  it('allows 1-tap skip on CurtainWipe to immediately enter Command Center', () => {
+    const mockOnComplete = vi.fn();
+    const { container } = render(<CurtainWipe onComplete={mockOnComplete} />);
+
+    // Click anywhere on the overlay
+    fireEvent.click(container.firstChild);
 
     expect(mockOnComplete).toHaveBeenCalledTimes(1);
   });
@@ -94,7 +105,7 @@ describe('Frontend Component Tests: LoginScreen Animations, Curtain Wipe & Upwar
     expect(screen.getByText(/COBB SHOWROOM POS/i)).toBeDefined();
 
     act(() => {
-      vi.advanceTimersByTime(1800);
+      vi.advanceTimersByTime(3900);
     });
 
     expect(mockOnComplete).toHaveBeenCalledTimes(1);
