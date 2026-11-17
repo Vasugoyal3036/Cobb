@@ -32,44 +32,44 @@
     "salesmanSalaries": [
       {
         "name": "Vikas",
-        "mtdSales": 0,
         "isActive": true,
         "salary": 15000,
-        "id": "2800003",
-        "empCode": "2800003"
+        "empCode": "2800003",
+        "mtdSales": 0,
+        "id": "2800003"
       },
       {
+        "salary": 9000,
+        "mtdSales": 0,
         "name": "Pawan",
         "empCode": "3200014",
         "id": "3200014",
-        "isActive": true,
-        "salary": 9000,
-        "mtdSales": 0
+        "isActive": true
       },
       {
-        "name": "Simran",
-        "id": "0001001",
-        "empCode": "0001001",
-        "salary": 10000,
-        "isActive": true,
-        "mtdSales": 0
-      },
-      {
-        "empCode": "0000180",
         "mtdSales": 0,
-        "isActive": false,
+        "id": "0001001",
+        "name": "Simran",
+        "empCode": "0001001",
+        "isActive": true,
+        "salary": 10000
+      },
+      {
+        "mtdSales": 0,
         "salary": 0,
         "id": "0000180",
-        "name": "Akhil"
+        "name": "Akhil",
+        "isActive": false,
+        "empCode": "0000180"
       }
     ],
     "staffSalariesBreakdown": {
-      "incentiveMode": "target",
-      "totalIncentives": 12000,
-      "dynamicStaffSalaries": 46000,
       "activeSalesmenCount": 3,
       "totalBaseSalaries": 34000,
-      "targetPerSalesman": 400000
+      "incentiveMode": "target",
+      "targetPerSalesman": 400000,
+      "totalIncentives": 12000,
+      "dynamicStaffSalaries": 46000
     }
   },
   "database": {
@@ -82,28 +82,28 @@
     "password": "",
     "port": 1433
   },
-  "lastUpdated": "2026-11-16T12:45:26.096Z",
+  "lastUpdated": "2026-11-17T04:28:41.562Z",
   "promotions": {
-    "b1g2": {
-      "enabled": true,
-      "label": "Buy 1 Get 2 Free",
-      "note": "MRP based calculation"
-    },
     "flat50": {
-      "rate": 50,
       "label": "Flat 50% Off",
+      "rate": 50,
+      "enabled": true
+    },
+    "b1g2": {
+      "label": "Buy 1 Get 2 Free",
+      "note": "MRP based calculation",
       "enabled": true
     },
     "flat60": {
-      "label": "Flat 60% Off",
       "rate": 60,
+      "label": "Flat 60% Off",
       "enabled": true
     },
+    "storeAnnouncement": "Diwali Festive Collection Active | Instant Alterations within 2 hours",
     "b3_70": {
       "rate": 70,
       "enabled": true,
       "label": "Buy 3 Get 70% Off"
-    },
-    "storeAnnouncement": "Diwali Festive Collection Active | Instant Alterations within 2 hours"
+    }
   }
 }

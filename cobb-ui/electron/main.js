@@ -1,4 +1,4 @@
-import { app, BrowserWindow, protocol, net, shell, ipcMain, Notification } from 'electron';
+import { app, BrowserWindow, protocol, net, shell, ipcMain, Notification, globalShortcut } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import fs from 'node:fs';
@@ -14,6 +14,14 @@ export const MAIN_DIST = path.join(process.env.APP_ROOT, 'dist-electron');
 export const RENDERER_DIST = path.join(process.env.APP_ROOT, 'dist');
 
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, 'public') : RENDERER_DIST;
+
+// --- SINGLE INSTANCE ENFORCEMENT ---
+const gotTheLock = app.requestSingleInstanceLock();
+
+if (!gotTheLock) {
+  console.log('[Electron] Another instance is already running. Quitting duplicate.');
+  app.quit();
+}
 
 // Register custom protocol scheme before app is ready
 protocol.registerSchemesAsPrivileged([
@@ -159,8 +167,21 @@ app.on('activate', () => {
   }
 });
 
+app.on('second-instance', () => {
+  // Focus or restore window when another instance tries to launch (e.g. via Windows desktop shortcut)
+  if (win) {
+    if (win.isMinimized()) win.restore();
+    if (!win.isVisible()) win.show();
+    win.focus();
+  }
+});
+
 app.on('before-quit', () => {
   stopBackendServer();
+});
+
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll();
 });
 
 // IPC: Open external URLs in the system browser (used by EOD WhatsApp send, etc.)
@@ -249,4 +270,28 @@ app.whenReady().then(() => {
   });
 
   createWindow();
+
+  // Register Global OS Hotkey (Ctrl+Shift+X) to show/focus or toggle minimize
+  try {
+    const hotkey = 'CommandOrControl+Shift+X';
+    const registered = globalShortcut.register(hotkey, () => {
+      console.log(`[Electron Hotkey] ${hotkey} triggered`);
+      if (win) {
+        if (win.isMinimized()) {
+          win.restore();
+          win.focus();
+        } else if (win.isFocused()) {
+          // Boss-key toggle: minimize if already active and in focus
+          win.minimize();
+        } else {
+          if (!win.isVisible()) win.show();
+          win.restore();
+          win.focus();
+        }
+      }
+    });
+    console.log(`[Electron Hotkey] ${hotkey} registration: ${registered ? 'SUCCESS' : 'FAILED'}`);
+  } catch (hkErr) {
+    console.warn('[Electron Hotkey Error]', hkErr.message);
+  }
 });

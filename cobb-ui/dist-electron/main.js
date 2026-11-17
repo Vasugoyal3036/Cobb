@@ -1,14 +1,14 @@
-import { BrowserWindow as e, Notification as t, app as n, ipcMain as r, net as i, protocol as a, shell as o } from "electron";
-import s from "node:path";
-import { fileURLToPath as c } from "node:url";
-import l from "node:fs";
-import { spawn as u } from "node:child_process";
-import d from "node:http";
+import { BrowserWindow as e, Notification as t, app as n, globalShortcut as r, ipcMain as i, net as a, protocol as o, shell as s } from "electron";
+import c from "node:path";
+import { fileURLToPath as l } from "node:url";
+import u from "node:fs";
+import { spawn as d } from "node:child_process";
+import f from "node:http";
 //#region electron/main.js
-var f = s.dirname(c(import.meta.url));
-process.env.APP_ROOT = s.join(f, "..");
-var p = process.env.VITE_DEV_SERVER_URL, m = s.join(process.env.APP_ROOT, "dist-electron"), h = s.join(process.env.APP_ROOT, "dist");
-process.env.VITE_PUBLIC = p ? s.join(process.env.APP_ROOT, "public") : h, a.registerSchemesAsPrivileged([{
+var p = c.dirname(l(import.meta.url));
+process.env.APP_ROOT = c.join(p, "..");
+var m = process.env.VITE_DEV_SERVER_URL, h = c.join(process.env.APP_ROOT, "dist-electron"), g = c.join(process.env.APP_ROOT, "dist");
+process.env.VITE_PUBLIC = m ? c.join(process.env.APP_ROOT, "public") : g, n.requestSingleInstanceLock() || (console.log("[Electron] Another instance is already running. Quitting duplicate."), n.quit()), o.registerSchemesAsPrivileged([{
 	scheme: "app",
 	privileges: {
 		secure: !0,
@@ -18,85 +18,89 @@ process.env.VITE_PUBLIC = p ? s.join(process.env.APP_ROOT, "public") : h, a.regi
 		bypassCSP: !0
 	}
 }]);
-var g, _ = null;
-function v() {
+var _, v = null;
+function y() {
 	let e = [
-		s.join(process.env.APP_ROOT, "..", "CobbDashboard", "server.js"),
+		c.join(process.env.APP_ROOT, "..", "CobbDashboard", "server.js"),
 		"D:\\cobbbb\\CobbDashboard\\server.js",
-		s.join(process.cwd(), "..", "CobbDashboard", "server.js"),
-		s.join(process.cwd(), "CobbDashboard", "server.js")
-	].find((e) => l.existsSync(e));
+		c.join(process.cwd(), "..", "CobbDashboard", "server.js"),
+		c.join(process.cwd(), "CobbDashboard", "server.js")
+	].find((e) => u.existsSync(e));
 	if (!e) {
 		console.log("[Electron] Backend server.js not found at any candidate path");
 		return;
 	}
-	let t = s.dirname(e);
-	s.join(t, "cloud_sync.js");
+	let t = c.dirname(e);
+	c.join(t, "cloud_sync.js");
 	try {
-		d.get("http://127.0.0.1:5000/api/sales/overview", (e) => {
+		f.get("http://127.0.0.1:5000/api/sales/overview", (e) => {
 			console.log("[Electron] Backend server is already running on port 5000");
 		}).on("error", () => {
-			console.log("[Electron] Starting backend server from:", e), _ = u("node", [e], {
+			console.log("[Electron] Starting backend server from:", e), v = d("node", [e], {
 				cwd: t,
 				stdio: "pipe",
 				shell: !1,
 				windowsHide: !0
-			}), _.stdout.on("data", (e) => {
+			}), v.stdout.on("data", (e) => {
 				console.log(`[Backend] ${e.toString().trim()}`);
-			}), _.stderr.on("data", (e) => {
+			}), v.stderr.on("data", (e) => {
 				console.error(`[Backend ERR] ${e.toString().trim()}`);
-			}), _.on("close", (e) => {
-				console.log(`[Backend] Process exited with code ${e}`), _ = null;
+			}), v.on("close", (e) => {
+				console.log(`[Backend] Process exited with code ${e}`), v = null;
 			});
 		});
 	} catch (e) {
 		console.error("[Electron] Error checking backend status:", e);
 	}
 }
-function y() {
-	_ &&= (console.log("[Electron] Stopping backend server..."), _.kill(), null);
-}
 function b() {
-	let t = s.join(process.env.VITE_PUBLIC, "app.ico"), n = s.join(process.env.VITE_PUBLIC, "cobb-icon-512.png"), r = s.join(process.env.VITE_PUBLIC, "cobb-logo.png"), i = l.existsSync(t) ? t : l.existsSync(n) ? n : r;
-	g = new e({
+	v &&= (console.log("[Electron] Stopping backend server..."), v.kill(), null);
+}
+function x() {
+	let t = c.join(process.env.VITE_PUBLIC, "app.ico"), n = c.join(process.env.VITE_PUBLIC, "cobb-icon-512.png"), r = c.join(process.env.VITE_PUBLIC, "cobb-logo.png"), i = u.existsSync(t) ? t : u.existsSync(n) ? n : r;
+	_ = new e({
 		title: "COBB ITALY | Showroom POS & Intelligence Command Center",
 		width: 1280,
 		height: 800,
 		minWidth: 1024,
 		minHeight: 768,
-		icon: l.existsSync(i) ? i : void 0,
+		icon: u.existsSync(i) ? i : void 0,
 		webPreferences: {
-			preload: s.join(f, "preload.js"),
+			preload: c.join(p, "preload.js"),
 			nodeIntegration: !0,
 			contextIsolation: !0,
 			webSecurity: !1
 		}
-	}), g.setMenuBarVisibility(!1), g.setAutoHideMenuBar(!0), g.webContents.on("console-message", (e, t, n, r, i) => {
+	}), _.setMenuBarVisibility(!1), _.setAutoHideMenuBar(!0), _.webContents.on("console-message", (e, t, n, r, i) => {
 		let a = typeof e == "object" && e?.message !== void 0 ? e.message : n;
 		console.log(`[Renderer Console] ${a}`);
-	}), g.webContents.on("before-input-event", (e, t) => {
-		t.key === "F11" && t.type === "keyDown" ? (g.setFullScreen(!g.isFullScreen()), e.preventDefault()) : t.key === "F5" && t.type === "keyDown" ? (g.reload(), e.preventDefault()) : t.control && t.shift && t.key.toLowerCase() === "i" && t.type === "keyDown" && (g.webContents.toggleDevTools(), e.preventDefault());
-	}), g.webContents.setWindowOpenHandler(({ url: e }) => ((e.startsWith("https://") || e.startsWith("http://wa") || e.startsWith("whatsapp://")) && o.openExternal(e), { action: "deny" })), p ? (console.log("[Electron] Loading dev server URL:", p), g.loadURL(p)) : (console.log("[Electron] Loading app://index.html"), g.loadURL("app://-/index.html")), g.webContents.on("did-fail-load", (e, t, n) => {
+	}), _.webContents.on("before-input-event", (e, t) => {
+		t.key === "F11" && t.type === "keyDown" ? (_.setFullScreen(!_.isFullScreen()), e.preventDefault()) : t.key === "F5" && t.type === "keyDown" ? (_.reload(), e.preventDefault()) : t.control && t.shift && t.key.toLowerCase() === "i" && t.type === "keyDown" && (_.webContents.toggleDevTools(), e.preventDefault());
+	}), _.webContents.setWindowOpenHandler(({ url: e }) => ((e.startsWith("https://") || e.startsWith("http://wa") || e.startsWith("whatsapp://")) && s.openExternal(e), { action: "deny" })), m ? (console.log("[Electron] Loading dev server URL:", m), _.loadURL(m)) : (console.log("[Electron] Loading app://index.html"), _.loadURL("app://-/index.html")), _.webContents.on("did-fail-load", (e, t, n) => {
 		console.error("[Electron] Failed to load:", t, n);
 	});
 }
 n.on("window-all-closed", () => {
-	y(), process.platform !== "darwin" && (n.quit(), g = null);
+	b(), process.platform !== "darwin" && (n.quit(), _ = null);
 }), n.on("activate", () => {
-	e.getAllWindows().length === 0 && b();
+	e.getAllWindows().length === 0 && x();
+}), n.on("second-instance", () => {
+	_ && (_.isMinimized() && _.restore(), _.isVisible() || _.show(), _.focus());
 }), n.on("before-quit", () => {
-	y();
-}), r.handle("open-external", async (e, t) => typeof t == "string" && (t.startsWith("https://") || t.startsWith("http://") || t.startsWith("whatsapp://")) ? (await o.openExternal(t), !0) : !1), r.handle("kick-cash-drawer", async () => (console.log("[Electron POS] Hardware Cash Drawer Kick Triggered (ESC p 0 25 250)"), {
+	b();
+}), n.on("will-quit", () => {
+	r.unregisterAll();
+}), i.handle("open-external", async (e, t) => typeof t == "string" && (t.startsWith("https://") || t.startsWith("http://") || t.startsWith("whatsapp://")) ? (await s.openExternal(t), !0) : !1), i.handle("kick-cash-drawer", async () => (console.log("[Electron POS] Hardware Cash Drawer Kick Triggered (ESC p 0 25 250)"), {
 	success: !0,
 	timestamp: Date.now()
-})), r.handle("print-silent-thermal", async (e, t = {}) => {
-	if (!g) return {
+})), i.handle("print-silent-thermal", async (e, t = {}) => {
+	if (!_) return {
 		success: !1,
 		error: "No active window"
 	};
 	try {
-		let e = (await g.webContents.getPrintersAsync()).find((e) => e.name.toLowerCase().includes("pos") || e.name.toLowerCase().includes("thermal") || e.name.toLowerCase().includes("receipt") || e.isDefault);
-		return g.webContents.print({
+		let e = (await _.webContents.getPrintersAsync()).find((e) => e.name.toLowerCase().includes("pos") || e.name.toLowerCase().includes("thermal") || e.name.toLowerCase().includes("receipt") || e.isDefault);
+		return _.webContents.print({
 			silent: !0,
 			deviceName: e?.name || "",
 			margins: { marginType: "none" },
@@ -113,16 +117,16 @@ n.on("window-all-closed", () => {
 			error: e.message
 		};
 	}
-}), r.handle("show-desktop-notification", async (e, { title: n, body: r, icon: i } = {}) => {
+}), i.handle("show-desktop-notification", async (e, { title: n, body: r, icon: i } = {}) => {
 	try {
 		if (t.isSupported()) {
-			let e = s.join(process.env.VITE_PUBLIC, "ors-logo.png"), a = i && l.existsSync(i) ? i : l.existsSync(e) ? e : void 0, o = new t({
+			let e = c.join(process.env.VITE_PUBLIC, "ors-logo.png"), a = i && u.existsSync(i) ? i : u.existsSync(e) ? e : void 0, o = new t({
 				title: n || "Cobb POS Notification",
 				body: r || "",
 				icon: a
 			});
 			return o.on("click", () => {
-				g && (g.isMinimized() && g.restore(), g.focus());
+				_ && (_.isMinimized() && _.restore(), _.focus());
 			}), o.show(), { success: !0 };
 		}
 	} catch (e) {
@@ -130,12 +134,20 @@ n.on("window-all-closed", () => {
 	}
 	return { success: !1 };
 }), n.whenReady().then(() => {
-	v(), a.handle("app", (e) => {
+	y(), o.handle("app", (e) => {
 		let t = e.url.substring(8);
 		t ||= "index.html", t = t.split("?")[0].split("#")[0];
-		let n = s.join(h, t);
-		return l.existsSync(n) || (n = s.join(h, "index.html")), i.fetch("file://" + n);
-	}), b();
+		let n = c.join(g, t);
+		return u.existsSync(n) || (n = c.join(g, "index.html")), a.fetch("file://" + n);
+	}), x();
+	try {
+		let e = "CommandOrControl+Shift+X", t = r.register(e, () => {
+			console.log(`[Electron Hotkey] ${e} triggered`), _ && (_.isMinimized() ? (_.restore(), _.focus()) : _.isFocused() ? _.minimize() : (_.isVisible() || _.show(), _.restore(), _.focus()));
+		});
+		console.log(`[Electron Hotkey] ${e} registration: ${t ? "SUCCESS" : "FAILED"}`);
+	} catch (e) {
+		console.warn("[Electron Hotkey Error]", e.message);
+	}
 });
 //#endregion
-export { m as MAIN_DIST, h as RENDERER_DIST, p as VITE_DEV_SERVER_URL };
+export { h as MAIN_DIST, g as RENDERER_DIST, m as VITE_DEV_SERVER_URL };
