@@ -1,4 +1,4 @@
-﻿# ==============================================================================
+# ==============================================================================
 # COBB Retail Command Center — Windows Global Keyboard Shortcut Installer
 # Sets up Windows Desktop & Start Menu shortcuts with Ctrl+Shift+X global hotkey
 # ==============================================================================

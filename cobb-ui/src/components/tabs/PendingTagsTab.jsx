@@ -264,6 +264,35 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
   const [copiedId, setCopiedId] = useState(null);
   const [toast, setToast] = useState(null);
 
+  // --- Bulk Add Multiple Tags State ---
+  const [showBulkAddModal, setShowBulkAddModal] = useState(false);
+  const [bulkAddMode, setBulkAddMode] = useState('scan'); // 'scan' | 'paste'
+  const [bulkAddItems, setBulkAddItems] = useState([]);
+  const [bulkAddScanQuery, setBulkAddScanQuery] = useState('');
+  const [bulkAddScanLoading, setBulkAddScanLoading] = useState(false);
+  const [bulkAddScanError, setBulkAddScanError] = useState('');
+  const [bulkAddStagedItem, setBulkAddStagedItem] = useState(null);
+  const [bulkAddPasteText, setBulkAddPasteText] = useState('');
+  const [bulkAddPasteLoading, setBulkAddPasteLoading] = useState(false);
+  const [bulkAddShared, setBulkAddShared] = useState({
+    discountPercent: 60,
+    salesperson: 'Cashier',
+    customerName: '',
+    customerPhone: '',
+    notes: ''
+  });
+
+  // --- Batch Actions State ---
+  const [showBatchDiscountModal, setShowBatchDiscountModal] = useState(false);
+  const [batchNewDiscount, setBatchNewDiscount] = useState(60);
+
+  // --- Customer Hold Bag History State ---
+  const [holdBagHistory, setHoldBagHistory] = useState([]);
+  const [showHoldHistory, setShowHoldHistory] = useState(false);
+
+  // --- Photo Viewer State (Damage Desk) ---
+  const [fullScreenPhoto, setFullScreenPhoto] = useState(null); // { url, item }
+
   // Form State for Adding Pending Tag
   const [form, setForm] = useState({
     barcode: '',
@@ -659,6 +688,13 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
   // --- Bill All Tags in Customer Hold ---
   const handleBillCustomerHold = async (batch, mode = 'speed_billing') => {
     if (!batch || !batch.tags || batch.tags.length === 0) return;
+
+    // Track in local hold bag history
+    setHoldBagHistory(prev => [{
+      ...batch,
+      billedAt: new Date().toISOString(),
+      action: 'billed'
+    }, ...prev].slice(0, 50));
 
     if (mode === 'speed_billing') {
       handleBillInSpeedBilling(batch.tags, 'b1g2', {
@@ -1869,6 +1905,407 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
     }
   };
 
+  // --- Bulk Add: Scan a barcode into the bulk add queue ---
+  const handleBulkAddScan = async (e) => {
+    if (e) e.preventDefault();
+    const candidate = bulkAddScanQuery.trim();
+    if (!candidate) return;
+
+    if (bulkAddItems.some(it => isBarcodeDuplicate(it.barcode, candidate))) {
+      setBulkAddScanError(`Barcode "${candidate}" is already in this batch!`);
+      return;
+    }
+    const activeExisting = tags.find(t => t.status === 'active' && isBarcodeDuplicate(t.barcode, candidate));
+    if (activeExisting) {
+      setBulkAddScanError(`Active Duplicate: "${candidate}" is already on the pending rack (Tag #${activeExisting.id})!`);
+      return;
+    }
+
+    setBulkAddScanLoading(true);
+    setBulkAddScanError('');
+    setBulkAddStagedItem(null);
+
+    try {
+      let matchedData = null;
+      try {
+        const res = await axios.get(`${API_BASE}/api/inventory/quick-scan?q=${encodeURIComponent(candidate)}&mode=single`, { timeout: 12000 });
+        if (res.data?.isBilled || res.data?.variants?.[0]?.isBilled) {
+          setBulkAddScanError(`Already Billed in POS: "${candidate}" cannot be added.`);
+          setBulkAddScanLoading(false);
+          return;
+        }
+        if (res.data?.success && res.data.variants?.length > 0) {
+          matchedData = res.data.variants.find(v => isBarcodeDuplicate(v.barcode, candidate)) || res.data.variants[0];
+        }
+      } catch (err) {
+        matchedData = await lookupBarcodeInCloudFallback(candidate, activeStore);
+      }
+      if (!matchedData) {
+        matchedData = await lookupBarcodeInCloudFallback(candidate, activeStore);
+      }
+
+      const mrpVal = Number(matchedData?.mrp || 0);
+      const discVal = Number(bulkAddShared.discountPercent || 60);
+      const soldVal = mrpVal > 0 ? Math.round(mrpVal * (1 - discVal / 100)) : 0;
+
+      const staged = {
+        id: 'bulk_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        barcode: matchedData?.barcode || candidate,
+        articleNo: matchedData?.articleNo || candidate,
+        articleName: matchedData?.itemName || 'Cobb Apparel Item',
+        size: matchedData?.size || 'Free',
+        color: matchedData?.color || 'Standard',
+        section: matchedData?.sectionName || 'Men Apparel',
+        mrp: mrpVal,
+        discountPercent: discVal,
+        soldPrice: soldVal,
+        fromDb: !!matchedData
+      };
+
+      // Auto-add to queue (continuous scan mode)
+      setBulkAddItems(prev => [staged, ...prev]);
+      showToastMsg(`Added ${staged.articleName} (₹${mrpVal}) to batch`, 'success');
+      setBulkAddScanQuery('');
+      setBulkAddScanError('');
+    } catch (err) {
+      setBulkAddScanError('Lookup error: ' + err.message);
+    } finally {
+      setBulkAddScanLoading(false);
+    }
+  };
+
+  // --- Bulk Add: Paste multiple barcodes ---
+  const handleBulkAddPaste = async () => {
+    const lines = bulkAddPasteText.split(/[,\n\r;]+/).map(s => s.trim()).filter(Boolean);
+    if (lines.length === 0) {
+      setBulkAddScanError('No barcodes detected. Separate with commas or newlines.');
+      return;
+    }
+    setBulkAddPasteLoading(true);
+    setBulkAddScanError('');
+    let added = 0, skipped = 0;
+
+    for (const code of lines) {
+      if (bulkAddItems.some(it => isBarcodeDuplicate(it.barcode, code))) { skipped++; continue; }
+      if (tags.find(t => t.status === 'active' && isBarcodeDuplicate(t.barcode, code))) { skipped++; continue; }
+
+      let matchedData = null;
+      try {
+        const res = await axios.get(`${API_BASE}/api/inventory/quick-scan?q=${encodeURIComponent(code)}&mode=single`, { timeout: 8000 });
+        if (res.data?.isBilled || res.data?.variants?.[0]?.isBilled) { skipped++; continue; }
+        if (res.data?.success && res.data.variants?.length > 0) {
+          matchedData = res.data.variants.find(v => isBarcodeDuplicate(v.barcode, code)) || res.data.variants[0];
+        }
+      } catch (err) {
+        matchedData = await lookupBarcodeInCloudFallback(code, activeStore);
+      }
+      if (!matchedData) matchedData = await lookupBarcodeInCloudFallback(code, activeStore);
+
+      const mrpVal = Number(matchedData?.mrp || 0);
+      const discVal = Number(bulkAddShared.discountPercent || 60);
+      const soldVal = mrpVal > 0 ? Math.round(mrpVal * (1 - discVal / 100)) : 0;
+
+      setBulkAddItems(prev => [{
+        id: 'bulk_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+        barcode: matchedData?.barcode || code,
+        articleNo: matchedData?.articleNo || code,
+        articleName: matchedData?.itemName || 'Cobb Apparel Item',
+        size: matchedData?.size || 'Free',
+        color: matchedData?.color || 'Standard',
+        section: matchedData?.sectionName || 'Men Apparel',
+        mrp: mrpVal,
+        discountPercent: discVal,
+        soldPrice: soldVal,
+        fromDb: !!matchedData
+      }, ...prev]);
+      added++;
+    }
+
+    setBulkAddPasteLoading(false);
+    setBulkAddPasteText('');
+    showToastMsg(`Processed ${lines.length} barcodes: ${added} added, ${skipped} skipped (duplicates/billed)`, added > 0 ? 'success' : 'error');
+  };
+
+  // --- Bulk Add: Remove item from queue ---
+  const handleBulkRemoveItem = (id) => {
+    setBulkAddItems(prev => prev.filter(it => it.id !== id));
+  };
+
+  // --- Bulk Add: Update individual item override ---
+  const handleBulkUpdateItem = (id, field, value) => {
+    setBulkAddItems(prev => prev.map(it => {
+      if (it.id !== id) return it;
+      const updated = { ...it, [field]: value };
+      if (field === 'discountPercent') {
+        const disc = parseFloat(value) || 0;
+        const mrp = parseFloat(it.mrp) || 0;
+        updated.soldPrice = mrp > 0 ? Math.round(mrp * (1 - disc / 100)) : 0;
+      }
+      if (field === 'mrp') {
+        const mrp = parseFloat(value) || 0;
+        const disc = parseFloat(it.discountPercent) || 0;
+        updated.soldPrice = mrp > 0 ? Math.round(mrp * (1 - disc / 100)) : 0;
+      }
+      return updated;
+    }));
+  };
+
+  // --- Bulk Add: Apply shared discount to all ---
+  const handleBulkApplySharedDiscount = (disc) => {
+    const numDisc = parseFloat(disc) || 0;
+    setBulkAddShared(prev => ({ ...prev, discountPercent: numDisc }));
+    setBulkAddItems(prev => prev.map(it => ({
+      ...it,
+      discountPercent: numDisc,
+      soldPrice: parseFloat(it.mrp) > 0 ? Math.round(parseFloat(it.mrp) * (1 - numDisc / 100)) : 0
+    })));
+  };
+
+  // --- Bulk Add: Submit all items ---
+  const handleBulkAddSubmitAll = async () => {
+    if (bulkAddItems.length === 0) {
+      showToastMsg('No items to add!', 'error');
+      return;
+    }
+    let success = 0, failed = 0;
+
+    // 1. Try atomic batch API first
+    try {
+      const res = await axios.post(`${API_BASE}/api/pending-tags/batch-add`, {
+        items: bulkAddItems,
+        shared: {
+          discountPercent: bulkAddShared.discountPercent,
+          salesperson: bulkAddShared.salesperson || 'Cashier',
+          customerName: bulkAddShared.customerName.trim(),
+          customerPhone: bulkAddShared.customerPhone.trim(),
+          notes: bulkAddShared.notes.trim()
+        }
+      });
+      if (res.data?.success) {
+        success = res.data.addedCount || 0;
+        failed = res.data.skippedCount || 0;
+        fetchTags();
+        showToastMsg(`Bulk Add: ${success} tag(s) added successfully!${failed > 0 ? ` (${failed} skipped duplicates)` : ''}`, 'success');
+        setShowBulkAddModal(false);
+        setBulkAddItems([]);
+        setBulkAddScanQuery('');
+        setBulkAddScanError('');
+        setBulkAddPasteText('');
+        return;
+      }
+    } catch (batchErr) {
+      console.warn('Batch add API fallback to individual/firestore:', batchErr.message);
+    }
+
+    // 2. Fallback to individual items / Firestore
+    for (const item of bulkAddItems) {
+      const payload = {
+        barcode: item.barcode,
+        articleNo: item.articleNo,
+        articleName: item.articleName,
+        size: item.size,
+        color: item.color,
+        section: item.section,
+        mrp: parseFloat(item.mrp) || 0,
+        discountPercent: parseFloat(item.discountPercent) || 0,
+        soldPrice: parseFloat(item.soldPrice) || 0,
+        customerName: bulkAddShared.customerName.trim(),
+        customerPhone: bulkAddShared.customerPhone.trim(),
+        salesperson: bulkAddShared.salesperson || 'Cashier',
+        notes: bulkAddShared.notes.trim()
+      };
+      try {
+        const res = await axios.post(`${API_BASE}/api/pending-tags/add`, payload);
+        await assertApiSuccess(res);
+        success++;
+      } catch (apiErr) {
+        if (apiErr.response?.status === 409 || apiErr.response?.data?.duplicate || apiErr.response?.data?.billed) {
+          failed++;
+          continue;
+        }
+        if (db) {
+          try {
+            const docRef = doc(db, 'stores', targetStoreId, 'data', 'pending_tags');
+            const snap = await getDoc(docRef);
+            const curTags = snap.exists() ? (snap.data().tags || []) : [];
+            const now = new Date().toISOString();
+            const newEntry = {
+              id: 'ptag_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+              ...payload,
+              status: 'active',
+              createdAt: now,
+              updatedAt: now,
+              date: now.split('T')[0]
+            };
+            const updated = [newEntry, ...curTags];
+            await setDoc(docRef, {
+              tags: updated,
+              activeCount: updated.filter(t => t.status === 'active').length,
+              lastUpdated: now
+            }, { merge: true });
+            success++;
+          } catch (fbErr) { failed++; }
+        } else {
+          failed++;
+        }
+      }
+    }
+    fetchTags();
+    showToastMsg(`Bulk Add Complete: ${success} saved, ${failed} failed`, success > 0 ? 'success' : 'error');
+    if (success > 0) {
+      setShowBulkAddModal(false);
+      setBulkAddItems([]);
+      setBulkAddScanQuery('');
+      setBulkAddScanError('');
+      setBulkAddPasteText('');
+    }
+  };
+
+  // --- Batch Actions: Bulk Mark Billed ---
+  const handleBatchMarkBilled = async () => {
+    if (selectedTagIds.length === 0) return;
+    const billNo = window.prompt(`Mark ${selectedTagIds.length} tag(s) as billed. Enter Bill No:`, 'B1G2-BATCH');
+    if (billNo === null) return;
+    let count = 0;
+
+    // Try batch API first
+    try {
+      const res = await axios.post(`${API_BASE}/api/pending-tags/batch-mark-billed`, {
+        tagIds: selectedTagIds,
+        billNo
+      });
+      if (res.data?.success) {
+        count = res.data.billedCount || selectedTagIds.length;
+        fetchTags();
+        clearSelection();
+        showToastMsg(`Marked ${count} tag(s) as billed in ${billNo}!`, 'success');
+        return;
+      }
+    } catch (batchErr) {
+      console.warn('Batch mark-billed fallback:', batchErr.message);
+    }
+
+    // Fallback: individual calls
+    for (const id of selectedTagIds) {
+      try { await handleMarkBilled(id, billNo); count++; } catch (e) {}
+    }
+    clearSelection();
+    showToastMsg(`Marked ${count} tag(s) as billed in ${billNo}!`, 'success');
+  };
+
+  // --- Batch Actions: Bulk Delete ---
+  const handleBatchDelete = async () => {
+    if (selectedTagIds.length === 0) return;
+    if (!window.confirm(`Delete ${selectedTagIds.length} selected tag(s)? This cannot be undone.`)) return;
+    let count = 0;
+
+    // Try batch delete API first
+    try {
+      const res = await axios.post(`${API_BASE}/api/pending-tags/batch-delete`, {
+        tagIds: selectedTagIds
+      });
+      if (res.data?.success) {
+        count = res.data.deletedCount || selectedTagIds.length;
+        fetchTags();
+        clearSelection();
+        showToastMsg(`Deleted ${count} tag(s)`, 'success');
+        return;
+      }
+    } catch (batchErr) {
+      console.warn('Batch delete fallback:', batchErr.message);
+    }
+
+    // Fallback: individual deletes
+    for (const id of selectedTagIds) {
+      try {
+        try {
+          const res = await axios.delete(`${API_BASE}/api/pending-tags/${id}`);
+          await assertApiSuccess(res);
+          count++;
+        } catch (apiErr) {
+          if (db) {
+            const docRef = doc(db, 'stores', targetStoreId, 'data', 'pending_tags');
+            const snap = await getDoc(docRef);
+            if (snap.exists()) {
+              const list = snap.data().tags || [];
+              const updated = list.filter(t => t.id !== id);
+              await setDoc(docRef, {
+                tags: updated,
+                activeCount: updated.filter(t => t.status === 'active').length,
+                lastUpdated: new Date().toISOString()
+              }, { merge: true });
+              count++;
+            }
+          }
+        }
+      } catch (e) {}
+    }
+    fetchTags();
+    clearSelection();
+    showToastMsg(`Deleted ${count} tag(s)`, 'success');
+  };
+
+  // --- Batch Actions: Bulk Change Discount ---
+  const handleBatchChangeDiscount = async () => {
+    if (selectedTagIds.length === 0) return;
+    const numDisc = parseFloat(batchNewDiscount) || 0;
+    let count = 0;
+    try {
+      try {
+        const res = await axios.post(`${API_BASE}/api/pending-tags/batch-update-discount`, {
+          tagIds: selectedTagIds,
+          discountPercent: numDisc
+        });
+        if (res.data?.success) {
+          count = res.data.updatedCount || selectedTagIds.length;
+          fetchTags();
+        }
+      } catch (apiErr) {
+        if (db) {
+          const docRef = doc(db, 'stores', targetStoreId, 'data', 'pending_tags');
+          const snap = await getDoc(docRef);
+          if (snap.exists()) {
+            const list = snap.data().tags || [];
+            const now = new Date().toISOString();
+            const updated = list.map(t => {
+              if (!selectedTagIds.includes(t.id) || t.status !== 'active') return t;
+              const mrp = parseFloat(t.mrp) || 0;
+              return {
+                ...t,
+                discountPercent: numDisc,
+                soldPrice: mrp > 0 ? Math.round(mrp * (1 - numDisc / 100)) : t.soldPrice,
+                updatedAt: now
+              };
+            });
+            await setDoc(docRef, {
+              tags: updated,
+              lastUpdated: now
+            }, { merge: true });
+            setTags(updated);
+            count = selectedTagIds.length;
+          }
+        }
+      }
+    } catch (e) {}
+    clearSelection();
+    setShowBatchDiscountModal(false);
+    showToastMsg(`Updated discount to ${numDisc}% for ${count} tag(s)`, 'success');
+  };
+
+  // --- Hold Bag History: Track released bags ---
+  const handleReleaseCustomerHoldWithHistory = async (batchId, customerName) => {
+    // Find bag data before releasing for history
+    const bag = customerHolds.find(b => b.batchId === batchId);
+    if (bag) {
+      setHoldBagHistory(prev => [{
+        ...bag,
+        releasedAt: new Date().toISOString(),
+        action: 'released'
+      }, ...prev].slice(0, 50)); // Keep last 50
+    }
+    await handleReleaseCustomerHold(batchId, customerName);
+  };
+
   // --- Mark Tag as Billed (Manual Settlement) ---
   const handleMarkBilled = async (tagId, billNoPrompt) => {
     const billNo = billNoPrompt || window.prompt('Enter Bill No (or leave blank for manual combo):', 'B1G2-COMBO');
@@ -2061,6 +2498,16 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
   };
 
   // --- Filtering & Sorting ---
+  // --- Aging Helper: calculates days pending and returns color class ---
+  const getAgingInfo = (createdAt) => {
+    if (!createdAt) return { days: 0, label: '', colorClass: '' };
+    const days = Math.floor((Date.now() - new Date(createdAt).getTime()) / 86400000);
+    if (days >= 4) return { days, label: `${days}d`, colorClass: 'bg-red-500/20 text-red-400 border-red-500/30' };
+    if (days >= 2) return { days, label: `${days}d`, colorClass: 'bg-amber-500/20 text-amber-400 border-amber-500/30' };
+    if (days >= 1) return { days, label: `${days}d`, colorClass: 'bg-slate-500/20 text-slate-400 border-slate-500/30' };
+    return { days: 0, label: 'Today', colorClass: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20' };
+  };
+
   const filteredTags = useMemo(() => {
     let result = tags.filter(tag => {
       if (statusFilter === 'active') {
@@ -2164,9 +2611,11 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
   }, [tags, statusFilter]);
 
   // --- Smart B1G2 Combo Suggester (Find sets of 3 pending tags in similar category) ---
+  // Rule: Only suggest combos for items with ≥65% discount (true B1G2 territory)
   const comboSuggestions = useMemo(() => {
     // Exclude customer hold tags so they NEVER mix in generic store combos!
-    const active = tags.filter(t => t.status === 'active' && !t.holdForCustomer);
+    // Also exclude items with discount < 65% — below that it's not a real B1G2 deal
+    const active = tags.filter(t => t.status === 'active' && !t.holdForCustomer && (Number(t.discountPercent) || 0) >= 65);
     const grouped = {};
     active.forEach(t => {
       const key = t.section || 'General';
@@ -2334,6 +2783,22 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
               >
                 <Briefcase className="w-4 h-4" />
                 <span>+ Hold for Customer</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setBulkAddItems([]);
+                  setBulkAddScanQuery('');
+                  setBulkAddScanError('');
+                  setBulkAddPasteText('');
+                  setShowBulkAddModal(true);
+                }}
+                className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-bold shadow-lg shadow-amber-500/25 transition-all active:scale-95"
+                title="Rapid continuous scan or paste multiple barcodes at once"
+              >
+                <Layers className="w-4 h-4" />
+                <span>+ Multi-Tag Rapid Add</span>
               </button>
 
               <button
@@ -2754,26 +3219,99 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                 </p>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                setNewBagForm({
-                  customerName: '',
-                  customerPhone: '',
-                  bagNo: `BAG-${customerHolds.length + 1}`,
-                  notes: ''
-                });
-                setNewBagScannedItems([]);
-                setNewBagScanQuery('');
-                setNewBagScanError('');
-                setShowNewBagModal(true);
-              }}
-              className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-purple-500/20 active:scale-95 transition-all shrink-0"
-            >
-              <Plus className="w-4 h-4" />
-              <span>+ New Customer Hold Bag</span>
-            </button>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setShowHoldHistory(prev => !prev)}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all border shrink-0 ${
+                  showHoldHistory
+                    ? 'bg-purple-500/25 text-purple-200 border-purple-400'
+                    : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'
+                }`}
+                title="View log of past released or billed customer hold bags"
+              >
+                <Clock className="w-3.5 h-3.5" />
+                <span>Bag History {holdBagHistory.length > 0 ? `(${holdBagHistory.length})` : ''}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setNewBagForm({
+                    customerName: '',
+                    customerPhone: '',
+                    bagNo: `BAG-${customerHolds.length + 1}`,
+                    notes: ''
+                  });
+                  setNewBagScannedItems([]);
+                  setNewBagScanQuery('');
+                  setNewBagScanError('');
+                  setShowNewBagModal(true);
+                }}
+                className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-purple-500/20 active:scale-95 transition-all shrink-0"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ New Customer Hold Bag</span>
+              </button>
+            </div>
           </div>
+
+          {/* Customer Hold Bag Historical Log Drawer */}
+          {showHoldHistory && (
+            <div className="p-4 rounded-2xl bg-slate-900 border border-purple-500/30 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-purple-400" />
+                  <span className="text-xs font-bold text-purple-200 uppercase tracking-wide">
+                    Recent Customer Hold Bag History ({holdBagHistory.length})
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowHoldHistory(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-white text-xs"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {holdBagHistory.length === 0 ? (
+                <div className="py-6 text-center text-xs text-slate-500">
+                  No completed or released bags in this session yet. Released or billed bags will be archived here.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {holdBagHistory.map((hb, idx) => (
+                    <div key={idx} className="p-3 rounded-xl bg-slate-800/80 border border-slate-700/80 text-xs space-y-2">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-white">{hb.bagNo || 'BAG'}</span>
+                            <span className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                              hb.action === 'billed'
+                                ? 'bg-emerald-500/20 text-emerald-300'
+                                : 'bg-slate-700 text-slate-300'
+                            }`}>
+                              {hb.action === 'billed' ? '✅ Billed in POS' : '↩️ Released to Rack'}
+                            </span>
+                          </div>
+                          <div className="text-slate-300 font-semibold mt-0.5">{hb.customerName}</div>
+                          {hb.customerPhone && <div className="text-slate-400 text-[10px]">{hb.customerPhone}</div>}
+                        </div>
+                        <div className="text-right">
+                          <span className="font-bold text-purple-400">{hb.count || hb.tags?.length || 0} pcs</span>
+                          <div className="text-[10px] text-slate-400">₹{(hb.totalMrp || 0).toLocaleString('en-IN')}</div>
+                        </div>
+                      </div>
+                      <div className="text-[10px] text-slate-500 border-t border-slate-700/60 pt-1">
+                        Archived: {new Date(hb.billedAt || hb.releasedAt || Date.now()).toLocaleTimeString('en-IN')}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {customerHolds.length === 0 ? (
             <div className="py-16 text-center border-2 border-dashed border-purple-500/30 rounded-2xl bg-purple-500/5">
@@ -2951,7 +3489,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
 
                     <button
                       type="button"
-                      onClick={() => handleReleaseCustomerHold(bag.batchId, bag.customerName)}
+                      onClick={() => handleReleaseCustomerHoldWithHistory(bag.batchId, bag.customerName)}
                       className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-rose-500/20 hover:text-rose-500 text-slate-400 transition-colors text-xs font-semibold"
                       title="Release tags back to general pending rack"
                     >
@@ -3186,10 +3724,20 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                             )}
                           </div>
                         ) : (
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 flex items-center gap-1 w-fit">
-                            <Clock className="w-3 h-3" />
-                            <span>Pending</span>
-                          </span>
+                          <div className="flex flex-col gap-1">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/30 flex items-center gap-1 w-fit">
+                              <Clock className="w-3 h-3" />
+                              <span>Pending</span>
+                            </span>
+                            {(() => {
+                              const aging = getAgingInfo(tag.createdAt);
+                              return aging.label ? (
+                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border w-fit ${aging.colorClass}`} title={`Pending for ${aging.days} day(s)`}>
+                                  {aging.days >= 4 ? '🔴' : aging.days >= 2 ? '🟡' : aging.days >= 1 ? '⏳' : '🟢'} {aging.label}
+                                </span>
+                              ) : null;
+                            })()}
+                          </div>
                         )}
                       </td>
 
@@ -3289,10 +3837,20 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                       <span>Billed</span>
                     </span>
                   ) : (
-                    <span className="px-2 py-0.5 rounded-full text-[9.5px] font-black bg-red-500/15 text-red-400 border border-red-500/30 flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      <span>Pending Tag</span>
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="px-2 py-0.5 rounded-full text-[9.5px] font-black bg-red-500/15 text-red-400 border border-red-500/30 flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        <span>Pending</span>
+                      </span>
+                      {(() => {
+                        const aging = getAgingInfo(tag.createdAt);
+                        return aging.label ? (
+                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${aging.colorClass}`} title={`Pending for ${aging.days} day(s)`}>
+                            {aging.days >= 4 ? '🔴' : aging.days >= 2 ? '🟡' : aging.days >= 1 ? '⏳' : '🟢'} {aging.label}
+                          </span>
+                        ) : null;
+                      })()}
+                    </div>
                   )}
                 </div>
 
@@ -3523,6 +4081,41 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
             <Briefcase className="w-4 h-4" />
             <span>Hold for Customer</span>
           </button>
+
+          <button
+            type="button"
+            onClick={handleBatchMarkBilled}
+            className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-400 border border-emerald-500/30 font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 shrink-0"
+            title="Mark all selected tags as billed"
+          >
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            <span>Mark Billed</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setBatchNewDiscount(60);
+              setShowBatchDiscountModal(true);
+            }}
+            className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-rose-300 border border-rose-500/30 font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 shrink-0"
+            title="Bulk update discount % on all selected tags"
+          >
+            <Percent className="w-3.5 h-3.5" />
+            <span>Change Disc %</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleBatchDelete}
+            className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-red-950 text-red-400 border border-red-500/30 font-bold text-xs flex items-center gap-1.5 transition-all active:scale-95 shrink-0"
+            title="Delete or void all selected tags"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Delete</span>
+          </button>
+
+          <div className="h-5 w-px bg-slate-700" />
 
           <button
             type="button"
@@ -3806,9 +4399,9 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                         {d.photo ? (
                           <button
                             type="button"
-                            onClick={() => setPhotoPreviewUrl(d.photo)}
+                            onClick={() => setPhotoPreviewUrl({ url: d.photo, item: d })}
                             className="w-14 h-14 rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 relative group shrink-0"
-                            title="Click to zoom defect photo"
+                            title="Click to view full-screen defect evidence"
                           >
                             <img src={d.photo} alt="Defect" className="w-full h-full object-cover group-hover:scale-110 transition-transform" />
                             <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity">
@@ -4404,6 +4997,367 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
                   </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* --- MULTI-TAG RAPID ADD MODAL --- */}
+      {showBulkAddModal && (
+        <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl max-w-2xl w-full max-h-[92vh] flex flex-col overflow-hidden">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-gradient-to-r from-amber-500/10 via-rose-500/10 to-transparent flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-gradient-to-tr from-amber-500 to-rose-600 text-white shadow-md shadow-amber-500/30">
+                  <Layers className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-2">
+                    <span>Multi-Tag Rapid Add</span>
+                    <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                      {bulkAddItems.length} queued
+                    </span>
+                  </h2>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Scan continuously or paste multiple barcodes with shared deal settings
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowBulkAddModal(false)}
+                className="p-2 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Mode Switcher + Shared Defaults */}
+            <div className="p-4 bg-slate-50 dark:bg-slate-950/50 border-b border-slate-200 dark:border-slate-800 space-y-3">
+              {/* Mode Switcher Tabs */}
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-200 dark:bg-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setBulkAddMode('scan')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      bulkAddMode === 'scan'
+                        ? 'bg-amber-500 text-slate-950 shadow-sm'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <Zap className="w-3.5 h-3.5" />
+                    <span>Rapid Scanner</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setBulkAddMode('paste')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      bulkAddMode === 'paste'
+                        ? 'bg-amber-500 text-slate-950 shadow-sm'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <List className="w-3.5 h-3.5" />
+                    <span>Paste Multiple Barcodes</span>
+                  </button>
+                </div>
+
+                {/* Shared Discount Selector */}
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">Shared Deal:</span>
+                  <div className="flex items-center gap-1">
+                    {[50, 60, 65, 70].map(d => (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => handleBulkApplySharedDiscount(d)}
+                        className={`px-2 py-1 rounded-lg text-[10px] font-black transition-all ${
+                          Number(bulkAddShared.discountPercent) === d
+                            ? 'bg-rose-500 text-white shadow-xs'
+                            : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-rose-400'
+                        }`}
+                      >
+                        {d}%
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Shared Metadata Inputs */}
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 pt-1 text-xs">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 mb-0.5 block">Default Disc %</label>
+                  <input
+                    type="number"
+                    value={bulkAddShared.discountPercent}
+                    onChange={(e) => handleBulkApplySharedDiscount(e.target.value)}
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 mb-0.5 block">Salesperson</label>
+                  <input
+                    type="text"
+                    value={bulkAddShared.salesperson}
+                    onChange={(e) => setBulkAddShared({ ...bulkAddShared, salesperson: e.target.value })}
+                    placeholder="Cashier / Staff"
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 mb-0.5 block">Customer Phone</label>
+                  <input
+                    type="tel"
+                    value={bulkAddShared.customerPhone}
+                    onChange={(e) => setBulkAddShared({ ...bulkAddShared, customerPhone: e.target.value })}
+                    placeholder="10-digit mobile"
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-500 mb-0.5 block">Customer Name</label>
+                  <input
+                    type="text"
+                    value={bulkAddShared.customerName}
+                    onChange={(e) => setBulkAddShared({ ...bulkAddShared, customerName: e.target.value })}
+                    placeholder="Name (optional)"
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Input Form Area based on Active Mode */}
+            <div className="p-4 border-b border-slate-200 dark:border-slate-800">
+              {bulkAddMode === 'scan' ? (
+                <form onSubmit={handleBulkAddScan} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={bulkAddScanQuery}
+                    onChange={(e) => setBulkAddScanQuery(e.target.value)}
+                    placeholder="Scan barcode and press Enter (continuous scan enabled)..."
+                    autoFocus
+                    className="flex-1 px-3.5 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none"
+                  />
+                  <button
+                    type="submit"
+                    disabled={bulkAddScanLoading || !bulkAddScanQuery.trim()}
+                    className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs flex items-center gap-1.5 disabled:opacity-50 transition-all shadow-sm shrink-0"
+                  >
+                    {bulkAddScanLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                    <span>Add to Queue</span>
+                  </button>
+                </form>
+              ) : (
+                <div className="space-y-2">
+                  <textarea
+                    rows="3"
+                    value={bulkAddPasteText}
+                    onChange={(e) => setBulkAddPasteText(e.target.value)}
+                    placeholder="Paste multiple barcodes separated by newlines, commas, or spaces (e.g. 0079734971, 0079734972)..."
+                    className="w-full p-2.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-mono text-xs focus:ring-2 focus:ring-amber-500 focus:outline-none resize-none"
+                  />
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-slate-500">
+                      {bulkAddPasteText ? `${bulkAddPasteText.split(/[,\n\r;]+/).filter(Boolean).length} barcodes detected` : 'Comma or newline separated'}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleBulkAddPaste}
+                      disabled={bulkAddPasteLoading || !bulkAddPasteText.trim()}
+                      className="px-4 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs flex items-center gap-1.5 disabled:opacity-50 transition-all shadow-sm"
+                    >
+                      {bulkAddPasteLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Layers className="w-3.5 h-3.5" />}
+                      <span>Lookup & Queue All</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {bulkAddScanError && (
+                <div className="mt-2 p-2 rounded-xl bg-rose-500/15 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-1.5">
+                  <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                  <span>{bulkAddScanError}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Queued Items List */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-2 max-h-[40vh]">
+              {bulkAddItems.length === 0 ? (
+                <div className="py-12 text-center text-slate-400 space-y-2">
+                  <Layers className="w-10 h-10 text-slate-600 mx-auto" />
+                  <p className="text-xs font-semibold">No garments in batch queue yet</p>
+                  <p className="text-[11px] text-slate-500">Scan barcodes with your handheld scanner or paste barcodes above</p>
+                </div>
+              ) : (
+                bulkAddItems.map((item, idx) => (
+                  <div
+                    key={item.id || idx}
+                    className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex flex-wrap items-center justify-between gap-3 text-xs"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <span className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-[10px] flex items-center justify-center shrink-0">
+                        {idx + 1}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="font-bold text-slate-900 dark:text-white truncate">
+                          {item.articleName}
+                        </div>
+                        <div className="flex items-center gap-2 text-[10px] text-slate-500 font-mono mt-0.5">
+                          <span className="font-bold text-slate-700 dark:text-slate-300">{item.barcode}</span>
+                          <span>•</span>
+                          <span>Size {item.size}</span>
+                          <span>•</span>
+                          <span>MRP ₹{item.mrp}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-1">
+                        <label className="text-[10px] text-slate-500">Disc%:</label>
+                        <input
+                          type="number"
+                          value={item.discountPercent}
+                          onChange={(e) => handleBulkUpdateItem(item.id, 'discountPercent', e.target.value)}
+                          className="w-14 px-1.5 py-1 rounded border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900 text-center font-bold text-xs"
+                        />
+                      </div>
+                      <div className="text-right w-16">
+                        <div className="font-black text-emerald-500 font-mono text-xs">
+                          ₹{item.soldPrice}
+                        </div>
+                        <span className="text-[9px] text-slate-400">Sold Price</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleBulkRemoveItem(item.id)}
+                        className="p-1 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                        title="Remove from queue"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Footer Summary + Submit */}
+            <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-950/80 flex items-center justify-between gap-3">
+              <div className="text-xs space-y-0.5">
+                <div className="font-bold text-slate-900 dark:text-white">
+                  Total: <span className="text-amber-500 font-black">{bulkAddItems.length}</span> Garments
+                </div>
+                <div className="text-[11px] text-slate-500">
+                  MRP ₹{bulkAddItems.reduce((s, it) => s + (Number(it.mrp) || 0), 0).toLocaleString('en-IN')} •
+                  Realized ₹{bulkAddItems.reduce((s, it) => s + (Number(it.soldPrice) || 0), 0).toLocaleString('en-IN')}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowBulkAddModal(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleBulkAddSubmitAll}
+                  disabled={bulkAddItems.length === 0}
+                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-600 hover:to-rose-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold shadow-lg shadow-amber-500/25 transition-all active:scale-95 flex items-center gap-1.5"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>Save All ({bulkAddItems.length}) Tags</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- BATCH DISCOUNT UPDATE MODAL --- */}
+      {showBatchDiscountModal && (
+        <div className="fixed inset-0 z-50 bg-black/85 flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl max-w-md w-full p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-rose-500 text-white">
+                  <Percent className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-900 dark:text-white">Batch Change Discount</h3>
+                  <p className="text-[11px] text-slate-500">Update discount for {selectedTagIds.length} selected tags</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowBatchDiscountModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 block">
+                Select Discount Preset
+              </label>
+              <div className="grid grid-cols-5 gap-1.5">
+                {[50, 60, 65, 66.67, 70].map(p => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setBatchNewDiscount(p)}
+                    className={`py-2 px-1 text-center rounded-xl text-xs font-bold transition-all ${
+                      Number(batchNewDiscount) === p
+                        ? 'bg-rose-500 text-white shadow-md shadow-rose-500/20'
+                        : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-rose-100 dark:hover:bg-slate-700'
+                    }`}
+                  >
+                    {p === 66.67 ? 'B1G2' : `${p}%`}
+                  </button>
+                ))}
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 block mb-1">Custom Discount %</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  max="100"
+                  value={batchNewDiscount}
+                  onChange={(e) => setBatchNewDiscount(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white font-bold text-sm"
+                />
+              </div>
+
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300">
+                Note: Updating the discount percentage will automatically recalculate the Sold Price for all {selectedTagIds.length} active tags based on their individual MRPs.
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setShowBatchDiscountModal(false)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleBatchChangeDiscount}
+                className="px-5 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs shadow-md shadow-rose-500/20"
+              >
+                Apply to {selectedTagIds.length} Tags
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -5847,27 +6801,100 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
         </div>
       )}
 
-      {/* --- PHOTO ZOOM MODAL --- */}
-      {photoPreviewUrl && (
-        <div
-          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 cursor-pointer"
-          onClick={() => setPhotoPreviewUrl(null)}
-        >
-          <div className="relative max-w-lg w-full bg-slate-900 rounded-2xl overflow-hidden border border-slate-700 shadow-2xl p-2" onClick={(e) => e.stopPropagation()}>
-            <button
-              type="button"
-              onClick={() => setPhotoPreviewUrl(null)}
-              className="absolute top-4 right-4 z-10 p-2 rounded-full bg-black/60 text-white hover:bg-black/90 transition-colors"
+      {/* --- FULL-SCREEN PHOTO EVIDENCE VIEWER --- */}
+      {photoPreviewUrl && (() => {
+        const url = typeof photoPreviewUrl === 'object' ? photoPreviewUrl.url : photoPreviewUrl;
+        const item = typeof photoPreviewUrl === 'object' ? photoPreviewUrl.item : null;
+        return (
+          <div
+            className="fixed inset-0 z-50 bg-black/95 backdrop-blur-sm flex items-center justify-center p-3 sm:p-6 cursor-pointer animate-in fade-in duration-200"
+            onClick={() => setPhotoPreviewUrl(null)}
+          >
+            <div
+              className="relative max-w-4xl w-full bg-slate-900 rounded-3xl overflow-hidden border border-slate-700/80 shadow-2xl flex flex-col md:flex-row cursor-default max-h-[90vh]"
+              onClick={(e) => e.stopPropagation()}
             >
-              <X className="w-5 h-5" />
-            </button>
-            <img src={photoPreviewUrl} alt="Defect High Res" className="w-full h-auto rounded-xl max-h-[80vh] object-contain" />
-            <div className="p-3 text-center text-xs text-slate-300 font-medium">
-              Defect photo captured on floor staff mobile camera
+              {/* Close Button */}
+              <button
+                type="button"
+                onClick={() => setPhotoPreviewUrl(null)}
+                className="absolute top-4 right-4 z-20 p-2.5 rounded-full bg-black/70 hover:bg-black text-white transition-all shadow-lg active:scale-90"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              {/* Photo Display Area */}
+              <div className="flex-1 bg-black/60 flex items-center justify-center p-4 min-h-[300px] overflow-hidden">
+                <img
+                  src={url}
+                  alt="Defect Evidence Full"
+                  className="max-h-[75vh] w-auto max-w-full object-contain rounded-2xl shadow-xl transition-transform hover:scale-105"
+                />
+              </div>
+
+              {/* Item Evidence Details Sidebar */}
+              {item && (
+                <div className="w-full md:w-80 p-5 bg-slate-900 border-t md:border-t-0 md:border-l border-slate-800 flex flex-col justify-between space-y-4 overflow-y-auto">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="p-2 rounded-xl bg-red-500/20 text-red-400 border border-red-500/30">
+                        <ShieldAlert className="w-4 h-4" />
+                      </span>
+                      <div>
+                        <span className="text-[10px] font-black uppercase tracking-wider text-red-400">Defect Evidence</span>
+                        <h4 className="font-extrabold text-white text-sm">#{item.articleNo}</h4>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5 text-xs">
+                      <div className="font-bold text-slate-200">{item.articleName}</div>
+                      <div className="flex items-center gap-2 text-slate-400 text-[11px] font-mono">
+                        <span>BC: {item.barcode}</span>
+                        <span>•</span>
+                        <span>Size: {item.size}</span>
+                        <span>•</span>
+                        <span>{item.color}</span>
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-2xl bg-slate-800/80 border border-slate-700/80 space-y-2 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-black bg-red-500/20 text-red-300">
+                          {DEFECT_TYPES[item.defectType]?.label || item.defectType?.replace('_', ' ')}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          item.severity === 'minor' ? 'bg-amber-500/20 text-amber-300' : 'bg-purple-500/20 text-purple-300'
+                        }`}>
+                          {item.severity === 'minor' ? '🪡 Minor' : '🚚 Major RTV'}
+                        </span>
+                      </div>
+                      {item.defectDesc && (
+                        <p className="text-slate-300 italic text-[11px]">"{item.defectDesc}"</p>
+                      )}
+                      <div className="text-[10px] text-slate-400 pt-1 border-t border-slate-700/60">
+                        Reported by: <strong className="text-white">{item.reportedBy || 'Floor Staff'}</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 pt-2 border-t border-slate-800">
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      download={`defect_${item.barcode || 'garment'}.jpg`}
+                      className="w-full py-2 px-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors border border-slate-700"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>Open Original Image</span>
+                    </a>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* --- WHATSAPP BRIEF PREVIEW MODAL --- */}
       {whatsAppModal && (

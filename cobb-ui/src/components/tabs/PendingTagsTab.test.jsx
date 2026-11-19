@@ -55,57 +55,58 @@ describe('PendingTagsTab - Duplicate Barcode Prevention', () => {
     });
   });
 
+  const mockTags = [
+    {
+      id: 'ptag_001',
+      barcode: '0080727340',
+      articleNo: 'CFS-0192',
+      articleName: 'Cobb Linen Shirt White',
+      size: '40',
+      color: 'White',
+      section: 'Men Apparel',
+      mrp: 2999,
+      discountPercent: 60,
+      soldPrice: 1200,
+      status: 'active',
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: 'ptag_002',
+      barcode: '0090123456',
+      articleNo: 'CJN-0500',
+      articleName: 'Cobb Denim Jeans Dark Blue',
+      size: '32',
+      color: 'Dark Blue',
+      section: 'Men Apparel',
+      mrp: 3499,
+      discountPercent: 60,
+      soldPrice: 1400,
+      status: 'billed', // Billed/resolved tag
+      createdAt: new Date().toISOString()
+    },
+    {
+      id: 'ptag_003',
+      barcode: '0099887766',
+      articleNo: 'CT-0100',
+      articleName: 'Cobb Chino Trouser Beige',
+      size: '34',
+      color: 'Beige',
+      section: 'Men Apparel',
+      mrp: 2499,
+      discountPercent: 60,
+      soldPrice: 1000,
+      status: 'active',
+      holdForCustomer: true,
+      holdBatchId: 'batch_test_1',
+      holdCustomerName: 'Rajesh Sharma',
+      holdCustomerPhone: '9876543210',
+      holdBagNo: 'BAG-1',
+      holdCreatedAt: new Date().toISOString(),
+      createdAt: new Date().toISOString()
+    }
+  ];
+
   describe('PendingTagsTab UI Duplicate Prevention', () => {
-    const mockTags = [
-      {
-        id: 'ptag_001',
-        barcode: '0080727340',
-        articleNo: 'CFS-0192',
-        articleName: 'Cobb Linen Shirt White',
-        size: '40',
-        color: 'White',
-        section: 'Men Apparel',
-        mrp: 2999,
-        discountPercent: 60,
-        soldPrice: 1200,
-        status: 'active',
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: 'ptag_002',
-        barcode: '0090123456',
-        articleNo: 'CJN-0500',
-        articleName: 'Cobb Denim Jeans Dark Blue',
-        size: '32',
-        color: 'Dark Blue',
-        section: 'Men Apparel',
-        mrp: 3499,
-        discountPercent: 60,
-        soldPrice: 1400,
-        status: 'billed', // Billed/resolved tag
-        createdAt: new Date().toISOString()
-      },
-      {
-        id: 'ptag_003',
-        barcode: '0099887766',
-        articleNo: 'CT-0100',
-        articleName: 'Cobb Chino Trouser Beige',
-        size: '34',
-        color: 'Beige',
-        section: 'Men Apparel',
-        mrp: 2499,
-        discountPercent: 60,
-        soldPrice: 1000,
-        status: 'active',
-        holdForCustomer: true,
-        holdBatchId: 'batch_test_1',
-        holdCustomerName: 'Rajesh Sharma',
-        holdCustomerPhone: '9876543210',
-        holdBagNo: 'BAG-1',
-        holdCreatedAt: new Date().toISOString(),
-        createdAt: new Date().toISOString()
-      }
-    ];
 
     beforeEach(() => {
       vi.clearAllMocks();
@@ -679,6 +680,134 @@ describe('PendingTagsTab - Duplicate Barcode Prevention', () => {
       await waitFor(() => {
         expect(screen.getAllByText(/STST27-00703/i).length).toBeGreaterThan(0);
         expect(screen.getByRole('button', { name: /Already Billed in POS/i }).disabled).toBe(true);
+      });
+    });
+
+    it('opens Multi-Tag Rapid Add modal and allows queuing items via rapid scan', async () => {
+      axios.get.mockImplementation((url) => {
+        if (url.includes('/api/pending-tags')) {
+          return Promise.resolve({ data: { success: true, tags: mockTags } });
+        }
+        if (url.includes('/api/inventory/quick-scan')) {
+          return Promise.resolve({
+            data: {
+              success: true,
+              variants: [{
+                barcode: '0077889900',
+                articleNo: 'CSH-99',
+                itemName: 'Cobb Polo T-Shirt Red',
+                size: 'L',
+                color: 'Red',
+                sectionName: 'Men Apparel',
+                mrp: 1999
+              }]
+            }
+          });
+        }
+        return Promise.resolve({ data: { success: true } });
+      });
+
+      render(<PendingTagsTab />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Cobb Linen Shirt White')).toBeDefined();
+      });
+
+      const multiAddBtn = screen.getByRole('button', { name: /\+ Multi-Tag Rapid Add/i });
+      expect(multiAddBtn).toBeDefined();
+      fireEvent.click(multiAddBtn);
+
+      await waitFor(() => {
+        expect(screen.getByText('Multi-Tag Rapid Add')).toBeDefined();
+        expect(screen.getByPlaceholderText(/Scan barcode and press Enter/i)).toBeDefined();
+      });
+
+      // Enter barcode in scan query
+      const scanInput = screen.getByPlaceholderText(/Scan barcode and press Enter/i);
+      fireEvent.change(scanInput, { target: { value: '0077889900' } });
+
+      const addQueueBtn = screen.getByRole('button', { name: /Add to Queue/i });
+      fireEvent.click(addQueueBtn);
+
+      await waitFor(() => {
+        expect(screen.getByText('Cobb Polo T-Shirt Red')).toBeDefined();
+        expect(screen.getByText('1 queued')).toBeDefined();
+      });
+    });
+
+    it('allows switching to Paste Multiple mode and pasting multiple barcodes', async () => {
+      axios.get.mockImplementation((url) => {
+        if (url.includes('/api/pending-tags')) {
+          return Promise.resolve({ data: { success: true, tags: mockTags } });
+        }
+        if (url.includes('/api/inventory/quick-scan')) {
+          return Promise.resolve({
+            data: {
+              success: true,
+              variants: [{
+                barcode: '0011223344',
+                articleNo: 'CP-11',
+                itemName: 'Cobb Chino Black',
+                size: '34',
+                color: 'Black',
+                sectionName: 'Men Apparel',
+                mrp: 2999
+              }]
+            }
+          });
+        }
+        return Promise.resolve({ data: { success: true } });
+      });
+
+      render(<PendingTagsTab />);
+
+      fireEvent.click(screen.getByRole('button', { name: /\+ Multi-Tag Rapid Add/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText('Multi-Tag Rapid Add')).toBeDefined();
+      });
+
+      // Switch to Paste tab
+      const pasteTabBtn = screen.getByRole('button', { name: /Paste Multiple Barcodes/i });
+      fireEvent.click(pasteTabBtn);
+
+      await waitFor(() => {
+        expect(screen.getByPlaceholderText(/Paste multiple barcodes separated by newlines/i)).toBeDefined();
+      });
+
+      const pasteTextarea = screen.getByPlaceholderText(/Paste multiple barcodes separated by newlines/i);
+      fireEvent.change(pasteTextarea, { target: { value: '0011223344' } });
+
+      const queueAllBtn = screen.getByRole('button', { name: /Lookup & Queue All/i });
+      fireEvent.click(queueAllBtn);
+
+      await waitFor(() => {
+        expect(screen.getByText('Cobb Chino Black')).toBeDefined();
+      });
+    });
+
+    it('allows toggling Customer Hold Bag History drawer', async () => {
+      render(<PendingTagsTab />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Cobb Linen Shirt White')).toBeDefined();
+      });
+
+      // Switch to Customer Hold Bags desk
+      const holdsTabBtn = screen.getByRole('button', { name: /Customer Hold Bags/i });
+      fireEvent.click(holdsTabBtn);
+
+      await waitFor(() => {
+        expect(screen.getByText(/Customer Hold Vault/i)).toBeDefined();
+      });
+
+      const historyBtn = screen.getByRole('button', { name: /Bag History/i });
+      expect(historyBtn).toBeDefined();
+
+      fireEvent.click(historyBtn);
+
+      await waitFor(() => {
+        expect(screen.getByText(/Recent Customer Hold Bag History/i)).toBeDefined();
       });
     });
   });

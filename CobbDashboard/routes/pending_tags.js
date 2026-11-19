@@ -840,6 +840,225 @@ router.post('/add', async (req, res) => {
     }
 });
 
+// POST /api/pending-tags/batch-add — Add multiple pending tags in one atomic batch
+router.post('/batch-add', async (req, res) => {
+    try {
+        const { items, shared = {} } = req.body;
+        if (!Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({ success: false, error: 'items array is required' });
+        }
+
+        const outcome = await withTagsLock(async () => {
+            const localTags = readTags();
+            const { tags } = await mergeTagsWithCloud(localTags);
+            const now = new Date();
+            const nowIso = now.toISOString();
+            const dateStr = nowIso.split('T')[0];
+
+            let addedCount = 0;
+            const addedTags = [];
+            const skippedItems = [];
+
+            for (const item of items) {
+                const normBarcode = normalizeBarcode(item.barcode || item.articleNo || '');
+                if (!normBarcode) {
+                    skippedItems.push({ barcode: '', reason: 'Empty barcode/article' });
+                    continue;
+                }
+
+                // Check active duplicates
+                const activeDup = tags.find(t => t.status === 'active' && isBarcodeDuplicate(t.barcode, normBarcode));
+                if (activeDup) {
+                    skippedItems.push({ barcode: normBarcode, reason: 'Duplicate active tag' });
+                    continue;
+                }
+
+                const mrp = parseFloat(item.mrp || 0);
+                const discountPercent = parseFloat(item.discountPercent !== undefined ? item.discountPercent : (shared.discountPercent !== undefined ? shared.discountPercent : 60));
+                const soldPrice = parseFloat(item.soldPrice !== undefined ? item.soldPrice : (mrp > 0 ? Math.round(mrp * (1 - (discountPercent / 100))) : 0));
+
+                const newTag = {
+                    id: 'ptag_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+                    barcode: normBarcode,
+                    articleNo: String(item.articleNo || normBarcode).trim().toUpperCase(),
+                    articleName: String(item.articleName || item.itemName || 'Apparel Item').trim(),
+                    size: String(item.size || 'Free').trim().toUpperCase(),
+                    color: String(item.color || 'Standard').trim(),
+                    section: String(item.section || item.sectionName || 'Men Apparel').trim(),
+                    mrp,
+                    discountPercent,
+                    soldPrice,
+                    customerName: String(item.customerName || shared.customerName || '').trim(),
+                    customerPhone: String(item.customerPhone || shared.customerPhone || '').replace(/[^0-9]/g, '').slice(-10),
+                    salesperson: String(item.salesperson || shared.salesperson || 'Cashier').trim(),
+                    notes: String(item.notes || shared.notes || '').trim(),
+                    status: 'active',
+                    createdAt: nowIso,
+                    updatedAt: nowIso,
+                    date: dateStr
+                };
+
+                tags.unshift(newTag);
+                addedTags.push(newTag);
+                addedCount++;
+                appendAuditLog('TAG_BATCH_ADDED', { tagId: newTag.id, barcode: newTag.barcode, mrp: newTag.mrp, soldPrice: newTag.soldPrice });
+            }
+
+            if (addedCount > 0) {
+                writeTags(tags);
+            }
+
+            return {
+                addedCount,
+                skippedCount: skippedItems.length,
+                addedTags,
+                skippedItems
+            };
+        });
+
+        res.json({
+            success: true,
+            message: `Batch added ${outcome.addedCount} tag(s), skipped ${outcome.skippedCount}`,
+            ...outcome
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// POST /api/pending-tags/batch-update-discount — Bulk update discount % for selected active tags
+router.post('/batch-update-discount', async (req, res) => {
+    try {
+        const { tagIds, discountPercent } = req.body;
+        if (!Array.isArray(tagIds) || tagIds.length === 0) {
+            return res.status(400).json({ success: false, error: 'tagIds array is required' });
+        }
+        const numDisc = parseFloat(discountPercent);
+        if (isNaN(numDisc) || numDisc < 0 || numDisc > 100) {
+            return res.status(400).json({ success: false, error: 'Valid discountPercent between 0 and 100 is required' });
+        }
+
+        const outcome = await withTagsLock(async () => {
+            const localTags = readTags();
+            const { tags } = await mergeTagsWithCloud(localTags);
+            const nowIso = new Date().toISOString();
+            let updatedCount = 0;
+
+            for (const t of tags) {
+                if (tagIds.includes(t.id) && t.status === 'active') {
+                    t.discountPercent = numDisc;
+                    const mrp = parseFloat(t.mrp || 0);
+                    if (mrp > 0) {
+                        t.soldPrice = Math.round(mrp * (1 - (numDisc / 100)));
+                    }
+                    t.updatedAt = nowIso;
+                    updatedCount++;
+                }
+            }
+
+            if (updatedCount > 0) {
+                writeTags(tags);
+                appendAuditLog('BATCH_UPDATE_DISCOUNT', { count: updatedCount, discountPercent: numDisc, tagIds });
+            }
+
+            return { updatedCount };
+        });
+
+        res.json({
+            success: true,
+            message: `Updated discount to ${numDisc}% for ${outcome.updatedCount} tag(s)`,
+            updatedCount: outcome.updatedCount
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// POST /api/pending-tags/batch-mark-billed — Bulk mark multiple tags as billed
+router.post('/batch-mark-billed', async (req, res) => {
+    try {
+        const { tagIds, billNo = 'B1G2-BATCH' } = req.body;
+        if (!Array.isArray(tagIds) || tagIds.length === 0) {
+            return res.status(400).json({ success: false, error: 'tagIds array is required' });
+        }
+
+        const outcome = await withTagsLock(async () => {
+            const localTags = readTags();
+            const { tags } = await mergeTagsWithCloud(localTags);
+            const nowIso = new Date().toISOString();
+            let billedCount = 0;
+
+            for (const t of tags) {
+                if (tagIds.includes(t.id) && t.status === 'active') {
+                    t.status = 'billed';
+                    t.billedInBillNo = String(billNo).trim();
+                    t.billedAt = nowIso;
+                    t.autoResolved = false;
+                    t.resolvedAt = nowIso;
+                    t.updatedAt = nowIso;
+                    billedCount++;
+                }
+            }
+
+            if (billedCount > 0) {
+                writeTags(tags);
+                appendAuditLog('BATCH_MARK_BILLED', { count: billedCount, billNo, tagIds });
+            }
+
+            return { billedCount };
+        });
+
+        res.json({
+            success: true,
+            message: `Marked ${outcome.billedCount} tag(s) as billed in ${billNo}`,
+            billedCount: outcome.billedCount
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// POST /api/pending-tags/batch-delete — Bulk void/delete multiple tags
+router.post('/batch-delete', async (req, res) => {
+    try {
+        const { tagIds } = req.body;
+        if (!Array.isArray(tagIds) || tagIds.length === 0) {
+            return res.status(400).json({ success: false, error: 'tagIds array is required' });
+        }
+
+        const outcome = await withTagsLock(async () => {
+            const localTags = readTags();
+            const { tags } = await mergeTagsWithCloud(localTags);
+            const nowIso = new Date().toISOString();
+            let deletedCount = 0;
+
+            for (const t of tags) {
+                if (tagIds.includes(t.id)) {
+                    t.status = 'void';
+                    t.voidedAt = nowIso;
+                    t.updatedAt = nowIso;
+                    deletedCount++;
+                }
+            }
+
+            if (deletedCount > 0) {
+                writeTags(tags);
+                appendAuditLog('BATCH_TAGS_VOIDED', { count: deletedCount, tagIds });
+            }
+
+            return { deletedCount };
+        });
+
+        res.json({
+            success: true,
+            message: `Deleted ${outcome.deletedCount} tag(s)`,
+            deletedCount: outcome.deletedCount
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 // POST /api/pending-tags/:id/mark-billed — manual resolution
 router.post('/:id/mark-billed', async (req, res) => {
     try {
