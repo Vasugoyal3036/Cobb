@@ -84,7 +84,7 @@ export function getTargetProgress(salesAmount, dailyTarget = 50000) {
     return {
       status: 'bumper',
       label: 'Mega Bumper Day',
-      badgeIcon: '⭐',
+      badgeIcon: '🏆',
       badgeClass: 'bg-amber-400/20 text-amber-300 border-amber-400/50',
       ringColor: '#f59e0b', // Radiant Amber Gold
       trackColor: 'rgba(245, 158, 11, 0.15)',
@@ -945,13 +945,6 @@ const ExecutiveBentoDashboard = (props) => {
 
                         <span className="relative z-10">{day}</span>
 
-                        {/* Star marker on bumper days (≥ ₹75k) */}
-                        {hasSales && progress.status === 'bumper' && !isSelected && (
-                          <span className="absolute -top-1 -right-1 text-[9px] leading-none z-20" title="Mega Bumper Day (≥₹75k)">
-                            ⭐
-                          </span>
-                        )}
-
                         {/* Dot on target hit days (100%+) */}
                         {hasSales && progress.status === 'target' && !isSelected && (
                           <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-400 ring-1 ring-black z-20" title="Target Hit (100%+)" />
@@ -1050,7 +1043,7 @@ const ExecutiveBentoDashboard = (props) => {
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0" title="Mega Bumper Day (≥ ₹75,000 / 150%+)">
                   <span className="w-2.5 h-2.5 rounded-full border-2 border-amber-400 bg-transparent inline-block"></span>
-                  <span className="text-amber-300 font-bold flex items-center gap-0.5">⭐ Mega Day</span>
+                  <span className="text-amber-300 font-bold flex items-center gap-0.5">Mega Day (≥₹75k)</span>
                 </div>
               </div>
             </div>

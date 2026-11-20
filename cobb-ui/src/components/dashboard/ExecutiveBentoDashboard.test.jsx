@@ -48,10 +48,10 @@ describe('ExecutiveBentoDashboard Target Progress Activity Rings', () => {
       expect(p60k.ringColor).toBe('#10b981');
     });
 
-    it('identifies mega bumper day for sales >= 75,000 (radiant amber gold ring with star)', () => {
+    it('identifies mega bumper day for sales >= 75,000 (radiant amber gold ring)', () => {
       const p75k = getTargetProgress(75000, 50000);
       expect(p75k.status).toBe('bumper');
-      expect(p75k.badgeIcon).toBe('⭐');
+      expect(p75k.badgeIcon).toBe('🏆');
       expect(p75k.ringColor).toBe('#f59e0b');
       expect(p75k.label).toBe('Mega Bumper Day');
 
@@ -64,7 +64,7 @@ describe('ExecutiveBentoDashboard Target Progress Activity Rings', () => {
     it('maintains backward compatibility with getSalesTier', () => {
       const tier = getSalesTier(80000);
       expect(tier.tier).toBe('bumper');
-      expect(tier.badgeIcon).toBe('⭐');
+      expect(tier.badgeIcon).toBe('🏆');
     });
   });
 
@@ -95,7 +95,7 @@ describe('ExecutiveBentoDashboard Target Progress Activity Rings', () => {
       expect(screen.getByText(/Sales Performance Calendar/i)).toBeDefined();
       expect(screen.getByText(/In Progress \(<100%\)/i)).toBeDefined();
       expect(screen.getByText(/100% Target Hit/i)).toBeDefined();
-      expect(screen.getByText(/⭐ Mega Day/i)).toBeDefined();
+      expect(screen.getByText(/Mega Day/i)).toBeDefined();
     });
 
     it('renders circular progress rings for sales days', () => {
