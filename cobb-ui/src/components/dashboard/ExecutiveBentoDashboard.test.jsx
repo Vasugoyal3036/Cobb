@@ -20,39 +20,39 @@ vi.mock('./MultiStoreFleetMatrix', () => ({
 
 describe('ExecutiveBentoDashboard Sales Calendar Color Coding', () => {
   describe('getSalesTier logic', () => {
-    it('categorizes sales < 15,000 as low tier (orange)', () => {
+    it('categorizes sales < 13,200 as below breakeven tier (faint sky)', () => {
       const tier0 = getSalesTier(0);
       expect(tier0.tier).toBe('low');
       expect(tier0.badgeIcon).toBe('⏳');
 
       const tier12k = getSalesTier(12500);
       expect(tier12k.tier).toBe('low');
-      expect(tier12k.label).toBe('Low Sales');
-      expect(tier12k.shortLabel).toBe('<₹15k');
+      expect(tier12k.label).toBe('Below Breakeven');
+      expect(tier12k.shortLabel).toBe('<₹13.2k');
     });
 
-    it('categorizes sales 15,000 to 34,999 as normal tier (blue)', () => {
+    it('categorizes sales 13,200 to 34,999 as normal sales tier (light blue)', () => {
       const tier15k = getSalesTier(15000);
       expect(tier15k.tier).toBe('normal');
       expect(tier15k.label).toBe('Normal Sales');
 
       const tier30k = getSalesTier(30000);
       expect(tier30k.tier).toBe('normal');
-      expect(tier30k.shortLabel).toBe('₹15k-35k');
+      expect(tier30k.shortLabel).toBe('₹13.2k-35k');
     });
 
-    it('categorizes sales 35,000 to 49,999 as good/high tier (teal)', () => {
+    it('categorizes sales 35,000 to 49,999 as high momentum tier (medium blue)', () => {
       const tier35k = getSalesTier(35000);
       expect(tier35k.tier).toBe('high');
-      expect(tier35k.badgeIcon).toBe('🔥');
+      expect(tier35k.badgeIcon).toBe('⚡');
 
       const tier48k = getSalesTier(48500);
       expect(tier48k.tier).toBe('high');
-      expect(tier48k.label).toBe('Good / High Sales');
+      expect(tier48k.label).toBe('High Momentum');
       expect(tier48k.shortLabel).toBe('₹35k-50k');
     });
 
-    it('categorizes sales 50,000 to 74,999 as target hit tier (emerald green)', () => {
+    it('categorizes sales 50,000 to 74,999 as target hit tier (deep cobalt blue)', () => {
       const tier50k = getSalesTier(50000);
       expect(tier50k.tier).toBe('target');
       expect(tier50k.badgeIcon).toBe('🎯');
@@ -63,7 +63,7 @@ describe('ExecutiveBentoDashboard Sales Calendar Color Coding', () => {
       expect(tier65k.shortLabel).toBe('₹50k-75k');
     });
 
-    it('categorizes sales >= 75,000 as mega bumper day tier (gold/star)', () => {
+    it('categorizes sales >= 75,000 as mega bumper day tier (darkest midnight navy)', () => {
       const tier75k = getSalesTier(75000);
       expect(tier75k.tier).toBe('bumper');
       expect(tier75k.badgeIcon).toBe('⭐');
@@ -80,11 +80,11 @@ describe('ExecutiveBentoDashboard Sales Calendar Color Coding', () => {
     const formatCurrency = (val) => `₹${Number(val || 0).toLocaleString('en-IN')}`;
 
     const mockDailySales = [
-      { SaleDate: '2026-11-01', TotalSales: 8000, CashAmount: 5000, UPIAmount: 3000, CardAmount: 0, TotalBills: 4 }, // Low Tier
-      { SaleDate: '2026-11-05', TotalSales: 22000, CashAmount: 10000, UPIAmount: 10000, CardAmount: 2000, TotalBills: 9 }, // Normal Tier
-      { SaleDate: '2026-11-10', TotalSales: 42000, CashAmount: 20000, UPIAmount: 15000, CardAmount: 7000, TotalBills: 15 }, // High Tier
-      { SaleDate: '2026-11-12', TotalSales: 58000, CashAmount: 25000, UPIAmount: 25000, CardAmount: 8000, TotalBills: 21 }, // Target Hit Tier
-      { SaleDate: '2026-11-14', TotalSales: 92000, CashAmount: 40000, UPIAmount: 42000, CardAmount: 10000, TotalBills: 34 } // Bumper Mega Tier
+      { SaleDate: '2026-11-01', TotalSales: 8000, CashAmount: 5000, UPIAmount: 3000, CardAmount: 0, TotalBills: 4 }, // Below BEP (<13.2k)
+      { SaleDate: '2026-11-05', TotalSales: 22000, CashAmount: 10000, UPIAmount: 10000, CardAmount: 2000, TotalBills: 9 }, // Normal (13.2k-35k)
+      { SaleDate: '2026-11-10', TotalSales: 42000, CashAmount: 20000, UPIAmount: 15000, CardAmount: 7000, TotalBills: 15 }, // High Momentum (35k-50k)
+      { SaleDate: '2026-11-12', TotalSales: 58000, CashAmount: 25000, UPIAmount: 25000, CardAmount: 8000, TotalBills: 21 }, // Target Hit (50k-75k)
+      { SaleDate: '2026-11-14', TotalSales: 92000, CashAmount: 40000, UPIAmount: 42000, CardAmount: 10000, TotalBills: 34 } // Mega Bumper (>=75k)
     ];
 
     it('renders the Sales Performance Calendar header and 5-tier color legend', () => {
@@ -101,8 +101,8 @@ describe('ExecutiveBentoDashboard Sales Calendar Color Coding', () => {
       );
 
       expect(screen.getByText(/Sales Performance Calendar/i)).toBeDefined();
-      expect(screen.getByText(/<15k/i)).toBeDefined();
-      expect(screen.getByText(/15k-35k/i)).toBeDefined();
+      expect(screen.getByText(/<13.2k/i)).toBeDefined();
+      expect(screen.getByText(/13.2k-35k/i)).toBeDefined();
       expect(screen.getByText(/35k-50k/i)).toBeDefined();
       expect(screen.getByText(/50k-75k/i)).toBeDefined();
       expect(screen.getByText(/⭐75k\+/i)).toBeDefined();
@@ -121,30 +121,30 @@ describe('ExecutiveBentoDashboard Sales Calendar Color Coding', () => {
         />
       );
 
-      // Day 1 has ₹8,000 (Low tier: orange)
-      const day1Btn = screen.getByTitle(/2026-11-01: ₹8,000 \(Low Sales\)/i);
+      // Day 1 has ₹8,000 (Below Breakeven: faint sky)
+      const day1Btn = screen.getByTitle(/2026-11-01: ₹8,000 \(Below Breakeven\)/i);
       expect(day1Btn).toBeDefined();
-      expect(day1Btn.className).toContain('text-orange-200');
+      expect(day1Btn.className).toContain('text-sky-300');
 
-      // Day 5 has ₹22,000 (Normal tier: blue)
+      // Day 5 has ₹22,000 (Normal sales: light blue)
       const day5Btn = screen.getByTitle(/2026-11-05: ₹22,000 \(Normal Sales\)/i);
       expect(day5Btn).toBeDefined();
       expect(day5Btn.className).toContain('text-blue-200');
 
-      // Day 10 has ₹42,000 (High tier: teal)
-      const day10Btn = screen.getByTitle(/2026-11-10: ₹42,000 \(Good \/ High Sales\)/i);
+      // Day 10 has ₹42,000 (High Momentum: medium blue)
+      const day10Btn = screen.getByTitle(/2026-11-10: ₹42,000 \(High Momentum\)/i);
       expect(day10Btn).toBeDefined();
-      expect(day10Btn.className).toContain('text-teal-200');
+      expect(day10Btn.className).toContain('text-blue-100');
 
-      // Day 12 has ₹58,000 (Target hit: emerald)
+      // Day 12 has ₹58,000 (Target hit: deep cobalt blue)
       const day12Btn = screen.getByTitle(/2026-11-12: ₹58,000 \(Target Hit\)/i);
       expect(day12Btn).toBeDefined();
-      expect(day12Btn.className).toContain('text-emerald-200');
+      expect(day12Btn.className).toContain('bg-blue-600');
 
-      // Day 14 has ₹92,000 (Bumper mega: gold/amber)
+      // Day 14 has ₹92,000 (Bumper mega: midnight navy)
       const day14Btn = screen.getByTitle(/2026-11-14: ₹92,000 \(Mega Bumper Day\)/i);
       expect(day14Btn).toBeDefined();
-      expect(day14Btn.className).toContain('text-amber-200');
+      expect(day14Btn.className).toContain('bg-blue-950');
     });
 
     it('opens enhanced tooltip popover when a sales day is selected', () => {

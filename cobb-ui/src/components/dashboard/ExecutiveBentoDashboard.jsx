@@ -66,12 +66,14 @@ const AlterationSlipModal = lazy(() => import('../AlterationSlipModal'));
 const MissionControlModal = lazy(() => import('./MissionControlModal'));
 
 /**
- * Sales Performance Tier Classification:
- * Tier 1: < ₹15k (Low Sales) — Orange/Amber
- * Tier 2: ₹15k – ₹35k (Normal Sales) — Blue
- * Tier 3: ₹35k – ₹50k (Good / High Sales) — Teal
- * Tier 4: ₹50k – ₹75k (Target Hit) — Emerald Green
- * Tier 5: ≥ ₹75k (Mega Bumper Day / Festival Peak) — Gold/Star
+ * Single-Color Cobalt Blue Sales Performance Tier Classification:
+ * A single coherent hue that becomes darker/deeper as sales revenue increases.
+ * Aligned with exact store config:
+ * Tier 1: < ₹13,200 (Below Breakeven) — Faint Sky Blue
+ * Tier 2: ₹13,200 – ₹34,999 (Normal Sales) — Light Blue
+ * Tier 3: ₹35,000 – ₹49,999 (High Momentum) — Medium Blue
+ * Tier 4: ₹50,000 – ₹74,999 (Target Hit) — Deep Cobalt Blue
+ * Tier 5: ≥ ₹75,000 (Mega Bumper Day) — Darkest Midnight Navy Blue
  */
 export function getSalesTier(salesAmount) {
   const amount = Number(salesAmount) || 0;
@@ -81,11 +83,11 @@ export function getSalesTier(salesAmount) {
       label: 'Mega Bumper Day',
       shortLabel: '≥₹75k',
       badgeIcon: '⭐',
-      badgeClass: 'bg-amber-400/20 text-amber-300 border-amber-400/40',
-      cellClassDark: 'bg-amber-500/25 text-amber-200 border-amber-400/60 shadow-sm shadow-amber-500/25 font-black hover:bg-amber-500/35',
-      cellClassLight: 'bg-amber-100 text-amber-950 border-amber-400 shadow-sm font-black hover:bg-amber-200',
-      activeClass: 'bg-amber-500 text-slate-950 font-black ring-2 ring-amber-300 border-amber-200 scale-110 shadow-xl shadow-amber-500/50',
-      dotClass: 'bg-amber-400'
+      badgeClass: 'bg-blue-900/60 text-blue-200 border-blue-400/60 shadow-xs',
+      cellClassDark: 'bg-blue-950 text-white border-blue-300 ring-1 ring-blue-400/80 font-black hover:bg-blue-900 shadow-md shadow-blue-950/60',
+      cellClassLight: 'bg-blue-950 text-white border-blue-950 font-black hover:bg-blue-900 shadow-md ring-1 ring-blue-700',
+      activeClass: 'bg-blue-950 text-white font-black ring-2 ring-white border-blue-200 scale-110 shadow-xl shadow-blue-950/80',
+      dotClass: 'bg-blue-950'
     };
   }
   if (amount >= 50000) {
@@ -94,49 +96,49 @@ export function getSalesTier(salesAmount) {
       label: 'Target Hit',
       shortLabel: '₹50k-75k',
       badgeIcon: '🎯',
-      badgeClass: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
-      cellClassDark: 'bg-emerald-500/20 text-emerald-200 border-emerald-500/50 shadow-sm shadow-emerald-500/20 font-extrabold hover:bg-emerald-500/30',
-      cellClassLight: 'bg-emerald-100 text-emerald-950 border-emerald-400 shadow-sm font-extrabold hover:bg-emerald-200',
-      activeClass: 'bg-emerald-500 text-white font-black ring-2 ring-emerald-300 border-emerald-200 scale-110 shadow-xl shadow-emerald-500/50',
-      dotClass: 'bg-emerald-400'
+      badgeClass: 'bg-blue-600/30 text-blue-200 border-blue-400/50 shadow-xs',
+      cellClassDark: 'bg-blue-600/80 text-white border-blue-300 hover:bg-blue-600 font-extrabold shadow-xs shadow-blue-500/30',
+      cellClassLight: 'bg-blue-600 text-white border-blue-700 font-extrabold hover:bg-blue-700 shadow-xs',
+      activeClass: 'bg-blue-600 text-white font-black ring-2 ring-white border-blue-200 scale-110 shadow-xl shadow-blue-600/60',
+      dotClass: 'bg-blue-600'
     };
   }
   if (amount >= 35000) {
     return {
       tier: 'high',
-      label: 'Good / High Sales',
+      label: 'High Momentum',
       shortLabel: '₹35k-50k',
-      badgeIcon: '🔥',
-      badgeClass: 'bg-teal-500/20 text-teal-300 border-teal-500/40',
-      cellClassDark: 'bg-teal-500/20 text-teal-200 border-teal-500/40 font-bold hover:bg-teal-500/30',
-      cellClassLight: 'bg-teal-100 text-teal-950 border-teal-300 font-bold hover:bg-teal-200',
-      activeClass: 'bg-teal-500 text-white font-black ring-2 ring-teal-300 border-teal-200 scale-110 shadow-xl shadow-teal-500/50',
-      dotClass: 'bg-teal-400'
+      badgeIcon: '⚡',
+      badgeClass: 'bg-blue-500/25 text-blue-300 border-blue-400/40',
+      cellClassDark: 'bg-blue-500/50 text-blue-100 border-blue-400/60 font-bold hover:bg-blue-500/60',
+      cellClassLight: 'bg-blue-400 text-white border-blue-500 font-bold hover:bg-blue-500',
+      activeClass: 'bg-blue-500 text-white font-black ring-2 ring-blue-300 border-blue-200 scale-110 shadow-xl shadow-blue-500/50',
+      dotClass: 'bg-blue-500'
     };
   }
-  if (amount >= 15000) {
+  if (amount >= 13200) {
     return {
       tier: 'normal',
       label: 'Normal Sales',
-      shortLabel: '₹15k-35k',
+      shortLabel: '₹13.2k-35k',
       badgeIcon: '💼',
       badgeClass: 'bg-blue-500/20 text-blue-300 border-blue-500/40',
-      cellClassDark: 'bg-blue-500/20 text-blue-200 border-blue-500/40 font-bold hover:bg-blue-500/30',
-      cellClassLight: 'bg-blue-100 text-blue-900 border-blue-300 font-bold hover:bg-blue-200',
+      cellClassDark: 'bg-blue-500/25 text-blue-200 border-blue-500/40 font-semibold hover:bg-blue-500/35',
+      cellClassLight: 'bg-blue-200 text-blue-950 border-blue-300 font-semibold hover:bg-blue-300',
       activeClass: 'bg-blue-500 text-white font-black ring-2 ring-blue-300 border-blue-200 scale-110 shadow-xl shadow-blue-500/50',
       dotClass: 'bg-blue-400'
     };
   }
   return {
     tier: 'low',
-    label: 'Low Sales',
-    shortLabel: '<₹15k',
+    label: 'Below Breakeven',
+    shortLabel: '<₹13.2k',
     badgeIcon: '⏳',
-    badgeClass: 'bg-orange-500/20 text-orange-300 border-orange-500/40',
-    cellClassDark: 'bg-orange-500/20 text-orange-200 border-orange-500/40 font-bold hover:bg-orange-500/30',
-    cellClassLight: 'bg-orange-100 text-orange-900 border-orange-300 font-bold hover:bg-orange-200',
-    activeClass: 'bg-orange-500 text-white font-black ring-2 ring-orange-300 border-orange-200 scale-110 shadow-xl shadow-orange-500/50',
-    dotClass: 'bg-orange-400'
+    badgeClass: 'bg-sky-500/15 text-sky-300 border-sky-500/30',
+    cellClassDark: 'bg-sky-500/10 text-sky-300/80 border-sky-500/20 font-medium hover:bg-sky-500/20',
+    cellClassLight: 'bg-sky-50 text-sky-800 border-sky-200 font-medium hover:bg-sky-100',
+    activeClass: 'bg-sky-500 text-white font-black ring-2 ring-sky-300 border-sky-200 scale-110 shadow-xl shadow-sky-500/50',
+    dotClass: 'bg-sky-300'
   };
 }
 
@@ -994,27 +996,27 @@ const ExecutiveBentoDashboard = (props) => {
                 })}
               </div>
 
-              {/* Color Legend Bar */}
+              {/* Single-Color Cobalt Blue Legend Bar */}
               <div className="mt-3 pt-2.5 border-t border-slate-200/60 dark:border-white/[0.06] flex items-center justify-between text-[10px] text-slate-400 font-semibold overflow-x-auto gap-1 select-none">
-                <div className="flex items-center gap-1 shrink-0" title="Low Sales (< ₹15,000)">
-                  <span className="w-2 h-2 rounded-full bg-orange-500 shadow-xs shadow-orange-500/50"></span>
-                  <span>&lt;15k</span>
+                <div className="flex items-center gap-1 shrink-0" title="Below Breakeven (< ₹13,200) - Faint Sky">
+                  <span className="w-2 h-2 rounded-full bg-sky-200 dark:bg-sky-400/30 border border-sky-400/40"></span>
+                  <span>&lt;13.2k</span>
                 </div>
-                <div className="flex items-center gap-1 shrink-0" title="Normal Sales (₹15,000 – ₹34,999)">
-                  <span className="w-2 h-2 rounded-full bg-blue-500 shadow-xs shadow-blue-500/50"></span>
-                  <span>15k-35k</span>
+                <div className="flex items-center gap-1 shrink-0" title="Normal Sales (₹13,200 – ₹34,999) - Light Blue">
+                  <span className="w-2 h-2 rounded-full bg-blue-300 dark:bg-blue-500/40 border border-blue-400/40"></span>
+                  <span>13.2k-35k</span>
                 </div>
-                <div className="flex items-center gap-1 shrink-0" title="Good / High Sales (₹35,000 – ₹49,999)">
-                  <span className="w-2 h-2 rounded-full bg-teal-500 shadow-xs shadow-teal-500/50"></span>
+                <div className="flex items-center gap-1 shrink-0" title="High Momentum (₹35,000 – ₹49,999) - Medium Blue">
+                  <span className="w-2 h-2 rounded-full bg-blue-500 dark:bg-blue-500/70 border border-blue-400/60"></span>
                   <span>35k-50k</span>
                 </div>
-                <div className="flex items-center gap-1 shrink-0" title="Target Hit (₹50,000 – ₹74,999)">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-xs shadow-emerald-500/50"></span>
+                <div className="flex items-center gap-1 shrink-0" title="Target Hit (₹50,000 – ₹74,999) - Deep Cobalt">
+                  <span className="w-2 h-2 rounded-full bg-blue-600 dark:bg-blue-600 border border-blue-300 shadow-xs"></span>
                   <span>50k-75k</span>
                 </div>
-                <div className="flex items-center gap-1 shrink-0" title="Mega Bumper Day (≥ ₹75,000)">
-                  <span className="w-2 h-2 rounded-full bg-amber-400 shadow-xs shadow-amber-400/50"></span>
-                  <span className="text-amber-300 font-bold flex items-center gap-0.5">⭐75k+</span>
+                <div className="flex items-center gap-1 shrink-0" title="Mega Bumper Day (≥ ₹75,000) - Midnight Navy">
+                  <span className="w-2 h-2 rounded-full bg-blue-950 dark:bg-blue-950 border border-blue-300 ring-1 ring-blue-400/60 shadow-xs"></span>
+                  <span className="text-blue-600 dark:text-blue-300 font-bold flex items-center gap-0.5">⭐75k+</span>
                 </div>
               </div>
             </div>
