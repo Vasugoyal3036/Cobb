@@ -53,7 +53,8 @@ import {
   X,
   Wifi,
   WifiOff,
-  Tv
+  Tv,
+  Star
 } from 'lucide-react';
 
 import ExecutiveKpiStrip from './ExecutiveKpiStrip';
@@ -63,6 +64,81 @@ import MultiStoreFleetMatrix from './MultiStoreFleetMatrix';
 
 const AlterationSlipModal = lazy(() => import('../AlterationSlipModal'));
 const MissionControlModal = lazy(() => import('./MissionControlModal'));
+
+/**
+ * Sales Performance Tier Classification:
+ * Tier 1: < ₹15k (Low Sales) — Orange/Amber
+ * Tier 2: ₹15k – ₹35k (Normal Sales) — Blue
+ * Tier 3: ₹35k – ₹50k (Good / High Sales) — Teal
+ * Tier 4: ₹50k – ₹75k (Target Hit) — Emerald Green
+ * Tier 5: ≥ ₹75k (Mega Bumper Day / Festival Peak) — Gold/Star
+ */
+export function getSalesTier(salesAmount) {
+  const amount = Number(salesAmount) || 0;
+  if (amount >= 75000) {
+    return {
+      tier: 'bumper',
+      label: 'Mega Bumper Day',
+      shortLabel: '≥₹75k',
+      badgeIcon: '⭐',
+      badgeClass: 'bg-amber-400/20 text-amber-300 border-amber-400/40',
+      cellClassDark: 'bg-amber-500/25 text-amber-200 border-amber-400/60 shadow-sm shadow-amber-500/25 font-black hover:bg-amber-500/35',
+      cellClassLight: 'bg-amber-100 text-amber-950 border-amber-400 shadow-sm font-black hover:bg-amber-200',
+      activeClass: 'bg-amber-500 text-slate-950 font-black ring-2 ring-amber-300 border-amber-200 scale-110 shadow-xl shadow-amber-500/50',
+      dotClass: 'bg-amber-400'
+    };
+  }
+  if (amount >= 50000) {
+    return {
+      tier: 'target',
+      label: 'Target Hit',
+      shortLabel: '₹50k-75k',
+      badgeIcon: '🎯',
+      badgeClass: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+      cellClassDark: 'bg-emerald-500/20 text-emerald-200 border-emerald-500/50 shadow-sm shadow-emerald-500/20 font-extrabold hover:bg-emerald-500/30',
+      cellClassLight: 'bg-emerald-100 text-emerald-950 border-emerald-400 shadow-sm font-extrabold hover:bg-emerald-200',
+      activeClass: 'bg-emerald-500 text-white font-black ring-2 ring-emerald-300 border-emerald-200 scale-110 shadow-xl shadow-emerald-500/50',
+      dotClass: 'bg-emerald-400'
+    };
+  }
+  if (amount >= 35000) {
+    return {
+      tier: 'high',
+      label: 'Good / High Sales',
+      shortLabel: '₹35k-50k',
+      badgeIcon: '🔥',
+      badgeClass: 'bg-teal-500/20 text-teal-300 border-teal-500/40',
+      cellClassDark: 'bg-teal-500/20 text-teal-200 border-teal-500/40 font-bold hover:bg-teal-500/30',
+      cellClassLight: 'bg-teal-100 text-teal-950 border-teal-300 font-bold hover:bg-teal-200',
+      activeClass: 'bg-teal-500 text-white font-black ring-2 ring-teal-300 border-teal-200 scale-110 shadow-xl shadow-teal-500/50',
+      dotClass: 'bg-teal-400'
+    };
+  }
+  if (amount >= 15000) {
+    return {
+      tier: 'normal',
+      label: 'Normal Sales',
+      shortLabel: '₹15k-35k',
+      badgeIcon: '💼',
+      badgeClass: 'bg-blue-500/20 text-blue-300 border-blue-500/40',
+      cellClassDark: 'bg-blue-500/20 text-blue-200 border-blue-500/40 font-bold hover:bg-blue-500/30',
+      cellClassLight: 'bg-blue-100 text-blue-900 border-blue-300 font-bold hover:bg-blue-200',
+      activeClass: 'bg-blue-500 text-white font-black ring-2 ring-blue-300 border-blue-200 scale-110 shadow-xl shadow-blue-500/50',
+      dotClass: 'bg-blue-400'
+    };
+  }
+  return {
+    tier: 'low',
+    label: 'Low Sales',
+    shortLabel: '<₹15k',
+    badgeIcon: '⏳',
+    badgeClass: 'bg-orange-500/20 text-orange-300 border-orange-500/40',
+    cellClassDark: 'bg-orange-500/20 text-orange-200 border-orange-500/40 font-bold hover:bg-orange-500/30',
+    cellClassLight: 'bg-orange-100 text-orange-900 border-orange-300 font-bold hover:bg-orange-200',
+    activeClass: 'bg-orange-500 text-white font-black ring-2 ring-orange-300 border-orange-200 scale-110 shadow-xl shadow-orange-500/50',
+    dotClass: 'bg-orange-400'
+  };
+}
 
 /**
  * Redesigned Executive Command Center Bento Dashboard
@@ -147,9 +223,14 @@ const ExecutiveBentoDashboard = (props) => {
   const [pulseSearchQuery, setPulseSearchQuery] = useState('');
   const [pulseModeFilter, setPulseModeFilter] = useState('all'); // 'all' | 'cash' | 'upi' | 'card'
 
-  // Sales Performance Calendar State
-  const [calendarDate, setCalendarDate] = useState(new Date());
-  const [selectedCalendarDay, setSelectedCalendarDay] = useState(null);
+  // Sales Performance Calendar State (Supports controlled props from parent or internal state)
+  const [internalCalendarDate, setInternalCalendarDate] = useState(new Date());
+  const calendarDate = props.calendarDate || internalCalendarDate;
+  const setCalendarDate = props.setCalendarDate || setInternalCalendarDate;
+
+  const [internalSelectedCalendarDay, setInternalSelectedCalendarDay] = useState(null);
+  const selectedCalendarDay = props.selectedCalendarDay !== undefined ? props.selectedCalendarDay : internalSelectedCalendarDay;
+  const setSelectedCalendarDay = props.setSelectedCalendarDay || setInternalSelectedCalendarDay;
 
   // Live Sync ticker state & Cloud Sentry Offline Detection
   const [syncResetSignal, setSyncResetSignal] = useState(0);
@@ -788,12 +869,21 @@ const ExecutiveBentoDashboard = (props) => {
                   const dayData = (Array.isArray(dailySales) ? dailySales : []).find(
                     (d) => d.SaleDate && d.SaleDate.startsWith(dateStr)
                   );
-                  const hasSales = dayData && dayData.TotalSales > 0;
+                  const hasSales = dayData && Number(dayData.TotalSales) > 0;
+                  const tier = hasSales ? getSalesTier(dayData.TotalSales) : null;
+
+                  const now = new Date();
+                  const isToday =
+                    now.getDate() === day &&
+                    now.getMonth() === calendarDate.getMonth() &&
+                    now.getFullYear() === calendarDate.getFullYear();
 
                   const dayOfWeek = new Date(calendarDate.getFullYear(), calendarDate.getMonth(), day).getDay();
                   let tooltipPositionClass = 'left-1/2 -translate-x-1/2';
                   if (dayOfWeek <= 1) tooltipPositionClass = 'left-0';
                   else if (dayOfWeek >= 5) tooltipPositionClass = 'right-0';
+
+                  const isSelected = selectedCalendarDay === day;
 
                   return (
                     <div key={day} className="relative flex items-center justify-center h-8">
@@ -801,52 +891,84 @@ const ExecutiveBentoDashboard = (props) => {
                         type="button"
                         onClick={() => {
                           if (hasSales) {
-                            setSelectedCalendarDay(selectedCalendarDay === day ? null : day);
+                            setSelectedCalendarDay(isSelected ? null : day);
                           }
                         }}
-                        className={`w-7 h-7 flex items-center justify-center rounded-lg text-xs font-mono font-semibold transition-all ${
+                        className={`w-7 h-7 flex items-center justify-center rounded-lg text-xs font-mono transition-all relative ${
                           hasSales ? 'cursor-pointer' : 'cursor-default'
                         } ${
                           hasSales
-                            ? selectedCalendarDay === day
-                              ? 'bg-blue-500 text-white shadow-xl shadow-blue-500/30 border border-blue-400 scale-105 font-black'
+                            ? isSelected
+                              ? tier.activeClass
                               : darkMode
-                                ? 'bg-blue-500/20 text-white font-bold border border-blue-500/40 hover:bg-blue-500/30 shadow-md shadow-[#0a0f1a]'
-                                : 'bg-blue-100 text-blue-900 font-bold border border-blue-300 hover:bg-blue-200 shadow-sm'
-                            : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                                ? `${tier.cellClassDark} border`
+                                : `${tier.cellClassLight} border`
+                            : isToday
+                              ? 'text-white font-bold bg-white/5 border border-red-500/60'
+                              : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                        } ${
+                          isToday && !isSelected
+                            ? 'ring-2 ring-red-500 ring-offset-1 ring-offset-slate-900 shadow-md shadow-red-500/30'
+                            : ''
                         }`}
+                        title={hasSales ? `${dateStr}: ${formatCurrency(dayData.TotalSales)} (${tier.label})` : dateStr}
                       >
                         {day}
+                        {isToday && (
+                          <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500 ring-1 ring-black animate-pulse" />
+                        )}
                       </button>
 
                       {/* Tooltip Popover */}
-                      {hasSales && selectedCalendarDay === day && (
+                      {hasSales && isSelected && (
                         <div
-                          className={`absolute bottom-full mb-2 w-52 bg-[#0e1422] border border-slate-700/80 text-white text-xs rounded-xl p-3 z-[60] shadow-2xl animate-in fade-in zoom-in-95 duration-200 ${tooltipPositionClass}`}
+                          className={`absolute bottom-full mb-2 w-56 bg-[#0e1422] border border-slate-700/80 text-white text-xs rounded-xl p-3 z-[60] shadow-2xl animate-in fade-in zoom-in-95 duration-200 ${tooltipPositionClass}`}
                         >
-                          <div className="font-bold border-b border-slate-800 pb-1 mb-1.5 text-slate-200 flex justify-between items-center">
-                            <span>
-                              {new Date(dateStr).toLocaleDateString('en-US', {
-                                month: 'short',
-                                day: 'numeric',
-                                year: 'numeric'
-                              })}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedCalendarDay(null);
-                              }}
-                              className="text-slate-400 hover:text-white p-1 -mr-1 rounded cursor-pointer"
-                            >
-                              ✕
-                            </button>
+                          <div className="border-b border-slate-800 pb-2 mb-2">
+                            <div className="flex justify-between items-center text-slate-200">
+                              <span className="font-bold">
+                                {new Date(dateStr).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric'
+                                })}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedCalendarDay(null);
+                                }}
+                                className="text-slate-400 hover:text-white p-1 -mr-1 rounded cursor-pointer"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black border flex items-center gap-1 ${tier.badgeClass}`}>
+                                <span>{tier.badgeIcon}</span>
+                                <span>{tier.label}</span>
+                              </span>
+                              {isToday && (
+                                <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-red-600 text-white shadow-xs">
+                                  Today
+                                </span>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex justify-between items-center mb-1 font-mono">
-                            <span className="text-slate-400 font-sans">Total:</span>
-                            <span className="font-black text-emerald-400">{formatCurrency(dayData.TotalSales)}</span>
+
+                          <div className="flex justify-between items-center mb-1.5 font-mono">
+                            <span className="text-slate-400 font-sans">Total Sales:</span>
+                            <span className="font-black text-emerald-400 text-sm">{formatCurrency(dayData.TotalSales)}</span>
                           </div>
+
+                          {dayData.TotalBills > 0 && (
+                            <div className="flex justify-between items-center mb-1 text-[11px] font-mono">
+                              <span className="text-slate-400 font-sans">Bills:</span>
+                              <span className="font-semibold text-slate-200">{dayData.TotalBills} bills</span>
+                            </div>
+                          )}
+
                           <div className="flex justify-between items-center mb-1 text-xs font-mono">
                             <span className="text-slate-400 font-sans flex items-center gap-1.5">
                               <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>Cash:
@@ -870,6 +992,30 @@ const ExecutiveBentoDashboard = (props) => {
                     </div>
                   );
                 })}
+              </div>
+
+              {/* Color Legend Bar */}
+              <div className="mt-3 pt-2.5 border-t border-slate-200/60 dark:border-white/[0.06] flex items-center justify-between text-[10px] text-slate-400 font-semibold overflow-x-auto gap-1 select-none">
+                <div className="flex items-center gap-1 shrink-0" title="Low Sales (< ₹15,000)">
+                  <span className="w-2 h-2 rounded-full bg-orange-500 shadow-xs shadow-orange-500/50"></span>
+                  <span>&lt;15k</span>
+                </div>
+                <div className="flex items-center gap-1 shrink-0" title="Normal Sales (₹15,000 – ₹34,999)">
+                  <span className="w-2 h-2 rounded-full bg-blue-500 shadow-xs shadow-blue-500/50"></span>
+                  <span>15k-35k</span>
+                </div>
+                <div className="flex items-center gap-1 shrink-0" title="Good / High Sales (₹35,000 – ₹49,999)">
+                  <span className="w-2 h-2 rounded-full bg-teal-500 shadow-xs shadow-teal-500/50"></span>
+                  <span>35k-50k</span>
+                </div>
+                <div className="flex items-center gap-1 shrink-0" title="Target Hit (₹50,000 – ₹74,999)">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-xs shadow-emerald-500/50"></span>
+                  <span>50k-75k</span>
+                </div>
+                <div className="flex items-center gap-1 shrink-0" title="Mega Bumper Day (≥ ₹75,000)">
+                  <span className="w-2 h-2 rounded-full bg-amber-400 shadow-xs shadow-amber-400/50"></span>
+                  <span className="text-amber-300 font-bold flex items-center gap-0.5">⭐75k+</span>
+                </div>
               </div>
             </div>
 
