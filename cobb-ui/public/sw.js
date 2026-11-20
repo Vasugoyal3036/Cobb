@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cobb-pos-cache-20261120-v15';
+const CACHE_NAME = 'cobb-pos-cache-20261120-v16';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',

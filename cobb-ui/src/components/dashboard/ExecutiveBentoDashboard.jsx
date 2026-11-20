@@ -66,79 +66,74 @@ const AlterationSlipModal = lazy(() => import('../AlterationSlipModal'));
 const MissionControlModal = lazy(() => import('./MissionControlModal'));
 
 /**
- * Single-Color Cobalt Blue Sales Performance Tier Classification:
- * A single coherent hue that becomes darker/deeper as sales revenue increases.
- * Aligned with exact store config:
- * Tier 1: < ₹13,200 (Below Breakeven) — Faint Sky Blue
- * Tier 2: ₹13,200 – ₹34,999 (Normal Sales) — Light Blue
- * Tier 3: ₹35,000 – ₹49,999 (High Momentum) — Medium Blue
- * Tier 4: ₹50,000 – ₹74,999 (Target Hit) — Deep Cobalt Blue
- * Tier 5: ≥ ₹75,000 (Mega Bumper Day) — Darkest Midnight Navy Blue
+ * Target Progress Calculation for Sales Calendar Activity Rings:
+ * Calculates progress percentage against daily showroom target (₹50,000).
+ * Returns status, ring color, badge, and dash offset for SVG circular ring.
  */
-export function getSalesTier(salesAmount) {
+export function getTargetProgress(salesAmount, dailyTarget = 50000) {
   const amount = Number(salesAmount) || 0;
+  const target = Number(dailyTarget) || 50000;
+  const pct = target > 0 ? Math.min(100, Math.round((amount / target) * 100)) : 0;
+  const rawPct = target > 0 ? Math.round((amount / target) * 100) : 0;
+
+  // SVG ring circumference for r=13 is 2 * PI * 13 ≈ 81.68
+  const circumference = 81.68;
+  const strokeDashoffset = circumference - (pct / 100) * circumference;
+
   if (amount >= 75000) {
     return {
-      tier: 'bumper',
+      status: 'bumper',
       label: 'Mega Bumper Day',
-      shortLabel: '≥₹75k',
       badgeIcon: '⭐',
-      badgeClass: 'bg-blue-900/60 text-blue-200 border-blue-400/60 shadow-xs',
-      cellClassDark: 'bg-blue-950 text-white border-blue-300 ring-1 ring-blue-400/80 font-black hover:bg-blue-900 shadow-md shadow-blue-950/60',
-      cellClassLight: 'bg-blue-950 text-white border-blue-950 font-black hover:bg-blue-900 shadow-md ring-1 ring-blue-700',
-      activeClass: 'bg-blue-950 text-white font-black ring-2 ring-white border-blue-200 scale-110 shadow-xl shadow-blue-950/80',
-      dotClass: 'bg-blue-950'
+      badgeClass: 'bg-amber-400/20 text-amber-300 border-amber-400/50',
+      ringColor: '#f59e0b', // Radiant Amber Gold
+      trackColor: 'rgba(245, 158, 11, 0.15)',
+      pct,
+      rawPct,
+      strokeDashoffset,
+      textColor: 'text-amber-300 font-black'
     };
   }
-  if (amount >= 50000) {
+  if (amount >= target) {
     return {
-      tier: 'target',
+      status: 'target',
       label: 'Target Hit',
-      shortLabel: '₹50k-75k',
       badgeIcon: '🎯',
-      badgeClass: 'bg-blue-600/30 text-blue-200 border-blue-400/50 shadow-xs',
-      cellClassDark: 'bg-blue-600/80 text-white border-blue-300 hover:bg-blue-600 font-extrabold shadow-xs shadow-blue-500/30',
-      cellClassLight: 'bg-blue-600 text-white border-blue-700 font-extrabold hover:bg-blue-700 shadow-xs',
-      activeClass: 'bg-blue-600 text-white font-black ring-2 ring-white border-blue-200 scale-110 shadow-xl shadow-blue-600/60',
-      dotClass: 'bg-blue-600'
-    };
-  }
-  if (amount >= 35000) {
-    return {
-      tier: 'high',
-      label: 'High Momentum',
-      shortLabel: '₹35k-50k',
-      badgeIcon: '⚡',
-      badgeClass: 'bg-blue-500/25 text-blue-300 border-blue-400/40',
-      cellClassDark: 'bg-blue-500/50 text-blue-100 border-blue-400/60 font-bold hover:bg-blue-500/60',
-      cellClassLight: 'bg-blue-400 text-white border-blue-500 font-bold hover:bg-blue-500',
-      activeClass: 'bg-blue-500 text-white font-black ring-2 ring-blue-300 border-blue-200 scale-110 shadow-xl shadow-blue-500/50',
-      dotClass: 'bg-blue-500'
-    };
-  }
-  if (amount >= 13200) {
-    return {
-      tier: 'normal',
-      label: 'Normal Sales',
-      shortLabel: '₹13.2k-35k',
-      badgeIcon: '💼',
-      badgeClass: 'bg-blue-500/20 text-blue-300 border-blue-500/40',
-      cellClassDark: 'bg-blue-500/25 text-blue-200 border-blue-500/40 font-semibold hover:bg-blue-500/35',
-      cellClassLight: 'bg-blue-200 text-blue-950 border-blue-300 font-semibold hover:bg-blue-300',
-      activeClass: 'bg-blue-500 text-white font-black ring-2 ring-blue-300 border-blue-200 scale-110 shadow-xl shadow-blue-500/50',
-      dotClass: 'bg-blue-400'
+      badgeClass: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50',
+      ringColor: '#10b981', // Emerald Green
+      trackColor: 'rgba(16, 185, 129, 0.15)',
+      pct,
+      rawPct,
+      strokeDashoffset,
+      textColor: 'text-emerald-300 font-extrabold'
     };
   }
   return {
-    tier: 'low',
-    label: 'Below Breakeven',
-    shortLabel: '<₹13.2k',
-    badgeIcon: '⏳',
-    badgeClass: 'bg-sky-500/15 text-sky-300 border-sky-500/30',
-    cellClassDark: 'bg-sky-500/10 text-sky-300/80 border-sky-500/20 font-medium hover:bg-sky-500/20',
-    cellClassLight: 'bg-sky-50 text-sky-800 border-sky-200 font-medium hover:bg-sky-100',
-    activeClass: 'bg-sky-500 text-white font-black ring-2 ring-sky-300 border-sky-200 scale-110 shadow-xl shadow-sky-500/50',
-    dotClass: 'bg-sky-300'
+    status: 'progress',
+    label: `${rawPct}% of Target`,
+    badgeIcon: '⚡',
+    badgeClass: 'bg-sky-500/20 text-sky-300 border-sky-500/40',
+    ringColor: '#38bdf8', // Sky Blue
+    trackColor: 'rgba(56, 189, 248, 0.12)',
+    pct,
+    rawPct,
+    strokeDashoffset,
+    textColor: 'text-slate-200 font-bold'
+  };
+}
+
+/**
+ * Backward compatibility alias for tests and external consumers
+ */
+export function getSalesTier(salesAmount) {
+  const p = getTargetProgress(salesAmount, 50000);
+  return {
+    tier: p.status,
+    label: p.label,
+    shortLabel: p.status === 'bumper' ? '≥₹75k' : p.status === 'target' ? '₹50k-75k' : '<₹50k',
+    badgeIcon: p.badgeIcon,
+    badgeClass: p.badgeClass,
+    dotClass: p.status === 'bumper' ? 'bg-amber-400' : p.status === 'target' ? 'bg-emerald-400' : 'bg-sky-400'
   };
 }
 
@@ -872,7 +867,7 @@ const ExecutiveBentoDashboard = (props) => {
                     (d) => d.SaleDate && d.SaleDate.startsWith(dateStr)
                   );
                   const hasSales = dayData && Number(dayData.TotalSales) > 0;
-                  const tier = hasSales ? getSalesTier(dayData.TotalSales) : null;
+                  const progress = hasSales ? getTargetProgress(dayData.TotalSales, 50000) : null;
 
                   const now = new Date();
                   const isToday =
@@ -896,28 +891,75 @@ const ExecutiveBentoDashboard = (props) => {
                             setSelectedCalendarDay(isSelected ? null : day);
                           }
                         }}
-                        className={`w-7 h-7 flex items-center justify-center rounded-lg text-xs font-mono transition-all relative ${
+                        className={`w-8 h-8 flex items-center justify-center rounded-full text-xs font-mono transition-all relative ${
                           hasSales ? 'cursor-pointer' : 'cursor-default'
                         } ${
-                          hasSales
-                            ? isSelected
-                              ? tier.activeClass
-                              : darkMode
-                                ? `${tier.cellClassDark} border`
-                                : `${tier.cellClassLight} border`
-                            : isToday
-                              ? 'text-white font-bold bg-white/5 border border-red-500/60'
-                              : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/60'
+                          isSelected
+                            ? 'bg-blue-600 text-white font-black ring-2 ring-white scale-110 z-20 shadow-xl'
+                            : hasSales
+                              ? `${progress.textColor} hover:bg-slate-800/60 dark:hover:bg-white/[0.08]`
+                              : isToday
+                                ? 'text-white font-bold bg-white/5 border border-red-500/60'
+                                : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/40'
                         } ${
                           isToday && !isSelected
                             ? 'ring-2 ring-red-500 ring-offset-1 ring-offset-slate-900 shadow-md shadow-red-500/30'
                             : ''
                         }`}
-                        title={hasSales ? `${dateStr}: ${formatCurrency(dayData.TotalSales)} (${tier.label})` : dateStr}
+                        title={
+                          hasSales
+                            ? `${dateStr}: ${formatCurrency(dayData.TotalSales)} (${progress.rawPct}% of target)`
+                            : dateStr
+                        }
                       >
-                        {day}
+                        {/* Circular Progress Ring */}
+                        {hasSales && !isSelected && (
+                          <svg
+                            className="absolute inset-0 w-8 h-8 pointer-events-none"
+                            viewBox="0 0 32 32"
+                            style={{ transform: 'rotate(-90deg)', transformOrigin: '50% 50%' }}
+                          >
+                            {/* Track */}
+                            <circle
+                              cx="16"
+                              cy="16"
+                              r="13"
+                              stroke={darkMode ? '#1e293b' : '#e2e8f0'}
+                              strokeWidth="2.5"
+                              fill="none"
+                            />
+                            {/* Target Progress Arc */}
+                            <circle
+                              cx="16"
+                              cy="16"
+                              r="13"
+                              stroke={progress.ringColor}
+                              strokeWidth="2.5"
+                              strokeDasharray="81.68"
+                              strokeDashoffset={progress.strokeDashoffset}
+                              strokeLinecap="round"
+                              fill="none"
+                            />
+                          </svg>
+                        )}
+
+                        <span className="relative z-10">{day}</span>
+
+                        {/* Star marker on bumper days (≥ ₹75k) */}
+                        {hasSales && progress.status === 'bumper' && !isSelected && (
+                          <span className="absolute -top-1 -right-1 text-[9px] leading-none z-20" title="Mega Bumper Day (≥₹75k)">
+                            ⭐
+                          </span>
+                        )}
+
+                        {/* Dot on target hit days (100%+) */}
+                        {hasSales && progress.status === 'target' && !isSelected && (
+                          <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 rounded-full bg-emerald-400 ring-1 ring-black z-20" title="Target Hit (100%+)" />
+                        )}
+
+                        {/* Today live pulse dot */}
                         {isToday && (
-                          <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500 ring-1 ring-black animate-pulse" />
+                          <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-red-500 ring-1 ring-black animate-pulse z-20" />
                         )}
                       </button>
 
@@ -947,9 +989,9 @@ const ExecutiveBentoDashboard = (props) => {
                               </button>
                             </div>
                             <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black border flex items-center gap-1 ${tier.badgeClass}`}>
-                                <span>{tier.badgeIcon}</span>
-                                <span>{tier.label}</span>
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black border flex items-center gap-1 ${progress.badgeClass}`}>
+                                <span>{progress.badgeIcon}</span>
+                                <span>{progress.label} ({progress.rawPct}%)</span>
                               </span>
                               {isToday && (
                                 <span className="px-1.5 py-0.5 rounded text-[9px] font-black uppercase tracking-wider bg-red-600 text-white shadow-xs">
@@ -996,27 +1038,19 @@ const ExecutiveBentoDashboard = (props) => {
                 })}
               </div>
 
-              {/* Single-Color Cobalt Blue Legend Bar */}
-              <div className="mt-3 pt-2.5 border-t border-slate-200/60 dark:border-white/[0.06] flex items-center justify-between text-[10px] text-slate-400 font-semibold overflow-x-auto gap-1 select-none">
-                <div className="flex items-center gap-1 shrink-0" title="Below Breakeven (< ₹13,200) - Faint Sky">
-                  <span className="w-2 h-2 rounded-full bg-sky-200 dark:bg-sky-400/30 border border-sky-400/40"></span>
-                  <span>&lt;13.2k</span>
+              {/* Target Progress Rings Activity Legend */}
+              <div className="mt-3 pt-2.5 border-t border-slate-200/60 dark:border-white/[0.06] flex items-center justify-between text-[10px] text-slate-400 font-semibold overflow-x-auto gap-2 select-none">
+                <div className="flex items-center gap-1.5 shrink-0" title="Progress towards daily target (<100%)">
+                  <span className="w-2.5 h-2.5 rounded-full border-2 border-sky-400 bg-transparent inline-block"></span>
+                  <span>In Progress (&lt;100%)</span>
                 </div>
-                <div className="flex items-center gap-1 shrink-0" title="Normal Sales (₹13,200 – ₹34,999) - Light Blue">
-                  <span className="w-2 h-2 rounded-full bg-blue-300 dark:bg-blue-500/40 border border-blue-400/40"></span>
-                  <span>13.2k-35k</span>
+                <div className="flex items-center gap-1.5 shrink-0" title="Target Achieved (≥ ₹50,000)">
+                  <span className="w-2.5 h-2.5 rounded-full border-2 border-emerald-400 bg-transparent inline-block"></span>
+                  <span className="text-emerald-400 font-bold">100% Target Hit</span>
                 </div>
-                <div className="flex items-center gap-1 shrink-0" title="High Momentum (₹35,000 – ₹49,999) - Medium Blue">
-                  <span className="w-2 h-2 rounded-full bg-blue-500 dark:bg-blue-500/70 border border-blue-400/60"></span>
-                  <span>35k-50k</span>
-                </div>
-                <div className="flex items-center gap-1 shrink-0" title="Target Hit (₹50,000 – ₹74,999) - Deep Cobalt">
-                  <span className="w-2 h-2 rounded-full bg-blue-600 dark:bg-blue-600 border border-blue-300 shadow-xs"></span>
-                  <span>50k-75k</span>
-                </div>
-                <div className="flex items-center gap-1 shrink-0" title="Mega Bumper Day (≥ ₹75,000) - Midnight Navy">
-                  <span className="w-2 h-2 rounded-full bg-blue-950 dark:bg-blue-950 border border-blue-300 ring-1 ring-blue-400/60 shadow-xs"></span>
-                  <span className="text-blue-600 dark:text-blue-300 font-bold flex items-center gap-0.5">⭐75k+</span>
+                <div className="flex items-center gap-1.5 shrink-0" title="Mega Bumper Day (≥ ₹75,000 / 150%+)">
+                  <span className="w-2.5 h-2.5 rounded-full border-2 border-amber-400 bg-transparent inline-block"></span>
+                  <span className="text-amber-300 font-bold flex items-center gap-0.5">⭐ Mega Day</span>
                 </div>
               </div>
             </div>
