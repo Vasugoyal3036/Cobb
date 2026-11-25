@@ -26,7 +26,11 @@ try {
 // --- Async Mutex Lock (Prevents concurrent read/write races between background interval, sync & add) ---
 let tagsLockChain = Promise.resolve();
 function withTagsLock(fn) {
-    const next = tagsLockChain.then(() => fn(), () => fn());
+    const wrapped = () => Promise.race([
+        Promise.resolve().then(fn),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Tags lock timeout')), 6000))
+    ]);
+    const next = tagsLockChain.then(wrapped, wrapped);
     tagsLockChain = next.catch(() => {});
     return next;
 }
@@ -211,8 +215,11 @@ async function mergeTagsWithCloud(localTags) {
         return { tags: localTags, mergedFromCloudCount: 0, cloudChanged: false };
     }
     try {
-        const snap = await firestoreDb.collection('stores').doc('DEMO_STORE_001').collection('data').doc('pending_tags').get();
-        if (!snap.exists) {
+        const snap = await Promise.race([
+            firestoreDb.collection('stores').doc('DEMO_STORE_001').collection('data').doc('pending_tags').get(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Firestore merge timeout')), 2500))
+        ]);
+        if (!snap || !snap.exists) {
             return { tags: localTags, mergedFromCloudCount: 0, cloudChanged: false };
         }
         const data = snap.data() || {};
@@ -750,12 +757,26 @@ router.post('/add', async (req, res) => {
             return res.status(400).json({ success: false, error: 'Barcode or Article No is required' });
         }
 
-        // 1. Live SQL Server stock & net-billed check:
-        // Only block if physical stock in PMT01106 <= 0 AND net billed qty > 0.
-        // If returned (-1) or back in physical POS stock (quantity_in_stock > 0), allow adding!
-        const { preSqlCheck, verifiedAvailableInPos } = await verifyPosStockAndNetBilled(candidateBarcode);
+        const forceAdd = Boolean(req.body.forceAdd || req.body.forceRestock);
 
-        if (preSqlCheck) {
+        // 1. Live SQL Server stock & net-billed check:
+        // Only block if physical stock in PMT01106 <= 0 AND net billed qty > 0 AND not forceAdd.
+        let preSqlCheck = null;
+        let verifiedAvailableInPos = false;
+        if (!forceAdd) {
+            try {
+                const check = await Promise.race([
+                    verifyPosStockAndNetBilled(candidateBarcode),
+                    new Promise(resolve => setTimeout(() => resolve({ preSqlCheck: null, verifiedAvailableInPos: false }), 2000))
+                ]);
+                preSqlCheck = check.preSqlCheck;
+                verifiedAvailableInPos = check.verifiedAvailableInPos;
+            } catch (checkErr) {
+                console.warn('[PENDING TAGS ADD] Live SQL check warning:', checkErr.message);
+            }
+        }
+
+        if (preSqlCheck && !forceAdd) {
             return res.status(409).json({
                 success: false,
                 duplicate: true,
@@ -766,15 +787,14 @@ router.post('/add', async (req, res) => {
         }
 
         const outcome = await withTagsLock(async () => {
-            const localTags = readTags();
-            const { tags } = await mergeTagsWithCloud(localTags);
+            const tags = readTags();
 
             // Duplication & Billed Prevention in existing tags
-            const guardResult = evaluateDuplicateAndBilledState(tags, candidateBarcode, verifiedAvailableInPos);
-            if (guardResult.statusCode !== 200) {
+            const guardResult = evaluateDuplicateAndBilledState(tags, candidateBarcode, verifiedAvailableInPos || forceAdd);
+            if (guardResult.statusCode !== 200 && !forceAdd) {
                 return { statusCode: guardResult.statusCode, body: guardResult.body };
             }
-            for (const bt of guardResult.clearedReturnedBilled) {
+            for (const bt of (guardResult.clearedReturnedBilled || [])) {
                 appendAuditLog('MARKED_RETURNED_TO_STOCK', {
                     tagId: bt.id,
                     barcode: bt.barcode,

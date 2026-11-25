@@ -683,6 +683,29 @@ describe('PendingTagsTab - Duplicate Barcode Prevention', () => {
       });
     });
 
+    it('allows 1-click unblock via "Allow Restock & Save Tag" button when barcode was previously billed', async () => {
+      render(<PendingTagsTab />);
+      await waitFor(() => {
+        expect(screen.getByText('Cobb Linen Shirt White')).toBeDefined();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /Add Pending Tag/i }));
+      fireEvent.change(screen.getByPlaceholderText('Barcode / SKU'), { target: { value: '0090123456' } });
+
+      // Shows warning banner with Allow Restock button
+      const allowBtn = screen.getByRole('button', { name: /Allow Restock & Save Tag/i });
+      expect(allowBtn).toBeDefined();
+
+      // Click Allow Restock
+      fireEvent.click(allowBtn);
+
+      // Save button is now enabled
+      await waitFor(() => {
+        const saveBtn = screen.getByRole('button', { name: /Save Pending Tag/i });
+        expect(saveBtn.disabled).toBe(false);
+      });
+    });
+
     it('opens Multi-Tag Rapid Add modal and allows queuing items via rapid scan', async () => {
       axios.get.mockImplementation((url) => {
         if (url.includes('/api/pending-tags')) {

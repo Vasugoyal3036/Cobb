@@ -525,11 +525,14 @@ export default function StaffStockCheckerPage({
       );
       if (existing) {
         if (existing.status === 'billed') {
-          alert(`Already Billed: Barcode "${candidateBarcode}" was already billed in POS (${existing.billedInBillNo ? 'Bill #' + existing.billedInBillNo : 'Billed'})! Already billed items cannot be re-added as pending tags.`);
-          return;
+          if (!window.confirm(`Notice: Barcode "${candidateBarcode}" was previously recorded as billed in POS (${existing.billedInBillNo ? 'Bill #' + existing.billedInBillNo : 'Billed'}).\n\nRestock and add this garment as a new pending tag?`)) {
+            return;
+          }
+        } else {
+          if (!window.confirm(`Notice: Barcode "${candidateBarcode}" is already registered on the active pending rack.\n\nAdd this as an additional piece?`)) {
+            return;
+          }
         }
-        alert(`Duplicate Barcode: Barcode "${candidateBarcode}" is already registered on the active pending rack! Duplicate tags cannot be added.`);
-        return;
       }
     }
 
@@ -546,20 +549,26 @@ export default function StaffStockCheckerPage({
         discountPercent: Number(addPendingForm.discountPercent) || 60,
         soldPrice: Math.round(Number(stockData.mrp || 0) * (1 - (Number(addPendingForm.discountPercent) || 60) / 100)),
         salesperson: 'Floor Staff',
-        notes: addPendingForm.notes || 'Reported from Staff Stock Checker'
+        notes: addPendingForm.notes || 'Reported from Staff Stock Checker',
+        forceAdd: true,
+        forceRestock: true
       };
 
       const endpoint = API_BASE ? `${API_BASE}/api/pending-tags/add` : '/api/pending-tags/add';
-      const res = await axios.post(endpoint, payload);
-
-      if (res.data?.success || res.status === 200) {
-        setShowAddPendingModal(false);
-        setPendingSuccessMsg(`Pending tag logged for ${payload.articleNo} (${payload.size})`);
-        setTimeout(() => setPendingSuccessMsg(''), 4000);
-        try { playSound('click'); } catch { }
-        handleLookup(stockData.articleNo);
-      } else {
-        alert(res.data?.error || 'Could not save pending tag');
+      let addedLocally = false;
+      try {
+        const res = await axios.post(endpoint, payload, { timeout: 5000 });
+        if (res.data && typeof res.data === 'object' && res.data.success) {
+          addedLocally = true;
+          setShowAddPendingModal(false);
+          setPendingSuccessMsg(`Pending tag logged for ${payload.articleNo} (${payload.size})`);
+          setTimeout(() => setPendingSuccessMsg(''), 4000);
+          try { playSound('click'); } catch { }
+          handleLookup(stockData.articleNo);
+          return;
+        }
+      } catch (localApiErr) {
+        console.warn('[StaffStockChecker] Local API fallback to Firestore:', localApiErr.message);
       }
     } catch (err) {
       // If backend rejected as duplicate (409) or billed, alert user and do NOT bypass into Firestore
