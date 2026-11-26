@@ -392,9 +392,12 @@ const DashboardTab = (props) => {
           topCardHeight={topCardHeight}
           khataSummary={khataSummary}
           khataLoading={khataLoading}
+          fetchKhataExpenses={fetchKhataExpenses}
           holds={holds}
+          fetchHolds={fetchHolds}
           todayTopArticles={todayTopArticles}
           todayTopArticlesLoading={todayTopArticlesLoading}
+          fetchTodayTopArticles={fetchTodayTopArticles}
           calcMrp={calcMrp}
           setCalcMrp={setCalcMrp}
           calcOffer={calcOffer}

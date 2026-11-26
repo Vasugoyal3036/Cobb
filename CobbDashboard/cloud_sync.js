@@ -1017,6 +1017,40 @@ async function dispatchSystemStatusAlert(status, reason = '') {
     }
 }
 
+// Real-time listener for manual Force Sync triggers from Desktop or Phone Link
+function listenForForceSyncTriggers() {
+    if (!db) return;
+    let isSeeded = false;
+    let lastHandledTrigger = 0;
+
+    console.log("[SYNC AGENT] 👂 Listening for manual Force Sync triggers from Dashboard/Phone Link...");
+
+    db.collection("stores").doc(STORE_ID).collection("data").doc("sync_trigger")
+        .onSnapshot(async (snapshot) => {
+            if (!snapshot || !snapshot.exists) return;
+            if (!isSeeded) {
+                isSeeded = true;
+                return; // Ignore initial snapshot on startup
+            }
+            const data = snapshot.data();
+            if (!data || !data.triggeredAt) return;
+            const trigMs = new Date(data.triggeredAt).getTime();
+            if (trigMs <= lastHandledTrigger) return;
+            if (Date.now() - trigMs > 30000) return; // Ignore stale triggers older than 30s
+
+            lastHandledTrigger = trigMs;
+            console.log(`[SYNC AGENT] ⚡ Manual Force Sync triggered from ${data.source || 'Dashboard'}! Syncing operational tier now...`);
+            try {
+                await syncEndpointList(operationalEndpoints, 'Force Sync Trigger');
+                console.log(`[SYNC AGENT] ✅ Manual Force Sync completed successfully.`);
+            } catch (err) {
+                console.warn('[SYNC AGENT] Manual Force Sync notice:', err.message);
+            }
+        }, (err) => {
+            console.warn('[SYNC AGENT] sync_trigger listener warning:', err.message);
+        });
+}
+
 // Real-time listener for UI-triggered test alerts written to Firestore
 function listenForTestAlertsAndDispatchFcm() {
     if (!db || !messaging) return;
@@ -1542,6 +1576,7 @@ function startSyncAgent() {
         listenForTestAlertsAndDispatchFcm();
         listenForStaffConfigChanges();
         listenForStoreConfigChanges();
+        listenForForceSyncTriggers();
         const isClosedNight = (closeHour = 23, openHour = 8) => {
             const h = new Date().getHours();
             return h >= closeHour || h < openHour;

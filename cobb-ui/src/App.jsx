@@ -1540,10 +1540,30 @@ export default function App() {
   // Global POS Force Sync Trigger
   const forceSyncOverviewAndBills = async () => {
     try {
-      const [overviewRes, liveRes, dailyRes] = await Promise.allSettled([
+      // 1. Proactively trigger Cloud Sync Agent (instant bidirectional sync)
+      if (isLocalEnvironment || isElectron) {
+        axios.post(`${API_BASE}/api/sync/trigger`, { source: 'desktop_dashboard' }).catch(() => {});
+      } else {
+        // On Phone Link, write trigger to Firestore doc so Counter PC sync agent executes immediately
+        try {
+          const { db } = await import('./utils/firebase.js');
+          if (db) {
+            const { doc, setDoc } = await import('firebase/firestore');
+            const targetStore = getActiveStoreId();
+            setDoc(doc(db, 'stores', targetStore, 'data', 'sync_trigger'), {
+              triggeredAt: new Date().toISOString(),
+              source: 'phone_link_force_sync'
+            }, { merge: true }).catch(() => {});
+          }
+        } catch (trigErr) {}
+      }
+
+      // 2. Fetch fresh core dashboard metrics
+      const [overviewRes, liveRes, dailyRes, hourlyRes] = await Promise.allSettled([
         axios.get(`${API_BASE}/api/sales/overview?t=${Date.now()}`),
         axios.get(`${API_BASE}/api/sales/live?t=${Date.now()}`),
-        axios.get(`${API_BASE}/api/sales/daily-month?t=${Date.now()}`)
+        axios.get(`${API_BASE}/api/sales/daily-month?t=${Date.now()}`),
+        axios.get(`${API_BASE}/api/analytics/hourly?t=${Date.now()}`)
       ]);
       if (overviewRes.status === 'fulfilled' && overviewRes.value?.data && !overviewRes.value.data.error) {
         setOverviewStats(overviewRes.value.data);
@@ -1561,13 +1581,37 @@ export default function App() {
           setLocalCache('dailySales', dailyData);
         }
       }
+      if (hourlyRes.status === 'fulfilled' && hourlyRes.value?.data && !hourlyRes.value.data.error) {
+        const hData = Array.isArray(hourlyRes.value.data) ? hourlyRes.value.data : (hourlyRes.value.data?.hours || []);
+        if (typeof setHourlySales === 'function') setHourlySales(hData);
+      }
 
-      // Firestore Cloud sync fallback for Phone Link (remote/offline)
+      // 3. Firestore Cloud sync fallback for Phone Link (remote/offline)
       try {
         const { db } = await import('./utils/firebase.js');
         if (db) {
           const { doc, getDoc } = await import('firebase/firestore');
           const targetStore = getActiveStoreId();
+
+          // Overview fallback
+          const ovSnap = await getDoc(doc(db, 'stores', targetStore, 'data', 'sales_overview'));
+          if (ovSnap.exists()) {
+            const ovData = ovSnap.data();
+            if (ovData && !ovData.error && ovData.today) {
+              setOverviewStats(ovData);
+              setLocalCache('overviewStats', ovData);
+            }
+          }
+
+          // Live bills fallback
+          const liveSnap = await getDoc(doc(db, 'stores', targetStore, 'data', 'sales_live'));
+          if (liveSnap.exists()) {
+            const lData = liveSnap.data();
+            const bills = Array.isArray(lData) ? lData : (Array.isArray(lData?.items) ? lData.items : []);
+            if (bills.length > 0) setLiveBills(bills);
+          }
+
+          // Daily calendar fallback
           let snap = await getDoc(doc(db, 'stores', targetStore, 'data', 'sales_daily-month'));
           if (!snap.exists()) {
             snap = await getDoc(doc(db, 'stores', targetStore, 'data', 'sales_daily_month'));
@@ -1582,7 +1626,7 @@ export default function App() {
           }
         }
       } catch (cloudErr) {
-        console.warn('[SYNC] Cloud daily-month sync notice:', cloudErr.message);
+        console.warn('[SYNC] Cloud sync fallback notice:', cloudErr.message);
       }
 
       setToasts(prev => [

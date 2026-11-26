@@ -4899,6 +4899,24 @@ app.post('/api/system/backup-now', async (req, res) => {
     }
 });
 
+// --- PILLAR 8: MANUAL FORCE SYNC TRIGGER API ---
+app.post('/api/sync/trigger', async (req, res) => {
+    try {
+        if (ratingsFirestoreDb) {
+            const storeId = process.env.STORE_ID || "DEMO_STORE_001";
+            await ratingsFirestoreDb.collection("stores").doc(storeId).collection("data").doc("sync_trigger").set({
+                triggeredAt: new Date().toISOString(),
+                source: req.body?.source || 'dashboard_force_sync'
+            }, { merge: true });
+            console.log('[SYNC API] Manual Force Sync trigger written to Firestore.');
+        }
+        res.json({ success: true, message: 'Force sync triggered successfully' });
+    } catch (e) {
+        console.error('[SYNC API] Force sync trigger error:', e.message);
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 const PORT = 5000;
 app.listen(PORT, () => {
     console.log(`CRM Backend running on http://localhost:${PORT}`);

@@ -153,10 +153,13 @@ const ExecutiveBentoDashboard = (props) => {
     API_BASE = 'http://localhost:5000',
     darkMode = true,
     overviewStats = {},
+    setOverviewStats,
     liveBills = [],
+    setLiveBills,
     dailySales = [],
     setDailySales,
     hourlySales = [],
+    setHourlySales,
     vips = [],
     automationDispatches = [],
     setActiveTab,
@@ -184,9 +187,12 @@ const ExecutiveBentoDashboard = (props) => {
     b1g3Items,
     setB1g3Items,
     khataSummary,
+    fetchKhataExpenses,
     holds,
+    fetchHolds,
     todayTopArticles,
     todayTopArticlesLoading,
+    fetchTodayTopArticles,
     showAlterationModal,
     setShowAlterationModal,
     handlePrintBill
@@ -252,44 +258,88 @@ const ExecutiveBentoDashboard = (props) => {
     if (typeof window !== 'undefined') {
       window.dispatchEvent(new CustomEvent('cobb_force_sync'));
     }
-    // Also directly refresh daily sales so MTD in calendar updates immediately
+
     try {
-      const res = await axios.get(`${API_BASE}/api/sales/daily-month?t=${Date.now()}`);
-      const raw = res?.data;
-      const items = Array.isArray(raw) ? raw : (Array.isArray(raw?.items) ? raw.items : null);
-      if (items && items.length > 0) {
-        if (typeof setDailySales === 'function') {
-          setDailySales(items);
-        }
-      } else {
-        // Fallback directly to Firestore doc on Phone Link / remote
-        try {
-          const { db } = await import('../../utils/firebase.js');
-          if (db) {
-            const { doc, getDoc } = await import('firebase/firestore');
-            const targetStore = (typeof localStorage !== 'undefined' && localStorage.getItem('cobb_active_store') === 'STORE_02') ? 'STORE_002' : 'DEMO_STORE_001';
-            let snap = await getDoc(doc(db, 'stores', targetStore, 'data', 'sales_daily-month'));
-            if (!snap.exists()) {
-              snap = await getDoc(doc(db, 'stores', targetStore, 'data', 'sales_daily_month'));
-            }
-            if (snap.exists()) {
-              const data = snap.data();
-              const cloudItems = Array.isArray(data.items) ? data.items : (Array.isArray(data) ? data : null);
-              if (cloudItems && cloudItems.length > 0 && typeof setDailySales === 'function') {
-                setDailySales(cloudItems);
-              }
-            }
-          }
-        } catch (cErr) {
-          console.warn('[DASHBOARD SYNC] Firestore fallback notice:', cErr.message);
+      // 1. Proactively notify sync agent on Counter PC / Cloud
+      axios.post(`${API_BASE}/api/sync/trigger`, { source: 'dashboard_force_sync' }).catch(() => {});
+
+      // 2. Fetch fresh core dashboard metrics in parallel
+      const [ovRes, dailyRes, hourlyRes] = await Promise.allSettled([
+        axios.get(`${API_BASE}/api/sales/overview?t=${Date.now()}`),
+        axios.get(`${API_BASE}/api/sales/daily-month?t=${Date.now()}`),
+        axios.get(`${API_BASE}/api/analytics/hourly?t=${Date.now()}`)
+      ]);
+
+      if (ovRes.status === 'fulfilled' && ovRes.value?.data && !ovRes.value.data.error) {
+        if (typeof setOverviewStats === 'function') {
+          setOverviewStats(ovRes.value.data);
         }
       }
+
+      if (dailyRes.status === 'fulfilled' && dailyRes.value?.data && !dailyRes.value.data.error) {
+        const raw = dailyRes.value.data;
+        const items = Array.isArray(raw) ? raw : (Array.isArray(raw?.items) ? raw.items : null);
+        if (items && items.length > 0 && typeof setDailySales === 'function') {
+          setDailySales(items);
+        }
+      }
+
+      if (hourlyRes.status === 'fulfilled' && hourlyRes.value?.data && !hourlyRes.value.data.error) {
+        const hData = Array.isArray(hourlyRes.value.data) ? hourlyRes.value.data : (hourlyRes.value.data?.hours || []);
+        if (typeof setHourlySales === 'function') {
+          setHourlySales(hData);
+        }
+      }
+
+      // 3. Fallback directly to Firestore doc on Phone Link / remote
+      try {
+        const { db } = await import('../../utils/firebase.js');
+        if (db) {
+          const { doc, getDoc, setDoc } = await import('firebase/firestore');
+          const targetStore = (typeof localStorage !== 'undefined' && localStorage.getItem('cobb_active_store') === 'STORE_02') ? 'STORE_002' : 'DEMO_STORE_001';
+          
+          // Trigger remote cloud sync if on Phone Link
+          setDoc(doc(db, 'stores', targetStore, 'data', 'sync_trigger'), {
+            triggeredAt: new Date().toISOString(),
+            source: 'phone_link_dashboard_force_sync'
+          }, { merge: true }).catch(() => {});
+
+          // Fetch overview fallback
+          const ovSnap = await getDoc(doc(db, 'stores', targetStore, 'data', 'sales_overview'));
+          if (ovSnap.exists()) {
+            const ovData = ovSnap.data();
+            if (ovData && ovData.today && typeof setOverviewStats === 'function') {
+              setOverviewStats(ovData);
+            }
+          }
+
+          // Fetch daily calendar fallback
+          let snap = await getDoc(doc(db, 'stores', targetStore, 'data', 'sales_daily-month'));
+          if (!snap.exists()) {
+            snap = await getDoc(doc(db, 'stores', targetStore, 'data', 'sales_daily_month'));
+          }
+          if (snap.exists()) {
+            const data = snap.data();
+            const cloudItems = Array.isArray(data.items) ? data.items : (Array.isArray(data) ? data : null);
+            if (cloudItems && cloudItems.length > 0 && typeof setDailySales === 'function') {
+              setDailySales(cloudItems);
+            }
+          }
+        }
+      } catch (cErr) {
+        console.warn('[DASHBOARD SYNC] Firestore fallback notice:', cErr.message);
+      }
+
+      // 4. Refresh desk operations widgets
+      if (typeof fetchTodayTopArticles === 'function') fetchTodayTopArticles();
+      if (typeof fetchKhataExpenses === 'function') fetchKhataExpenses();
+      if (typeof fetchHolds === 'function') fetchHolds();
     } catch (e) {
-      console.warn('[SYNC] Direct daily sales sync notice:', e.message);
+      console.warn('[SYNC] Direct sync notice:', e.message);
     } finally {
       setTimeout(() => {
         setIsSyncing(false);
-      }, 1000);
+      }, 800);
     }
   };
 

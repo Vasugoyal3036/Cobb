@@ -343,8 +343,6 @@ async function checkAndResolveBilledTags(tags, customQueryFn = null) {
               AND m.CM_TIME >= DATEADD(day, -${daysBack}, GETDATE())
             ORDER BY m.CM_TIME DESC;
         `;
-            ORDER BY m.CM_TIME DESC
-        `;
 
         const result = await runQuery(query);
         const rows = result.recordset || [];
