@@ -8,7 +8,7 @@ import f from "node:http";
 var p = c.dirname(l(import.meta.url));
 process.env.APP_ROOT = c.join(p, "..");
 var m = process.env.VITE_DEV_SERVER_URL, h = c.join(process.env.APP_ROOT, "dist-electron"), g = c.join(process.env.APP_ROOT, "dist");
-process.env.VITE_PUBLIC = m ? c.join(process.env.APP_ROOT, "public") : g, n.requestSingleInstanceLock() || (console.log("[Electron] Another instance is already running. Quitting duplicate."), n.quit()), o.registerSchemesAsPrivileged([{
+process.env.VITE_PUBLIC = m ? c.join(process.env.APP_ROOT, "public") : g, n.requestSingleInstanceLock() || (console.log("[Electron] Another instance is already running. Quitting duplicate."), n.quit()), n.commandLine.appendSwitch("js-flags", "--max-old-space-size=256"), n.commandLine.appendSwitch("disable-site-isolation-trials"), n.commandLine.appendSwitch("renderer-process-limit", "2"), n.commandLine.appendSwitch("disable-speech-api"), o.registerSchemesAsPrivileged([{
 	scheme: "app",
 	privileges: {
 		secure: !0,
@@ -69,8 +69,12 @@ function x() {
 			preload: c.join(p, "preload.js"),
 			nodeIntegration: !0,
 			contextIsolation: !0,
-			webSecurity: !1
+			webSecurity: !1,
+			backgroundThrottling: !0,
+			spellcheck: !1
 		}
+	}), _.on("minimize", () => {
+		_ && _.webContents && _.webContents.session.clearCache().catch(() => {});
 	}), _.setMenuBarVisibility(!1), _.setAutoHideMenuBar(!0), _.webContents.on("console-message", (e, t, n, r, i) => {
 		let a = typeof e == "object" && e?.message !== void 0 ? e.message : n;
 		console.log(`[Renderer Console] ${a}`);

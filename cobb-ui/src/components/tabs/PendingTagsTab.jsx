@@ -1279,13 +1279,13 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
     }
   }, [targetStoreId]);
 
-  // Poll backend every 25s (with document.hidden guard)
+  // Poll backend every 45s (with document.hidden guard)
   useEffect(() => {
     fetchTags();
     const interval = setInterval(() => {
       if (typeof document !== 'undefined' && document.hidden) return;
       fetchTags();
-    }, 25000);
+    }, 45000);
     return () => clearInterval(interval);
   }, [fetchTags]);
 
@@ -2602,7 +2602,7 @@ export default function PendingTagsTab({ darkMode, activeStore = 'DEMO_STORE_001
     startIndex: tagsStartIdx,
     endIndex: tagsEndIdx,
     pageItems: pagedTags
-  } = usePagination(filteredTags, 60, tagsResetKey);
+  } = usePagination(filteredTags, 25, tagsResetKey);
 
   // --- Quick MRP Group Summary (e.g. ₹1,899 (4 pcs), ₹2,499 (3 pcs - Combo Ready!)) ---
   const mrpGroups = useMemo(() => {

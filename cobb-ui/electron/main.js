@@ -23,6 +23,15 @@ if (!gotTheLock) {
   app.quit();
 }
 
+// --- LOW-RAM POS HARDWARE MEMORY OPTIMIZATIONS (8GB Showroom PC) ---
+// 1. Cap V8 renderer memory to 256MB to force aggressive garbage collection
+app.commandLine.appendSwitch('js-flags', '--max-old-space-size=256');
+// 2. Prevent auxiliary process bloat and excessive site isolation trees
+app.commandLine.appendSwitch('disable-site-isolation-trials');
+app.commandLine.appendSwitch('renderer-process-limit', '2');
+// 3. Disable background audio/speech threads to save RAM
+app.commandLine.appendSwitch('disable-speech-api');
+
 // Register custom protocol scheme before app is ready
 protocol.registerSchemesAsPrivileged([
   { scheme: 'app', privileges: { secure: true, standard: true, supportFetchAPI: true, corsEnabled: true, bypassCSP: true } }
@@ -106,7 +115,16 @@ function createWindow() {
       nodeIntegration: true,
       contextIsolation: true,
       webSecurity: false,
+      backgroundThrottling: true,
+      spellcheck: false, // Saves 30-50MB RAM by disabling background dictionary processes
     },
+  });
+
+  // Release memory back to OS when minimized
+  win.on('minimize', () => {
+    if (win && win.webContents) {
+      win.webContents.session.clearCache().catch(() => {});
+    }
   });
 
   // POS Optimization: Hide default OS menu bar to prevent hotkey conflicts

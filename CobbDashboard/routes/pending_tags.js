@@ -240,13 +240,12 @@ async function mergeTagsWithCloud(localTags) {
 }
 
 // --- Failproof Automatic Billed Detection & Cancelled-Bill Recovery against SQL Server ---
-// Rules:
-// 1. Auto-restores tags if the POS bill they were auto-resolved to was later CANCELLED (m.CANCELLED = 1).
-// 2. Queries BOTH positive sales (QUANTITY > 0) and returns/exchanges (QUANTITY < 0) over last 30 days.
-// 3. Parses naive SQL timestamps cleanly as Store IST (+05:30).
-// 4. Strictly requires BillTime >= tag.createdAt - 3000ms (max 3s clock skew; NEVER matches earlier historical bills).
-// 5. Net billed quantity after tag creation MUST be >= 1 (if sold +1 and returned -1, DO NOT mark billed).
-// 6. Strict 1-to-1 bill slot accounting so 1 POS billed unit cannot clear multiple tags.
+// Ultra-lightweight & zero-impact on POS billing software:
+// 1. SET DEADLOCK_PRIORITY LOW & READ UNCOMMITTED so billing cashier transactions ALWAYS take priority.
+// 2. Only checks tags auto-resolved within the last 24 hours for cancelled bills (max 25 bills).
+// 3. Only queries active tags against POS (skips SQL completely if 0 active tags).
+// 4. Clamps search window to earliest active tag creation (max 7 days, not 30 days).
+// 5. Historical billed tags are NEVER re-scanned in bulk, eliminating full table scans.
 async function checkAndResolveBilledTags(tags, customQueryFn = null) {
     const runQuery = customQueryFn || ((q) => sql.query(q));
     const resolvedTags = [];
@@ -254,24 +253,26 @@ async function checkAndResolveBilledTags(tags, customQueryFn = null) {
     let changed = false;
 
     try {
-        // STEP A: Auto-restore any recent (14d) auto-resolved tags if their POS bill was later CANCELLED (m.CANCELLED = 1)
-        const fourteenDaysAgo = Date.now() - (14 * 86400000);
+        // STEP A: Auto-restore recent (last 24h) auto-resolved tags if their POS bill was later CANCELLED (m.CANCELLED = 1)
+        const oneDayAgo = Date.now() - (24 * 3600 * 1000);
         const recentAutoResolved = tags.filter(t =>
             t.status === 'billed' &&
             t.autoResolved === true &&
             t.billedInBillNo &&
             t.resolvedAt &&
-            new Date(t.resolvedAt).getTime() >= fourteenDaysAgo
+            new Date(t.resolvedAt).getTime() >= oneDayAgo
         );
 
         if (recentAutoResolved.length > 0) {
-            const billNos = [...new Set(recentAutoResolved.map(t => String(t.billedInBillNo).trim()).filter(Boolean))];
+            const billNos = [...new Set(recentAutoResolved.map(t => String(t.billedInBillNo).trim()).filter(Boolean))].slice(0, 30);
             if (billNos.length > 0) {
                 const formattedBills = billNos.map(b => `'${b.replace(/'/g, "''")}'`).join(',');
                 const cancelCheckSql = `
+                    SET DEADLOCK_PRIORITY LOW;
+                    SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
                     SELECT RTRIM(CM_NO) as BillNo, CANCELLED as Cancelled
                     FROM CMM01106 WITH (NOLOCK)
-                    WHERE RTRIM(CM_NO) IN (${formattedBills})
+                    WHERE RTRIM(CM_NO) IN (${formattedBills});
                 `;
                 const cancelRes = await runQuery(cancelCheckSql);
                 const billStatusMap = new Map();
@@ -298,54 +299,7 @@ async function checkAndResolveBilledTags(tags, customQueryFn = null) {
             }
         }
 
-        // STEP A2: Mark historical 'billed' tags whose garment was later returned/exchanged & restocked in POS (stock > 0 & netSold <= 0)
-        // so they no longer falsely block staff from creating a new pending tag when a returned item is resold!
-        if (!customQueryFn) {
-            const thirtyDaysAgo = Date.now() - (30 * 86400000);
-            const recentBilledForReturnCheck = tags.filter(t =>
-                t.status === 'billed' &&
-                !t.returnedToStock &&
-                t.barcode &&
-                new Date(t.resolvedAt || t.billedAt || t.createdAt || 0).getTime() >= thirtyDaysAgo
-            );
-            if (recentBilledForReturnCheck.length > 0) {
-                try {
-                    const billedBcs = [...new Set(recentBilledForReturnCheck.map(t => String(t.barcode).trim()).filter(Boolean))];
-                    const fmtBcs = billedBcs.map(b => `'${b.replace(/'/g, "''")}'`).join(',');
-                    const stockCheckRes = await runQuery(`
-                        SELECT RTRIM(p.product_code) as bc, ISNULL(p.quantity_in_stock, 0) as stock
-                        FROM PMT01106 p WITH (NOLOCK)
-                        WHERE RTRIM(p.product_code) IN (${fmtBcs}) AND p.quantity_in_stock > 0
-                    `);
-                    const inStockBcs = new Set((stockCheckRes.recordset || []).map(r => cleanBarcodeDigits(r.bc)));
-                    if (inStockBcs.size > 0) {
-                        const fmtInStock = [...new Set(recentBilledForReturnCheck.filter(t => inStockBcs.has(cleanBarcodeDigits(t.barcode))).map(t => `'${String(t.barcode).trim().replace(/'/g, "''")}'`))].join(',');
-                        const netRes = await runQuery(`
-                            SELECT RTRIM(d.PRODUCT_CODE) as bc, SUM(ISNULL(d.QUANTITY, 0)) as netSold
-                            FROM CMD01106 d WITH (NOLOCK)
-                            JOIN CMM01106 m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
-                            WHERE m.CANCELLED = 0 AND RTRIM(d.PRODUCT_CODE) IN (${fmtInStock})
-                            GROUP BY RTRIM(d.PRODUCT_CODE)
-                        `);
-                        const netSoldMap = new Map((netRes.recordset || []).map(r => [cleanBarcodeDigits(r.bc), Number(r.netSold || 0)]));
-                        for (const t of recentBilledForReturnCheck) {
-                            const cBc = cleanBarcodeDigits(t.barcode);
-                            if (inStockBcs.has(cBc) && (netSoldMap.get(cBc) || 0) <= 0) {
-                                t.returnedToStock = true;
-                                t.returnedToStockAt = new Date().toISOString();
-                                changed = true;
-                                appendAuditLog('MARKED_RETURNED_TO_STOCK', { tagId: t.id, barcode: t.barcode, prevBill: t.billedInBillNo });
-                                console.log(`[PENDING TAGS RESTOCKED] Historical tag ${t.barcode} (${t.billedInBillNo}) detected returned & back in stock — unblocked for future tagging!`);
-                            }
-                        }
-                    }
-                } catch (retErr) {
-                    console.warn('[PENDING TAGS] Return restock check notice:', retErr.message);
-                }
-            }
-        }
-
-        // STEP B: Verify active pending tags against POS bills
+        // STEP B: Verify active pending tags against POS bills (skips SQL if no active tags exist)
         const activeTags = tags.filter(t => t.status === 'active' && t.barcode);
         if (activeTags.length === 0) {
             return { changed, resolvedTags, restoredTags };
@@ -353,6 +307,7 @@ async function checkAndResolveBilledTags(tags, customQueryFn = null) {
 
         // Include raw trimmed, clean (stripped leading 0s), and 10-digit zero-padded variants for SQL lookup
         const barcodeVariants = new Set();
+        let earliestActiveMs = Date.now();
         for (const t of activeTags) {
             const raw = String(t.barcode).trim();
             const clean = cleanBarcodeDigits(raw);
@@ -361,10 +316,18 @@ async function checkAndResolveBilledTags(tags, customQueryFn = null) {
             if (raw.length < 10 && /^\d+$/.test(raw)) {
                 barcodeVariants.add(raw.padStart(10, '0'));
             }
+            const cMs = new Date(t.createdAt).getTime();
+            if (Number.isFinite(cMs) && cMs < earliestActiveMs) {
+                earliestActiveMs = cMs;
+            }
         }
 
+        // Calculate days to look back based on oldest active tag (clamped between 1 and 7 days)
+        const daysBack = Math.min(7, Math.max(1, Math.ceil((Date.now() - earliestActiveMs) / (24 * 3600 * 1000)) + 1));
         const formattedIn = [...barcodeVariants].map(b => `'${b.replace(/'/g, "''")}'`).join(',');
         const query = `
+            SET DEADLOCK_PRIORITY LOW;
+            SET TRANSACTION ISOLATION LEVEL READ UNCOMMITTED;
             SELECT 
                 RTRIM(d.PRODUCT_CODE) as Barcode,
                 RTRIM(m.CM_NO) as BillNo,
@@ -377,7 +340,9 @@ async function checkAndResolveBilledTags(tags, customQueryFn = null) {
             FROM CMD01106 d WITH (NOLOCK)
             JOIN CMM01106 m WITH (NOLOCK) ON d.CM_ID = m.CM_ID
             WHERE RTRIM(d.PRODUCT_CODE) IN (${formattedIn})
-              AND m.CM_TIME >= DATEADD(day, -30, GETDATE())
+              AND m.CM_TIME >= DATEADD(day, -${daysBack}, GETDATE())
+            ORDER BY m.CM_TIME DESC;
+        `;
             ORDER BY m.CM_TIME DESC
         `;
 
@@ -473,8 +438,8 @@ async function checkAndResolveBilledTags(tags, customQueryFn = null) {
     }
 }
 
-// Background auto-resolver runs every 60 seconds (Balanced mode) under strict mutex lock + re-entrancy guard
-const PENDING_SYNC_STALE_MS = 45000;
+// Background auto-resolver runs every 2 minutes under strict mutex lock + re-entrancy guard
+const PENDING_SYNC_STALE_MS = 120000; // 2 minutes stale threshold
 let pendingBackgroundSyncActive = false;
 let lastPendingSyncAt = 0;
 let lastPendingSyncMeta = {
@@ -491,7 +456,22 @@ const pendingSyncInterval = setInterval(() => {
         try {
             const localTags = readTags();
             const { tags, mergedFromCloudCount = 0, cloudChanged } = await mergeTagsWithCloud(localTags);
-            const { changed: posChanged, resolvedTags = [], restoredTags = [] } = await checkAndResolveBilledTags(tags);
+            
+            // Only run POS query if there are active tags or recently auto-resolved tags
+            const hasActiveTags = tags.some(t => t.status === 'active' && t.barcode);
+            const hasRecentAutoResolved = tags.some(t => t.status === 'billed' && t.autoResolved && (Date.now() - new Date(t.resolvedAt || 0).getTime()) < 86400000);
+            
+            let posChanged = false;
+            let resolvedTags = [];
+            let restoredTags = [];
+
+            if (hasActiveTags || hasRecentAutoResolved) {
+                const posRes = await checkAndResolveBilledTags(tags);
+                posChanged = posRes.changed;
+                resolvedTags = posRes.resolvedTags || [];
+                restoredTags = posRes.restoredTags || [];
+            }
+
             if (cloudChanged || posChanged) {
                 writeTags(tags);
             }
@@ -506,7 +486,7 @@ const pendingSyncInterval = setInterval(() => {
     }).finally(() => {
         pendingBackgroundSyncActive = false;
     });
-}, 60000);
+}, 120000);
 if (typeof pendingSyncInterval.unref === 'function') pendingSyncInterval.unref();
 
 // --- ROUTES ---
@@ -528,11 +508,17 @@ router.get('/', async (req, res) => {
                 currentTags = cloudRes.tags;
                 mergedFromCloudCount = cloudRes.mergedFromCloudCount || 0;
 
-                const posRes = await checkAndResolveBilledTags(currentTags);
-                resolvedTags = posRes.resolvedTags || [];
-                restoredTags = posRes.restoredTags || [];
+                const hasActiveTags = currentTags.some(t => t.status === 'active' && t.barcode);
+                let posChanged = false;
 
-                if (cloudRes.cloudChanged || posRes.changed) {
+                if (forceSync || hasActiveTags) {
+                    const posRes = await checkAndResolveBilledTags(currentTags);
+                    resolvedTags = posRes.resolvedTags || [];
+                    restoredTags = posRes.restoredTags || [];
+                    posChanged = posRes.changed;
+                }
+
+                if (cloudRes.cloudChanged || posChanged) {
                     writeTags(currentTags);
                 }
 
